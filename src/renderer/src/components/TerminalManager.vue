@@ -23,6 +23,7 @@ interface TerminalInstance {
 
 interface TerminalComponent extends ComponentPublicInstance {
   focus: () => void
+  fitAndFocus: () => void
 }
 
 interface Props {
@@ -63,10 +64,10 @@ watch(
   async (newActiveId) => {
     if (newActiveId && terminalRefs.value[newActiveId]) {
       await nextTick()
-      // Focus the active terminal
+      // Focus the active terminal with proper sizing
       const terminalInstance = terminalRefs.value[newActiveId]
-      if (terminalInstance && 'focus' in terminalInstance) {
-        ;(terminalInstance as TerminalComponent).focus()
+      if (terminalInstance && 'fitAndFocus' in terminalInstance) {
+        ;(terminalInstance as TerminalComponent).fitAndFocus()
       }
     }
   },

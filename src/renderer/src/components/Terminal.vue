@@ -1,5 +1,5 @@
 <template>
-  <div ref="terminalRef" class="w-full h-full bg-[#171717] pt-3"></div>
+  <div ref="terminalRef" class="w-full h-full bg-[#171717]"></div>
 </template>
 
 <script setup lang="ts">
@@ -149,6 +149,7 @@ onMounted(async () => {
   setTimeout(() => {
     fitAddon.fit()
     sendTerminalSize()
+    term.focus()
   }, 150)
 
   // Handle terminal resize events
