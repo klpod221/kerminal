@@ -51,6 +51,41 @@ declare global {
       getSystemInfo: () => Promise<SystemInfo | null>
       getNetworkInfo: () => Promise<NetworkInterface[]>
       getNetworkStatus: () => Promise<NetworkStatus>
+
+      // SSH APIs
+      sshGroups: {
+        getAll: () => Promise<unknown[]>
+        getById: (id: string) => Promise<unknown>
+        create: (groupData: unknown) => Promise<unknown>
+        update: (id: string, updates: unknown) => Promise<unknown>
+        delete: (id: string) => Promise<boolean>
+      }
+
+      sshProfiles: {
+        getAll: () => Promise<unknown[]>
+        getById: (id: string) => Promise<unknown>
+        getByGroupId: (groupId: string) => Promise<unknown[]>
+        getFavorites: () => Promise<unknown[]>
+        getRecent: (limit?: number) => Promise<unknown[]>
+        create: (profileData: unknown) => Promise<unknown>
+        update: (id: string, updates: unknown) => Promise<unknown>
+        toggleFavorite: (id: string) => Promise<unknown>
+        delete: (id: string) => Promise<boolean>
+        search: (query: string) => Promise<unknown[]>
+        getGroupsWithProfiles: () => Promise<unknown[]>
+        getUngrouped: () => Promise<unknown[]>
+      }
+
+      sshConnections: {
+        getRecent: (limit?: number) => Promise<unknown[]>
+        getStats: () => Promise<unknown>
+        cleanup: (daysOld?: number) => Promise<number>
+      }
+
+      ssh: {
+        testConnection: (config: unknown) => Promise<{ success: boolean; error?: string }>
+        getActiveConnections: () => Promise<number>
+      }
     }
   }
 }

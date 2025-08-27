@@ -18,13 +18,14 @@
           </Card>
           <Card
             class="text-center transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer"
+            @click="openSSHProfiles"
           >
             <div
               class="bg-orange-500/20 rounded-lg p-3 w-fit mx-auto mb-3 group-hover:bg-orange-500/30 transition-colors"
             >
               <Server class="w-8 h-8 text-orange-400" />
             </div>
-            <span class="text-sm font-medium">SSH Profile</span>
+            <span class="text-sm font-medium">SSH Profiles</span>
           </Card>
           <Card
             class="text-center transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer"
@@ -46,6 +47,89 @@
               <Info class="w-8 h-8 text-purple-400" />
             </div>
             <span class="text-sm font-medium">About</span>
+          </Card>
+        </div>
+      </div>
+
+      <!-- Recent SSH Connections -->
+      <div class="mb-8">
+        <h2 class="text-2xl font-bold mb-6 text-center">Recent SSH Connections</h2>
+
+        <!-- Loading State -->
+        <div v-if="isLoadingConnections" class="text-center py-8">
+          <div
+            class="animate-spin rounded-full h-8 w-8 border-2 border-gray-600 border-t-blue-400 mx-auto mb-3"
+          ></div>
+          <p class="text-gray-400">Loading recent connections...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="recentConnections.length === 0" class="text-center py-8">
+          <Server :size="48" class="mx-auto mb-4 text-gray-500" />
+          <h3 class="text-lg font-medium text-white mb-2">No Recent Connections</h3>
+          <p class="text-gray-400 mb-4">Your SSH connection history will appear here.</p>
+          <button
+            class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+            @click="openSSHProfiles"
+          >
+            <Server :size="16" class="inline mr-2" />
+            Browse SSH Profiles
+          </button>
+        </div>
+
+        <!-- Recent Connections List -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Card
+            v-for="connection in recentConnections"
+            :key="connection.id"
+            class="cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            :hover="true"
+            @click="connectToProfile(connection)"
+          >
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <div
+                  class="w-3 h-3 rounded-full"
+                  :class="{
+                    'bg-green-400': connection.status === 'connected',
+                    'bg-red-400': connection.status === 'failed',
+                    'bg-gray-400': connection.status === 'disconnected'
+                  }"
+                ></div>
+                <span class="text-sm font-medium text-white">{{ connection.profileName }}</span>
+              </div>
+              <span
+                class="text-xs px-2 py-1 rounded-full"
+                :class="{
+                  'bg-green-100 text-green-800': connection.status === 'connected',
+                  'bg-red-100 text-red-800': connection.status === 'failed',
+                  'bg-gray-100 text-gray-800': connection.status === 'disconnected'
+                }"
+              >
+                {{ connection.status }}
+              </span>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400 text-sm">Host:</span>
+                <span class="text-white font-mono text-sm">{{ connection.host }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400 text-sm">User:</span>
+                <span class="text-white font-mono text-sm">{{ connection.user }}</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400 text-sm">Connected:</span>
+                <span class="text-white text-sm">{{
+                  formatConnectionTime(connection.connectedAt)
+                }}</span>
+              </div>
+              <div v-if="connection.duration" class="flex justify-between items-center">
+                <span class="text-gray-400 text-sm">Duration:</span>
+                <span class="text-white text-sm">{{ formatDuration(connection.duration) }}</span>
+              </div>
+            </div>
           </Card>
         </div>
       </div>
@@ -410,10 +494,23 @@ interface NetworkStatus {
   interfaces: NetworkInterface[]
 }
 
+interface SSHConnection {
+  id: string
+  profileId: string
+  profileName: string
+  host: string
+  user: string
+  connectedAt: Date
+  duration?: number
+  status: 'connected' | 'disconnected' | 'failed'
+}
+
 // Reactive state
 const isLoading = ref(true)
 const isRefreshing = ref(false)
 const showAboutModal = ref(false)
+const isLoadingConnections = ref(true)
+const recentConnections = ref<SSHConnection[]>([])
 const rawSystemInfo = ref<SystemInfo | null>(null)
 const networkStatus = ref<NetworkStatus>({
   isConnected: false,
@@ -430,6 +527,7 @@ let countdownTimer: number | null = null
 // Define emits
 const emit = defineEmits<{
   'create-terminal': []
+  'open-ssh-profiles': []
 }>()
 
 // Computed properties for formatted system information
@@ -576,6 +674,82 @@ function parseDisplayInfo(resolution: string): { resolution: string; refreshRate
 }
 
 /**
+ * Load recent SSH connections
+ */
+async function loadRecentConnections(): Promise<void> {
+  try {
+    isLoadingConnections.value = true
+    const connections = (await window.api.invoke('ssh-connections.getRecent', 6)) as SSHConnection[]
+    recentConnections.value = connections.map((conn) => ({
+      ...conn,
+      connectedAt: new Date(conn.connectedAt)
+    }))
+  } catch (error) {
+    console.log('Failed to load recent connections:', error)
+    recentConnections.value = []
+  } finally {
+    isLoadingConnections.value = false
+  }
+}
+
+/**
+ * Connect to SSH profile from recent connection
+ */
+function connectToProfile(connection: SSHConnection): void {
+  // Find the profile by ID and emit connect event
+  window.api
+    .invoke('ssh-profiles.getById', connection.profileId)
+    .then((profile) => {
+      if (profile) {
+        // For now, just open SSH profiles drawer
+        openSSHProfiles()
+      }
+    })
+    .catch(() => {
+      // Profile might not exist anymore, just open SSH profiles
+      openSSHProfiles()
+    })
+}
+
+/**
+ * Format connection time
+ */
+function formatConnectionTime(date: Date): string {
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor(diff / (1000 * 60))
+
+  if (days > 0) {
+    return `${days}d ago`
+  } else if (hours > 0) {
+    return `${hours}h ago`
+  } else if (minutes > 0) {
+    return `${minutes}m ago`
+  } else {
+    return 'Just now'
+  }
+}
+
+/**
+ * Format duration in seconds to human readable
+ */
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const remainingSeconds = seconds % 60
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`
+  } else if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`
+  } else {
+    return `${remainingSeconds}s`
+  }
+}
+
+/**
  * Get memory usage color based on percentage
  */
 function getMemoryUsageColor(isBackground = false): string {
@@ -666,10 +840,17 @@ function createNewTerminal(): void {
   emit('create-terminal')
 }
 
+/**
+ * Open SSH Profiles drawer
+ */
+function openSSHProfiles(): void {
+  emit('open-ssh-profiles')
+}
+
 // Load system information on component mount
 onMounted(async () => {
   try {
-    await loadSystemInfo()
+    await Promise.all([loadSystemInfo(), loadRecentConnections()])
     // Start auto-refresh and countdown timers
     startAutoRefresh()
     startCountdown()

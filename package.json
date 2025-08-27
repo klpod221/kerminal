@@ -24,6 +24,7 @@
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
+    "@types/uuid": "^10.0.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-search": "^0.15.0",
     "@xterm/addon-unicode11": "^0.8.0",
@@ -32,7 +33,9 @@
     "@xterm/xterm": "^5.5.0",
     "electron-updater": "^6.3.9",
     "lucide-vue-next": "^0.540.0",
-    "node-pty": "^1.0.0"
+    "node-pty": "^1.0.0",
+    "ssh2": "^1.17.0",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "3.0.0",

@@ -1,6 +1,8 @@
 import { BrowserWindow } from 'electron'
 import * as os from 'os'
 import * as pty from 'node-pty'
+import { ResolvedSSHConfig } from '../types/ssh'
+import { SSHConnection } from './ssh-connection'
 
 /**
  * Manages terminal instances and PTY processes.
@@ -8,6 +10,9 @@ import * as pty from 'node-pty'
 export class TerminalManager {
   private terminals: Record<string, pty.IPty> = {}
   private initialBuffers: Record<string, string[]> = {}
+  private readonly sshTerminals: Record<string, { profileId: string; config: ResolvedSSHConfig }> =
+    {}
+  private readonly sshConnections: Record<string, SSHConnection> = {}
   private isRendererReady = false
   private readonly shellPath: string
 
@@ -55,6 +60,67 @@ export class TerminalManager {
   }
 
   /**
+   * Creates a new SSH terminal instance using ssh2 library.
+   * @param terminalId - Unique identifier for the terminal.
+   * @param config - SSH configuration.
+   * @param profileId - SSH profile ID.
+   * @returns Promise that resolves when SSH connection is established.
+   */
+  async createSSHTerminal(
+    terminalId: string,
+    config: ResolvedSSHConfig,
+    profileId: string,
+    profileName: string
+  ): Promise<void> {
+    try {
+      console.log(`Creating SSH terminal ${terminalId} for ${config.user}@${config.host}`)
+
+      // Create SSH connection instance
+      const sshConnection = new SSHConnection(terminalId, config, this.mainWindow, profileName)
+
+      // Store SSH connection and terminal info
+      this.sshConnections[terminalId] = sshConnection
+      this.sshTerminals[terminalId] = { profileId, config }
+      this.initialBuffers[terminalId] = []
+
+      // Connect to SSH server
+      await sshConnection.connect()
+
+      console.log(`SSH terminal ${terminalId} connected successfully`)
+    } catch (error) {
+      console.error(`Failed to create SSH terminal ${terminalId}:`, error)
+
+      // Clean up on failure
+      delete this.sshConnections[terminalId]
+      delete this.sshTerminals[terminalId]
+      delete this.initialBuffers[terminalId]
+
+      throw error
+    }
+  }
+
+  /**
+   * Check if terminal is SSH terminal
+   */
+  isSSHTerminal(terminalId: string): boolean {
+    return terminalId in this.sshTerminals
+  }
+
+  /**
+   * Get SSH terminal info
+   */
+  getSSHTerminalInfo(terminalId: string): { profileId: string; config: ResolvedSSHConfig } | null {
+    return this.sshTerminals[terminalId] || null
+  }
+
+  /**
+   * Get SSH connection instance
+   */
+  getSSHConnection(terminalId: string): SSHConnection | null {
+    return this.sshConnections[terminalId] || null
+  }
+
+  /**
    * Sets up event handlers for a terminal process.
    * @param ptyProcess - The PTY process to set up handlers for.
    * @param terminalId - Unique identifier for the terminal.
@@ -71,6 +137,22 @@ export class TerminalManager {
       }
 
       this.handleTitleChange(data, terminalId)
+    })
+
+    // Handle terminal process exit
+    ptyProcess.onExit((exitCode) => {
+      console.log(`Terminal ${terminalId} exited with code ${exitCode.exitCode}`)
+
+      // Auto close the tab when terminal exits
+      this.mainWindow.webContents.send('terminal.autoClose', {
+        terminalId,
+        reason: `Terminal exited with code ${exitCode.exitCode}`,
+        exitCode: exitCode.exitCode
+      })
+
+      // Clean up terminal
+      delete this.terminals[terminalId]
+      delete this.initialBuffers[terminalId]
     })
   }
 
@@ -117,6 +199,14 @@ export class TerminalManager {
    * @param data - Data to write to the terminal.
    */
   writeToTerminal(terminalId: string, data: string): void {
+    // Check if it's an SSH terminal
+    const sshConnection = this.sshConnections[terminalId]
+    if (sshConnection) {
+      sshConnection.writeToShell(data)
+      return
+    }
+
+    // Handle regular PTY terminal
     const terminal = this.terminals[terminalId]
     if (terminal) {
       terminal.write(data)
@@ -130,6 +220,14 @@ export class TerminalManager {
    * @param rows - Number of rows.
    */
   resizeTerminal(terminalId: string, cols: number, rows: number): void {
+    // Check if it's an SSH terminal
+    const sshConnection = this.sshConnections[terminalId]
+    if (sshConnection) {
+      sshConnection.resize(cols, rows)
+      return
+    }
+
+    // Handle regular PTY terminal
     const terminal = this.terminals[terminalId]
     if (terminal) {
       terminal.resize(cols, rows)
@@ -160,11 +258,23 @@ export class TerminalManager {
    * @param terminalId - Unique identifier for the terminal.
    */
   destroyTerminal(terminalId: string): void {
+    // Handle SSH connection cleanup
+    const sshConnection = this.sshConnections[terminalId]
+    if (sshConnection) {
+      sshConnection.disconnect()
+      delete this.sshConnections[terminalId]
+      delete this.sshTerminals[terminalId]
+      delete this.initialBuffers[terminalId]
+      return
+    }
+
+    // Handle regular PTY terminal cleanup
     const terminal = this.terminals[terminalId]
     if (terminal) {
       terminal.kill()
       delete this.terminals[terminalId]
       delete this.initialBuffers[terminalId]
+      delete this.sshTerminals[terminalId]
     }
   }
 
@@ -172,6 +282,12 @@ export class TerminalManager {
    * Destroys all terminal instances.
    */
   destroyAll(): void {
+    // Destroy all SSH connections
+    Object.keys(this.sshConnections).forEach((terminalId) => {
+      this.destroyTerminal(terminalId)
+    })
+
+    // Destroy all PTY terminals
     Object.keys(this.terminals).forEach((terminalId) => {
       this.destroyTerminal(terminalId)
     })
