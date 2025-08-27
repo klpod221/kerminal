@@ -4,13 +4,14 @@
       <div class="mt-4 mb-12">
         <img :src="Logo" alt="Kerminal Logo" class="h-32 mx-auto mb-4" />
         <h1 class="text-4xl font-bold text-center">Kerminal</h1>
+        <p class="text-center text-xl mt-1">Modern terminal app with SSH/SFTP support</p>
         <p class="text-center text-gray-400 mt-1">
           Made with ❤️ by
           <a
             href="https://klpod221.com"
             target="_blank"
             rel="noopener noreferrer"
-            class="underline hover:text-white"
+            class="underline hover:text-white text-sm transition-colors duration-200"
           >
             klpod221
           </a>
