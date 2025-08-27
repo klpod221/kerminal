@@ -42,13 +42,14 @@
                   <slot name="header" />
                 </div>
               </div>
-              <button
+              <Button
                 v-if="showCloseButton"
-                class="text-gray-400 hover:text-white transition-colors p-1 rounded hover:bg-gray-700 cursor-pointer"
+                title="Close modal"
+                variant="ghost"
+                size="sm"
+                :icon="X"
                 @click="$emit('close')"
-              >
-                <X class="w-5 h-5" />
-              </button>
+              />
             </div>
 
             <!-- Content -->
@@ -73,6 +74,7 @@
 <script setup lang="ts">
 import { watch, onUnmounted } from 'vue'
 import { X } from 'lucide-vue-next'
+import Button from './Button.vue'
 import type { Component } from 'vue'
 
 interface Props {

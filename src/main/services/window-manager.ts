@@ -1,6 +1,7 @@
 import { BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { IWindowManager } from '../interfaces/terminal.interface'
 import icon from '../../../resources/icon.png?asset'
 
 /**
@@ -16,9 +17,17 @@ export interface WindowConfig {
 
 /**
  * Manages the main application window and window controls.
+ * Implements IWindowManager for better separation of concerns.
  */
-export class WindowManager {
+export class WindowManager implements IWindowManager {
   private mainWindow: BrowserWindow | null = null
+  private readonly defaultConfig: WindowConfig = {
+    width: 900,
+    height: 670,
+    show: false,
+    autoHideMenuBar: true,
+    frame: false
+  }
 
   /**
    * Creates and configures the main application window.
@@ -26,15 +35,7 @@ export class WindowManager {
    * @returns The created BrowserWindow instance.
    */
   createWindow(config: WindowConfig = {}): BrowserWindow {
-    const defaultConfig: WindowConfig = {
-      width: 900,
-      height: 670,
-      show: false,
-      autoHideMenuBar: true,
-      frame: false
-    }
-
-    const windowConfig = { ...defaultConfig, ...config }
+    const windowConfig = { ...this.defaultConfig, ...config }
 
     this.mainWindow = new BrowserWindow({
       ...windowConfig,
@@ -66,13 +67,31 @@ export class WindowManager {
       return { action: 'deny' }
     })
 
-    // Send maximize state changes to renderer
+    // Send maximize state changes to renderer (use safe checks)
+    const safeSend = (channel: string, ...args: unknown[]): void => {
+      try {
+        if (
+          this.mainWindow &&
+          !this.mainWindow.isDestroyed() &&
+          this.mainWindow.webContents &&
+          // @ts-ignore - webContents.isDestroyed may not be present on all types
+          (typeof this.mainWindow.webContents.isDestroyed === 'function'
+            ? !this.mainWindow.webContents.isDestroyed()
+            : !!this.mainWindow.webContents)
+        ) {
+          this.mainWindow.webContents.send(channel, ...args)
+        }
+      } catch (err) {
+        console.error(`WindowManager.safeSend error for ${channel}:`, err)
+      }
+    }
+
     this.mainWindow.on('maximize', () => {
-      this.mainWindow?.webContents.send('window-maximized', true)
+      safeSend('window-maximized', true)
     })
 
     this.mainWindow.on('unmaximize', () => {
-      this.mainWindow?.webContents.send('window-maximized', false)
+      safeSend('window-maximized', false)
     })
   }
 

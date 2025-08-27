@@ -12,37 +12,24 @@
     <!-- Header Actions -->
     <div class="p-4 border-b border-gray-700 space-y-3">
       <!-- Search -->
-      <div class="relative">
-        <Search
-          :size="16"
-          class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-        />
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="Search SSH profiles..."
-          class="w-full pl-10 pr-4 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-        />
-      </div>
+      <Input
+        v-model="searchQuery"
+        type="text"
+        placeholder="Search SSH profiles..."
+        :left-icon="Search"
+      />
 
       <!-- Filter Toggle -->
       <div class="flex items-center justify-between">
-        <label class="flex items-center space-x-2 cursor-pointer">
-          <input
-            v-model="showFavoritesOnly"
-            type="checkbox"
-            class="w-4 h-4 text-orange-500 bg-gray-600 border-gray-500 rounded focus:ring-orange-500 focus:ring-2"
-          />
-          <span class="text-sm text-gray-300">Favorites only</span>
-        </label>
+        <Checkbox v-model="showFavoritesOnly" label="Favorites only" />
 
-        <button
-          class="text-orange-400 hover:text-orange-300 transition-colors p-1 rounded"
+        <Button
           title="Refresh profiles"
+          variant="ghost"
+          size="sm"
+          :icon="RefreshCw"
           @click="refreshProfiles"
-        >
-          <RefreshCw :size="16" :class="{ 'animate-spin': isRefreshing }" />
-        </button>
+        />
       </div>
     </div>
 
@@ -64,13 +51,10 @@
         <Server :size="48" class="mx-auto mb-4 text-gray-500" />
         <h3 class="text-lg font-medium text-white mb-2">No SSH Profiles</h3>
         <p class="text-gray-400 mb-4">Create your first SSH profile to get started.</p>
-        <button
-          class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
-          @click="createNewProfile"
-        >
+        <Button variant="primary" @click="createNewProfile">
           <Plus :size="16" class="inline mr-2" />
           Create Profile
-        </button>
+        </Button>
       </div>
 
       <!-- No Search Results -->
@@ -100,32 +84,27 @@
             <div
               class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity"
             >
-              <button
-                class="p-1 text-gray-400 hover:text-green-400 transition-colors rounded"
+              <Button
                 title="Add profile to group"
+                variant="ghost"
+                size="sm"
+                :icon="Plus"
                 @click.stop="createProfileInGroup(group)"
-              >
-                <Plus :size="12" />
-              </button>
-              <button
-                class="p-1 text-gray-400 hover:text-blue-400 transition-colors rounded"
+              />
+              <Button
                 title="Edit group"
+                variant="ghost"
+                size="sm"
+                :icon="Edit3"
                 @click.stop="editGroup(group)"
-              >
-                <Edit3 :size="12" />
-              </button>
+              />
               <PopConfirm
                 :title="`Delete group '${group.name}'?`"
                 content="This will not delete the profiles in the group."
                 placement="bottom"
                 @confirm="deleteGroup(group)"
               >
-                <button
-                  class="p-1 text-gray-400 hover:text-red-400 transition-colors rounded"
-                  title="Delete group"
-                >
-                  <Trash2 :size="12" />
-                </button>
+                <Button title="Delete group" variant="ghost" size="sm" :icon="Trash2" />
               </PopConfirm>
             </div>
           </div>
@@ -175,7 +154,7 @@
                     }}
                   </p>
                   <p v-if="profile.lastConnected" class="text-xs text-gray-500">
-                    Last: {{ formatLastConnected(profile.lastConnected) }}
+                    Last: {{ formatRelativeTime(profile.lastConnected) }}
                   </p>
                 </div>
               </div>
@@ -183,32 +162,27 @@
               <div
                 class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300"
               >
-                <button
-                  class="p-1 text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 rounded"
+                <Button
                   title="Toggle favorite"
+                  variant="ghost"
+                  size="sm"
+                  :icon="Heart"
                   @click.stop="toggleFavorite(profile)"
-                >
-                  <Heart :size="14" :class="{ 'fill-current text-red-400': profile.favorite }" />
-                </button>
-                <button
-                  class="p-1 text-gray-400 hover:text-orange-400 hover:bg-orange-400/10 transition-all duration-200 rounded"
+                />
+                <Button
                   title="Edit profile"
+                  variant="ghost"
+                  size="sm"
+                  :icon="Edit3"
                   @click.stop="editProfile(profile)"
-                >
-                  <Edit3 :size="14" />
-                </button>
+                />
                 <PopConfirm
                   :title="`Delete profile '${profile.name}'?`"
                   content="This action cannot be undone."
                   placement="bottom"
                   @confirm="deleteProfile(profile)"
                 >
-                  <button
-                    class="p-1 text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 rounded"
-                    title="Delete profile"
-                  >
-                    <Trash2 :size="14" />
-                  </button>
+                  <Button title="Delete profile" variant="ghost" size="sm" :icon="Trash2" />
                 </PopConfirm>
               </div>
             </div>
@@ -257,7 +231,7 @@
                     }}
                   </p>
                   <p v-if="profile.lastConnected" class="text-xs text-gray-500">
-                    Last: {{ formatLastConnected(profile.lastConnected) }}
+                    Last: {{ formatRelativeTime(profile.lastConnected) }}
                   </p>
                 </div>
               </div>
@@ -265,32 +239,27 @@
               <div
                 class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300"
               >
-                <button
-                  class="p-1 text-gray-400 hover:text-yellow-400 hover:bg-yellow-400/10 transition-all duration-200 rounded"
+                <Button
                   title="Toggle favorite"
+                  variant="ghost"
+                  size="sm"
+                  :icon="Heart"
                   @click.stop="toggleFavorite(profile)"
-                >
-                  <Heart :size="14" :class="{ 'fill-current text-red-400': profile.favorite }" />
-                </button>
-                <button
-                  class="p-1 text-gray-400 hover:text-orange-400 hover:bg-orange-400/10 transition-all duration-200 rounded"
+                />
+                <Button
                   title="Edit profile"
+                  variant="ghost"
+                  size="sm"
+                  :icon="Edit3"
                   @click.stop="editProfile(profile)"
-                >
-                  <Edit3 :size="14" />
-                </button>
+                />
                 <PopConfirm
                   :title="`Delete profile '${profile.name}'?`"
                   content="This action cannot be undone."
                   placement="bottom"
                   @confirm="deleteProfile(profile)"
                 >
-                  <button
-                    class="p-1 text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200 rounded"
-                    title="Delete profile"
-                  >
-                    <Trash2 :size="14" />
-                  </button>
+                  <Button title="Delete profile" variant="ghost" size="sm" :icon="Trash2" />
                 </PopConfirm>
               </div>
             </div>
@@ -337,7 +306,10 @@ import {
 } from 'lucide-vue-next'
 import Drawer from './ui/Drawer.vue'
 import Button from './ui/Button.vue'
+import Input from './ui/Input.vue'
+import Checkbox from './ui/Checkbox.vue'
 import PopConfirm from './ui/PopConfirm.vue'
+import { formatRelativeTime } from '../utils/formatter'
 import type { SSHGroupWithProfiles, SSHProfileWithConfig } from '../types/ssh'
 
 interface Props {
@@ -504,24 +476,6 @@ const toggleFavorite = async (profile: SSHProfileWithConfig): Promise<void> => {
     profile.favorite = !profile.favorite
   } catch (error) {
     console.error('Failed to toggle favorite:', error)
-  }
-}
-
-const formatLastConnected = (date: Date): string => {
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  const hours = Math.floor(diff / (1000 * 60 * 60))
-  const minutes = Math.floor(diff / (1000 * 60))
-
-  if (days > 0) {
-    return `${days}d ago`
-  } else if (hours > 0) {
-    return `${hours}h ago`
-  } else if (minutes > 0) {
-    return `${minutes}m ago`
-  } else {
-    return 'Just now'
   }
 }
 

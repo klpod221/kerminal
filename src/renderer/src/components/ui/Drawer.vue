@@ -38,12 +38,7 @@
             </div>
             <h2 class="text-lg font-semibold text-white">{{ title }}</h2>
           </div>
-          <button
-            class="text-gray-400 hover:text-white transition-colors p-1 rounded"
-            @click="close"
-          >
-            <X :size="20" />
-          </button>
+          <Button variant="ghost" :icon="X" @click="close" />
         </div>
 
         <!-- Content -->
@@ -63,6 +58,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { X } from 'lucide-vue-next'
+import Button from './Button.vue'
 import type { Component } from 'vue'
 
 interface Props {

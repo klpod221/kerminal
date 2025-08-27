@@ -1,12 +1,13 @@
-@import "./fonts.css";
+@import './fonts.css';
+@import 'tailwindcss';
 
-@import "tailwindcss";
-
-html, body {
+html,
+body {
   background-color: transparent;
   margin: 0;
   padding: 0;
   overflow: hidden;
+  font-family: 'Fira Code', 'JetBrains Mono', monospace;
 }
 
 /* css for scroll bar */

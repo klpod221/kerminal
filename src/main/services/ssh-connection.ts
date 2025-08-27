@@ -29,6 +29,24 @@ export class SSHConnection {
     this.setupEventHandlers()
   }
 
+  private safeSend(channel: string, ...args: unknown[]): void {
+    try {
+      if (
+        this.mainWindow &&
+        !this.mainWindow.isDestroyed() &&
+        this.mainWindow.webContents &&
+        // @ts-ignore - some electron versions/types may not include isDestroyed on webContents
+        (typeof this.mainWindow.webContents.isDestroyed === 'function'
+          ? !this.mainWindow.webContents.isDestroyed()
+          : !!this.mainWindow.webContents)
+      ) {
+        this.mainWindow.webContents.send(channel, ...args)
+      }
+    } catch (err) {
+      console.error(`SSHConnection.safeSend error for ${channel}:`, err)
+    }
+  }
+
   /**
    * Connect to SSH server
    */
@@ -83,10 +101,7 @@ export class SSHConnection {
     this.client.shell((err, stream) => {
       if (err) {
         console.error(`Failed to start shell for terminal ${this.terminalId}:`, err)
-        this.mainWindow.webContents.send('terminal.sshError', {
-          terminalId: this.terminalId,
-          error: err.message
-        })
+        this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: err.message })
         return
       }
 
@@ -95,7 +110,7 @@ export class SSHConnection {
       // Handle shell data
       stream.on('data', (data: Buffer) => {
         const output = data.toString()
-        this.mainWindow.webContents.send('terminal.incomingData', output, this.terminalId)
+        this.safeSend('terminal.incomingData', output, this.terminalId)
         this.handleTitleChange(output)
       })
 
@@ -103,12 +118,9 @@ export class SSHConnection {
       stream.on('close', () => {
         console.log(`SSH shell closed for terminal ${this.terminalId}`)
         this.isConnected = false
-        this.mainWindow.webContents.send('terminal.sshDisconnected', {
-          terminalId: this.terminalId
-        })
-
+        this.safeSend('terminal.sshDisconnected', { terminalId: this.terminalId })
         // Auto close the tab when SSH shell closes
-        this.mainWindow.webContents.send('terminal.autoClose', {
+        this.safeSend('terminal.autoClose', {
           terminalId: this.terminalId,
           reason: 'SSH shell closed'
         })
@@ -117,10 +129,7 @@ export class SSHConnection {
       // Handle shell errors
       stream.on('error', (error: Error) => {
         console.error(`SSH shell error for terminal ${this.terminalId}:`, error)
-        this.mainWindow.webContents.send('terminal.sshError', {
-          terminalId: this.terminalId,
-          error: error.message
-        })
+        this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: error.message })
       })
 
       // Store stream for writing data
@@ -147,10 +156,7 @@ export class SSHConnection {
   private setupEventHandlers(): void {
     this.client.on('error', (error) => {
       console.error(`SSH client error for terminal ${this.terminalId}:`, error)
-      this.mainWindow.webContents.send('terminal.sshError', {
-        terminalId: this.terminalId,
-        error: error.message
-      })
+      this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: error.message })
     })
 
     this.client.on('end', () => {
@@ -161,12 +167,9 @@ export class SSHConnection {
     this.client.on('close', () => {
       console.log(`SSH connection closed for terminal ${this.terminalId}`)
       this.isConnected = false
-      this.mainWindow.webContents.send('terminal.sshDisconnected', {
-        terminalId: this.terminalId
-      })
-
+      this.safeSend('terminal.sshDisconnected', { terminalId: this.terminalId })
       // Auto close the tab when SSH connection closes
-      this.mainWindow.webContents.send('terminal.autoClose', {
+      this.safeSend('terminal.autoClose', {
         terminalId: this.terminalId,
         reason: 'SSH connection closed'
       })
@@ -196,7 +199,7 @@ export class SSHConnection {
    */
   private setInitialTitle(): void {
     setTimeout(() => {
-      this.mainWindow.webContents.send('terminal.titleChanged', {
+      this.safeSend('terminal.titleChanged', {
         terminalId: this.terminalId,
         title: this.profileName
       })
@@ -215,10 +218,7 @@ export class SSHConnection {
     if (titleMatch) {
       const title = titleMatch[1].trim()
       if (title) {
-        this.mainWindow.webContents.send('terminal.titleChanged', {
-          terminalId: this.terminalId,
-          title: title
-        })
+        this.safeSend('terminal.titleChanged', { terminalId: this.terminalId, title: title })
       }
     }
   }

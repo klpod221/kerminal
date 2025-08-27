@@ -63,13 +63,7 @@
         </div>
 
         <!-- Add Tab Button -->
-        <div
-          class="no-drag flex items-center justify-center w-8 h-full hover:bg-gray-800 cursor-pointer flex-shrink-0"
-          :title="`Add new tab (${tabs.length} tabs)`"
-          @click="addTab"
-        >
-          <Plus :size="14" class="text-gray-400 hover:text-white" />
-        </div>
+        <Button title="Add new tab" variant="ghost" size="sm" :icon="Plus" @click="addTab" />
       </div>
 
       <!-- Draggable space - Always visible with minimum 80px width -->
@@ -78,28 +72,21 @@
 
     <!-- Window Controls -->
     <div class="flex items-center h-full max-h-[30px] flex-shrink-0">
-      <div
-        class="no-drag flex items-center justify-center w-8 h-full max-h-[30px] hover:bg-gray-800 cursor-pointer"
+      <Button
+        title="Minimize window"
+        variant="ghost"
+        size="sm"
+        :icon="Minus"
         @click="minimizeWindow"
-      >
-        <Minus :size="14" class="text-gray-400 hover:text-white" />
-      </div>
-      <div
-        class="no-drag flex items-center justify-center w-8 h-full max-h-[30px] hover:bg-gray-800 cursor-pointer"
+      />
+      <Button
+        title="Maximize window"
+        variant="ghost"
+        size="sm"
+        :icon="isMaximized ? Minimize2 : Maximize2"
         @click="maximizeWindow"
-      >
-        <component
-          :is="isMaximized ? Minimize2 : Maximize2"
-          :size="14"
-          class="text-gray-400 hover:text-white"
-        />
-      </div>
-      <div
-        class="no-drag flex items-center justify-center w-8 h-full max-h-[30px] hover:bg-red-600 cursor-pointer"
-        @click="closeWindow"
-      >
-        <X :size="14" class="text-gray-400 hover:text-white" />
-      </div>
+      />
+      <Button title="Close window" variant="ghost" size="sm" :icon="X" @click="closeWindow" />
     </div>
   </div>
 </template>
@@ -116,12 +103,14 @@ import {
   Maximize2,
   PanelLeft
 } from 'lucide-vue-next'
+import Button from './ui/Button.vue'
 
 interface Tab {
   id: string
   title: string
   active: boolean
   color?: string
+  lastConnected?: Date
 }
 
 interface Props {

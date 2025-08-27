@@ -1,54 +1,13 @@
 <template>
   <div class="h-full bg-[#171717] text-white p-6 overflow-y-auto">
     <div class="max-w-6xl mx-auto animate-fade-in">
-      <!-- Quick Actions -->
-      <div class="mb-12">
-        <h2 class="text-2xl font-bold mb-6 text-center">Quick Actions</h2>
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
-          <Card
-            class="text-center transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer"
-            @click="createNewTerminal"
-          >
-            <div
-              class="bg-blue-500/20 rounded-lg p-3 w-fit mx-auto mb-3 group-hover:bg-blue-500/30 transition-colors"
-            >
-              <Terminal class="w-8 h-8 text-blue-400" />
-            </div>
-            <span class="text-sm font-medium">New Terminal</span>
-          </Card>
-          <Card
-            class="text-center transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer"
-            @click="openSSHProfiles"
-          >
-            <div
-              class="bg-orange-500/20 rounded-lg p-3 w-fit mx-auto mb-3 group-hover:bg-orange-500/30 transition-colors"
-            >
-              <Server class="w-8 h-8 text-orange-400" />
-            </div>
-            <span class="text-sm font-medium">SSH Profiles</span>
-          </Card>
-          <Card
-            class="text-center transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer"
-          >
-            <div
-              class="bg-green-500/20 rounded-lg p-3 w-fit mx-auto mb-3 group-hover:bg-green-500/30 transition-colors"
-            >
-              <Settings class="w-8 h-8 text-green-400" />
-            </div>
-            <span class="text-sm font-medium">Settings</span>
-          </Card>
-          <Card
-            class="text-center transition-all duration-300 transform hover:scale-105 hover:shadow-lg cursor-pointer"
-            @click="showAbout"
-          >
-            <div
-              class="bg-purple-500/20 rounded-lg p-3 w-fit mx-auto mb-3 group-hover:bg-purple-500/30 transition-colors"
-            >
-              <Info class="w-8 h-8 text-purple-400" />
-            </div>
-            <span class="text-sm font-medium">About</span>
-          </Card>
-        </div>
+      <div class="mt-4 mb-12">
+        <h2 class="text-2xl font-bold mb-6 text-center">About Kerminal</h2>
+        <p class="text-gray-400">
+          Kerminal is a modern terminal application built with a focus on user experience and
+          performance. It provides a seamless way to manage your SSH connections and access remote
+          servers.
+        </p>
       </div>
 
       <!-- Recent SSH Connections -->
@@ -68,13 +27,10 @@
           <Server :size="48" class="mx-auto mb-4 text-gray-500" />
           <h3 class="text-lg font-medium text-white mb-2">No Recent Connections</h3>
           <p class="text-gray-400 mb-4">Your SSH connection history will appear here.</p>
-          <button
-            class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
-            @click="openSSHProfiles"
-          >
+          <Button variant="primary" @click="openSSHProfiles">
             <Server :size="16" class="inline mr-2" />
             Browse SSH Profiles
-          </button>
+          </Button>
         </div>
 
         <!-- Recent Connections List -->
@@ -127,7 +83,9 @@
               </div>
               <div v-if="connection.duration" class="flex justify-between items-center">
                 <span class="text-gray-400 text-sm">Duration:</span>
-                <span class="text-white text-sm">{{ formatDuration(connection.duration) }}</span>
+                <span class="text-white text-sm">
+                  {{ formatRelativeTime(connection.duration) }}
+                </span>
               </div>
             </div>
           </Card>
@@ -329,7 +287,7 @@
         </div>
 
         <!-- Auto-refresh Status -->
-        <div class="text-center mt-8">
+        <div class="text-center mt-4">
           <div class="text-gray-500 text-sm">
             <RefreshCw
               class="w-4 h-4 inline mr-2 transition-transform duration-300"
@@ -340,117 +298,15 @@
         </div>
       </div>
     </div>
-
-    <!-- About Modal -->
-    <Modal
-      v-model:visible="showAboutModal"
-      title="About Kerminal"
-      :icon="Info"
-      icon-background="bg-purple-500/20"
-      icon-color="text-purple-400"
-      @close="showAboutModal = false"
-    >
-      <div class="space-y-6">
-        <!-- App Icon and Name -->
-        <div class="text-center">
-          <div class="bg-purple-500/20 rounded-full p-4 w-fit mx-auto mb-4">
-            <Terminal class="w-12 h-12 text-purple-400" />
-          </div>
-          <h3 class="text-2xl font-bold text-white mb-2">Kerminal</h3>
-          <p class="text-gray-400">Version 1.0.0</p>
-        </div>
-
-        <!-- Description -->
-        <div class="bg-[#171717] border border-gray-700 rounded-lg p-4">
-          <p class="text-gray-300 leading-relaxed">
-            A modern terminal application built with Electron and Vue. Designed for developers who
-            want a powerful and beautiful terminal experience.
-          </p>
-        </div>
-
-        <!-- Features -->
-        <div class="space-y-3">
-          <h4 class="text-lg font-semibold text-white">Features</h4>
-          <ul class="space-y-2 text-gray-300">
-            <li class="flex items-center space-x-2">
-              <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
-              <span>Modern and intuitive interface</span>
-            </li>
-            <li class="flex items-center space-x-2">
-              <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
-              <span>Real-time system information</span>
-            </li>
-            <li class="flex items-center space-x-2">
-              <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
-              <span>Cross-platform compatibility</span>
-            </li>
-            <li class="flex items-center space-x-2">
-              <div class="w-2 h-2 bg-purple-400 rounded-full"></div>
-              <span>Built with modern web technologies</span>
-            </li>
-          </ul>
-        </div>
-
-        <!-- Developer Info -->
-        <div class="bg-[#171717] border border-gray-700 rounded-lg p-4">
-          <h4 class="text-lg font-semibold text-white mb-3">Developer</h4>
-          <div class="space-y-2">
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Name:</span>
-              <span class="text-white font-medium">klpod221</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">Website:</span>
-              <a
-                href="https://klpod221.com"
-                target="_blank"
-                class="text-purple-400 hover:text-purple-300 transition-colors"
-              >
-                klpod221.com
-              </a>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-gray-400">GitHub:</span>
-              <a
-                href="https://github.com/klpod221"
-                target="_blank"
-                class="text-purple-400 hover:text-purple-300 transition-colors"
-              >
-                @klpod221
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <template #footer>
-        <button
-          class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors"
-          @click="showAboutModal = false"
-        >
-          Close
-        </button>
-      </template>
-    </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import {
-  Computer,
-  Monitor,
-  Cpu,
-  MemoryStick,
-  Wifi,
-  Terminal,
-  Settings,
-  Server,
-  RefreshCw,
-  Info
-} from 'lucide-vue-next'
+import { Computer, Monitor, Cpu, MemoryStick, Wifi, Server, RefreshCw } from 'lucide-vue-next'
 import Card from './ui/Card.vue'
-import Modal from './ui/Modal.vue'
+import Button from './ui/Button.vue'
+import { formatRelativeTime } from '../utils/formatter'
 
 // Type definitions
 interface SystemInfo {
@@ -508,7 +364,6 @@ interface SSHConnection {
 // Reactive state
 const isLoading = ref(true)
 const isRefreshing = ref(false)
-const showAboutModal = ref(false)
 const isLoadingConnections = ref(true)
 const recentConnections = ref<SSHConnection[]>([])
 const rawSystemInfo = ref<SystemInfo | null>(null)
@@ -733,23 +588,6 @@ function formatConnectionTime(date: Date): string {
 }
 
 /**
- * Format duration in seconds to human readable
- */
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const remainingSeconds = seconds % 60
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`
-  } else if (minutes > 0) {
-    return `${minutes}m ${remainingSeconds}s`
-  } else {
-    return `${remainingSeconds}s`
-  }
-}
-
-/**
  * Get memory usage color based on percentage
  */
 function getMemoryUsageColor(isBackground = false): string {
@@ -804,6 +642,7 @@ function startAutoRefresh(): void {
     if (!isRefreshing.value) {
       isRefreshing.value = true
       try {
+        await loadRecentConnections()
         await loadSystemInfo()
       } finally {
         isRefreshing.value = false
@@ -827,27 +666,13 @@ function stopTimers(): void {
 }
 
 /**
- * Show about dialog
- */
-function showAbout(): void {
-  showAboutModal.value = true
-}
-
-/**
- * Create a new terminal and switch to it
- */
-function createNewTerminal(): void {
-  emit('create-terminal')
-}
-
-/**
  * Open SSH Profiles drawer
  */
 function openSSHProfiles(): void {
   emit('open-ssh-profiles')
 }
 
-// Load system information on component mount
+// Load system information and recent connections on component mount
 onMounted(async () => {
   try {
     await Promise.all([loadSystemInfo(), loadRecentConnections()])

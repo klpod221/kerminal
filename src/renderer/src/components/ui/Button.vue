@@ -1,11 +1,14 @@
 <template>
   <button
     :class="[
-      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 disabled:opacity-50 disabled:cursor-not-allowed',
+      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 cursor-pointer',
+      'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
+      'disabled:opacity-50 disabled:cursor-not-allowed',
       sizeClasses,
       variantClasses,
       loading && 'cursor-not-allowed'
     ]"
+    :title="title"
     :disabled="disabled || loading"
     @click="handleClick"
   >
@@ -21,7 +24,8 @@
       :is="icon"
       v-if="icon && !iconRight && !loading"
       :size="iconSize"
-      class="mr-2 flex-shrink-0"
+      class="flex-shrink-0"
+      :class="text || $slots.default ? 'mr-2' : ''"
     />
 
     <!-- Content -->
@@ -34,7 +38,8 @@
       :is="icon"
       v-if="icon && iconRight && !loading"
       :size="iconSize"
-      class="ml-2 flex-shrink-0"
+      class="flex-shrink-0"
+      :class="text || $slots.default ? 'ml-2' : ''"
     />
   </button>
 </template>
@@ -50,6 +55,7 @@ interface Props {
   iconRight?: boolean
   text?: string
   loading?: boolean
+  title?: string
   disabled?: boolean
 }
 
@@ -66,13 +72,14 @@ const emit = defineEmits<{
 }>()
 
 const sizeClasses = computed(() => {
+  const hasOnlyIcon = props.icon && !props.text
   switch (props.size) {
     case 'sm':
-      return 'px-3 py-1.5 text-sm'
+      return hasOnlyIcon ? 'p-2 text-sm' : 'px-3 py-1.5 text-sm'
     case 'lg':
-      return 'px-6 py-3 text-lg'
+      return hasOnlyIcon ? 'p-4 text-lg' : 'px-6 py-3 text-lg'
     default:
-      return 'px-4 py-2 text-base'
+      return hasOnlyIcon ? 'p-3 text-base' : 'px-4 py-2 text-base'
   }
 })
 

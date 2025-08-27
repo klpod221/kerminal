@@ -24,6 +24,35 @@ export class TerminalManager {
   }
 
   /**
+   * Safely send IPC to renderer only if the window and webContents are alive.
+   * Protects against "Object has been destroyed" errors when app/windows are closing.
+   */
+  private safeSend(channel: string, ...args: unknown[]): void {
+    try {
+      if (
+        this.mainWindow &&
+        !this.mainWindow.isDestroyed() &&
+        this.mainWindow.webContents &&
+        // webContents has isDestroyed in recent electron versions
+        // fall back to truthy check if not available
+        // @ts-ignore - some electron versions do not expose webContents.isDestroyed on types
+        (typeof this.mainWindow.webContents.isDestroyed === 'function'
+          ? !this.mainWindow.webContents.isDestroyed()
+          : !!this.mainWindow.webContents)
+      ) {
+        this.mainWindow.webContents.send(channel, ...args)
+      } else {
+        // Window/webContents already destroyed — ignore send
+        console.warn(
+          `safeSend: skipped sending ${channel} because window/webContents are destroyed`
+        )
+      }
+    } catch (err) {
+      console.error(`safeSend error for channel ${channel}:`, err)
+    }
+  }
+
+  /**
    * Sets the renderer ready state.
    * @param ready - Whether the renderer is ready to receive data.
    */
@@ -128,7 +157,7 @@ export class TerminalManager {
   private setupTerminalHandlers(ptyProcess: pty.IPty, terminalId: string): void {
     ptyProcess.onData((data) => {
       if (this.isRendererReady) {
-        this.mainWindow.webContents.send('terminal.incomingData', data, terminalId)
+        this.safeSend('terminal.incomingData', data, terminalId)
       } else {
         if (!this.initialBuffers[terminalId]) {
           this.initialBuffers[terminalId] = []
@@ -144,7 +173,7 @@ export class TerminalManager {
       console.log(`Terminal ${terminalId} exited with code ${exitCode.exitCode}`)
 
       // Auto close the tab when terminal exits
-      this.mainWindow.webContents.send('terminal.autoClose', {
+      this.safeSend('terminal.autoClose', {
         terminalId,
         reason: `Terminal exited with code ${exitCode.exitCode}`,
         exitCode: exitCode.exitCode
@@ -166,7 +195,7 @@ export class TerminalManager {
         const user = process.env.USER || process.env.USERNAME || 'user'
         const hostname = os.hostname()
         const initialTitle = `${user}@${hostname}`
-        this.mainWindow.webContents.send('terminal.titleChanged', {
+        this.safeSend('terminal.titleChanged', {
           terminalId,
           title: initialTitle
         })
@@ -188,7 +217,7 @@ export class TerminalManager {
     if (titleMatch) {
       const title = titleMatch[1].trim()
       if (title && this.isRendererReady) {
-        this.mainWindow.webContents.send('terminal.titleChanged', { terminalId, title })
+        this.safeSend('terminal.titleChanged', { terminalId, title })
       }
     }
   }
@@ -244,11 +273,7 @@ export class TerminalManager {
     }
 
     if (this.initialBuffers[terminalId] && this.initialBuffers[terminalId].length > 0) {
-      this.mainWindow.webContents.send(
-        'terminal.incomingData',
-        this.initialBuffers[terminalId].join(''),
-        terminalId
-      )
+  this.safeSend('terminal.incomingData', this.initialBuffers[terminalId].join(''), terminalId)
       this.initialBuffers[terminalId] = []
     }
   }

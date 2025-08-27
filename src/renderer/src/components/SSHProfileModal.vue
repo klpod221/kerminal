@@ -14,51 +14,28 @@
         <h3 class="text-lg font-medium text-white">Basic Information</h3>
 
         <!-- Profile Name -->
-        <div>
-          <label for="profile-name" class="block text-sm font-medium text-gray-300 mb-2"
-            >Profile Name *</label
-          >
-          <input
-            id="profile-name"
-            v-model="form.name"
-            type="text"
-            required
-            placeholder="My Server"
-            class="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-          />
-        </div>
+        <Input v-model="form.name" label="Profile Name *" placeholder="My Server" required />
 
         <!-- Description -->
-        <div>
-          <label for="profile-description" class="block text-sm font-medium text-gray-300 mb-2"
-            >Description</label
-          >
-          <textarea
-            id="profile-description"
-            v-model="form.description"
-            rows="2"
-            placeholder="Optional description for this SSH profile"
-            class="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 resize-none"
-          ></textarea>
-        </div>
+        <Textarea
+          v-model="form.description"
+          label="Description"
+          placeholder="Optional description for this SSH profile"
+          :rows="2"
+        />
 
         <!-- Group -->
-        <div>
-          <label for="profile-group" class="block text-sm font-medium text-gray-300 mb-2"
-            >Group</label
-          >
-          <select
-            id="profile-group"
-            v-model="form.groupId"
-            class="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-            @change="handleGroupChange"
-          >
-            <option value="">No Group</option>
-            <option v-for="group in groups" :key="group.id" :value="group.id">
-              {{ group.name }}
-            </option>
-          </select>
-        </div>
+        <Select
+          v-model="form.groupId"
+          label="Group"
+          placeholder="No Group"
+          @change="handleGroupChange"
+        >
+          <option value="">No Group</option>
+          <option v-for="group in groups" :key="group.id" :value="group.id">
+            {{ group.name }}
+          </option>
+        </Select>
 
         <!-- Color -->
         <div>
@@ -72,12 +49,7 @@
               type="color"
               class="w-12 h-10 bg-[#2a2a2a] border border-gray-600 rounded-lg cursor-pointer"
             />
-            <input
-              v-model="form.color"
-              type="text"
-              placeholder="#6b7280"
-              class="flex-1 px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-            />
+            <Input v-model="form.color" placeholder="#6b7280" />
           </div>
         </div>
       </div>
@@ -87,49 +59,29 @@
         <h3 class="text-lg font-medium text-white">Connection Settings</h3>
 
         <!-- Host -->
-        <div>
-          <label for="profile-host" class="block text-sm font-medium text-gray-300 mb-2"
-            >Host *</label
-          >
-          <input
-            id="profile-host"
-            v-model="form.host"
-            type="text"
-            required
-            placeholder="example.com or 192.168.1.100"
-            class="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-          />
-        </div>
+        <Input
+          v-model="form.host"
+          label="Host *"
+          placeholder="example.com or 192.168.1.100"
+          required
+        />
 
         <!-- Port and User -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label for="profile-port" class="block text-sm font-medium text-gray-300 mb-2"
-              >Port</label
-            >
-            <input
-              id="profile-port"
-              v-model.number="form.port"
-              type="number"
-              min="1"
-              max="65535"
-              placeholder="22"
-              class="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-            />
-          </div>
-          <div>
-            <label for="profile-username" class="block text-sm font-medium text-gray-300 mb-2"
-              >Username *</label
-            >
-            <input
-              id="profile-username"
-              v-model="form.user"
-              type="text"
-              required
-              placeholder="root or your username"
-              class="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-            />
-          </div>
+          <Input
+            v-model.number="form.port"
+            label="Port"
+            type="number"
+            placeholder="22"
+            min="1"
+            max="65535"
+          />
+          <Input
+            v-model="form.user"
+            label="Username *"
+            placeholder="root or your username"
+            required
+          />
         </div>
       </div>
 
@@ -138,43 +90,22 @@
         <h3 class="text-lg font-medium text-white">Authentication</h3>
 
         <!-- Auth Type -->
-        <div>
-          <label for="profile-auth-type" class="block text-sm font-medium text-gray-300 mb-2"
-            >Authentication Method</label
-          >
-          <select
-            id="profile-auth-type"
-            v-model="form.authType"
-            class="w-full px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-          >
-            <option value="password">Password</option>
-            <option value="key">SSH Key</option>
-            <option value="agent">SSH Agent</option>
-          </select>
-        </div>
+        <Select v-model="form.authType" label="Authentication Method">
+          <option value="password">Password</option>
+          <option value="key">SSH Key</option>
+          <option value="agent">SSH Agent</option>
+        </Select>
 
         <!-- Password -->
         <div v-if="form.authType === 'password'">
-          <label for="profile-password" class="block text-sm font-medium text-gray-300 mb-2"
-            >Password</label
-          >
-          <div class="relative">
-            <input
-              id="profile-password"
-              v-model="form.password"
-              :type="showPassword ? 'text' : 'password'"
-              placeholder="Enter password (optional - can prompt when connecting)"
-              class="w-full px-3 py-2 pr-10 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-            />
-            <button
-              type="button"
-              class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-              @click="showPassword = !showPassword"
-            >
-              <Eye v-if="!showPassword" :size="16" />
-              <EyeOff v-else :size="16" />
-            </button>
-          </div>
+          <Input
+            v-model="form.password"
+            label="Password"
+            :type="showPassword ? 'text' : 'password'"
+            placeholder="Enter password (optional - can prompt when connecting)"
+            :right-icon="showPassword ? EyeOff : Eye"
+            @right-icon-click="showPassword = !showPassword"
+          />
           <p class="text-xs text-gray-500 mt-1">
             Leave empty to be prompted for password when connecting
           </p>
@@ -183,48 +114,24 @@
         <!-- SSH Key -->
         <div v-if="form.authType === 'key'" class="space-y-3">
           <div>
-            <label for="profile-key-path" class="block text-sm font-medium text-gray-300 mb-2"
-              >Private Key Path</label
-            >
-            <div class="flex space-x-2">
-              <input
-                id="profile-key-path"
-                v-model="form.privateKeyPath"
-                type="text"
-                placeholder="~/.ssh/id_rsa"
-                class="flex-1 px-3 py-2 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-              />
-              <button
-                type="button"
-                class="px-3 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors"
-                @click="selectKeyFile"
-              >
-                <Folder :size="16" />
-              </button>
-            </div>
+            <Input
+              v-model="form.privateKeyPath"
+              label="Private Key Path"
+              placeholder="~/.ssh/id_rsa"
+              :right-icon="Folder"
+              @right-icon-click="selectKeyFile"
+            />
           </div>
 
           <div>
-            <label for="profile-passphrase" class="block text-sm font-medium text-gray-300 mb-2"
-              >Key Passphrase</label
-            >
-            <div class="relative">
-              <input
-                id="profile-passphrase"
-                v-model="form.passphrase"
-                :type="showPassphrase ? 'text' : 'password'"
-                placeholder="Enter passphrase if key is encrypted"
-                class="w-full px-3 py-2 pr-10 bg-[#2a2a2a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
-              />
-              <button
-                type="button"
-                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
-                @click="showPassphrase = !showPassphrase"
-              >
-                <Eye v-if="!showPassphrase" :size="16" />
-                <EyeOff v-else :size="16" />
-              </button>
-            </div>
+            <Input
+              v-model="form.passphrase"
+              label="Key Passphrase"
+              :type="showPassphrase ? 'text' : 'password'"
+              placeholder="Enter passphrase if key is encrypted"
+              :right-icon="showPassphrase ? EyeOff : Eye"
+              @right-icon-click="showPassphrase = !showPassphrase"
+            />
           </div>
         </div>
       </div>
@@ -235,56 +142,30 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <!-- Favorite -->
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input
-              v-model="form.favorite"
-              type="checkbox"
-              class="w-4 h-4 text-orange-500 bg-gray-600 border-gray-500 rounded focus:ring-orange-500 focus:ring-2"
-            />
-            <span class="text-sm text-gray-300">Mark as favorite</span>
-          </label>
+          <Checkbox v-model="form.favorite" label="Mark as favorite" />
 
           <!-- Keep Alive -->
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input
-              v-model="form.keepAlive"
-              type="checkbox"
-              class="w-4 h-4 text-orange-500 bg-gray-600 border-gray-500 rounded focus:ring-orange-500 focus:ring-2"
-            />
-            <span class="text-sm text-gray-300">Keep connection alive</span>
-          </label>
+          <Checkbox v-model="form.keepAlive" label="Keep connection alive" />
         </div>
       </div>
     </form>
 
     <template #footer>
       <div class="flex justify-between">
-        <button
-          type="button"
-          class="px-4 py-2 text-gray-400 hover:text-white transition-colors rounded-lg"
-          @click="handleClose"
-        >
-          Cancel
-        </button>
+        <Button variant="ghost" @click="handleClose"> Cancel </Button>
 
         <div class="flex space-x-3">
-          <button
-            type="button"
+          <Button
+            variant="primary"
             :disabled="!canSubmit || isSaving"
-            class="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg transition-colors"
+            :loading="isSaving"
             @click="handleSubmit"
           >
-            <div v-if="isSaving" class="flex items-center space-x-2">
-              <div
-                class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"
-              ></div>
-              <span>Saving...</span>
-            </div>
-            <div v-else class="flex items-center space-x-2">
+            <template v-if="!isSaving">
               <Save :size="16" />
-              <span>{{ isEditing ? 'Update' : 'Create' }}</span>
-            </div>
-          </button>
+              {{ isEditing ? 'Update' : 'Create' }}
+            </template>
+          </Button>
         </div>
       </div>
     </template>
@@ -295,6 +176,11 @@
 import { ref, computed, watch } from 'vue'
 import { Server, Eye, EyeOff, Folder, Save } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
+import Input from './ui/Input.vue'
+import Select from './ui/Select.vue'
+import Textarea from './ui/Textarea.vue'
+import Checkbox from './ui/Checkbox.vue'
+import Button from './ui/Button.vue'
 import type { SSHGroup, SSHProfile, SSHProfileWithConfig } from '../types/ssh'
 
 interface Props {
