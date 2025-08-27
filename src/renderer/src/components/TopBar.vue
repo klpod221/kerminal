@@ -25,7 +25,7 @@
 
     <!-- Tabs Container -->
     <div class="flex items-center flex-1 h-full max-h-[30px] min-w-0">
-      <div class="flex items-center h-full max-h-[30px] w-full">
+      <div class="flex items-center h-full max-h-[30px] max-w-[calc(100%-80px)]">
         <div
           v-for="tab in tabs"
           :key="tab.id"
@@ -72,8 +72,8 @@
         </div>
       </div>
 
-      <!-- Draggable space -->
-      <div class="draggable flex-1 h-full min-w-4"></div>
+      <!-- Draggable space - Always visible with minimum 80px width -->
+      <div class="draggable flex-1 h-full" style="min-width: 80px"></div>
     </div>
 
     <!-- Window Controls -->
@@ -156,8 +156,14 @@ const tabMinWidth = computed(() => {
   const addButtonWidth = 32 // w-8 = 32px for the + button
   const sideIconsWidth = 48 // Dashboard + SSH icons (24px each)
   const windowControlsWidth = 96 // 3 window control buttons (32px each)
+  const draggableSpaceWidth = 80 // Minimum draggable space width
   const availableWidth =
-    windowWidth.value - sideIconsWidth - windowControlsWidth - addButtonWidth - 16 // 16px padding
+    windowWidth.value -
+    sideIconsWidth -
+    windowControlsWidth -
+    addButtonWidth -
+    draggableSpaceWidth -
+    16 // 16px padding
 
   // Calculate ideal width per tab
   const idealTabWidth = Math.floor(availableWidth / Math.max(tabCount, 1))
