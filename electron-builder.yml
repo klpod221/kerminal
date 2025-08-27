@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: kerminal
+appId: com.klpod221.kerminal
+productName: Kerminal
 directories:
   buildResources: build
 files:

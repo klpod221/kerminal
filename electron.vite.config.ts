@@ -16,6 +16,6 @@ export default defineConfig({
         '@renderer': resolve('src/renderer/src')
       }
     },
-    plugins: [vue(), tailwindcss()]
+    plugins: [vue({}), tailwindcss()]
   }
 })

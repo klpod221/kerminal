@@ -1,7 +1,8 @@
 {
   "name": "kerminal",
+  "productName": "Kerminal",
+  "description": "Modern terminal app with SSH/SFTP support",
   "version": "1.0.0",
-  "description": "An Electron application with Vue and TypeScript",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",

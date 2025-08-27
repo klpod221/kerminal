@@ -2,11 +2,18 @@
   <div class="h-full bg-[#171717] text-white p-6 overflow-y-auto">
     <div class="max-w-6xl mx-auto animate-fade-in">
       <div class="mt-4 mb-12">
-        <h2 class="text-2xl font-bold mb-6 text-center">About Kerminal</h2>
-        <p class="text-gray-400">
-          Kerminal is a modern terminal application built with a focus on user experience and
-          performance. It provides a seamless way to manage your SSH connections and access remote
-          servers.
+        <img :src="Logo" alt="Kerminal Logo" class="h-32 mx-auto mb-4" />
+        <h1 class="text-4xl font-bold text-center">Kerminal</h1>
+        <p class="text-center text-gray-400 mt-1">
+          Made with ❤️ by
+          <a
+            href="https://klpod221.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline hover:text-white"
+          >
+            klpod221
+          </a>
         </p>
       </div>
 
@@ -307,6 +314,7 @@ import { Computer, Monitor, Cpu, MemoryStick, Wifi, Server, RefreshCw } from 'lu
 import Card from './ui/Card.vue'
 import Button from './ui/Button.vue'
 import { formatRelativeTime } from '../utils/formatter'
+import Logo from '../assets/images/logo_500.png'
 
 // Type definitions
 interface SystemInfo {
