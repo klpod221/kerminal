@@ -2,10 +2,10 @@
   "name": "kerminal",
   "productName": "Kerminal",
   "description": "Modern terminal app with SSH/SFTP support",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "klpod221",
+  "homepage": "https://github.com/klpod221/kerminal",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",
