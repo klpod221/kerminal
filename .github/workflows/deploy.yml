@@ -107,6 +107,7 @@ jobs:
       - name: Commit and Push to AUR
         run: |
           cd /tmp/aur-repo
+          git config --global --add safe.directory /tmp/aur-repo
           if ! git diff-index --quiet HEAD; then
             git add PKGBUILD .SRCINFO
             git commit -m "Update to version ${{ github.ref_name }}"
