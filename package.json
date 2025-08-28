@@ -48,6 +48,7 @@
     "@vitejs/plugin-vue": "^6.0.0",
     "electron": "^37.2.3",
     "electron-builder": "^25.1.8",
+    "electron-builder-squirrel-windows": "^25.1.8",
     "electron-vite": "^4.0.0",
     "eslint": "^9.31.0",
     "eslint-plugin-vue": "^10.3.0",
