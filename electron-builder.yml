@@ -32,7 +32,8 @@ linux:
   target:
     - AppImage
     - deb
-  maintainer: electronjs.org
+    - tar.gz
+  maintainer: klpod221
   category: Utility
 appImage:
   artifactName: ${name}-${version}.${ext}

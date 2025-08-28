@@ -9,36 +9,26 @@ jobs:
   build:
     name: Build for ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-
     steps:
-      - name: Check out git repository
-        uses: actions/checkout@v4
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Install Python dependencies
-        run: python3 -m pip install --break-system-packages setuptools
-
       - name: Install AppImage dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libfuse2 squashfs-tools patchelf
-
       - name: Install dependencies
         run: npm install
-
       - name: Build application
-        run: npm run build:${{ matrix.os == 'macos-latest' && 'mac' || 'linux' }}
-
+        run: |
+          npm run build
+          npx --no-install electron-builder --${{ matrix.os == 'macos-latest' && 'mac' || 'linux' }}
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -47,21 +37,18 @@ jobs:
             dist/*.AppImage
             dist/*.deb
             dist/*.dmg
+            dist/*.tar.gz
 
   release:
     name: Create Release
     runs-on: ubuntu-latest
     needs: build
-
     permissions:
       contents: write
-
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: artifacts
-
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
@@ -74,10 +61,10 @@ jobs:
     container:
       image: archlinux:latest
     steps:
-      - name: Install Dependencies
+      - name: Install Dependencies and Create User
         run: |
           pacman -Syu --noconfirm
-          pacman -S --noconfirm git openssh base-devel pacman-contrib
+          pacman -S --noconfirm git openssh base-devel pacman-contrib sudo
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
       - name: Setup SSH
@@ -88,13 +75,13 @@ jobs:
           git config --global core.sshCommand "ssh -i ~/.ssh/aur -o StrictHostKeyChecking=no"
       - name: Configure Git
         run: |
-          git config --global user.name "klpod221"
-          git config --global user.email "klpod221@gmail.com"
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
       - name: Clone AUR Repository
         run: git clone ssh://aur@aur.archlinux.org/kerminal-bin.git /tmp/aur-repo
       - name: Change Repo Ownership
         run: chown -R builder:builder /tmp/aur-repo
-      - name: Update PKGBUILD
+      - name: Update PKGBUILD as non-root user
         run: |
           sudo -u builder bash -c '
             cd /tmp/aur-repo
@@ -103,7 +90,7 @@ jobs:
             sed -i "s/^pkgver=.*/pkgver=$CLEAN_VERSION/" PKGBUILD
             updpkgsums
           '
-      - name: Update .SRCINFO
+      - name: Update .SRCINFO as non-root user
         run: |
           sudo -u builder bash -c '
             cd /tmp/aur-repo
