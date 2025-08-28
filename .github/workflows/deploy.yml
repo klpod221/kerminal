@@ -76,7 +76,8 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" | sed -i 's/\r$//' > ~/.ssh/aur
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          sed -i 's/\r$//' ~/.ssh/aur
           chmod 600 ~/.ssh/aur
           git config --global core.sshCommand "ssh -i ~/.ssh/aur -o StrictHostKeyChecking=no"
       - name: Configure Git
