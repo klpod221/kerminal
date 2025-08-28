@@ -32,11 +32,14 @@ jobs:
       - name: Build application
         run: npm run build:${{ matrix.os == 'macos-latest' && 'mac' || 'linux' }}
 
+      - name: List files in the dist directory
+        run: ls -R dist
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: built-app-${{ matrix.os }}
-          path: dist/*.{dmg,AppImage,deb}
+          path: dist/*
 
   release:
     runs-on: ubuntu-latest
