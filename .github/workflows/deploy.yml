@@ -72,6 +72,6 @@ jobs:
         with:
           pkgname: kerminal-bin
           pkgbuild: ./PKGBUILD
-          commit-username: klpod221
-          commit-email: klpod221@gmail.com
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
           ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
