@@ -23,6 +23,13 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Setup MSBuild
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+        with:
+          vs-version: '[17.0,18.0)'
+          windows-sdk-version: '10.0'
+
       - name: Install Python dependencies
         if: runner.os != 'Windows'
         run: python3 -m pip install --break-system-packages setuptools
