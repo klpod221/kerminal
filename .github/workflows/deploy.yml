@@ -100,7 +100,6 @@ jobs:
           '
       - name: Update .SRCINFO
         run: |
-          run: |
           sudo -u builder bash -c '
             cd /tmp/aur-repo
             makepkg --printsrcinfo > .SRCINFO
