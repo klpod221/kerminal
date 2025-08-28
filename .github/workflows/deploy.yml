@@ -18,6 +18,8 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+      - name: Install Python dependencies
+        run: python3 -m pip install --break-system-packages setuptools
       - name: Install AppImage dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |

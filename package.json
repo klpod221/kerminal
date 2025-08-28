@@ -2,7 +2,7 @@
   "name": "kerminal",
   "productName": "Kerminal",
   "description": "Modern terminal app with SSH/SFTP support",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "main": "./out/main/index.js",
   "author": "klpod221",
   "homepage": "https://github.com/klpod221/kerminal",
