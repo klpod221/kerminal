@@ -23,6 +23,10 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install Python dependencies
+        if: runner.os != 'Windows'
+        run: python3 -m pip install setuptools
+
       - name: Install dependencies
         run: npm install
 
