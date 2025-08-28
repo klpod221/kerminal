@@ -2,7 +2,7 @@
   "name": "kerminal",
   "productName": "Kerminal",
   "description": "Modern terminal app with SSH/SFTP support",
-  "version": "1.0.0",
+  "version": "0.2.1",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",
