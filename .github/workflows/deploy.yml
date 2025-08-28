@@ -61,16 +61,17 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/**/*
+
   aur-publish:
     name: Publish to AUR
     runs-on: ubuntu-latest
     needs: release
     steps:
       - name: Publish to AUR
-        uses: KSXGitHub/github-actions-deploy-aur@v2.6.0
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
         with:
           pkgname: kerminal-bin
           pkgbuild: ./PKGBUILD
-          commit-username: ${{ github.actor }}
-          commit-email: ${{ github.actor }}@users.noreply.github.com
+          commit-username: klpod221
+          commit-email: klpod221@gmail.com
           ssh-private-key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
