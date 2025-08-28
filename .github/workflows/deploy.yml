@@ -66,43 +66,12 @@ jobs:
     name: Publish to AUR
     runs-on: ubuntu-latest
     needs: release
-    container:
-      image: archlinux:latest
     steps:
-      - name: Install Dependencies
-        run: |
-          pacman -Syu --noconfirm
-          pacman -S --noconfirm git openssh base-devel
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          git config --global core.sshCommand "ssh -i ~/.ssh/aur -o StrictHostKeyChecking=no"
-      - name: Configure Git
-        run: |
-          git config --global user.name "klpod221"
-          git config --global user.email "klpod221@gmail.com"
-      - name: Clone AUR Repository
-        run: git clone ssh://aur@aur.archlinux.org/kerminal-bin.git /tmp/aur-repo
-      - name: Update PKGBUILD
-        run: |
-          cd /tmp/aur-repo
-          VERSION=${{ github.ref_name }}
-          CLEAN_VERSION=${VERSION#v}
-          sed -i "s/^pkgver=.*/pkgver=$CLEAN_VERSION/" PKGBUILD
-          updpkgsums
-      - name: Update .SRCINFO
-        run: |
-          cd /tmp/aur-repo
-          makepkg --printsrcinfo > .SRCINFO
-      - name: Commit and Push to AUR
-        run: |
-          cd /tmp/aur-repo
-          if ! git diff-index --quiet HEAD; then
-            git add PKGBUILD .SRCINFO
-            git commit -m "Update to version ${{ github.ref_name }}"
-            git push
-          else
-            echo "No changes to commit."
-          fi
+      - name: Publish to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        with:
+          pkgname: kerminal-bin
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
