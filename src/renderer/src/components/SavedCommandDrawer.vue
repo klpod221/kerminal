@@ -3,7 +3,6 @@
     :visible="visible && !showCommandModal"
     title="Saved Commands"
     position="right"
-    width="lg"
     :icon="BookOpen"
     icon-background="bg-blue-500/20"
     icon-color="text-blue-400"

@@ -3,7 +3,6 @@
     :visible="visible"
     title="SSH Profiles"
     position="left"
-    width="lg"
     :icon="Server"
     icon-background="bg-orange-500/20"
     icon-color="text-orange-400"

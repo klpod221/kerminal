@@ -81,7 +81,7 @@ npm run build:linux  # Linux
 
 ### Project Structure
 
-```
+```text
 src/
 ├── main/           # Electron main process
 │   ├── services/   # Core services (SSH, Terminal, Storage)
