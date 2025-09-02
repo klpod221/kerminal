@@ -70,8 +70,8 @@ export function useValidation(): UseValidationReturn {
    * Validate a single field
    */
   const validateField = (name: string): boolean => {
-    const field = fields.value[name]
-    if (!field) return true
+    const field = fields.value?.[name]
+    if (!field?.touched || !field?.error || !field?.value) return true
 
     field.touched.value = true
     field.error.value = null
@@ -107,9 +107,13 @@ export function useValidation(): UseValidationReturn {
    * Reset all field states
    */
   const resetValidation = (): void => {
+    if (!fields.value) return
+
     for (const field of Object.values(fields.value)) {
-      field.touched.value = false
-      field.error.value = null
+      if (field?.touched && field?.error) {
+        field.touched.value = false
+        field.error.value = null
+      }
     }
   }
 
@@ -117,8 +121,15 @@ export function useValidation(): UseValidationReturn {
    * Check if form is valid
    */
   const isFormValid = computed(() => {
+    if (!fields.value) return true
+
     return Object.values(fields.value).every(
-      (field) => !field.error.value && (field.touched.value || field.value.value)
+      (field) =>
+        field?.error &&
+        field?.touched &&
+        field?.value &&
+        !field.error.value &&
+        (field.touched.value || field.value.value)
     )
   })
 
@@ -126,7 +137,9 @@ export function useValidation(): UseValidationReturn {
    * Check if any field has been touched
    */
   const hasBeenTouched = computed(() => {
-    return Object.values(fields.value).some((field) => field.touched.value)
+    if (!fields.value) return false
+
+    return Object.values(fields.value).some((field) => field?.touched?.value)
   })
 
   return {

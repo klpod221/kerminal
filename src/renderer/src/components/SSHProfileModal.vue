@@ -19,7 +19,7 @@
           label="Profile Name"
           placeholder="My Server"
           :rules="['required']"
-          :error-message="validation.fields.value.name?.error.value || undefined"
+          :error-message="nameError"
           @blur="validation.validateField('name')"
         />
 
@@ -29,7 +29,7 @@
           label="Description"
           placeholder="Optional description for this SSH profile"
           :rows="2"
-          :error-message="validation.fields.value.description?.error.value || undefined"
+          :error-message="descriptionError"
           @blur="validation.validateField('description')"
         />
 
@@ -60,7 +60,7 @@
           label="Host"
           placeholder="example.com or 192.168.1.100"
           :rules="['required']"
-          :error-message="validation.fields.value.host?.error.value || undefined"
+          :error-message="hostError"
           @blur="validation.validateField('host')"
         />
 
@@ -73,7 +73,7 @@
             placeholder="22"
             min="1"
             max="65535"
-            :error-message="validation.fields.value.port?.error.value || undefined"
+            :error-message="portError"
             @blur="validation.validateField('port')"
           />
           <Input
@@ -81,7 +81,7 @@
             label="Username"
             placeholder="root or your username"
             :rules="['required']"
-            :error-message="validation.fields.value.user?.error.value || undefined"
+            :error-message="userError"
             @blur="validation.validateField('user')"
           />
         </div>
@@ -119,7 +119,7 @@
               label="Private Key Path"
               placeholder="~/.ssh/id_rsa"
               :right-icon="Folder"
-              :error-message="validation.fields.value.privateKeyPath?.error.value || undefined"
+              :error-message="privateKeyPathError"
               @right-icon-click="selectKeyFile"
               @blur="validation.validateField('privateKeyPath')"
             />
@@ -202,12 +202,7 @@ const props = withDefaults(defineProps<Props>(), {
   preselectedGroup: null
 })
 
-const emit = defineEmits<{
-  'update:visible': [visible: boolean]
-  save: [profile: Partial<SSHProfile>]
-  update: [id: string, updates: Partial<SSHProfile>]
-  close: []
-}>()
+const emit = defineEmits(['update:visible', 'save', 'update', 'close'])
 
 // State
 const showPassword = ref(false)
@@ -304,16 +299,28 @@ validation.registerField('privateKeyPath', privateKeyPathRef, [validationRules.s
 // Computed
 const isEditing = computed(() => !!props.profile)
 
+// Error message computed properties for safe access
+const nameError = computed(() => validation.fields.value?.name?.error?.value || undefined)
+const descriptionError = computed(
+  () => validation.fields.value?.description?.error?.value || undefined
+)
+const hostError = computed(() => validation.fields.value?.host?.error?.value || undefined)
+const portError = computed(() => validation.fields.value?.port?.error?.value || undefined)
+const userError = computed(() => validation.fields.value?.user?.error?.value || undefined)
+const privateKeyPathError = computed(
+  () => validation.fields.value?.privateKeyPath?.error?.value || undefined
+)
+
 const canSubmit = computed(() => {
   return (
     form.value.name &&
     form.value.host &&
     form.value.user &&
-    !validation.fields.value.name?.error.value &&
-    !validation.fields.value.host?.error.value &&
-    !validation.fields.value.user?.error.value &&
-    !validation.fields.value.port?.error.value &&
-    !validation.fields.value.privateKeyPath?.error.value
+    !nameError.value &&
+    !hostError.value &&
+    !userError.value &&
+    !portError.value &&
+    !privateKeyPathError.value
   )
 })
 
@@ -334,7 +341,11 @@ const resetForm = (): void => {
     favorite: false,
     keepAlive: true
   }
-  validation.resetValidation()
+
+  // Only reset validation if fields are properly initialized
+  if (validation.fields.value && Object.keys(validation.fields.value).length > 0) {
+    validation.resetValidation()
+  }
 }
 
 const loadProfile = (profile: SSHProfileWithConfig): void => {

@@ -93,10 +93,7 @@ const props = withDefaults(defineProps<Props>(), {
   closeOnBackdrop: true
 })
 
-const emit = defineEmits<{
-  close: []
-  'update:visible': [value: boolean]
-}>()
+const emit = defineEmits(['close', 'update:visible'])
 
 /**
  * Handle backdrop click to close modal

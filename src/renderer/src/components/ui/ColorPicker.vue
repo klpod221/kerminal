@@ -66,12 +66,6 @@ interface Props {
   id?: string
 }
 
-interface Emits {
-  'update:modelValue': [value: string]
-  blur: [event: FocusEvent]
-  focus: [event: FocusEvent]
-}
-
 const props = withDefaults(defineProps<Props>(), {
   modelValue: '#000000',
   disabled: false,
@@ -79,7 +73,7 @@ const props = withDefaults(defineProps<Props>(), {
   required: false
 })
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits(['update:modelValue', 'blur', 'focus'])
 
 // Refs
 const pickerRef = ref<HTMLInputElement>()

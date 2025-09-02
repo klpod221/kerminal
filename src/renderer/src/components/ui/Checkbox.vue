@@ -28,9 +28,7 @@ const props = withDefaults(defineProps<Props>(), {
   size: 'md'
 })
 
-defineEmits<{
-  'update:modelValue': [value: boolean]
-}>()
+defineEmits(['update:modelValue'])
 
 const attrs = useAttrs()
 

@@ -40,9 +40,7 @@ const props = withDefaults(defineProps<Props>(), {
   rows: 3
 })
 
-defineEmits<{
-  'update:modelValue': [value: string]
-}>()
+defineEmits(['update:modelValue'])
 
 const attrs = useAttrs()
 

@@ -105,14 +105,6 @@ interface Props {
   id?: string
 }
 
-interface Emits {
-  'update:modelValue': [value: string]
-  blur: [event: FocusEvent]
-  focus: [event: FocusEvent]
-  keydown: [event: KeyboardEvent]
-  'right-icon-click': []
-}
-
 const props = withDefaults(defineProps<Props>(), {
   type: 'text',
   size: 'md',
@@ -120,7 +112,7 @@ const props = withDefaults(defineProps<Props>(), {
   readonly: false
 })
 
-const emit = defineEmits<Emits>()
+const emit = defineEmits(['update:modelValue', 'blur', 'focus', 'keydown', 'right-icon-click'])
 
 // Refs
 const inputRef = ref<HTMLInputElement>()

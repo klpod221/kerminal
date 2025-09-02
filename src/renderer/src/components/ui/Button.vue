@@ -67,9 +67,7 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false
 })
 
-const emit = defineEmits<{
-  click: [event: MouseEvent]
-}>()
+const emit = defineEmits(['click'])
 
 const sizeClasses = computed(() => {
   const hasOnlyIcon = props.icon && !props.text
