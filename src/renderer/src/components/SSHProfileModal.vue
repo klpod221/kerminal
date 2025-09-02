@@ -10,11 +10,18 @@
   >
     <form class="space-y-6" @submit.prevent="handleSubmit">
       <!-- Basic Information -->
-      <div class="space-y-4">
+      <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">Basic Information</h3>
 
         <!-- Profile Name -->
-        <Input v-model="form.name" label="Profile Name *" placeholder="My Server" required />
+        <Input
+          v-model="form.name"
+          label="Profile Name"
+          placeholder="My Server"
+          :rules="['required']"
+          :error-message="validation.fields.value.name?.error.value || undefined"
+          @blur="validation.validateField('name')"
+        />
 
         <!-- Description -->
         <Textarea
@@ -22,6 +29,8 @@
           label="Description"
           placeholder="Optional description for this SSH profile"
           :rows="2"
+          :error-message="validation.fields.value.description?.error.value || undefined"
+          @blur="validation.validateField('description')"
         />
 
         <!-- Group -->
@@ -38,32 +47,21 @@
         </Select>
 
         <!-- Color -->
-        <div>
-          <label for="profile-color" class="block text-sm font-medium text-gray-300 mb-2"
-            >Color</label
-          >
-          <div class="flex items-center space-x-3">
-            <input
-              id="profile-color"
-              v-model="form.color"
-              type="color"
-              class="w-12 h-10 bg-[#2a2a2a] border border-gray-600 rounded-lg cursor-pointer"
-            />
-            <Input v-model="form.color" placeholder="#6b7280" />
-          </div>
-        </div>
+        <ColorPicker v-model="form.color" label="Profile Color" />
       </div>
 
       <!-- Connection Settings -->
-      <div class="space-y-4">
+      <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">Connection Settings</h3>
 
         <!-- Host -->
         <Input
           v-model="form.host"
-          label="Host *"
+          label="Host"
           placeholder="example.com or 192.168.1.100"
-          required
+          :rules="['required']"
+          :error-message="validation.fields.value.host?.error.value || undefined"
+          @blur="validation.validateField('host')"
         />
 
         <!-- Port and User -->
@@ -75,18 +73,22 @@
             placeholder="22"
             min="1"
             max="65535"
+            :error-message="validation.fields.value.port?.error.value || undefined"
+            @blur="validation.validateField('port')"
           />
           <Input
             v-model="form.user"
-            label="Username *"
+            label="Username"
             placeholder="root or your username"
-            required
+            :rules="['required']"
+            :error-message="validation.fields.value.user?.error.value || undefined"
+            @blur="validation.validateField('user')"
           />
         </div>
       </div>
 
       <!-- Authentication -->
-      <div class="space-y-4">
+      <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">Authentication</h3>
 
         <!-- Auth Type -->
@@ -103,12 +105,10 @@
             label="Password"
             :type="showPassword ? 'text' : 'password'"
             placeholder="Enter password (optional - can prompt when connecting)"
+            helper-text="Leave empty to be prompted for password when connecting"
             :right-icon="showPassword ? EyeOff : Eye"
             @right-icon-click="showPassword = !showPassword"
           />
-          <p class="text-xs text-gray-500 mt-1">
-            Leave empty to be prompted for password when connecting
-          </p>
         </div>
 
         <!-- SSH Key -->
@@ -119,7 +119,9 @@
               label="Private Key Path"
               placeholder="~/.ssh/id_rsa"
               :right-icon="Folder"
+              :error-message="validation.fields.value.privateKeyPath?.error.value || undefined"
               @right-icon-click="selectKeyFile"
+              @blur="validation.validateField('privateKeyPath')"
             />
           </div>
 
@@ -137,10 +139,10 @@
       </div>
 
       <!-- Options -->
-      <div class="space-y-4">
+      <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">Options</h3>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex flex-col space-y-2">
           <!-- Favorite -->
           <Checkbox v-model="form.favorite" label="Mark as favorite" />
 
@@ -151,18 +153,19 @@
     </form>
 
     <template #footer>
-      <div class="flex justify-between">
-        <Button variant="ghost" @click="handleClose"> Cancel </Button>
+      <div class="flex justify-between w-full">
+        <Button variant="ghost" size="sm" @click="handleClose">Cancel</Button>
 
         <div class="flex space-x-3">
           <Button
             variant="primary"
+            size="sm"
             :disabled="!canSubmit || isSaving"
             :loading="isSaving"
+            :icon="Save"
             @click="handleSubmit"
           >
             <template v-if="!isSaving">
-              <Save :size="16" />
               {{ isEditing ? 'Update' : 'Create' }}
             </template>
           </Button>
@@ -177,10 +180,12 @@ import { ref, computed, watch } from 'vue'
 import { Server, Eye, EyeOff, Folder, Save } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
 import Input from './ui/Input.vue'
+import ColorPicker from './ui/ColorPicker.vue'
 import Select from './ui/Select.vue'
 import Textarea from './ui/Textarea.vue'
 import Checkbox from './ui/Checkbox.vue'
 import Button from './ui/Button.vue'
+import { useValidation, validationRules } from '../composables/useValidation'
 import type { SSHGroup, SSHProfile, SSHProfileWithConfig } from '../types/ssh'
 
 interface Props {
@@ -226,11 +231,90 @@ const form = ref({
   keepAlive: true
 })
 
+// Validation setup
+const validation = useValidation()
+
+// Create reactive refs for validation
+const nameRef = computed({
+  get: () => form.value.name,
+  set: (value) => {
+    form.value.name = value
+  }
+})
+
+const descriptionRef = computed({
+  get: () => form.value.description,
+  set: (value) => {
+    form.value.description = value
+  }
+})
+
+const hostRef = computed({
+  get: () => form.value.host,
+  set: (value) => {
+    form.value.host = value
+  }
+})
+
+const portRef = computed({
+  get: () => form.value.port,
+  set: (value) => {
+    form.value.port = value
+  }
+})
+
+const userRef = computed({
+  get: () => form.value.user,
+  set: (value) => {
+    form.value.user = value
+  }
+})
+
+const privateKeyPathRef = computed({
+  get: () => form.value.privateKeyPath,
+  set: (value) => {
+    form.value.privateKeyPath = value
+  }
+})
+
+// Register validation fields
+validation.registerField('name', nameRef, [
+  validationRules.required('Profile name is required'),
+  validationRules.profileName()
+])
+
+validation.registerField('description', descriptionRef, [
+  validationRules.maxLength(200, 'Description must be less than 200 characters')
+])
+
+validation.registerField('host', hostRef, [
+  validationRules.required('Host is required'),
+  validationRules.hostname()
+])
+
+validation.registerField('port', portRef, [validationRules.port()])
+
+validation.registerField('user', userRef, [
+  validationRules.required('Username is required'),
+  validationRules.username()
+])
+
+validation.registerField('privateKeyPath', privateKeyPathRef, [validationRules.sshKeyPath()])
+
 // Computed
 const isEditing = computed(() => !!props.profile)
 
 const canSubmit = computed(() => {
-  return form.value.name && form.value.host && form.value.user
+  return (
+    form.value.name &&
+    form.value.host &&
+    form.value.user &&
+    !validation.fields.value.name?.error.value &&
+    !validation.fields.value.host?.error.value &&
+    !validation.fields.value.user?.error.value &&
+    !validation.fields.value.port?.error.value &&
+    !validation.fields.value.privateKeyPath?.error.value
+  )
 })
 
 // Methods
@@ -250,6 +334,7 @@ const resetForm = (): void => {
     favorite: false,
     keepAlive: true
   }
+  validation.resetValidation()
 }
 
 const loadProfile = (profile: SSHProfileWithConfig): void => {
@@ -266,7 +351,7 @@ const loadProfile = (profile: SSHProfileWithConfig): void => {
     groupId: profile.groupId || '',
     color: profile.color || '#6b7280',
     favorite: profile.favorite || false,
-    keepAlive: true // Default to true
+    keepAlive: true
   }
 }
 
@@ -311,6 +396,11 @@ const handleGroupChange = (): void => {
 
 const handleSubmit = async (): Promise<void> => {
   if (!canSubmit.value || isSaving.value) return
+
+  // Validate all fields before submitting
+  if (!validation.validateAll()) {
+    return
+  }
 
   try {
     isSaving.value = true

@@ -273,7 +273,7 @@ export class TerminalManager {
     }
 
     if (this.initialBuffers[terminalId] && this.initialBuffers[terminalId].length > 0) {
-  this.safeSend('terminal.incomingData', this.initialBuffers[terminalId].join(''), terminalId)
+      this.safeSend('terminal.incomingData', this.initialBuffers[terminalId].join(''), terminalId)
       this.initialBuffers[terminalId] = []
     }
   }

@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-1">
+  <div class="space-y-0.5">
     <label v-if="label" :for="inputId" class="block text-sm font-medium text-gray-300">
       {{ label }}
       <span v-if="required" class="text-red-400 ml-1">*</span>
@@ -14,8 +14,10 @@
       :rows="rows"
       v-bind="$attrs"
       @input="$emit('update:modelValue', ($event.target as HTMLTextAreaElement).value)"
-    ></textarea>
-    <span v-if="error" class="text-xs text-red-400">{{ error }}</span>
+    />
+    <div class="h-2">
+      <span v-if="error" class="text-xs text-red-400">{{ error }}</span>
+    </div>
   </div>
 </template>
 

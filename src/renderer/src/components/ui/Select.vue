@@ -1,22 +1,23 @@
 <template>
-  <div class="space-y-1">
+  <div class="space-y-0.5">
     <label v-if="label" :for="inputId" class="block text-sm font-medium text-gray-300">
       {{ label }}
-      <span v-if="required" class="text-red-400 ml-1">*</span>
+      <span v-if="rules?.some((rule) => rule === 'required')" class="text-red-400">*</span>
     </label>
     <select
       :id="inputId"
       :value="modelValue"
       :class="selectClasses"
       :disabled="disabled"
-      :required="required"
       v-bind="$attrs"
       @change="$emit('update:modelValue', ($event.target as HTMLSelectElement).value)"
     >
       <option v-if="placeholder" value="" disabled>{{ placeholder }}</option>
       <slot></slot>
     </select>
-    <span v-if="error" class="text-xs text-red-400">{{ error }}</span>
+    <div class="h-2">
+      <span v-if="error" class="text-xs text-red-400">{{ error }}</span>
+    </div>
   </div>
 </template>
 
@@ -29,7 +30,7 @@ interface Props {
   placeholder?: string
   error?: string
   disabled?: boolean
-  required?: boolean
+  rules?: Array<string | ((value: string) => boolean)>
   variant?: 'default' | 'error'
 }
 

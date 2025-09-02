@@ -70,7 +70,6 @@ import TerminalManager from './components/TerminalManager.vue'
 import SSHProfileDrawer from './components/SSHProfileDrawer.vue'
 import SSHProfileModal from './components/SSHProfileModal.vue'
 import SSHGroupModal from './components/SSHGroupModal.vue'
-import { useSSHConnections } from './composables/useSSHConnections'
 import type { SSHProfileWithConfig, SSHGroup, SSHProfile, SSHGroupWithProfiles } from './types/ssh'
 
 interface Tab {
@@ -85,25 +84,20 @@ interface TerminalInstance {
   ready: boolean
 }
 
-// State
 const showDashboard = ref(false)
 const tabs = ref<Tab[]>([])
-const terminals = ref<TerminalInstance[]>([])
-const activeTerminalId = ref('')
-
-// SSH related state
 const showSSHDrawer = ref(false)
 const showSSHProfileModal = ref(false)
 const showSSHGroupModal = ref(false)
+
+const terminals = ref<TerminalInstance[]>([])
 const sshProfileDrawerRef = ref()
 const editingProfile = ref<SSHProfileWithConfig | null>(null)
 const editingGroup = ref<SSHGroup | null>(null)
+const sshGroups = ref<SSHGroup[]>([])
 const selectedGroupForNewProfile = ref<SSHGroupWithProfiles | null>(null)
 
-// SSH connections composable
-const { groups: sshGroups, refreshAll: refreshSSHData } = useSSHConnections()
-
-// Tab management
+const activeTerminalId = ref('')
 let tabCounter = 1
 
 const openDashboard = (): void => {
@@ -210,6 +204,29 @@ const toggleSSHDrawer = (): void => {
   showSSHDrawer.value = !showSSHDrawer.value
 }
 
+const loadSSHGroups = async (): Promise<void> => {
+  try {
+    const groups = (await window.api.invoke('ssh-groups.getAll')) as SSHGroup[]
+    sshGroups.value = groups.map((group: SSHGroup) => ({
+      ...group,
+      created: new Date(group.created),
+      updated: new Date(group.updated)
+    }))
+  } catch (error) {
+    console.error('Failed to load SSH groups:', error)
+    sshGroups.value = []
+  }
+}
+
+const refreshAllData = async (): Promise<void> => {
+  try {
+    await loadSSHGroups()
+    console.log('All data refreshed successfully')
+  } catch (error) {
+    console.error('Failed to refresh data:', error)
+  }
+}
+
 const connectToSSHProfile = (profile: SSHProfileWithConfig): void => {
   const newTabId = tabCounter.toString()
   const newTab: Tab = {
@@ -257,6 +274,7 @@ const createSSHProfile = (): void => {
 
 const createSSHProfileInGroup = (group: SSHGroupWithProfiles): void => {
   editingProfile.value = null
+  // Pre-select the group for the new profile
   selectedGroupForNewProfile.value = group
   showSSHProfileModal.value = true
   showSSHDrawer.value = false
@@ -266,10 +284,13 @@ const saveSSHProfile = async (profileData: Partial<SSHProfile>): Promise<void> =
   try {
     await window.api.invoke('ssh-profiles.create', profileData)
     showSSHProfileModal.value = false
-    selectedGroupForNewProfile.value = null
-    await refreshSSHData()
-    showSSHDrawer.value = true
-    sshProfileDrawerRef.value?.refreshProfiles()
+    selectedGroupForNewProfile.value = null // Reset selected group
+    await refreshAllData() // Refresh all data
+    showSSHDrawer.value = true // Reopen drawer after saving profile
+    // Force refresh the drawer
+    if (sshProfileDrawerRef.value) {
+      sshProfileDrawerRef.value.refreshProfiles()
+    }
     console.log('SSH profile created successfully')
   } catch (error) {
     console.error('Failed to create SSH profile:', error)
@@ -281,9 +302,12 @@ const updateSSHProfile = async (id: string, updates: Partial<SSHProfile>): Promi
     await window.api.invoke('ssh-profiles.update', id, updates)
     showSSHProfileModal.value = false
     editingProfile.value = null
-    await refreshSSHData()
-    showSSHDrawer.value = true
-    sshProfileDrawerRef.value?.refreshProfiles()
+    await refreshAllData() // Refresh all data
+    showSSHDrawer.value = true // Reopen drawer after updating profile
+    // Force refresh the drawer
+    if (sshProfileDrawerRef.value) {
+      sshProfileDrawerRef.value.refreshProfiles()
+    }
     console.log('SSH profile updated successfully')
   } catch (error) {
     console.error('Failed to update SSH profile:', error)
@@ -291,8 +315,8 @@ const updateSSHProfile = async (id: string, updates: Partial<SSHProfile>): Promi
 }
 
 const handleSSHProfileModalClose = (): void => {
-  selectedGroupForNewProfile.value = null
-  showSSHDrawer.value = true
+  selectedGroupForNewProfile.value = null // Reset selected group
+  showSSHDrawer.value = true // Reopen drawer when profile modal is closed
 }
 
 const editSSHGroup = (group: SSHGroupWithProfiles): void => {
@@ -304,26 +328,30 @@ const editSSHGroup = (group: SSHGroupWithProfiles): void => {
 const deleteSSHGroup = async (group: SSHGroupWithProfiles): Promise<void> => {
   try {
     await window.api.invoke('ssh-groups.delete', group.id)
-    await refreshSSHData()
+    await refreshAllData() // Refresh all data
+    // Force refresh the drawer if it's open
     if (showSSHDrawer.value && sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
     console.log('SSH group deleted successfully')
   } catch (error) {
     console.error('Failed to delete SSH group:', error)
+    // Don't throw error to avoid unhandled promise rejections
   }
 }
 
 const deleteSSHProfile = async (profile: SSHProfileWithConfig): Promise<void> => {
   try {
     await window.api.invoke('ssh-profiles.delete', profile.id)
-    await refreshSSHData()
+    await refreshAllData() // Refresh all data
+    // Force refresh the drawer if it's open
     if (showSSHDrawer.value && sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
     console.log('SSH profile deleted successfully')
   } catch (error) {
     console.error('Failed to delete SSH profile:', error)
+    // Don't throw error to avoid unhandled promise rejections
   }
 }
 
@@ -332,14 +360,14 @@ const openCreateSSHGroup = (): void => {
   console.log('Opening SSH Group Modal...')
   editingGroup.value = null
   showSSHGroupModal.value = true
-  showSSHDrawer.value = false
+  showSSHDrawer.value = false // Close drawer when opening group modal
   console.log('showSSHGroupModal:', showSSHGroupModal.value)
 }
 
 const handleSSHGroupModalClose = (): void => {
   showSSHGroupModal.value = false
   editingGroup.value = null
-  showSSHDrawer.value = true
+  showSSHDrawer.value = true // Reopen drawer when group modal is closed via X or Cancel
 }
 
 const saveSSHGroup = async (
@@ -348,9 +376,12 @@ const saveSSHGroup = async (
   try {
     await window.api.invoke('ssh-groups.create', groupData)
     showSSHGroupModal.value = false
-    await refreshSSHData()
-    showSSHDrawer.value = true
-    sshProfileDrawerRef.value?.refreshProfiles()
+    await refreshAllData() // Refresh all data
+    showSSHDrawer.value = true // Reopen drawer after saving group
+    // Force refresh the drawer
+    if (sshProfileDrawerRef.value) {
+      sshProfileDrawerRef.value.refreshProfiles()
+    }
     console.log('SSH group created successfully')
   } catch (error) {
     console.error('Failed to create SSH group:', error)
@@ -362,9 +393,12 @@ const updateSSHGroup = async (id: string, updates: Partial<SSHGroup>): Promise<v
     await window.api.invoke('ssh-groups.update', id, updates)
     showSSHGroupModal.value = false
     editingGroup.value = null
-    await refreshSSHData()
-    showSSHDrawer.value = true
-    sshProfileDrawerRef.value?.refreshProfiles()
+    await refreshAllData() // Refresh all data
+    showSSHDrawer.value = true // Reopen drawer after updating group
+    // Force refresh the drawer
+    if (sshProfileDrawerRef.value) {
+      sshProfileDrawerRef.value.refreshProfiles()
+    }
     console.log('SSH group updated successfully')
   } catch (error) {
     console.error('Failed to update SSH group:', error)
@@ -374,7 +408,7 @@ const updateSSHGroup = async (id: string, updates: Partial<SSHGroup>): Promise<v
 // Auto create first tab when app starts
 onMounted(() => {
   addTab()
-  refreshSSHData() // Load SSH data on mount
+  refreshAllData() // Use refreshAllData instead of loadSSHGroups
 
   // Add global error handler to prevent unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {

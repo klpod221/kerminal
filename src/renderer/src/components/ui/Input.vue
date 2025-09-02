@@ -1,10 +1,10 @@
 <!-- Input component with consistent styling -->
 <template>
-  <div class="space-y-1">
+  <div class="space-y-0.5">
     <!-- Label -->
     <label v-if="label" :for="inputId" class="block text-sm font-medium text-gray-300">
       {{ label }}
-      <span v-if="required" class="text-red-400 ml-1">*</span>
+      <span v-if="rules?.some((rule) => rule === 'required')" class="text-red-400">*</span>
     </label>
 
     <!-- Input wrapper -->
@@ -52,7 +52,7 @@
         <button
           v-if="showPasswordToggle"
           type="button"
-          class="text-gray-400 hover:text-gray-300 transition-colors"
+          class="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
           @click="togglePasswordVisibility"
         >
           <component :is="isPasswordVisible ? EyeOff : Eye" :size="iconSize" />
@@ -62,7 +62,7 @@
         <button
           v-else-if="rightIcon"
           type="button"
-          class="text-gray-400 hover:text-gray-300 transition-colors"
+          class="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
           @click="emit('right-icon-click')"
         >
           <component :is="rightIcon" :size="iconSize" />
@@ -70,15 +70,16 @@
       </div>
     </div>
 
-    <!-- Helper text -->
-    <p v-if="helperText" class="text-sm text-gray-400">
-      {{ helperText }}
-    </p>
+    <div class="min-h-[1.25rem]">
+      <!-- Helper text (only show if no error) -->
+      <p v-if="helperText && !errorMessage" class="text-xs text-gray-400">{{ helperText }}</p>
 
-    <!-- Error message -->
-    <p v-if="errorMessage" class="text-sm text-red-400">
-      {{ errorMessage }}
-    </p>
+      <!-- Error message -->
+      <p v-if="errorMessage" class="text-xs text-red-400 flex items-center">
+        <span class="mr-1">⚠</span>
+        {{ errorMessage }}
+      </p>
+    </div>
   </div>
 </template>
 
@@ -92,6 +93,7 @@ interface Props {
   type?: 'text' | 'password' | 'email' | 'number' | 'tel' | 'url' | 'search'
   label?: string
   placeholder?: string
+  rules?: Array<string | ((value: string) => boolean)>
   helperText?: string
   errorMessage?: string
   size?: 'sm' | 'md' | 'lg'
@@ -99,7 +101,6 @@ interface Props {
   rightIcon?: Component
   disabled?: boolean
   readonly?: boolean
-  required?: boolean
   autocomplete?: string
   id?: string
 }
@@ -116,8 +117,7 @@ const props = withDefaults(defineProps<Props>(), {
   type: 'text',
   size: 'md',
   disabled: false,
-  readonly: false,
-  required: false
+  readonly: false
 })
 
 const emit = defineEmits<Emits>()

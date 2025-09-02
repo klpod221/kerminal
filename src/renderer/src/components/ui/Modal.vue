@@ -111,16 +111,25 @@ function handleBackdropClick(): void {
 // Watch for visible prop changes
 watch(
   () => props.visible,
-  (newValue) => {
-    if (newValue) {
+  (isVisible) => {
+    if (isVisible) {
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden'
+      document.addEventListener('keydown', handleKeydown)
     } else {
       // Restore body scroll when modal is closed
       document.body.style.overflow = ''
+      document.removeEventListener('keydown', handleKeydown)
     }
   }
 )
+
+const handleKeydown = (event: KeyboardEvent): void => {
+  if (event.key === 'Escape') {
+    emit('close')
+    emit('update:visible', false)
+  }
+}
 
 // Cleanup on unmount
 onUnmounted(() => {
