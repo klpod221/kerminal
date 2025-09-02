@@ -80,6 +80,14 @@
         @click="toggleSavedCommands"
       />
       <Button
+        title="Sync Settings"
+        variant="ghost"
+        size="sm"
+        :icon="CloudIcon"
+        :class="syncStatus?.isConnected ? 'text-green-400' : 'text-gray-400'"
+        @click="openSyncSettings"
+      />
+      <Button
         title="Minimize window"
         variant="ghost"
         size="sm"
@@ -109,9 +117,11 @@ import {
   Minimize2,
   Maximize2,
   PanelLeft,
-  Bookmark
+  Bookmark,
+  Cloud
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
+import type { SyncStatus } from '../types/sync'
 
 interface Tab {
   id: string
@@ -138,15 +148,27 @@ const emit = defineEmits<{
   'select-tab': [tabId: string]
   'toggle-ssh-drawer': []
   'toggle-saved-commands': []
+  'open-sync-settings': []
 }>()
 
-// Use Bookmark icon for saved commands
+// Use icons
 const BookmarkIcon = Bookmark
+const CloudIcon = Cloud
 
 const isMaximized = ref(false)
 const windowWidth = ref(window.innerWidth)
+const syncStatus = ref<SyncStatus | null>(null)
 
 let removeMaximizedListener: (() => void) | null = null
+
+// Load sync status
+async function loadSyncStatus(): Promise<void> {
+  try {
+    syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
+  } catch (error) {
+    console.error('Failed to load sync status:', error)
+  }
+}
 
 // Update window width on resize
 const updateWindowWidth = (): void => {
@@ -188,6 +210,9 @@ const tabMaxWidth = computed(() => {
 })
 
 onMounted(() => {
+  // Load sync status
+  loadSyncStatus()
+
   // Listen for maximize state changes from main process
   if (window.api?.on) {
     removeMaximizedListener = window.api.on('window-maximized', (...args: unknown[]) => {
@@ -230,6 +255,10 @@ const toggleSSHDrawer = (): void => {
 
 const toggleSavedCommands = (): void => {
   emit('toggle-saved-commands')
+}
+
+const openSyncSettings = (): void => {
+  emit('open-sync-settings')
 }
 
 const minimizeWindow = (): void => {

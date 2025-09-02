@@ -9,9 +9,9 @@
 
 ## 📝 Description
 
-**Kerminal** is a modern terminal application that combines the power of a traditional terminal with advanced SSH connection management and command automation features. Built with Electron and Vue.js, it provides a sleek, user-friendly interface for developers and system administrators who work with multiple remote servers.
+**Kerminal** is a modern terminal application that combines the power of a traditional terminal with advanced SSH connection management, command automation, and cross-device synchronization features. Built with Electron and Vue.js, it provides a sleek, user-friendly interface for developers and system administrators who work with multiple remote servers.
 
-Key highlights include secure SSH profile management, saved command functionality, and a beautiful dark-themed interface optimized for productivity. Whether you're managing cloud infrastructure, developing on remote servers, or simply need a better terminal experience, Kerminal streamlines your workflow.
+Key highlights include secure SSH profile management, saved command functionality, MongoDB-powered cross-device synchronization, and a beautiful dark-themed interface optimized for productivity. Whether you're managing cloud infrastructure, developing on remote servers, or collaborating across multiple devices, Kerminal streamlines your workflow and keeps your configurations synchronized.
 
 ## ✨ Features
 
@@ -34,6 +34,14 @@ Key highlights include secure SSH profile management, saved command functionalit
 - **Saved Commands**: Store and quickly execute frequently used commands
 - **Command History**: Access your command history across sessions
 - **Custom Scripts**: Execute complex command sequences with a single click
+
+### ☁️ **Data Synchronization**
+
+- **MongoDB Sync**: Synchronize your SSH profiles and saved commands across devices
+- **Real-time Sync**: Automatic synchronization with configurable intervals (5-3600 seconds)
+- **Conflict Resolution**: Intelligent merging of changes from multiple devices
+- **Data Migration**: Seamless migration from local storage to cloud storage
+- **Cross-device Access**: Access your configurations from any device with Kerminal
 
 ### 🛠️ **Developer-Friendly**
 
@@ -77,6 +85,44 @@ npm run build:mac    # macOS
 npm run build:linux  # Linux
 ```
 
+## ⚙️ Configuration
+
+### MongoDB Sync Setup
+
+Kerminal supports optional MongoDB synchronization to keep your SSH profiles and saved commands in sync across multiple devices.
+
+#### MongoDB Requirements
+
+- MongoDB Atlas account (recommended) or self-hosted MongoDB instance
+- MongoDB connection URI with read/write permissions
+
+#### Setup Steps
+
+1. **Open Sync Settings**: Click the sync icon in the top bar
+2. **Configure Connection**:
+   - Enter your MongoDB URI (e.g., `mongodb+srv://user:pass@cluster.mongodb.net`)
+   - Set the database name (default: `kerminal`)
+   - Configure sync interval (5-3600 seconds, default: 30 seconds)
+3. **Test Connection**: Use the "Test Connection" button to verify your setup
+4. **Save Configuration**: Click "Save Configuration" to enable sync
+
+#### MongoDB URI Examples
+
+```bash
+# MongoDB Atlas
+mongodb+srv://username:password@cluster0.example.mongodb.net
+
+# Self-hosted MongoDB
+mongodb://username:password@localhost:27017
+
+# MongoDB with additional options
+mongodb://user:pass@host:port/database?authSource=admin
+```
+
+#### Data Migration
+
+If you have existing local data, Kerminal will automatically offer to migrate it to MongoDB when you first enable sync.
+
 ## 🔧 Development
 
 ### Project Structure
@@ -101,7 +147,8 @@ src/
 - **Backend**: Electron, Node.js, TypeScript
 - **Terminal**: xterm.js with various addons
 - **SSH**: ssh2 library for secure connections
-- **Storage**: Secure local file-based storage
+- **Storage**: Secure local file-based storage with optional MongoDB synchronization
+- **Database**: MongoDB for cross-device data synchronization
 
 ### Scripts
 
@@ -165,6 +212,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [ssh2](https://github.com/mscdex/ssh2) - For SSH connectivity
 - [Electron](https://electronjs.org/) - For cross-platform desktop apps
 - [Vue.js](https://vuejs.org/) - For the reactive frontend framework
+- [MongoDB](https://www.mongodb.com/) - For reliable data synchronization across devices
 
 ## 📊 Project Status
 

@@ -5,6 +5,7 @@ import { SystemInfoService } from './services/system-info'
 import { SSHProfileService } from './services/ssh-profile-service'
 import { SSHConnectionService } from './services/ssh-connection-service'
 import { SavedCommandService } from './services/saved-command-service'
+import { SyncManager } from './services/sync-manager'
 
 /**
  * Sets up all IPC (Inter-Process Communication) handlers for the application.
@@ -19,6 +20,10 @@ export function setupIpcHandlers(
   const sshProfileService = new SSHProfileService()
   const sshConnectionService = new SSHConnectionService()
   const savedCommandService = new SavedCommandService()
+  const syncManager = new SyncManager()
+
+  // Initialize sync manager
+  syncManager.initialize().catch(console.error)
 
   // Terminal-related IPC handlers
   setupTerminalHandlers(terminalManager, sshConnectionService, sshProfileService)
@@ -34,6 +39,9 @@ export function setupIpcHandlers(
 
   // Saved Commands IPC handlers
   setupSavedCommandHandlers(savedCommandService, terminalManager)
+
+  // Sync IPC handlers
+  setupSyncHandlers(syncManager)
 
   // Utility IPC handlers
   setupUtilityHandlers()
@@ -338,5 +346,131 @@ function setupSavedCommandHandlers(
   // Copy command to clipboard
   ipcMain.handle('saved-commands.copyToClipboard', async (_event, command) => {
     return savedCommandService.copyCommandToClipboard(command)
+  })
+}
+
+/**
+ * Sets up sync-related IPC handlers.
+ * @param syncManager - The sync manager instance.
+ */
+function setupSyncHandlers(syncManager: SyncManager): void {
+  // Test MongoDB connection
+  ipcMain.handle('sync.testConnection', async (_event, mongoUri, databaseName) => {
+    try {
+      return await syncManager.testConnection(mongoUri, databaseName)
+    } catch (error) {
+      console.error('Sync test connection error:', error)
+      return false
+    }
+  })
+
+  // Setup sync (first time or reconfigure)
+  ipcMain.handle('sync.setup', async (_event, config) => {
+    try {
+      return await syncManager.setupSync(config)
+    } catch (error) {
+      console.error('Sync setup error:', error)
+      return false
+    }
+  })
+
+  // Enable sync
+  ipcMain.handle('sync.enable', async (_event, config) => {
+    try {
+      return await syncManager.enableSync(config)
+    } catch (error) {
+      console.error('Sync enable error:', error)
+      return false
+    }
+  })
+
+  // Disable sync
+  ipcMain.handle('sync.disable', async () => {
+    try {
+      await syncManager.disableSync()
+      return true
+    } catch (error) {
+      console.error('Sync disable error:', error)
+      return false
+    }
+  })
+
+  // Get sync status
+  ipcMain.handle('sync.getStatus', () => {
+    return syncManager.getSyncStatus()
+  })
+
+  // Get sync configuration
+  ipcMain.handle('sync.getConfig', async () => {
+    try {
+      return await syncManager.getSyncConfig()
+    } catch (error) {
+      console.error('Get sync config error:', error)
+      return null
+    }
+  })
+
+  // Update sync configuration
+  ipcMain.handle('sync.updateConfig', async (_event, config) => {
+    try {
+      return await syncManager.updateSyncConfig(config)
+    } catch (error) {
+      console.error('Update sync config error:', error)
+      return false
+    }
+  })
+
+  // Check if sync is enabled
+  ipcMain.handle('sync.isEnabled', async () => {
+    try {
+      return await syncManager.isSyncEnabled()
+    } catch (error) {
+      console.error('Check sync enabled error:', error)
+      return false
+    }
+  })
+
+  // Perform manual sync
+  ipcMain.handle('sync.performSync', async () => {
+    try {
+      await syncManager.performSync()
+      return true
+    } catch (error) {
+      console.error('Perform sync error:', error)
+      return false
+    }
+  })
+
+  // Force immediate sync
+  ipcMain.handle('sync.forceSyncNow', async () => {
+    try {
+      await syncManager.forceSyncNow()
+      return true
+    } catch (error) {
+      console.error('Force sync error:', error)
+      return false
+    }
+  })
+
+  // Migrate existing data
+  ipcMain.handle('sync.migrateData', async () => {
+    try {
+      await syncManager.migrateExistingData()
+      return true
+    } catch (error) {
+      console.error('Migrate data error:', error)
+      return false
+    }
+  })
+
+  // Delete sync configuration
+  ipcMain.handle('sync.deleteConfig', async () => {
+    try {
+      await syncManager.deleteSyncConfig()
+      return true
+    } catch (error) {
+      console.error('Delete sync config error:', error)
+      return false
+    }
   })
 }

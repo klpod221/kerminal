@@ -1,11 +1,12 @@
 import { app } from 'electron'
 import * as fs from 'fs/promises'
 import * as path from 'path'
+import { ISyncableStorage } from '../interfaces/syncable-storage.interface'
 
 /**
  * Base storage service for handling file operations
  */
-export class BaseStorage {
+export class BaseStorage implements ISyncableStorage {
   protected readonly dataPath: string
 
   constructor(fileName: string) {
@@ -27,7 +28,7 @@ export class BaseStorage {
   /**
    * Read data from file
    */
-  protected async readData<T>(): Promise<T[]> {
+  public async readData<T>(): Promise<T[]> {
     try {
       await this.ensureDataDirectory()
       const data = await fs.readFile(this.dataPath, 'utf-8')
@@ -43,7 +44,7 @@ export class BaseStorage {
   /**
    * Write data to file
    */
-  protected async writeData<T>(data: T[]): Promise<void> {
+  public async writeData<T>(data: T[]): Promise<void> {
     try {
       await this.ensureDataDirectory()
       await fs.writeFile(this.dataPath, JSON.stringify(data, null, 2), 'utf-8')

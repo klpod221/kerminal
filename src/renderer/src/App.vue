@@ -11,6 +11,7 @@
       @select-tab="selectTab"
       @toggle-ssh-drawer="toggleSSHDrawer"
       @toggle-saved-commands="toggleSavedCommands"
+      @open-sync-settings="openSyncSettings"
     />
 
     <div class="flex-grow overflow-hidden">
@@ -66,6 +67,13 @@
       v-model:visible="showSavedCommands"
       :active-terminal-id="activeTerminalId"
     />
+
+    <!-- Sync Settings Modal -->
+    <SyncSettingsModal
+      :visible="showSyncSettings"
+      @close="closeSyncSettings"
+      @config-updated="onSyncConfigUpdated"
+    />
   </div>
 </template>
 
@@ -78,7 +86,9 @@ import SSHProfileDrawer from './components/SSHProfileDrawer.vue'
 import SSHProfileModal from './components/SSHProfileModal.vue'
 import SSHGroupModal from './components/SSHGroupModal.vue'
 import SavedCommandDrawer from './components/SavedCommandDrawer.vue'
+import SyncSettingsModal from './components/SyncSettingsModal.vue'
 import type { SSHProfileWithConfig, SSHGroup, SSHProfile, SSHGroupWithProfiles } from './types/ssh'
+import type { SyncConfig } from './types/sync'
 
 interface Tab {
   id: string
@@ -101,6 +111,7 @@ const showSSHDrawer = ref(false)
 const showSSHProfileModal = ref(false)
 const showSSHGroupModal = ref(false)
 const showSavedCommands = ref(false)
+const showSyncSettings = ref(false)
 
 const terminals = ref<TerminalInstance[]>([])
 const sshProfileDrawerRef = ref()
@@ -422,6 +433,20 @@ const updateSSHGroup = async (id: string, updates: Partial<SSHGroup>): Promise<v
 // Saved Commands methods
 const toggleSavedCommands = (): void => {
   showSavedCommands.value = !showSavedCommands.value
+}
+
+// Sync Settings methods
+const openSyncSettings = (): void => {
+  showSyncSettings.value = true
+}
+
+const closeSyncSettings = (): void => {
+  showSyncSettings.value = false
+}
+
+const onSyncConfigUpdated = (config: SyncConfig | null): void => {
+  console.log('Sync config updated:', config)
+  // Optionally refresh UI or show notification
 }
 
 // Auto create first tab when app starts

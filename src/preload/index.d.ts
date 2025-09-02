@@ -86,6 +86,26 @@ declare global {
         testConnection: (config: unknown) => Promise<{ success: boolean; error?: string }>
         getActiveConnections: () => Promise<number>
       }
+
+      sync: {
+        testConnection: (mongoUri: string, databaseName: string) => Promise<boolean>
+        setup: (config: unknown) => Promise<boolean>
+        enable: (config: unknown) => Promise<boolean>
+        disable: () => Promise<boolean>
+        getStatus: () => Promise<{
+          isConnected: boolean
+          lastSync?: Date
+          lastError?: string
+          isLoading: boolean
+        }>
+        getConfig: () => Promise<unknown>
+        updateConfig: (config: unknown) => Promise<boolean>
+        isEnabled: () => Promise<boolean>
+        performSync: () => Promise<boolean>
+        forceSyncNow: () => Promise<boolean>
+        migrateData: () => Promise<boolean>
+        deleteConfig: () => Promise<boolean>
+      }
     }
   }
 }
