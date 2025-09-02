@@ -67,7 +67,7 @@ export class TerminalManager {
    */
   createTerminal(terminalId: string): pty.IPty {
     const ptyProcess = pty.spawn(this.shellPath, [], {
-      name: 'xterm-color',
+      name: 'xterm-256color',
       cols: 80,
       rows: 30,
       cwd: process.env.HOME,
@@ -75,7 +75,15 @@ export class TerminalManager {
         ...process.env,
         LANG: 'en_US.UTF-8',
         TERM: 'xterm-256color',
-        COLORTERM: 'truecolor'
+        COLORTERM: 'truecolor',
+        // Fix terminfo issues
+        TERMINFO: '/usr/share/terminfo',
+        // Disable problematic key bindings that cause kcbt errors
+        INPUTRC: '/dev/null',
+        // Disable bash completion warnings
+        BASH_COMPLETION_COMPAT_DIR: '',
+        // Set proper locale to avoid character encoding issues
+        LC_ALL: 'en_US.UTF-8'
       }
     })
 
@@ -156,13 +164,26 @@ export class TerminalManager {
    */
   private setupTerminalHandlers(ptyProcess: pty.IPty, terminalId: string): void {
     ptyProcess.onData((data) => {
-      if (this.isRendererReady) {
-        this.safeSend('terminal.incomingData', data, terminalId)
-      } else {
+      // Filter out terminfo warnings while preserving other output
+      let filteredData = data
+      if (typeof data === 'string') {
+        // Remove terminfo kcbt warnings and autocomplete error messages
+        filteredData = data
+          .replace(/.*terminfo\[kcbt\]: parameter not set.*\n?/g, '')
+          .replace(
+            /.*\.autocomplete__key-bindings:\d+: terminfo\[kcbt\]: parameter not set.*\n?/g,
+            ''
+          )
+          .replace(/.*bash: completion: function `.*' not found.*\n?/g, '')
+      }
+
+      if (this.isRendererReady && filteredData) {
+        this.safeSend('terminal.incomingData', filteredData, terminalId)
+      } else if (filteredData) {
         if (!this.initialBuffers[terminalId]) {
           this.initialBuffers[terminalId] = []
         }
-        this.initialBuffers[terminalId].push(data)
+        this.initialBuffers[terminalId].push(filteredData)
       }
 
       this.handleTitleChange(data, terminalId)

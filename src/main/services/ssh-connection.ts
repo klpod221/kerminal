@@ -98,7 +98,24 @@ export class SSHConnection {
    * Start interactive shell
    */
   private startShell(): void {
-    this.client.shell((err, stream) => {
+    // Configure shell options with proper terminal settings
+    const shellOptions = {
+      term: 'xterm-256color',
+      cols: 80,
+      rows: 30,
+      env: {
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+        LANG: 'en_US.UTF-8',
+        LC_ALL: 'en_US.UTF-8',
+        // Disable problematic readline features that cause kcbt errors
+        INPUTRC: '/dev/null',
+        // Disable bash completion warnings
+        BASH_COMPLETION_COMPAT_DIR: ''
+      }
+    }
+
+    this.client.shell(shellOptions, (err, stream) => {
       if (err) {
         console.error(`Failed to start shell for terminal ${this.terminalId}:`, err)
         this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: err.message })
@@ -109,9 +126,21 @@ export class SSHConnection {
 
       // Handle shell data
       stream.on('data', (data: Buffer) => {
-        const output = data.toString()
-        this.safeSend('terminal.incomingData', output, this.terminalId)
-        this.handleTitleChange(output)
+        let output = data.toString()
+
+        // Filter out terminfo warnings while preserving other output
+        output = output
+          .replace(/.*terminfo\[kcbt\]: parameter not set.*\n?/g, '')
+          .replace(
+            /.*\.autocomplete__key-bindings:\d+: terminfo\[kcbt\]: parameter not set.*\n?/g,
+            ''
+          )
+          .replace(/.*bash: completion: function `.*' not found.*\n?/g, '')
+
+        if (output) {
+          this.safeSend('terminal.incomingData', output, this.terminalId)
+          this.handleTitleChange(output)
+        }
       })
 
       // Handle shell close
