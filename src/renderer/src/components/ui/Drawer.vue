@@ -27,7 +27,9 @@
         :class="[position === 'left' ? 'left-0 border-r' : 'right-0 border-l', widthClass]"
       >
         <!-- Header -->
-        <div class="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
+        <div
+          class="flex items-center justify-between px-4 py-2 border-b border-gray-700 flex-shrink-0"
+        >
           <div class="flex items-center space-x-3">
             <div
               v-if="icon"

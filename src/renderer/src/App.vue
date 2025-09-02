@@ -10,6 +10,7 @@
       @close-tab="closeTab"
       @select-tab="selectTab"
       @toggle-ssh-drawer="toggleSSHDrawer"
+      @toggle-saved-commands="toggleSavedCommands"
     />
 
     <div class="flex-grow overflow-hidden">
@@ -59,6 +60,12 @@
       @save="saveSSHGroup"
       @update="updateSSHGroup"
     />
+
+    <!-- Saved Commands Drawer -->
+    <SavedCommandDrawer
+      v-model:visible="showSavedCommands"
+      :active-terminal-id="activeTerminalId"
+    />
   </div>
 </template>
 
@@ -70,6 +77,7 @@ import TerminalManager from './components/TerminalManager.vue'
 import SSHProfileDrawer from './components/SSHProfileDrawer.vue'
 import SSHProfileModal from './components/SSHProfileModal.vue'
 import SSHGroupModal from './components/SSHGroupModal.vue'
+import SavedCommandDrawer from './components/SavedCommandDrawer.vue'
 import type { SSHProfileWithConfig, SSHGroup, SSHProfile, SSHGroupWithProfiles } from './types/ssh'
 
 interface Tab {
@@ -77,6 +85,9 @@ interface Tab {
   title: string
   active: boolean
   color?: string
+  lastConnected?: Date
+  profileId?: string // SSH Profile ID if this is an SSH connection
+  groupId?: string // SSH Group ID if this SSH connection belongs to a group
 }
 
 interface TerminalInstance {
@@ -89,6 +100,7 @@ const tabs = ref<Tab[]>([])
 const showSSHDrawer = ref(false)
 const showSSHProfileModal = ref(false)
 const showSSHGroupModal = ref(false)
+const showSavedCommands = ref(false)
 
 const terminals = ref<TerminalInstance[]>([])
 const sshProfileDrawerRef = ref()
@@ -233,7 +245,9 @@ const connectToSSHProfile = (profile: SSHProfileWithConfig): void => {
     id: newTabId,
     title: profile.name,
     active: true,
-    color: profile.color
+    color: profile.color,
+    profileId: profile.id,
+    groupId: profile.groupId
   }
 
   const newTerminal: TerminalInstance = {
@@ -403,6 +417,11 @@ const updateSSHGroup = async (id: string, updates: Partial<SSHGroup>): Promise<v
   } catch (error) {
     console.error('Failed to update SSH group:', error)
   }
+}
+
+// Saved Commands methods
+const toggleSavedCommands = (): void => {
+  showSavedCommands.value = !showSavedCommands.value
 }
 
 // Auto create first tab when app starts

@@ -70,7 +70,7 @@
       </div>
     </div>
 
-    <div class="min-h-[1.25rem]">
+    <div v-if="helper" class="min-h-[1.25rem]">
       <!-- Helper text (only show if no error) -->
       <p v-if="helperText && !errorMessage" class="text-xs text-gray-400">{{ helperText }}</p>
 
@@ -102,6 +102,7 @@ interface Props {
   disabled?: boolean
   readonly?: boolean
   autocomplete?: string
+  helper?: boolean
   id?: string
 }
 
@@ -109,7 +110,8 @@ const props = withDefaults(defineProps<Props>(), {
   type: 'text',
   size: 'md',
   disabled: false,
-  readonly: false
+  readonly: false,
+  helper: true
 })
 
 const emit = defineEmits(['update:modelValue', 'blur', 'focus', 'keydown', 'right-icon-click'])

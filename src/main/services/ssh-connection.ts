@@ -98,19 +98,16 @@ export class SSHConnection {
    * Start interactive shell
    */
   private startShell(): void {
-    // Configure shell options with proper terminal settings
     const shellOptions = {
       term: 'xterm-256color',
       cols: 80,
       rows: 30,
       env: {
+        LANG: 'en_US.UTF-8',
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
-        LANG: 'en_US.UTF-8',
-        LC_ALL: 'en_US.UTF-8',
-        // Disable problematic readline features that cause kcbt errors
+        TERMINFO: '/usr/share/terminfo',
         INPUTRC: '/dev/null',
-        // Disable bash completion warnings
         BASH_COMPLETION_COMPAT_DIR: ''
       }
     }

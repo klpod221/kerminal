@@ -76,14 +76,9 @@ export class TerminalManager {
         LANG: 'en_US.UTF-8',
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
-        // Fix terminfo issues
         TERMINFO: '/usr/share/terminfo',
-        // Disable problematic key bindings that cause kcbt errors
         INPUTRC: '/dev/null',
-        // Disable bash completion warnings
-        BASH_COMPLETION_COMPAT_DIR: '',
-        // Set proper locale to avoid character encoding issues
-        LC_ALL: 'en_US.UTF-8'
+        BASH_COMPLETION_COMPAT_DIR: ''
       }
     })
 

@@ -73,6 +73,13 @@
     <!-- Window Controls -->
     <div class="flex items-center h-full max-h-[30px] flex-shrink-0">
       <Button
+        title="Saved Commands"
+        variant="ghost"
+        size="sm"
+        :icon="BookmarkIcon"
+        @click="toggleSavedCommands"
+      />
+      <Button
         title="Minimize window"
         variant="ghost"
         size="sm"
@@ -101,7 +108,8 @@ import {
   Minus,
   Minimize2,
   Maximize2,
-  PanelLeft
+  PanelLeft,
+  Bookmark
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 
@@ -111,6 +119,8 @@ interface Tab {
   active: boolean
   color?: string
   lastConnected?: Date
+  profileId?: string // SSH Profile ID if this is an SSH connection
+  groupId?: string // SSH Group ID if this SSH connection belongs to a group
 }
 
 interface Props {
@@ -127,7 +137,11 @@ const emit = defineEmits<{
   'close-tab': [tabId: string]
   'select-tab': [tabId: string]
   'toggle-ssh-drawer': []
+  'toggle-saved-commands': []
 }>()
+
+// Use Bookmark icon for saved commands
+const BookmarkIcon = Bookmark
 
 const isMaximized = ref(false)
 const windowWidth = ref(window.innerWidth)
@@ -212,6 +226,10 @@ const openDashboard = (): void => {
 
 const toggleSSHDrawer = (): void => {
   emit('toggle-ssh-drawer')
+}
+
+const toggleSavedCommands = (): void => {
+  emit('toggle-saved-commands')
 }
 
 const minimizeWindow = (): void => {

@@ -85,3 +85,24 @@ export interface SSHProfileWithConfig extends SSHProfile {
   resolvedConfig: ResolvedSSHConfig
   group?: SSHGroup
 }
+
+/**
+ * Interface for saved command
+ */
+export interface SavedCommand {
+  id: string
+  name: string
+  command: string
+  description?: string
+  created: Date
+  updated: Date
+}
+
+/**
+ * Interface for command execution options
+ */
+export interface CommandExecutionOptions {
+  terminalId: string
+  command: string
+  addToHistory?: boolean
+}

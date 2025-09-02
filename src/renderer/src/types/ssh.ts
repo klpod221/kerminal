@@ -4,6 +4,18 @@
  */
 
 /**
+ * Interface for saved command
+ */
+export interface SavedCommand {
+  id: string
+  name: string
+  command: string
+  description?: string
+  created: Date
+  updated: Date
+}
+
+/**
  * Interface for SSH Group configuration
  */
 export interface SSHGroup {

@@ -10,13 +10,15 @@
     @update:visible="$emit('update:visible', $event)"
   >
     <!-- Header Actions -->
-    <div class="p-4 border-b border-gray-700 space-y-3">
+    <div class="p-4 border-b border-gray-700">
       <!-- Search -->
       <Input
         v-model="searchQuery"
         type="text"
         placeholder="Search SSH profiles..."
+        class="mb-2"
         :left-icon="Search"
+        :helper="false"
       />
 
       <!-- Filter Toggle -->
@@ -72,7 +74,7 @@
         <!-- Grouped Profiles -->
         <div v-for="group in filteredGroups" :key="group.id" class="space-y-2">
           <!-- Group Header -->
-          <div class="flex items-center justify-between py-2 group">
+          <div class="flex items-center justify-between pt-2 group">
             <div class="flex items-center space-x-2">
               <div
                 class="w-3 h-3 rounded-full"

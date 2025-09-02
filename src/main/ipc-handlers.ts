@@ -4,6 +4,7 @@ import { WindowManager } from './services/window-manager'
 import { SystemInfoService } from './services/system-info'
 import { SSHProfileService } from './services/ssh-profile-service'
 import { SSHConnectionService } from './services/ssh-connection-service'
+import { SavedCommandService } from './services/saved-command-service'
 
 /**
  * Sets up all IPC (Inter-Process Communication) handlers for the application.
@@ -14,9 +15,10 @@ export function setupIpcHandlers(
   windowManager: WindowManager,
   terminalManager: TerminalManager
 ): void {
-  // Create SSH service instances
+  // Create service instances
   const sshProfileService = new SSHProfileService()
   const sshConnectionService = new SSHConnectionService()
+  const savedCommandService = new SavedCommandService()
 
   // Terminal-related IPC handlers
   setupTerminalHandlers(terminalManager, sshConnectionService, sshProfileService)
@@ -29,6 +31,9 @@ export function setupIpcHandlers(
 
   // SSH-related IPC handlers
   setupSSHHandlers(sshProfileService, sshConnectionService)
+
+  // Saved Commands IPC handlers
+  setupSavedCommandHandlers(savedCommandService, terminalManager)
 
   // Utility IPC handlers
   setupUtilityHandlers()
@@ -293,5 +298,45 @@ function setupSSHHandlers(
   // SSH Connection Management
   ipcMain.handle('ssh.getActiveConnections', async () => {
     return sshConnectionService.getActiveConnectionCount()
+  })
+}
+
+/**
+ * Sets up saved command IPC handlers.
+ * @param savedCommandService - The saved command service instance.
+ * @param terminalManager - The terminal manager instance.
+ */
+function setupSavedCommandHandlers(
+  savedCommandService: SavedCommandService,
+  terminalManager: TerminalManager
+): void {
+  // Get all saved commands
+  ipcMain.handle('saved-commands.getAll', async () => {
+    return savedCommandService.getAllCommands()
+  })
+
+  // Create a new saved command
+  ipcMain.handle('saved-commands.create', async (_event, commandData) => {
+    return savedCommandService.createCommand(commandData)
+  })
+
+  // Update an existing saved command
+  ipcMain.handle('saved-commands.update', async (_event, id, updates) => {
+    return savedCommandService.updateCommand(id, updates)
+  })
+
+  // Delete a saved command
+  ipcMain.handle('saved-commands.delete', async (_event, id) => {
+    return savedCommandService.deleteCommand(id)
+  })
+
+  // Execute a command in terminal
+  ipcMain.on('saved-commands.execute', (_event, { terminalId, command }) => {
+    terminalManager.writeToTerminal(terminalId, command + '\r')
+  })
+
+  // Copy command to clipboard
+  ipcMain.handle('saved-commands.copyToClipboard', async (_event, command) => {
+    return savedCommandService.copyCommandToClipboard(command)
   })
 }
