@@ -1,5 +1,5 @@
 <div align="center">
-    <h1>Kerminal: Modern Terminal with SSH/SFTP Support</h1>
+    <h1>Kerminal: Terminal with SSH Profile Support</h1>
     <p>A modern, feature-rich terminal application built with Electron and Vue.js, offering seamless SSH connections and command management.</p>
 
     <img src="https://img.shields.io/github/last-commit/klpod221/kerminal?style=for-the-badge&color=74c7ec&labelColor=111827" alt="Last Commit">
