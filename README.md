@@ -129,7 +129,7 @@ npm run build:unpack
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+I appreciate your interest in contributing to Kerminal!
 
 ### Development Workflow
 
