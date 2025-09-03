@@ -81,6 +81,15 @@
       <ColorPicker v-model="groupData.color" label="Group Color" />
     </div>
 
+    <!-- Default Proxy Settings -->
+    <div class="border-t border-gray-600 pt-4">
+      <h3 class="text-lg font-medium text-white mb-3">Default Proxy Settings</h3>
+      <p class="text-sm text-gray-400 mb-4">
+        These proxy settings will be used as defaults for new profiles in this group
+      </p>
+      <ProxySettings v-model:proxy="groupData.defaultProxy" />
+    </div>
+
     <template #footer>
       <div class="flex justify-end space-x-3">
         <Button variant="secondary" @click="closeModal"> Cancel </Button>
@@ -100,8 +109,9 @@ import Input from './ui/Input.vue'
 import ColorPicker from './ui/ColorPicker.vue'
 import Textarea from './ui/Textarea.vue'
 import Button from './ui/Button.vue'
+import ProxySettings from './ui/ProxySettings.vue'
 import { useValidation, validationRules } from '../composables/useValidation'
-import type { SSHGroup } from '../types/ssh'
+import type { SSHGroup, SSHProxy } from '../types/ssh'
 
 interface Props {
   show: boolean
@@ -131,6 +141,7 @@ const groupData = ref({
   defaultPort: undefined as number | undefined,
   defaultKeyPath: '',
   defaultPassword: '',
+  defaultProxy: null as SSHProxy | null,
   color: '#6b7280'
 })
 
@@ -242,6 +253,7 @@ const resetForm = (): void => {
     defaultPort: undefined,
     defaultKeyPath: '',
     defaultPassword: '',
+    defaultProxy: null,
     color: '#6b7280'
   }
   showPassword.value = false
@@ -265,6 +277,7 @@ watch(
         defaultPort: newGroup.defaultPort,
         defaultKeyPath: newGroup.defaultKeyPath || '',
         defaultPassword: newGroup.defaultPassword || '',
+        defaultProxy: newGroup.defaultProxy || null,
         color: newGroup.color || '#6b7280'
       }
     } else {
@@ -317,6 +330,7 @@ const saveGroup = (): void => {
     defaultPort: groupData.value.defaultPort || undefined,
     defaultKeyPath: groupData.value.defaultKeyPath.trim() || undefined,
     defaultPassword: groupData.value.defaultPassword.trim() || undefined,
+    defaultProxy: groupData.value.defaultProxy || undefined,
     color: groupData.value.color
   }
 

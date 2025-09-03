@@ -150,6 +150,12 @@
           <Checkbox v-model="form.keepAlive" label="Keep connection alive" />
         </div>
       </div>
+
+      <!-- Proxy Settings -->
+      <div class="space-y-1">
+        <h3 class="text-lg font-medium text-white">Proxy Settings</h3>
+        <ProxySettings v-model:proxy="form.proxy" />
+      </div>
     </form>
 
     <template #footer>
@@ -185,8 +191,9 @@ import Select from './ui/Select.vue'
 import Textarea from './ui/Textarea.vue'
 import Checkbox from './ui/Checkbox.vue'
 import Button from './ui/Button.vue'
+import ProxySettings from './ui/ProxySettings.vue'
 import { useValidation, validationRules } from '../composables/useValidation'
-import type { SSHGroup, SSHProfile, SSHProfileWithConfig } from '../types/ssh'
+import type { SSHGroup, SSHProfile, SSHProfileWithConfig, SSHProxy } from '../types/ssh'
 
 interface Props {
   visible?: boolean
@@ -223,7 +230,8 @@ const form = ref({
   groupId: '',
   color: '#6b7280',
   favorite: false,
-  keepAlive: true
+  keepAlive: true,
+  proxy: null as SSHProxy | null
 })
 
 // Validation setup
@@ -339,7 +347,8 @@ const resetForm = (): void => {
     groupId: '',
     color: '#6b7280',
     favorite: false,
-    keepAlive: true
+    keepAlive: true,
+    proxy: null
   }
 
   // Only reset validation if fields are properly initialized
@@ -362,7 +371,8 @@ const loadProfile = (profile: SSHProfileWithConfig): void => {
     groupId: profile.groupId || '',
     color: profile.color || '#6b7280',
     favorite: profile.favorite || false,
-    keepAlive: true
+    keepAlive: true,
+    proxy: profile.proxy || null
   }
 }
 
@@ -383,25 +393,32 @@ const handleGroupChange = (): void => {
   const selectedGroup = props.groups.find((group) => group.id === form.value.groupId)
   if (!selectedGroup) return
 
+  applyGroupDefaults(selectedGroup)
+}
+
+const applyGroupDefaults = (group: SSHGroup): void => {
   // Auto-fill default values from group
-  if (selectedGroup.defaultHost && !form.value.host) {
-    form.value.host = selectedGroup.defaultHost
+  if (group.defaultHost && !form.value.host) {
+    form.value.host = group.defaultHost
   }
-  if (selectedGroup.defaultPort && !form.value.port) {
-    form.value.port = selectedGroup.defaultPort
+  if (group.defaultPort && !form.value.port) {
+    form.value.port = group.defaultPort
   }
-  if (selectedGroup.defaultUser && !form.value.user) {
-    form.value.user = selectedGroup.defaultUser
+  if (group.defaultUser && !form.value.user) {
+    form.value.user = group.defaultUser
   }
-  if (selectedGroup.defaultKeyPath && !form.value.privateKeyPath) {
-    form.value.privateKeyPath = selectedGroup.defaultKeyPath
+  if (group.defaultKeyPath && !form.value.privateKeyPath) {
+    form.value.privateKeyPath = group.defaultKeyPath
     form.value.authType = 'key'
   }
-  if (selectedGroup.defaultPassword && !form.value.password && form.value.authType === 'password') {
-    form.value.password = selectedGroup.defaultPassword
+  if (group.defaultPassword && !form.value.password && form.value.authType === 'password') {
+    form.value.password = group.defaultPassword
   }
-  if (selectedGroup.color && (!form.value.color || form.value.color === '#6b7280')) {
-    form.value.color = selectedGroup.color
+  if (group.color && (!form.value.color || form.value.color === '#6b7280')) {
+    form.value.color = group.color
+  }
+  if (group.defaultProxy && !form.value.proxy) {
+    form.value.proxy = group.defaultProxy
   }
 }
 
@@ -426,7 +443,8 @@ const handleSubmit = async (): Promise<void> => {
       keyPath: form.value.authType === 'key' ? form.value.privateKeyPath || undefined : undefined,
       groupId: form.value.groupId || undefined,
       color: form.value.color,
-      favorite: form.value.favorite
+      favorite: form.value.favorite,
+      proxy: form.value.proxy || undefined
     }
 
     if (isEditing.value && props.profile) {

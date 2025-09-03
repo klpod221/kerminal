@@ -1,6 +1,6 @@
 import { spawn, ChildProcess } from 'child_process'
 import * as fs from 'fs/promises'
-import { ResolvedSSHConfig, SSHConnectionOptions } from '../types/ssh'
+import { ResolvedSSHConfig, SSHConnectionOptions, SSHProxy } from '../types/ssh'
 import { SSHProfileService } from './ssh-profile-service'
 
 /**
@@ -150,6 +150,12 @@ export class SSHConnectionService {
       }
     }
 
+    // Add proxy configuration if specified
+    if (config.proxy) {
+      const proxyArgs = this.buildProxyArgs(config.proxy)
+      args.push(...proxyArgs)
+    }
+
     // Add common SSH options
     args.push(
       '-o',
@@ -190,5 +196,79 @@ export class SSHConnectionService {
         }
       }
     }, 1000)
+  }
+
+  /**
+   * Build proxy arguments for SSH command
+   */
+  private buildProxyArgs(proxy: SSHProxy): string[] {
+    const args: string[] = []
+
+    switch (proxy.type) {
+      case 'http':
+        return this.buildHTTPProxyArgs(proxy)
+
+      case 'socks4':
+        args.push('-o', `ProxyCommand=connect -4 -S ${proxy.host}:${proxy.port} %h %p`)
+        break
+
+      case 'socks5':
+        return this.buildSOCKS5ProxyArgs(proxy)
+
+      case 'jump':
+        return this.buildJumpHostArgs(proxy)
+
+      default:
+        throw new Error(`Unsupported proxy type: ${proxy.type}`)
+    }
+
+    return args
+  }
+
+  /**
+   * Build HTTP proxy arguments
+   */
+  private buildHTTPProxyArgs(proxy: SSHProxy): string[] {
+    const args: string[] = []
+    const proxyAuth = proxy.username && proxy.password ? `${proxy.username}:${proxy.password}@` : ''
+
+    args.push('-o', `ProxyCommand=connect -H ${proxyAuth}${proxy.host}:${proxy.port} %h %p`)
+    return args
+  }
+
+  /**
+   * Build SOCKS5 proxy arguments
+   */
+  private buildSOCKS5ProxyArgs(proxy: SSHProxy): string[] {
+    const args: string[] = []
+    const proxyAuth = proxy.username && proxy.password ? `${proxy.username}:${proxy.password}@` : ''
+
+    args.push('-o', `ProxyCommand=connect -5 -S ${proxyAuth}${proxy.host}:${proxy.port} %h %p`)
+    return args
+  }
+
+  /**
+   * Build jump host arguments
+   */
+  private buildJumpHostArgs(proxy: SSHProxy): string[] {
+    const args: string[] = []
+
+    if (!proxy.jumpHost || !proxy.jumpUser) {
+      throw new Error('Jump host and user are required for jump proxy')
+    }
+
+    let jumpCommand = `${proxy.jumpUser}@${proxy.jumpHost}`
+    if (proxy.jumpPort && proxy.jumpPort !== 22) {
+      jumpCommand += `:${proxy.jumpPort}`
+    }
+
+    args.push('-J', jumpCommand)
+
+    // Add jump host key if specified
+    if (proxy.jumpKeyPath) {
+      args.push('-o', `ProxyCommand=ssh -i ${proxy.jumpKeyPath} -W %h:%p ${jumpCommand}`)
+    }
+
+    return args
   }
 }

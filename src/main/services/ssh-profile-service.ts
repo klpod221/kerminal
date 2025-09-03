@@ -236,6 +236,7 @@ export class SSHProfileService {
       user: profile.user || group?.defaultUser || 'root',
       keyPath: profile.keyPath || group?.defaultKeyPath,
       password: profile.password || group?.defaultPassword,
+      proxy: profile.proxy || group?.defaultProxy,
       commands: profile.commands
     }
 

@@ -4,6 +4,23 @@
  */
 
 /**
+ * SSH Proxy configuration
+ */
+export interface SSHProxy {
+  type: 'http' | 'socks4' | 'socks5' | 'jump'
+  host: string
+  port: number
+  username?: string
+  password?: string
+  // For jump host proxy
+  jumpHost?: string
+  jumpPort?: number
+  jumpUser?: string
+  jumpKeyPath?: string
+  jumpPassword?: string
+}
+
+/**
  * Interface for saved command
  */
 export interface SavedCommand {
@@ -27,6 +44,7 @@ export interface SSHGroup {
   defaultPort?: number
   defaultKeyPath?: string
   defaultPassword?: string
+  defaultProxy?: SSHProxy
   color?: string
   created: Date
   updated: Date
@@ -45,6 +63,7 @@ export interface SSHProfile {
   user: string
   keyPath?: string
   password?: string
+  proxy?: SSHProxy
   commands?: string[]
   color?: string
   favorite: boolean
@@ -76,6 +95,7 @@ export interface ResolvedSSHConfig {
   user: string
   keyPath?: string
   password?: string
+  proxy?: SSHProxy
   commands?: string[]
 }
 

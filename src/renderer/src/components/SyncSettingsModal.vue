@@ -69,7 +69,7 @@
             helper-text="Minimum 5 seconds, maximum 1 hour (3600 seconds)"
           />
 
-          <div class="flex justify-end space-x-3">
+          <div class="flex justify-between space-x-3 mt-2">
             <Button
               type="button"
               variant="secondary"
@@ -78,8 +78,8 @@
             >
               Test Connection
             </Button>
-            <Button type="submit" variant="primary" :loading="isLoading">
-              Save Configuration
+            <Button type="submit" variant="primary" :loading="isLoading" :icon="Save">
+              Save
             </Button>
           </div>
         </form>
@@ -112,7 +112,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { Database } from 'lucide-vue-next'
+import { Database, Save } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'

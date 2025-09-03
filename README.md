@@ -25,7 +25,12 @@ Key highlights include secure SSH profile management, saved command functionalit
 ### 🔐 **SSH Connection Management**
 
 - **SSH Profiles**: Create and manage multiple SSH connection profiles
-- **Group Organization**: Organize your SSH connections into logical groups
+- **Group Organization**: Organize your SSH connections into logical groups with default settings
+- **Proxy Support**: Connect through HTTP, SOCKS4, SOCKS5, or Jump Host proxies
+  - HTTP/HTTPS proxy with authentication support
+  - SOCKS4/SOCKS5 proxy with optional authentication
+  - SSH Jump Host (ProxyJump) for bastion host setups
+  - Group-level default proxy settings
 - **Secure Storage**: Encrypted storage of SSH credentials and configurations
 - **Quick Connect**: One-click connection to your favorite servers
 
@@ -259,6 +264,80 @@ If you encounter issues during installation:
 
 ## ⚙️ Configuration
 
+### SSH Proxy Configuration
+
+Kerminal supports multiple proxy types to help you connect to servers behind firewalls or through intermediate hosts.
+
+#### Supported Proxy Types
+
+1. **HTTP Proxy**
+   - Standard HTTP proxy with optional authentication
+   - Commonly used in corporate environments
+   - Supports username/password authentication
+
+2. **SOCKS4 Proxy**
+   - SOCKS4 protocol proxy
+   - No authentication support
+   - Lightweight and fast
+
+3. **SOCKS5 Proxy**
+   - SOCKS5 protocol proxy with optional authentication
+   - Supports username/password authentication
+   - Most versatile proxy type
+
+4. **Jump Host (SSH ProxyJump)**
+   - SSH-based proxy through an intermediate server
+   - Uses SSH key or password authentication
+   - Perfect for accessing servers through bastion hosts
+
+#### Proxy Configuration Examples
+
+**HTTP Proxy with Authentication:**
+
+```text
+Type: HTTP Proxy
+Host: proxy.company.com
+Port: 8080
+Username: your_username
+Password: your_password
+```
+
+**SOCKS5 Proxy:**
+
+```text
+Type: SOCKS5
+Host: socks-proxy.example.com
+Port: 1080
+Username: proxy_user (optional)
+Password: proxy_pass (optional)
+```
+
+**Jump Host Configuration:**
+
+```text
+Type: Jump Host
+Jump Host: bastion.example.com
+Jump Port: 22
+Jump User: jump_user
+Authentication: SSH Key (/path/to/jump_key) or Password
+```
+
+#### Setting Up Proxy in SSH Profiles
+
+1. **Create or Edit SSH Profile**: Open the SSH profile modal
+2. **Navigate to Proxy Settings**: Scroll to the "Proxy Settings" section
+3. **Enable Proxy**: Check "Use Proxy"
+4. **Configure Proxy Type**: Select your proxy type and fill in the details
+5. **Test Connection**: Save and test your SSH connection
+
+#### Group-Level Proxy Defaults
+
+You can set default proxy settings at the group level:
+
+1. **Create or Edit SSH Group**: Open the SSH group modal
+2. **Configure Default Proxy**: Set up proxy in "Default Proxy Settings"
+3. **Apply to New Profiles**: New profiles in this group will inherit proxy settings
+
 ### MongoDB Sync Setup
 
 Kerminal supports optional MongoDB synchronization to keep your SSH profiles and saved commands in sync across multiple devices.
@@ -318,7 +397,8 @@ src/
 - **Frontend**: Vue.js 3, Tailwind CSS, Lucide Icons
 - **Backend**: Electron, Node.js, TypeScript
 - **Terminal**: xterm.js with various addons
-- **SSH**: ssh2 library for secure connections
+- **SSH**: ssh2 library for secure connections with proxy support
+- **Proxy Support**: HTTP, SOCKS4, SOCKS5, and SSH Jump Host proxies
 - **Storage**: Secure local file-based storage with optional MongoDB synchronization
 - **Database**: MongoDB for cross-device data synchronization
 
