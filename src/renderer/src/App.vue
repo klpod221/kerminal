@@ -4,6 +4,7 @@
       class="flex-shrink-0"
       :is-dashboard-active="showDashboard"
       :tabs="tabs"
+      :sync-status-refresh="syncStatusRefreshCounter"
       @open-dashboard="openDashboard"
       @open-terminal="openTerminal"
       @add-tab="addTab"
@@ -11,6 +12,7 @@
       @select-tab="selectTab"
       @toggle-ssh-drawer="toggleSSHDrawer"
       @toggle-saved-commands="toggleSavedCommands"
+      @toggle-ssh-tunnels="toggleSSHTunnels"
       @open-sync-settings="openSyncSettings"
     />
 
@@ -68,17 +70,46 @@
       :active-terminal-id="activeTerminalId"
     />
 
+    <!-- SSH Tunnel Manager Modal -->
+    <Modal
+      :visible="showSSHTunnels"
+      title="SSH Tunnels"
+      :icon="Wifi"
+      icon-background="bg-purple-500/20"
+      icon-color="text-purple-400"
+      size="xl"
+      @close="closeSSHTunnels"
+    >
+      <SSHTunnelManager
+        :on-hide-manager="hideSSHTunnelsModal"
+        :on-show-manager="showSSHTunnelsModal"
+        @create-tunnel="handleCreateTunnel"
+        @edit-tunnel="handleEditTunnel"
+      />
+    </Modal>
+
     <!-- Sync Settings Modal -->
     <SyncSettingsModal
       :visible="showSyncSettings"
       @close="closeSyncSettings"
       @config-updated="onSyncConfigUpdated"
     />
+
+    <!-- SSH Tunnel Modal -->
+    <SSHTunnelModal
+      v-model:visible="showSSHTunnelModal"
+      :tunnel="selectedTunnel"
+      :profiles="sshProfiles"
+      @save="handleSaveTunnel"
+      @update="handleUpdateTunnel"
+      @close="handleCloseTunnelModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
+import { Wifi } from 'lucide-vue-next'
 import TopBar from './components/TopBar.vue'
 import Dashboard from './components/Dashboard.vue'
 import TerminalManager from './components/TerminalManager.vue'
@@ -87,8 +118,19 @@ import SSHProfileModal from './components/SSHProfileModal.vue'
 import SSHGroupModal from './components/SSHGroupModal.vue'
 import SavedCommandDrawer from './components/SavedCommandDrawer.vue'
 import SyncSettingsModal from './components/SyncSettingsModal.vue'
-import type { SSHProfileWithConfig, SSHGroup, SSHProfile, SSHGroupWithProfiles } from './types/ssh'
+import Modal from './components/ui/Modal.vue'
+import SSHTunnelManager from './components/SSHTunnelManager.vue'
+import SSHTunnelModal from './components/SSHTunnelModal.vue'
+import type {
+  SSHProfileWithConfig,
+  SSHGroup,
+  SSHProfile,
+  SSHGroupWithProfiles,
+  SSHTunnelWithProfile,
+  SSHTunnel
+} from './types/ssh'
 import type { SyncConfig } from './types/sync'
+import { message } from './utils/message'
 
 interface Tab {
   id: string
@@ -112,6 +154,11 @@ const showSSHProfileModal = ref(false)
 const showSSHGroupModal = ref(false)
 const showSavedCommands = ref(false)
 const showSyncSettings = ref(false)
+const showSSHTunnels = ref(false)
+const showSSHTunnelModal = ref(false)
+const selectedTunnel = ref<SSHTunnelWithProfile | null>(null)
+const sshProfiles = ref<SSHProfile[]>([])
+const syncStatusRefreshCounter = ref(0)
 
 const terminals = ref<TerminalInstance[]>([])
 const sshProfileDrawerRef = ref()
@@ -435,6 +482,66 @@ const toggleSavedCommands = (): void => {
   showSavedCommands.value = !showSavedCommands.value
 }
 
+// SSH Tunnels methods
+const toggleSSHTunnels = (): void => {
+  showSSHTunnels.value = !showSSHTunnels.value
+}
+
+const closeSSHTunnels = (): void => {
+  showSSHTunnels.value = false
+}
+
+const hideSSHTunnelsModal = (): void => {
+  showSSHTunnels.value = false
+}
+
+const showSSHTunnelsModal = (): void => {
+  showSSHTunnels.value = true
+}
+
+// SSH Tunnel Modal handlers
+const handleCreateTunnel = (): void => {
+  selectedTunnel.value = null
+  showSSHTunnelModal.value = true
+}
+
+const handleEditTunnel = (tunnel: SSHTunnelWithProfile): void => {
+  selectedTunnel.value = tunnel
+  showSSHTunnelModal.value = true
+}
+
+const handleSaveTunnel = async (tunnelData: Partial<SSHTunnel>): Promise<void> => {
+  try {
+    await window.api.invoke('ssh-tunnels.create', tunnelData)
+    message.success('Tunnel created successfully')
+    showSSHTunnelModal.value = false
+    selectedTunnel.value = null
+    showSSHTunnelsModal() // Show manager again
+  } catch (error) {
+    console.error('Failed to create tunnel:', error)
+    message.error(`Failed to create tunnel: ${error}`)
+  }
+}
+
+const handleUpdateTunnel = async (id: string, tunnelData: Partial<SSHTunnel>): Promise<void> => {
+  try {
+    await window.api.invoke('ssh-tunnels.update', id, tunnelData)
+    message.success('Tunnel updated successfully')
+    showSSHTunnelModal.value = false
+    selectedTunnel.value = null
+    showSSHTunnelsModal() // Show manager again
+  } catch (error) {
+    console.error('Failed to update tunnel:', error)
+    message.error(`Failed to update tunnel: ${error}`)
+  }
+}
+
+const handleCloseTunnelModal = (): void => {
+  showSSHTunnelModal.value = false
+  selectedTunnel.value = null
+  showSSHTunnelsModal() // Show manager again
+}
+
 // Sync Settings methods
 const openSyncSettings = (): void => {
   showSyncSettings.value = true
@@ -446,13 +553,24 @@ const closeSyncSettings = (): void => {
 
 const onSyncConfigUpdated = (config: SyncConfig | null): void => {
   console.log('Sync config updated:', config)
-  // Optionally refresh UI or show notification
+  // Force refresh sync status in TopBar
+  syncStatusRefreshCounter.value++
+}
+
+const loadSSHProfiles = async (): Promise<void> => {
+  try {
+    const result = await window.api.invoke('ssh-profiles.getAll')
+    sshProfiles.value = result as SSHProfile[]
+  } catch (error) {
+    console.error('Failed to load SSH profiles:', error)
+  }
 }
 
 // Auto create first tab when app starts
 onMounted(() => {
   addTab()
   refreshAllData() // Use refreshAllData instead of loadSSHGroups
+  loadSSHProfiles() // Load SSH profiles for tunnel modal
 
   // Add global error handler to prevent unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {

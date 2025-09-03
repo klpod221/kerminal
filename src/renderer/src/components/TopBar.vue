@@ -80,6 +80,14 @@
         @click="toggleSavedCommands"
       />
       <Button
+        title="SSH Tunnels"
+        variant="ghost"
+        size="sm"
+        :icon="Wifi"
+        :class="hasActiveTunnels ? 'text-green-400' : 'text-gray-400'"
+        @click="() => emit('toggle-ssh-tunnels')"
+      />
+      <Button
         title="Sync Settings"
         variant="ghost"
         size="sm"
@@ -107,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import {
   LayoutDashboard,
   Terminal,
@@ -118,10 +126,12 @@ import {
   Maximize2,
   PanelLeft,
   Bookmark,
-  Cloud
+  Cloud,
+  Wifi
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import type { SyncStatus } from '../types/sync'
+import type { SSHTunnelWithProfile } from '../types/ssh'
 
 interface Tab {
   id: string
@@ -136,9 +146,10 @@ interface Tab {
 interface Props {
   isDashboardActive?: boolean
   tabs?: Tab[]
+  syncStatusRefresh?: number // Add this to force refresh sync status
 }
 
-const { isDashboardActive = false, tabs = [] } = defineProps<Props>()
+const { isDashboardActive = false, tabs = [], syncStatusRefresh = 0 } = defineProps<Props>()
 
 const emit = defineEmits<{
   'open-dashboard': []
@@ -148,6 +159,7 @@ const emit = defineEmits<{
   'select-tab': [tabId: string]
   'toggle-ssh-drawer': []
   'toggle-saved-commands': []
+  'toggle-ssh-tunnels': []
   'open-sync-settings': []
 }>()
 
@@ -158,8 +170,11 @@ const CloudIcon = Cloud
 const isMaximized = ref(false)
 const windowWidth = ref(window.innerWidth)
 const syncStatus = ref<SyncStatus | null>(null)
+const hasActiveTunnels = ref(false)
 
 let removeMaximizedListener: (() => void) | null = null
+let tunnelStatusInterval: ReturnType<typeof setInterval> | null = null
+let syncStatusInterval: ReturnType<typeof setInterval> | null = null
 
 // Load sync status
 async function loadSyncStatus(): Promise<void> {
@@ -167,6 +182,32 @@ async function loadSyncStatus(): Promise<void> {
     syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
   } catch (error) {
     console.error('Failed to load sync status:', error)
+    syncStatus.value = null
+  }
+}
+
+// Force refresh sync status (called when sync config is updated)
+async function refreshSyncStatus(): Promise<void> {
+  // Try to refresh multiple times with delay to handle timing issues
+  for (let i = 0; i < 3; i++) {
+    await loadSyncStatus()
+    if (syncStatus.value?.isConnected) {
+      break // Stop retrying if we got a connected status
+    }
+    if (i < 2) {
+      await new Promise((resolve) => setTimeout(resolve, 200)) // Wait 200ms before retry
+    }
+  }
+}
+
+// Load tunnel status
+async function loadTunnelStatus(): Promise<void> {
+  try {
+    const tunnels = (await window.api.invoke('ssh-tunnels.getAll')) as SSHTunnelWithProfile[]
+    hasActiveTunnels.value = tunnels.some((tunnel) => tunnel.status === 'running')
+  } catch (error) {
+    console.error('Failed to load tunnel status:', error)
+    hasActiveTunnels.value = false
   }
 }
 
@@ -213,6 +254,15 @@ onMounted(() => {
   // Load sync status
   loadSyncStatus()
 
+  // Load tunnel status
+  loadTunnelStatus()
+
+  // Update tunnel status every 5 seconds
+  tunnelStatusInterval = setInterval(loadTunnelStatus, 5000)
+
+  // Update sync status every 10 seconds
+  syncStatusInterval = setInterval(loadSyncStatus, 10000)
+
   // Listen for maximize state changes from main process
   if (window.api?.on) {
     removeMaximizedListener = window.api.on('window-maximized', (...args: unknown[]) => {
@@ -229,9 +279,26 @@ onBeforeUnmount(() => {
   if (removeMaximizedListener) {
     removeMaximizedListener()
   }
+
+  if (tunnelStatusInterval) {
+    clearInterval(tunnelStatusInterval)
+  }
+
+  if (syncStatusInterval) {
+    clearInterval(syncStatusInterval)
+  }
+
   // Remove resize listener
   window.removeEventListener('resize', updateWindowWidth)
 })
+
+// Watch for syncStatusRefresh changes to force refresh sync status
+watch(
+  () => syncStatusRefresh,
+  () => {
+    refreshSyncStatus()
+  }
+)
 
 const addTab = (): void => {
   emit('add-tab')

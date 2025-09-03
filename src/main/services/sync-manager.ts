@@ -2,6 +2,7 @@ import { SyncService } from './sync-service'
 import { SyncConfigStorage } from '../storage/sync-config-storage'
 import { SSHProfileStorage } from '../storage/ssh-profile-storage'
 import { SSHGroupStorage } from '../storage/ssh-group-storage'
+import { SSHTunnelStorage } from '../storage/ssh-tunnel-storage'
 import { SavedCommandStorage } from '../storage/saved-command-storage'
 import { SyncableStorageRegistry } from '../interfaces/syncable-storage.interface'
 import { SyncConfig, SyncStatus } from '../interfaces/sync.interface'
@@ -32,6 +33,7 @@ export class SyncManager {
   private initializeStorageRegistry(): void {
     this.storageRegistry.register('ssh-profiles', new SSHProfileStorage())
     this.storageRegistry.register('ssh-groups', new SSHGroupStorage())
+    this.storageRegistry.register('ssh-tunnels', new SSHTunnelStorage())
     this.storageRegistry.register('saved-commands', new SavedCommandStorage())
   }
 
@@ -88,6 +90,12 @@ export class SyncManager {
 
       if (!initialized) {
         throw new Error('Failed to initialize sync service')
+      }
+
+      // Verify that the connection is actually established
+      const status = this.syncService.getStatus()
+      if (!status.isConnected) {
+        throw new Error('Sync service initialized but not connected')
       }
 
       // Migrate existing data if needed

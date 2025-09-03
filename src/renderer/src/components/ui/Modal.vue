@@ -31,7 +31,7 @@
             <!-- Header -->
             <div
               v-if="title || $slots.header || showCloseButton"
-              class="flex items-center justify-between p-6 border-b border-gray-700"
+              class="flex items-center justify-between p-4 border-b border-gray-700"
             >
               <div class="flex items-center space-x-3">
                 <div v-if="icon" class="rounded-lg p-2" :class="iconBackground || 'bg-blue-500/20'">
@@ -53,14 +53,14 @@
             </div>
 
             <!-- Content -->
-            <div class="p-6 overflow-y-auto max-h-[60vh]">
+            <div class="p-4 overflow-y-auto max-h-[60vh]">
               <slot />
             </div>
 
             <!-- Footer -->
             <div
               v-if="$slots.footer"
-              class="flex justify-end space-x-3 p-6 border-t border-gray-700 bg-[#171717]"
+              class="flex justify-end space-x-3 p-4 border-t border-gray-700 bg-[#171717]"
             >
               <slot name="footer" />
             </div>

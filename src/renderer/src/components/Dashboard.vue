@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full bg-[#171717] text-white p-6 overflow-y-auto">
+  <div class="h-full bg-[#171717] text-white p-4 overflow-y-auto">
     <div class="max-w-6xl mx-auto animate-fade-in">
       <div class="mt-4 mb-12">
         <img :src="Logo" alt="Kerminal Logo" class="h-32 mx-auto mb-4" />

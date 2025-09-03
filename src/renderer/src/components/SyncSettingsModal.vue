@@ -224,7 +224,11 @@ async function handleSave(): Promise<void> {
     if (success) {
       message.success('Sync configuration saved successfully!')
       currentConfig.value = { ...configData }
+
+      // Wait a bit for sync service to fully initialize before getting status
+      await new Promise((resolve) => setTimeout(resolve, 100))
       syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
+
       emit('configUpdated', currentConfig.value)
     } else {
       message.error('Failed to save sync configuration')

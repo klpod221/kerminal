@@ -6,7 +6,7 @@
       {
         'hover:border-gray-500 hover:shadow-lg cursor-pointer': hover,
         'hover:scale-105 transform': hover && scale,
-        'p-6': !noPadding,
+        'p-4': !noPadding,
         'p-4': size === 'sm' && !noPadding,
         'p-8': size === 'lg' && !noPadding
       },

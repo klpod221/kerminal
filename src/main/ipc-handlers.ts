@@ -6,6 +6,7 @@ import { SSHProfileService } from './services/ssh-profile-service'
 import { SSHConnectionService } from './services/ssh-connection-service'
 import { SavedCommandService } from './services/saved-command-service'
 import { SyncManager } from './services/sync-manager'
+import { SSHTunnelService } from './services/ssh-tunnel-service'
 
 /**
  * Sets up all IPC (Inter-Process Communication) handlers for the application.
@@ -21,6 +22,7 @@ export function setupIpcHandlers(
   const sshConnectionService = new SSHConnectionService()
   const savedCommandService = new SavedCommandService()
   const syncManager = new SyncManager()
+  const sshTunnelService = new SSHTunnelService()
 
   // Initialize sync manager
   syncManager.initialize().catch(console.error)
@@ -36,6 +38,9 @@ export function setupIpcHandlers(
 
   // SSH-related IPC handlers
   setupSSHHandlers(sshProfileService, sshConnectionService)
+
+  // SSH Tunnel IPC handlers
+  setupSSHTunnelHandlers(sshTunnelService)
 
   // Saved Commands IPC handlers
   setupSavedCommandHandlers(savedCommandService, terminalManager)
@@ -306,6 +311,74 @@ function setupSSHHandlers(
   // SSH Connection Management
   ipcMain.handle('ssh.getActiveConnections', async () => {
     return sshConnectionService.getActiveConnectionCount()
+  })
+}
+
+/**
+ * Sets up SSH Tunnel IPC handlers.
+ * @param sshTunnelService - The SSH tunnel service instance.
+ */
+function setupSSHTunnelHandlers(sshTunnelService: SSHTunnelService): void {
+  // List all tunnels
+  ipcMain.handle('ssh-tunnels.getAll', async () => {
+    return sshTunnelService.getAllTunnels()
+  })
+
+  // Get tunnel by ID
+  ipcMain.handle('ssh-tunnels.getById', async (_event, id: string) => {
+    return sshTunnelService.getTunnelById(id)
+  })
+
+  // Create a new tunnel
+  ipcMain.handle('ssh-tunnels.create', async (_event, tunnelData) => {
+    return sshTunnelService.createTunnel(tunnelData)
+  })
+
+  // Update an existing tunnel
+  ipcMain.handle('ssh-tunnels.update', async (_event, id: string, updates) => {
+    return sshTunnelService.updateTunnel(id, updates)
+  })
+
+  // Delete a tunnel
+  ipcMain.handle('ssh-tunnels.delete', async (_event, id: string) => {
+    return sshTunnelService.deleteTunnel(id)
+  })
+
+  // Start a tunnel
+  ipcMain.handle('ssh-tunnels.start', async (_event, id: string) => {
+    return sshTunnelService.startTunnel(id)
+  })
+
+  // Stop a tunnel
+  ipcMain.handle('ssh-tunnels.stop', async (_event, id: string) => {
+    return sshTunnelService.stopTunnel(id)
+  })
+
+  // Get tunnel status
+  ipcMain.handle('ssh-tunnels.getStatus', async (_event, id: string) => {
+    const tunnel = await sshTunnelService.getTunnelById(id)
+    return tunnel?.status || 'stopped'
+  })
+
+  // Get real tunnel status (check actual process)
+  ipcMain.handle('ssh-tunnels.getRealStatus', async (_event, id: string) => {
+    return sshTunnelService.getTunnelRealStatus(id)
+  })
+
+  // Get all auto-start tunnels
+  ipcMain.handle('ssh-tunnels.getAutoStart', async () => {
+    const allTunnels = await sshTunnelService.getAllTunnels()
+    return allTunnels.filter((tunnel) => tunnel.autoStart)
+  })
+
+  // Start all auto-start tunnels
+  ipcMain.handle('ssh-tunnels.startAutoStart', async () => {
+    return sshTunnelService.startAutoStartTunnels()
+  })
+
+  // Stop all tunnels
+  ipcMain.handle('ssh-tunnels.stopAll', async () => {
+    return sshTunnelService.stopAllTunnels()
   })
 }
 

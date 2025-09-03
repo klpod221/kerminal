@@ -37,7 +37,7 @@
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
       <!-- Loading State -->
-      <div v-if="isLoading" class="p-6 text-center">
+      <div v-if="isLoading" class="p-4 text-center">
         <div
           class="animate-spin rounded-full h-8 w-8 border-2 border-gray-600 border-t-orange-400 mx-auto mb-3"
         ></div>
@@ -47,7 +47,7 @@
       <!-- Empty State -->
       <div
         v-else-if="filteredProfiles.length === 0 && groupsWithProfiles.length === 0"
-        class="p-6 text-center"
+        class="p-4 text-center"
       >
         <Server :size="48" class="mx-auto mb-4 text-gray-500" />
         <h3 class="text-lg font-medium text-white mb-2">No SSH Profiles</h3>
@@ -61,7 +61,7 @@
       <!-- No Search Results -->
       <div
         v-else-if="searchQuery && filteredProfiles.length === 0 && filteredGroups.length === 0"
-        class="p-6 text-center"
+        class="p-4 text-center"
       >
         <SearchX :size="48" class="mx-auto mb-4 text-gray-500" />
         <h3 class="text-lg font-medium text-white mb-2">No Results Found</h3>

@@ -57,7 +57,22 @@ const api = {
   // SSH Connection Testing and Management
   ssh: {
     testConnection: (config: unknown) => ipcRenderer.invoke('ssh.testConnection', config),
-    getActiveConnections: () => ipcRenderer.invoke('ssh.getActiveConnections')
+    getActiveConnections: () => ipcRenderer.invoke('ssh.getActiveConnections'),
+    // SSH Tunnel APIs
+    listTunnels: () => ipcRenderer.invoke('ssh-tunnels.getAll'),
+    getTunnel: (id: string) => ipcRenderer.invoke('ssh-tunnels.getById', id),
+    createTunnel: (tunnelData: unknown) => ipcRenderer.invoke('ssh-tunnels.create', tunnelData),
+    updateTunnel: (id: string, updates: unknown) =>
+      ipcRenderer.invoke('ssh-tunnels.update', id, updates),
+    deleteTunnel: (id: string) => ipcRenderer.invoke('ssh-tunnels.delete', id),
+    startTunnel: (id: string) => ipcRenderer.invoke('ssh-tunnels.start', id),
+    stopTunnel: (id: string) => ipcRenderer.invoke('ssh-tunnels.stop', id),
+    getTunnelStatus: (id: string) => ipcRenderer.invoke('ssh-tunnels.getStatus', id),
+    getAutoStartTunnels: () => ipcRenderer.invoke('ssh-tunnels.getAutoStart'),
+    startAutoStartTunnels: () => ipcRenderer.invoke('ssh-tunnels.startAutoStart'),
+    stopAllTunnels: () => ipcRenderer.invoke('ssh-tunnels.stopAll'),
+    // For compatibility with existing profile APIs
+    listProfiles: () => ipcRenderer.invoke('ssh-profiles.getAll')
   }
 }
 

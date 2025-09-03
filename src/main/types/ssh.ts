@@ -20,6 +20,26 @@ export interface SSHProxy {
 }
 
 /**
+ * Interface for SSH Tunnel configuration
+ */
+export interface SSHTunnel {
+  id: string
+  name: string
+  description?: string
+  profileId: string
+  type: 'local' | 'remote' | 'dynamic'
+  localPort: number
+  remoteHost?: string
+  remotePort?: number
+  autoStart: boolean
+  status: 'stopped' | 'starting' | 'running' | 'error' | 'reconnecting'
+  created: Date
+  updated: Date
+  lastStarted?: Date
+  lastError?: string
+}
+
+/**
  * Interface for SSH Group configuration
  */
 export interface SSHGroup {
@@ -125,4 +145,22 @@ export interface CommandExecutionOptions {
   terminalId: string
   command: string
   addToHistory?: boolean
+}
+
+/**
+ * Interface for SSH Tunnel connection options
+ */
+export interface SSHTunnelOptions {
+  tunnelId: string
+  onConnect?: () => void
+  onDisconnect?: () => void
+  onError?: (error: Error) => void
+  onReconnect?: () => void
+}
+
+/**
+ * Interface for SSH Tunnel with profile information
+ */
+export interface SSHTunnelWithProfile extends SSHTunnel {
+  profile: SSHProfile
 }

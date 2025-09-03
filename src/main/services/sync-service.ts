@@ -3,6 +3,7 @@ import { ISyncableStorage } from '../interfaces/syncable-storage.interface'
 import { MongoDBService } from './mongodb-service'
 import { ConsoleLogger } from '../utils/logger'
 import { Document } from 'mongodb'
+import { BrowserWindow } from 'electron'
 
 /**
  * Sync service for managing data synchronization between local files and MongoDB
@@ -33,11 +34,15 @@ export class SyncService {
 
     if (!config.enabled) {
       this.logger.info('Sync is disabled')
+      this.status.isConnected = false
+      this.status.lastError = ''
       return true
     }
 
     try {
       this.status.isLoading = true
+      this.status.lastError = '' // Clear any previous errors
+
       const connected = await this.mongoService.connect()
 
       if (connected) {
@@ -51,10 +56,12 @@ export class SyncService {
         this.logger.info('Sync service initialized successfully')
         return true
       } else {
+        this.status.isConnected = false
         this.status.lastError = 'Failed to connect to MongoDB'
         return false
       }
     } catch (error) {
+      this.status.isConnected = false
       this.status.lastError = (error as Error).message
       this.logger.error('Failed to initialize sync service:', error as Error)
       return false
@@ -119,6 +126,19 @@ export class SyncService {
 
     // Perform bidirectional sync
     await this.performBidirectionalSync(storage, localData, remoteData, collectionName)
+
+    // Emit sync event to notify UI
+    this.emitSyncEvent(collectionName)
+  }
+
+  /**
+   * Emit sync event to all renderer processes
+   */
+  private emitSyncEvent(collectionName: string): void {
+    const windows = BrowserWindow.getAllWindows()
+    windows.forEach((window) => {
+      window.webContents.send('sync.dataChanged', { collection: collectionName })
+    })
   }
 
   /**
@@ -245,7 +265,7 @@ export class SyncService {
    * Get collection name from storage name
    */
   private getCollectionName(name: string): string {
-    return name.toLowerCase().replace(/storage$/, '') + 's'
+    return name.toLowerCase().replace(/storage$/, '')
   }
 
   /**

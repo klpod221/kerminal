@@ -26,6 +26,13 @@ Key highlights include secure SSH profile management, saved command functionalit
 
 - **SSH Profiles**: Create and manage multiple SSH connection profiles
 - **Group Organization**: Organize your SSH connections into logical groups with default settings
+- **SSH Tunneling**: Comprehensive port forwarding with visual management
+  - **Local Port Forwarding**: Forward local ports to remote destinations
+  - **Remote Port Forwarding**: Forward remote ports to local destinations
+  - **Dynamic Port Forwarding**: SOCKS proxy for secure browsing and application routing
+  - **Visual Tunnel Management**: Intuitive interface with tunnel flow visualization
+  - **Auto-start Tunnels**: Automatically start tunnels when the application launches
+  - **Real-time Status Monitoring**: Live tunnel status updates with color-coded indicators
 - **Proxy Support**: Connect through HTTP, SOCKS4, SOCKS5, or Jump Host proxies
   - HTTP/HTTPS proxy with authentication support
   - SOCKS4/SOCKS5 proxy with optional authentication
@@ -338,6 +345,80 @@ You can set default proxy settings at the group level:
 2. **Configure Default Proxy**: Set up proxy in "Default Proxy Settings"
 3. **Apply to New Profiles**: New profiles in this group will inherit proxy settings
 
+### SSH Tunneling Configuration
+
+Kerminal provides comprehensive SSH tunneling capabilities for secure port forwarding and network access.
+
+#### Tunnel Types
+
+1. **Local Port Forwarding**
+   - Forward traffic from your local machine to a remote destination
+   - Format: `localhost:local_port → remote_host:remote_port`
+   - Use case: Access remote services securely (databases, web servers, etc.)
+
+2. **Remote Port Forwarding**
+   - Forward traffic from the remote server to your local machine
+   - Format: `remote_host:remote_port → localhost:local_port`
+   - Use case: Expose local services to the remote network
+
+3. **Dynamic Port Forwarding (SOCKS Proxy)**
+   - Creates a SOCKS proxy on your local machine
+   - Format: `SOCKS Proxy @ localhost:local_port`
+   - Use case: Secure browsing, route applications through SSH tunnel
+
+#### Creating SSH Tunnels
+
+1. **Access Tunnel Manager**: Click the tunnel icon in the top bar (green when active)
+2. **Create New Tunnel**: Click "Create SSH Tunnel"
+3. **Configure Tunnel**:
+   - **Name & Description**: Identify your tunnel
+   - **SSH Profile**: Select the profile to tunnel through
+   - **Tunnel Type**: Choose Local, Remote, or Dynamic
+   - **Port Configuration**: Set local and remote ports
+   - **Auto-start**: Enable to start tunnel automatically
+4. **Save & Start**: Save the tunnel and start it immediately
+
+#### Tunnel Configuration Examples
+
+**Database Access (Local Forward):**
+```text
+Name: Production Database
+Type: Local Port Forwarding
+SSH Profile: Production Server
+Local Port: 5432
+Remote Host: db.internal.company.com
+Remote Port: 5432
+Auto-start: Enabled
+```
+
+**Web Development (Remote Forward):**
+```text
+Name: Local Dev Server
+Type: Remote Port Forwarding
+SSH Profile: Development Server
+Local Port: 3000
+Remote Host: 0.0.0.0
+Remote Port: 8080
+Auto-start: Disabled
+```
+
+**Secure Browsing (Dynamic/SOCKS):**
+```text
+Name: Secure Proxy
+Type: Dynamic Port Forwarding
+SSH Profile: VPN Server
+Local Port: 1080
+Auto-start: Enabled
+```
+
+#### Managing Tunnels
+
+- **Visual Status**: Tunnels show real-time status with color indicators
+- **Quick Actions**: Start, stop, edit, or delete tunnels with one click
+- **Flow Visualization**: See tunnel flow direction and connection details
+- **Status Monitoring**: Monitor tunnel health and connection status
+- **Auto-start Management**: Configure tunnels to start automatically
+
 ### MongoDB Sync Setup
 
 Kerminal supports optional MongoDB synchronization to keep your SSH profiles and saved commands in sync across multiple devices.
@@ -398,6 +479,7 @@ src/
 - **Backend**: Electron, Node.js, TypeScript
 - **Terminal**: xterm.js with various addons
 - **SSH**: ssh2 library for secure connections with proxy support
+- **SSH Tunneling**: Comprehensive port forwarding (Local, Remote, Dynamic/SOCKS)
 - **Proxy Support**: HTTP, SOCKS4, SOCKS5, and SSH Jump Host proxies
 - **Storage**: Secure local file-based storage with optional MongoDB synchronization
 - **Database**: MongoDB for cross-device data synchronization

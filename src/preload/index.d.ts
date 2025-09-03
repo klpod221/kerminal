@@ -85,6 +85,19 @@ declare global {
       ssh: {
         testConnection: (config: unknown) => Promise<{ success: boolean; error?: string }>
         getActiveConnections: () => Promise<number>
+        // SSH Tunnel APIs
+        listTunnels: () => Promise<unknown[]>
+        getTunnel: (id: string) => Promise<unknown>
+        createTunnel: (tunnelData: unknown) => Promise<unknown>
+        updateTunnel: (id: string, updates: unknown) => Promise<unknown>
+        deleteTunnel: (id: string) => Promise<boolean>
+        startTunnel: (id: string) => Promise<boolean>
+        stopTunnel: (id: string) => Promise<boolean>
+        getTunnelStatus: (id: string) => Promise<string>
+        getAutoStartTunnels: () => Promise<unknown[]>
+        startAutoStartTunnels: () => Promise<boolean>
+        stopAllTunnels: () => Promise<boolean>
+        listProfiles: () => Promise<unknown[]>
       }
 
       sync: {

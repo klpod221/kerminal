@@ -21,6 +21,33 @@ export interface SSHProxy {
 }
 
 /**
+ * Interface for SSH Tunnel configuration
+ */
+export interface SSHTunnel {
+  id: string
+  name: string
+  description?: string
+  profileId: string
+  type: 'local' | 'remote' | 'dynamic'
+  localPort: number
+  remoteHost?: string
+  remotePort?: number
+  autoStart: boolean
+  status: 'stopped' | 'starting' | 'running' | 'error' | 'reconnecting'
+  created: Date
+  updated: Date
+  lastStarted?: Date
+  lastError?: string
+}
+
+/**
+ * Interface for SSH Tunnel with profile information
+ */
+export interface SSHTunnelWithProfile extends SSHTunnel {
+  profile: SSHProfile
+}
+
+/**
  * Interface for saved command
  */
 export interface SavedCommand {
@@ -152,6 +179,39 @@ export type CreateSSHProfileData = Omit<SSHProfile, 'id' | 'created' | 'updated'
  * Interface for updating SSH Profile
  */
 export type UpdateSSHProfileData = Partial<Omit<SSHProfile, 'id' | 'created'>>
+
+/**
+ * Interface for creating new SSH Tunnel
+ */
+export type CreateSSHTunnelData = Omit<
+  SSHTunnel,
+  'id' | 'created' | 'updated' | 'status' | 'lastStarted' | 'lastError'
+>
+
+/**
+ * Interface for updating SSH Tunnel
+ */
+export type UpdateSSHTunnelData = Partial<Omit<SSHTunnel, 'id' | 'created'>>
+
+/**
+ * SSH Tunnel form state
+ */
+export interface SSHTunnelFormState {
+  isOpen: boolean
+  mode: 'create' | 'edit'
+  tunnelId?: string
+  tunnel?: SSHTunnel
+  preselectedProfileId?: string
+}
+
+/**
+ * SSH Tunnel manager state
+ */
+export interface SSHTunnelManagerState {
+  tunnels: SSHTunnelWithProfile[]
+  loading: boolean
+  error?: string
+}
 
 /**
  * SSH Drawer state

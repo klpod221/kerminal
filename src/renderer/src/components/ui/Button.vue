@@ -73,11 +73,11 @@ const sizeClasses = computed(() => {
   const hasOnlyIcon = props.icon && !props.text
   switch (props.size) {
     case 'sm':
-      return hasOnlyIcon ? 'p-2 text-sm' : 'px-3 py-1.5 text-sm'
+      return hasOnlyIcon ? 'p-1.5 text-sm' : 'px-1.5 py-0.75 text-sm'
     case 'lg':
-      return hasOnlyIcon ? 'p-4 text-lg' : 'px-6 py-3 text-lg'
+      return hasOnlyIcon ? 'p-3 text-lg' : 'px-3 py-1.5 text-lg'
     default:
-      return hasOnlyIcon ? 'p-3 text-base' : 'px-4 py-2 text-base'
+      return hasOnlyIcon ? 'p-2 text-base' : 'px-2 py-1 text-base'
   }
 })
 
