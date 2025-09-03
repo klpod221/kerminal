@@ -50,20 +50,147 @@ Key highlights include secure SSH profile management, saved command functionalit
 - **Export/Import**: Backup and share your configurations
 - **Search Functionality**: Quickly find connections and commands
 
-## 🚀 Getting Started
+## 🚀 Installation Guide
 
-### Prerequisites
+### System Requirements
 
-- **Node.js** 20
+- **Windows**: Windows 10 or higher (64-bit)
+- **macOS**: macOS 10.15 (Catalina) or higher
+- **Linux**: Ubuntu 18.04+, Debian 10+, or equivalent distributions
+
+### Option 1: Download Pre-built Packages (Recommended)
+
+Download the appropriate installer for your operating system from the [Releases page](https://github.com/klpod221/kerminal/releases).
+
+> **Note**: Replace `{version}` with the actual version number (e.g., `0.5.0`) from the latest release.
+
+#### Windows
+
+- **kerminal-{version}-setup.exe** - Windows installer (recommended)
+- **kerminal_{version}_amd64.deb** - For Windows Subsystem for Linux (WSL)
+
+#### macOS
+
+- **kerminal-{version}.dmg** - macOS disk image
+- **kerminal-{version}.AppImage** - Portable AppImage (alternative)
+
+#### Linux
+
+- **kerminal-bin** - Arch Linux (AUR)
+- **kerminal_{version}_amd64.deb** - Debian/Ubuntu package
+- **kerminal-{version}.AppImage** - Portable AppImage
+- **kerminal-{version}.tar.gz** - Compressed archive
+
+### Installation Instructions
+
+#### Windows Installation
+
+1. **Using Windows Installer (Recommended)**:
+
+   ```bash
+   # Download and run the installer
+   ./kerminal-{version}-setup.exe
+   ```
+
+   - Double-click the downloaded `.exe` file
+   - Follow the installation wizard
+   - Kerminal will be added to your Start Menu and Desktop
+
+2. **Using WSL/Debian Package**:
+
+   ```bash
+   # Install using dpkg
+   sudo dpkg -i kerminal_{version}_amd64.deb
+
+   # Fix dependencies if needed
+   sudo apt-get install -f
+   ```
+
+#### macOS Installation
+
+1. **Using DMG (Recommended)**:
+
+   ```bash
+   # Mount the disk image
+   open kerminal-{version}.dmg
+   ```
+
+   - Drag Kerminal to your Applications folder
+   - Launch from Applications or Spotlight
+
+2. **Using AppImage**:
+
+   ```bash
+   # Make executable and run
+   chmod +x kerminal-{version}.AppImage
+   ./kerminal-{version}.AppImage
+   ```
+
+#### Linux Installation
+
+1. **Using AUR (Arch Linux)**:
+
+   ```bash
+   # Using yay AUR helper
+   yay -S kerminal-bin
+
+   # Using paru AUR helper
+   paru -S kerminal-bin
+
+   # Manual installation from AUR
+   git clone https://aur.archlinux.org/kerminal-bin.git
+   cd kerminal-bin
+   makepkg -si
+   ```
+
+2. **Using Debian Package (Ubuntu/Debian)**:
+
+   ```bash
+   # Install the package
+   sudo dpkg -i kerminal_{version}_amd64.deb
+
+   # Install dependencies
+   sudo apt-get install -f
+
+   # Launch Kerminal
+   kerminal
+   ```
+
+3. **Using AppImage (Universal)**:
+
+   ```bash
+   # Make executable
+   chmod +x kerminal-{version}.AppImage
+
+   # Run directly
+   ./kerminal-{version}.AppImage
+
+   # Optional: Move to applications directory
+   sudo mv kerminal-{version}.AppImage /usr/local/bin/kerminal
+   ```
+
+4. **Using Tar Archive**:
+
+   ```bash
+   # Extract the archive
+   tar -xzf kerminal-{version}.tar.gz
+   cd kerminal-{version}
+
+   # Run the application
+   ./kerminal
+   ```
+
+### Option 2: Build from Source
+
+For developers or users who want to build from source:
+
+#### Prerequisites
+
+- **Node.js** 20.0.0 or higher
 - **Git** for cloning the repository
+- **npm** or **yarn** package manager
 
-### Installation
-
-#### Option 1: Download Release (Recommended)
-
-Download the latest release from the [Releases page](https://github.com/klpod221/kerminal/releases).
-
-#### Option 2: Build from Source
+#### Build Instructions
 
 ```bash
 # Clone the repository
@@ -73,7 +200,7 @@ cd kerminal
 # Install dependencies
 npm install
 
-# Development mode
+# Development mode (hot reload)
 npm run dev
 
 # Build for production
@@ -83,7 +210,52 @@ npm run build
 npm run build:win    # Windows
 npm run build:mac    # macOS
 npm run build:linux  # Linux
+
+# Create distributable packages
+npm run dist
 ```
+
+### Verification
+
+After installation, verify Kerminal is working correctly:
+
+1. **Launch the application**
+2. **Check version**: Help → About or view the title bar
+3. **Test terminal functionality**: Open a new terminal tab
+4. **Test SSH connection**: Create a test SSH profile (optional)
+
+### Troubleshooting
+
+#### Common Issues
+
+1. **Permission Denied (Linux/macOS)**:
+
+   ```bash
+   chmod +x kerminal-{version}.AppImage
+   ```
+
+2. **Missing Dependencies (Linux)**:
+
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -f
+   ```
+
+3. **macOS Security Warning**:
+   - Go to System Preferences → Security & Privacy
+   - Click "Open Anyway" for Kerminal
+
+4. **Windows SmartScreen Warning**:
+   - Click "More info" → "Run anyway"
+   - The application is safe but unsigned
+
+#### Getting Help
+
+If you encounter issues during installation:
+
+- Check the [Issues page](https://github.com/klpod221/kerminal/issues)
+- Create a new issue with your system details
+- Contact: [klpod221@gmail.com](mailto:klpod221@gmail.com)
 
 ## ⚙️ Configuration
 
@@ -216,9 +388,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📊 Project Status
 
-Current version: **v0.4.0**
-
 Kerminal is actively maintained and under continuous development. We regularly add new features and improvements based on user feedback.
+
+Check the [Releases page](https://github.com/klpod221/kerminal/releases) for the latest version.
 
 ---
 
@@ -226,3 +398,6 @@ Kerminal is actively maintained and under continuous development. We regularly a
     <p>Made with ❤️ by <a href="https://github.com/klpod221">klpod221</a></p>
     <p>If you find Kerminal useful, please consider giving it a ⭐ on GitHub!</p>
 </div>
+
+---
+_This README was crafted with assistance from an AI model._
