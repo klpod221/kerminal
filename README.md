@@ -56,7 +56,7 @@ Key highlights include secure SSH profile management, saved command functionalit
 
 - **Windows**: Windows 10 or higher (64-bit)
 - **macOS**: macOS 10.15 (Catalina) or higher
-- **Linux**: Ubuntu 18.04+, Debian 10+, or equivalent distributions
+- **Linux**: Ubuntu 18.04+, Debian 10+, Arch Linux, or equivalent distributions
 
 ### Option 1: Download Pre-built Packages (Recommended)
 
