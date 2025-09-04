@@ -23,52 +23,8 @@
       <PanelLeft :size="16" class="transition-colors duration-200 text-gray-400 hover:text-white" />
     </div>
 
-    <!-- Tabs Container -->
-    <div class="flex items-center flex-1 h-full max-h-[30px] min-w-0">
-      <div class="flex items-center h-full max-h-[30px] max-w-[calc(100%-80px)]">
-        <div
-          v-for="tab in tabs"
-          :key="tab.id"
-          class="no-drag flex items-center px-2 h-full max-h-[30px] border-r border-gray-800 cursor-pointer group transition-all duration-200 flex-1"
-          :class="{
-            'bg-[#171717] border-b-2 border-b-blue-500': tab.active,
-            'hover:bg-gray-800': !tab.active
-          }"
-          :style="{ minWidth: tabMinWidth + 'px', maxWidth: tabMaxWidth + 'px' }"
-          @click="selectTab(tab.id)"
-        >
-          <Terminal
-            v-if="tabMinWidth >= 80"
-            :size="14"
-            class="mr-2 transition-colors duration-200 flex-shrink-0"
-            :class="tab.active ? 'text-blue-400' : 'text-gray-400'"
-          />
-          <div
-            v-if="tab.color && tabMinWidth >= 60"
-            class="w-2 h-2 rounded-full mr-2 flex-shrink-0"
-            :style="{ backgroundColor: tab.color }"
-          ></div>
-          <span
-            class="text-sm truncate flex-1 transition-colors duration-200"
-            :class="tab.active ? 'text-white' : 'text-gray-300'"
-          >
-            {{ tab.title }}
-          </span>
-          <X
-            v-if="tabMinWidth >= 100"
-            :size="14"
-            class="text-gray-500 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-            @click.stop="closeTab(tab.id)"
-          />
-        </div>
-
-        <!-- Add Tab Button -->
-        <Button title="Add new tab" variant="ghost" size="sm" :icon="Plus" @click="addTab" />
-      </div>
-
-      <!-- Draggable space - Always visible with minimum 80px width -->
-      <div class="draggable flex-1 h-full" style="min-width: 80px"></div>
-    </div>
+    <!-- Draggable space - Always visible with flex-1 -->
+    <div class="draggable flex-1 h-full"></div>
 
     <!-- Window Controls -->
     <div class="flex items-center h-full max-h-[30px] flex-shrink-0">
@@ -115,11 +71,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import {
   LayoutDashboard,
-  Terminal,
-  Plus,
   X,
   Minus,
   Minimize2,
@@ -133,30 +87,15 @@ import Button from './ui/Button.vue'
 import type { SyncStatus } from '../types/sync'
 import type { SSHTunnelWithProfile } from '../types/ssh'
 
-interface Tab {
-  id: string
-  title: string
-  active: boolean
-  color?: string
-  lastConnected?: Date
-  profileId?: string // SSH Profile ID if this is an SSH connection
-  groupId?: string // SSH Group ID if this SSH connection belongs to a group
-}
-
 interface Props {
   isDashboardActive?: boolean
-  tabs?: Tab[]
   syncStatusRefresh?: number // Add this to force refresh sync status
 }
 
-const { isDashboardActive = false, tabs = [], syncStatusRefresh = 0 } = defineProps<Props>()
+const { isDashboardActive = false, syncStatusRefresh = 0 } = defineProps<Props>()
 
 const emit = defineEmits<{
   'open-dashboard': []
-  'open-terminal': []
-  'add-tab': []
-  'close-tab': [tabId: string]
-  'select-tab': [tabId: string]
   'toggle-ssh-drawer': []
   'toggle-saved-commands': []
   'toggle-ssh-tunnels': []
@@ -168,7 +107,6 @@ const BookmarkIcon = Bookmark
 const CloudIcon = Cloud
 
 const isMaximized = ref(false)
-const windowWidth = ref(window.innerWidth)
 const syncStatus = ref<SyncStatus | null>(null)
 const hasActiveTunnels = ref(false)
 
@@ -211,45 +149,6 @@ async function loadTunnelStatus(): Promise<void> {
   }
 }
 
-// Update window width on resize
-const updateWindowWidth = (): void => {
-  windowWidth.value = window.innerWidth
-}
-
-// Computed properties for responsive tab sizing
-const tabMinWidth = computed(() => {
-  const tabCount = tabs.length
-  const addButtonWidth = 32 // w-8 = 32px for the + button
-  const sideIconsWidth = 48 // Dashboard + SSH icons (24px each)
-  const windowControlsWidth = 96 // 3 window control buttons (32px each)
-  const draggableSpaceWidth = 80 // Minimum draggable space width
-  const availableWidth =
-    windowWidth.value -
-    sideIconsWidth -
-    windowControlsWidth -
-    addButtonWidth -
-    draggableSpaceWidth -
-    16 // 16px padding
-
-  // Calculate ideal width per tab
-  const idealTabWidth = Math.floor(availableWidth / Math.max(tabCount, 1))
-
-  // Apply breakpoints based on available space and tab count
-  if (tabCount <= 4 && idealTabWidth >= 180) return 180 // Full width when few tabs
-  if (tabCount <= 6 && idealTabWidth >= 150) return 150 // Medium width
-  if (tabCount <= 8 && idealTabWidth >= 120) return 120 // Smaller width
-  if (tabCount <= 10 && idealTabWidth >= 100) return 100 // Even smaller
-
-  // No minimum limit - let tabs shrink as needed to fit all tabs
-  return Math.max(idealTabWidth, 20) // Only ensure some minimal readable space (20px)
-})
-
-const tabMaxWidth = computed(() => {
-  const tabCount = tabs.length
-  if (tabCount <= 4) return 180
-  return 200 // Allow some expansion but not too much
-})
-
 onMounted(() => {
   // Load sync status
   loadSyncStatus()
@@ -270,9 +169,6 @@ onMounted(() => {
       isMaximized.value = maximized
     })
   }
-
-  // Listen for window resize
-  window.addEventListener('resize', updateWindowWidth)
 })
 
 onBeforeUnmount(() => {
@@ -287,9 +183,6 @@ onBeforeUnmount(() => {
   if (syncStatusInterval) {
     clearInterval(syncStatusInterval)
   }
-
-  // Remove resize listener
-  window.removeEventListener('resize', updateWindowWidth)
 })
 
 // Watch for syncStatusRefresh changes to force refresh sync status
@@ -299,18 +192,6 @@ watch(
     refreshSyncStatus()
   }
 )
-
-const addTab = (): void => {
-  emit('add-tab')
-}
-
-const closeTab = (tabId: string): void => {
-  emit('close-tab', tabId)
-}
-
-const selectTab = (tabId: string): void => {
-  emit('select-tab', tabId)
-}
 
 const openDashboard = (): void => {
   emit('open-dashboard')

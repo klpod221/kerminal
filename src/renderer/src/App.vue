@@ -3,13 +3,8 @@
     <TopBar
       class="flex-shrink-0"
       :is-dashboard-active="showDashboard"
-      :tabs="tabs"
       :sync-status-refresh="syncStatusRefreshCounter"
       @open-dashboard="openDashboard"
-      @open-terminal="openTerminal"
-      @add-tab="addTab"
-      @close-tab="closeTab"
-      @select-tab="selectTab"
       @toggle-ssh-drawer="toggleSSHDrawer"
       @toggle-saved-commands="toggleSavedCommands"
       @toggle-ssh-tunnels="toggleSSHTunnels"
@@ -17,16 +12,23 @@
     />
 
     <div class="flex-grow overflow-hidden">
-      <Dashboard
-        :class="{ hidden: !showDashboard }"
-        @create-terminal="addTab"
-        @open-ssh-profiles="toggleSSHDrawer"
-      />
-      <TerminalManager
-        :class="{ hidden: showDashboard }"
+      <PanelManager
+        :layout="panelLayout"
         :terminals="terminals"
-        :active-terminal-id="activeTerminalId"
+        :window-width="windowWidth"
+        :active-panel-id="activePanelId"
+        :show-dashboard="showDashboard"
+        @select-tab="selectTab"
+        @close-tab="closeTab"
+        @add-tab="addTab"
+        @split-horizontal="splitHorizontal"
+        @split-vertical="splitVertical"
+        @close-panel="closePanel"
+        @move-tab="moveTab"
         @terminal-ready="onTerminalReady"
+        @open-ssh-profiles="toggleSSHDrawer"
+        @set-active-panel="setActivePanel"
+        @layout-updated="updateLayout"
       />
     </div>
 
@@ -67,7 +69,7 @@
     <!-- Saved Commands Drawer -->
     <SavedCommandDrawer
       v-model:visible="showSavedCommands"
-      :active-terminal-id="activeTerminalId"
+      :active-terminal-id="getCurrentActiveTerminalId()"
     />
 
     <!-- SSH Tunnel Manager Modal -->
@@ -111,8 +113,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Wifi } from 'lucide-vue-next'
 import TopBar from './components/TopBar.vue'
-import Dashboard from './components/Dashboard.vue'
-import TerminalManager from './components/TerminalManager.vue'
+import PanelManager from './components/PanelManager.vue'
 import SSHProfileDrawer from './components/SSHProfileDrawer.vue'
 import SSHProfileModal from './components/SSHProfileModal.vue'
 import SSHGroupModal from './components/SSHGroupModal.vue'
@@ -130,25 +131,10 @@ import type {
   SSHTunnel
 } from './types/ssh'
 import type { SyncConfig } from './types/sync'
+import type { PanelLayout, Panel, Tab, TerminalInstance } from './types/panel'
 import { message } from './utils/message'
 
-interface Tab {
-  id: string
-  title: string
-  active: boolean
-  color?: string
-  lastConnected?: Date
-  profileId?: string // SSH Profile ID if this is an SSH connection
-  groupId?: string // SSH Group ID if this SSH connection belongs to a group
-}
-
-interface TerminalInstance {
-  id: string
-  ready: boolean
-}
-
 const showDashboard = ref(false)
-const tabs = ref<Tab[]>([])
 const showSSHDrawer = ref(false)
 const showSSHProfileModal = ref(false)
 const showSSHGroupModal = ref(false)
@@ -167,28 +153,139 @@ const editingGroup = ref<SSHGroup | null>(null)
 const sshGroups = ref<SSHGroup[]>([])
 const selectedGroupForNewProfile = ref<SSHGroupWithProfiles | null>(null)
 
-const activeTerminalId = ref('')
+// Panel system state
+const panelLayout = ref<PanelLayout>({
+  type: 'panel',
+  id: 'panel-1',
+  panel: {
+    id: 'panel-1',
+    activeTabId: '',
+    tabs: []
+  }
+})
+const activePanelId = ref('panel-1')
+const windowWidth = ref(window.innerWidth)
+
 let tabCounter = 1
+let panelCounter = 2 // Start from 2 since panel-1 is already created
+
+const findPanelInLayout = (layout: PanelLayout, panelId: string): Panel | null => {
+  if (layout.type === 'panel' && layout.panel?.id === panelId) {
+    return layout.panel
+  }
+  if (layout.type === 'split' && layout.children) {
+    for (const child of layout.children) {
+      const found = findPanelInLayout(child, panelId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+const removePanelFromLayout = (layout: PanelLayout, panelId: string): PanelLayout | null => {
+  if (layout.type === 'panel' && layout.panel?.id === panelId) {
+    return null // This panel should be removed
+  }
+
+  if (layout.type === 'split' && layout.children) {
+    const filteredChildren = layout.children
+      .map((child) => removePanelFromLayout(child, panelId))
+      .filter((child) => child !== null) as PanelLayout[]
+
+    if (filteredChildren.length === 0) {
+      return null
+    }
+
+    if (filteredChildren.length === 1) {
+      // Collapse split with only one child
+      return filteredChildren[0]
+    }
+
+    // Update sizes proportionally when a child is removed
+    const newSizes = layout.sizes
+      ? filteredChildren.map(() => 1 / filteredChildren.length)
+      : undefined
+
+    return {
+      ...layout,
+      children: filteredChildren,
+      sizes: newSizes
+    }
+  }
+
+  return layout
+}
+
+const splitPanelInLayout = (
+  layout: PanelLayout,
+  panelId: string,
+  newPanel: Panel,
+  direction: 'horizontal' | 'vertical'
+): boolean => {
+  if (layout.type === 'panel' && layout.panel?.id === panelId) {
+    // This is the panel we want to split
+    // We need to replace this layout with a split layout
+    const originalPanel = layout.panel
+
+    // Update layout properties in-place for better reactivity
+    layout.type = 'split'
+    layout.direction = direction
+    layout.children = [
+      {
+        type: 'panel',
+        id: originalPanel.id,
+        panel: originalPanel
+      },
+      {
+        type: 'panel',
+        id: newPanel.id,
+        panel: newPanel
+      }
+    ]
+    layout.sizes = [0.5, 0.5]
+
+    // Clear panel property since we're now a split
+    delete (layout as PanelLayout & { panel?: Panel }).panel
+
+    return true
+  }
+
+  if (layout.type === 'split' && layout.children) {
+    for (const child of layout.children) {
+      if (splitPanelInLayout(child, panelId, newPanel, direction)) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
 
 const openDashboard = (): void => {
-  // Deactivate all tabs when switching to dashboard
-  tabs.value.forEach((tab) => {
-    tab.active = false
-  })
-  activeTerminalId.value = ''
   showDashboard.value = true
 }
 
-const openTerminal = (): void => {
-  showDashboard.value = false
+const setActivePanel = (panelId: string): void => {
+  activePanelId.value = panelId
 }
 
-const addTab = (): void => {
+const selectTab = (panelId: string, tabId: string): void => {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (panel) {
+    panel.activeTabId = tabId
+    activePanelId.value = panelId
+    showDashboard.value = false
+  }
+}
+
+const addTab = (panelId: string): void => {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (!panel) return
+
   const newTabId = tabCounter.toString()
   const newTab: Tab = {
     id: newTabId,
-    title: 'Terminal', // Default title, will be updated by terminal process
-    active: true // Make new tab active immediately
+    title: 'Terminal' // Default title, will be updated by terminal process
   }
 
   const newTerminal: TerminalInstance = {
@@ -196,16 +293,15 @@ const addTab = (): void => {
     ready: false
   }
 
-  // Deactivate all existing tabs
-  tabs.value.forEach((tab) => {
-    tab.active = false
-  })
+  // Add tab to panel
+  panel.tabs.push(newTab)
+  panel.activeTabId = newTabId
 
-  tabs.value.push(newTab)
+  // Add terminal instance
   terminals.value.push(newTerminal)
 
-  // Switch to new terminal
-  activeTerminalId.value = newTabId
+  // Set active panel and hide dashboard
+  activePanelId.value = panelId
   showDashboard.value = false
 
   // Request new terminal from main process
@@ -214,8 +310,11 @@ const addTab = (): void => {
   tabCounter++
 }
 
-const closeTab = (tabId: string): void => {
-  const tabIndex = tabs.value.findIndex((tab) => tab.id === tabId)
+const closeTab = (panelId: string, tabId: string): void => {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (!panel) return
+
+  const tabIndex = panel.tabs.findIndex((tab) => tab.id === tabId)
   const terminalIndex = terminals.value.findIndex((terminal) => terminal.id === tabId)
 
   if (tabIndex !== -1) {
@@ -227,32 +326,314 @@ const closeTab = (tabId: string): void => {
     }
 
     // Remove the tab
-    const wasActive = tabs.value[tabIndex].active
-    tabs.value.splice(tabIndex, 1)
+    const wasActive = panel.activeTabId === tabId
+    panel.tabs.splice(tabIndex, 1)
 
-    // If this was the last tab, close all and switch to dashboard
-    if (tabs.value.length === 0) {
-      showDashboard.value = true
-      activeTerminalId.value = ''
+    // AUTO-CLOSE PANEL: If this was the last tab in the panel, auto-close the panel
+    if (panel.tabs.length === 0) {
+      autoClosePanel(panelId)
       return
     }
 
     // If closed tab was active, activate another tab
     if (wasActive) {
-      const newActiveIndex = Math.min(tabIndex, tabs.value.length - 1)
-      tabs.value[newActiveIndex].active = true
-      activeTerminalId.value = tabs.value[newActiveIndex].id
-      showDashboard.value = false
+      const newActiveIndex = Math.min(tabIndex, panel.tabs.length - 1)
+      panel.activeTabId = panel.tabs[newActiveIndex].id
     }
   }
 }
 
-const selectTab = (tabId: string): void => {
-  tabs.value.forEach((tab) => {
-    tab.active = tab.id === tabId
-  })
-  activeTerminalId.value = tabId
-  showDashboard.value = false
+// Auto close panel when it has no tabs left
+const autoClosePanel = (panelId: string): void => {
+  // Remove panel from layout
+  const newLayout = removePanelFromLayout(panelLayout.value, panelId)
+  if (newLayout) {
+    panelLayout.value = newLayout
+    // Find a new active panel if the closed panel was active
+    if (activePanelId.value === panelId) {
+      const firstPanel = findFirstPanel(panelLayout.value)
+      if (firstPanel) {
+        activePanelId.value = firstPanel.id
+      } else {
+        // No panels left, show dashboard
+        showDashboard.value = true
+      }
+    }
+  } else {
+    // All panels closed, show dashboard
+    showDashboard.value = true
+  }
+}
+
+const splitHorizontal = (panelId: string): void => {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (!panel) return
+
+  // Clone current active tab or create default tab
+  let newTab: Tab
+  if (panel.activeTabId && panel.tabs.length > 0) {
+    const activeTab = panel.tabs.find((tab) => tab.id === panel.activeTabId)
+    if (activeTab) {
+      const newTabId = tabCounter.toString()
+      newTab = {
+        id: newTabId,
+        title: activeTab.title,
+        color: activeTab.color,
+        profileId: activeTab.profileId,
+        groupId: activeTab.groupId
+      }
+      // Create terminal for cloned tab
+      const newTerminal: TerminalInstance = { id: newTabId, ready: false }
+      terminals.value.push(newTerminal)
+
+      if (activeTab.profileId) {
+        // Clone SSH connection
+        window.api?.send('terminal.createSSH', {
+          terminalId: newTabId,
+          profileId: activeTab.profileId
+        })
+      } else {
+        // Clone regular terminal
+        window.api?.send('terminal.create', { terminalId: newTabId })
+      }
+    } else {
+      newTab = { id: tabCounter.toString(), title: 'Terminal' }
+    }
+  } else {
+    newTab = { id: tabCounter.toString(), title: 'Terminal' }
+  }
+
+  // Create new panel
+  const newPanelId = `panel-${panelCounter++}`
+  const newPanel: Panel = {
+    id: newPanelId,
+    activeTabId: newTab.id,
+    tabs: [newTab]
+  }
+
+  // Split the specific panel in the layout
+  splitPanelInLayout(panelLayout.value, panelId, newPanel, 'horizontal')
+  activePanelId.value = newPanelId
+  tabCounter++
+}
+
+const splitVertical = (panelId: string): void => {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (!panel) return
+
+  // Clone current active tab or create default tab
+  let newTab: Tab
+  if (panel.activeTabId && panel.tabs.length > 0) {
+    const activeTab = panel.tabs.find((tab) => tab.id === panel.activeTabId)
+    if (activeTab) {
+      const newTabId = tabCounter.toString()
+      newTab = {
+        id: newTabId,
+        title: activeTab.title,
+        color: activeTab.color,
+        profileId: activeTab.profileId,
+        groupId: activeTab.groupId
+      }
+      // Create terminal for cloned tab
+      const newTerminal: TerminalInstance = { id: newTabId, ready: false }
+      terminals.value.push(newTerminal)
+
+      if (activeTab.profileId) {
+        // Clone SSH connection
+        window.api?.send('terminal.createSSH', {
+          terminalId: newTabId,
+          profileId: activeTab.profileId
+        })
+      } else {
+        // Clone regular terminal
+        window.api?.send('terminal.create', { terminalId: newTabId })
+      }
+    } else {
+      newTab = { id: tabCounter.toString(), title: 'Terminal' }
+    }
+  } else {
+    newTab = { id: tabCounter.toString(), title: 'Terminal' }
+  }
+
+  // Create new panel
+  const newPanelId = `panel-${panelCounter++}`
+  const newPanel: Panel = {
+    id: newPanelId,
+    activeTabId: newTab.id,
+    tabs: [newTab]
+  }
+
+  // Split the specific panel in the layout
+  splitPanelInLayout(panelLayout.value, panelId, newPanel, 'vertical')
+  activePanelId.value = newPanelId
+  tabCounter++
+}
+
+const closePanel = (panelId: string): void => {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (!panel) return
+
+  // Close all tabs in the panel (this will also destroy their terminals)
+  const tabIds = [...panel.tabs.map((tab) => tab.id)] // Create a copy to avoid mutation during iteration
+
+  for (const tabId of tabIds) {
+    const terminalIndex = terminals.value.findIndex((terminal) => terminal.id === tabId)
+    if (terminalIndex !== -1) {
+      // Request terminal destruction from main process
+      window.api?.send('terminal.destroy', { terminalId: tabId })
+      terminals.value.splice(terminalIndex, 1)
+    }
+  }
+
+  // Remove panel from layout
+  const newLayout = removePanelFromLayout(panelLayout.value, panelId)
+  if (newLayout) {
+    panelLayout.value = newLayout
+    // Find a new active panel if the closed panel was active
+    if (activePanelId.value === panelId) {
+      const firstPanel = findFirstPanel(panelLayout.value)
+      if (firstPanel) {
+        activePanelId.value = firstPanel.id
+      } else {
+        // No panels left, show dashboard
+        showDashboard.value = true
+      }
+    }
+  } else {
+    // All panels closed, show dashboard
+    showDashboard.value = true
+  }
+}
+
+const findFirstPanel = (layout: PanelLayout): Panel | null => {
+  if (layout.type === 'panel') {
+    return layout.panel || null
+  }
+  if (layout.type === 'split' && layout.children) {
+    for (const child of layout.children) {
+      const found = findFirstPanel(child)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/**
+ * Move a tab between panels or reorder within the same panel.
+ * @param {string} fromPanelId - Source panel ID.
+ * @param {string} toPanelId - Destination panel ID.
+ * @param {string} tabId - Tab ID to move.
+ * @param {string} [targetTabId] - Target tab ID for reordering.
+ */
+const moveTab = (
+  fromPanelId: string,
+  toPanelId: string,
+  tabId: string,
+  targetTabId?: string
+): void => {
+  if (fromPanelId === toPanelId) {
+    reorderTabWithinPanel(fromPanelId, tabId, targetTabId)
+  } else {
+    moveTabBetweenPanels(fromPanelId, toPanelId, tabId, targetTabId)
+  }
+}
+
+/**
+ * Reorder a tab within the same panel.
+ * @param {string} panelId
+ * @param {string} tabId
+ * @param {string} [targetTabId]
+ */
+function reorderTabWithinPanel(panelId: string, tabId: string, targetTabId?: string): void {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (!panel || !targetTabId) return
+
+  const draggedIndex = panel.tabs.findIndex((tab) => tab.id === tabId)
+  const targetIndex = panel.tabs.findIndex((tab) => tab.id === targetTabId)
+
+  if (draggedIndex === -1 || targetIndex === -1) return
+
+  const [draggedTab] = panel.tabs.splice(draggedIndex, 1)
+  panel.tabs.splice(targetIndex, 0, draggedTab)
+}
+
+/**
+ * Move a tab from one panel to another.
+ * @param {string} fromPanelId
+ * @param {string} toPanelId
+ * @param {string} tabId
+ * @param {string} [targetTabId]
+ */
+function moveTabBetweenPanels(
+  fromPanelId: string,
+  toPanelId: string,
+  tabId: string,
+  targetTabId?: string
+): void {
+  const fromPanel = findPanelInLayout(panelLayout.value, fromPanelId)
+  const toPanel = findPanelInLayout(panelLayout.value, toPanelId)
+
+  if (!fromPanel || !toPanel) return
+
+  const tabIndex = fromPanel.tabs.findIndex((tab) => tab.id === tabId)
+  if (tabIndex === -1) return
+
+  const [tab] = fromPanel.tabs.splice(tabIndex, 1)
+
+  insertTabToPanel(toPanel, tab, targetTabId)
+
+  updateActiveTabsAfterMove(fromPanel, toPanel, tabId, tabIndex)
+}
+
+/**
+ * Insert tab to panel at target position or at the end.
+ * @param {Panel} panel
+ * @param {Tab} tab
+ * @param {string} [targetTabId]
+ */
+function insertTabToPanel(panel: Panel, tab: Tab, targetTabId?: string): void {
+  if (targetTabId) {
+    const targetIndex = panel.tabs.findIndex((t) => t.id === targetTabId)
+    if (targetIndex !== -1) {
+      panel.tabs.splice(targetIndex, 0, tab)
+      return
+    }
+  }
+  panel.tabs.push(tab)
+}
+
+/**
+ * Update activeTabId for panels after moving tab.
+ * @param {Panel} fromPanel
+ * @param {Panel} toPanel
+ * @param {string} tabId
+ * @param {number} tabIndex
+ */
+function updateActiveTabsAfterMove(
+  fromPanel: Panel,
+  toPanel: Panel,
+  tabId: string,
+  tabIndex: number
+): void {
+  if (fromPanel.activeTabId === tabId) {
+    if (fromPanel.tabs.length > 0) {
+      fromPanel.activeTabId = fromPanel.tabs[Math.min(tabIndex, fromPanel.tabs.length - 1)].id
+    } else {
+      fromPanel.activeTabId = ''
+    }
+  }
+  toPanel.activeTabId = tabId
+  activePanelId.value = toPanel.id
+}
+
+const getCurrentActiveTerminalId = (): string => {
+  const activePanel = findPanelInLayout(panelLayout.value, activePanelId.value)
+  return activePanel?.activeTabId || ''
+}
+
+const updateLayout = (newLayout: PanelLayout): void => {
+  // Deep clone to ensure reactivity
+  panelLayout.value = JSON.parse(JSON.stringify(newLayout))
 }
 
 const onTerminalReady = (terminalId: string): void => {
@@ -263,10 +644,23 @@ const onTerminalReady = (terminalId: string): void => {
 }
 
 const updateTabTitle = (terminalId: string, title: string): void => {
-  const tab = tabs.value.find((t) => t.id === terminalId)
-  if (tab) {
-    tab.title = title
+  // Find tab in all panels
+  const updateInLayout = (layout: PanelLayout): boolean => {
+    if (layout.type === 'panel' && layout.panel) {
+      const tab = layout.panel.tabs.find((t) => t.id === terminalId)
+      if (tab) {
+        tab.title = title
+        return true
+      }
+    }
+    if (layout.type === 'split' && layout.children) {
+      for (const child of layout.children) {
+        if (updateInLayout(child)) return true
+      }
+    }
+    return false
   }
+  updateInLayout(panelLayout.value)
 }
 
 // SSH-related methods
@@ -298,11 +692,16 @@ const refreshAllData = async (): Promise<void> => {
 }
 
 const connectToSSHProfile = (profile: SSHProfileWithConfig): void => {
+  // Find active panel or default panel
+  const activePanel =
+    findPanelInLayout(panelLayout.value, activePanelId.value) || findFirstPanel(panelLayout.value)
+
+  if (!activePanel) return
+
   const newTabId = tabCounter.toString()
   const newTab: Tab = {
     id: newTabId,
     title: profile.name,
-    active: true,
     color: profile.color,
     profileId: profile.id,
     groupId: profile.groupId
@@ -313,21 +712,20 @@ const connectToSSHProfile = (profile: SSHProfileWithConfig): void => {
     ready: false
   }
 
-  // Deactivate all existing tabs
-  tabs.value.forEach((tab) => {
-    tab.active = false
-  })
-
-  tabs.value.push(newTab)
+  // Add tab to active panel
+  activePanel.tabs.push(newTab)
+  activePanel.activeTabId = newTabId
   terminals.value.push(newTerminal)
 
-  // Switch to new terminal
-  activeTerminalId.value = newTabId
+  // Switch to terminal and close drawer
   showDashboard.value = false
   showSSHDrawer.value = false
 
   // Request new SSH terminal from main process
-  window.api?.send('terminal.createSSH', { terminalId: newTabId, profileId: profile.id })
+  window.api?.send('terminal.createSSH', {
+    terminalId: newTabId,
+    profileId: profile.id
+  })
 
   tabCounter++
 }
@@ -568,7 +966,15 @@ const loadSSHProfiles = async (): Promise<void> => {
 
 // Auto create first tab when app starts
 onMounted(() => {
-  addTab()
+  // Initialize window width tracking
+  const updateWindowWidth = (): void => {
+    windowWidth.value = window.innerWidth
+  }
+  window.addEventListener('resize', updateWindowWidth)
+
+  // Create first tab in default panel
+  addTab('panel-1')
+
   refreshAllData() // Use refreshAllData instead of loadSSHGroups
   loadSSHProfiles() // Load SSH profiles for tunnel modal
 
@@ -589,14 +995,32 @@ onMounted(() => {
     const data = args[0] as { terminalId: string; reason: string; exitCode?: number }
     console.log(`Auto closing terminal ${data.terminalId}: ${data.reason}`)
 
-    // Auto close the tab
-    closeTab(data.terminalId)
+    // Find which panel this terminal belongs to
+    const findPanelForTerminal = (layout: PanelLayout): string | null => {
+      if (layout.type === 'panel' && layout.panel) {
+        const hasTab = layout.panel.tabs.some((tab) => tab.id === data.terminalId)
+        if (hasTab) return layout.panel.id
+      }
+      if (layout.type === 'split' && layout.children) {
+        for (const child of layout.children) {
+          const found = findPanelForTerminal(child)
+          if (found) return found
+        }
+      }
+      return null
+    }
+
+    const panelId = findPanelForTerminal(panelLayout.value)
+    if (panelId) {
+      closeTab(panelId, data.terminalId)
+    }
   })
 
   // Store cleanup functions
   onUnmounted(() => {
     unsubscribeTitleChanged?.()
     unsubscribeAutoClose?.()
+    window.removeEventListener('resize', updateWindowWidth)
     // Remove global error handler
     window.removeEventListener('unhandledrejection', () => {})
   })
