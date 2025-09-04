@@ -1,9 +1,17 @@
 <template>
   <div
-    class="flex items-center h-[30px] min-h-[30px] max-h-[30px] bg-[#0D0D0D] border-b border-gray-800"
+    class="flex items-center h-[30px] min-h-[30px] max-h-[30px] border-b border-gray-800 relative bg-[#0D0D0D]"
   >
+    <!-- Active panel TabBar overlay -->
+    <div
+      class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
+      :class="{
+        'opacity-100 bg-gradient-to-r from-blue-900/20 to-transparent': isActive,
+        'opacity-0': !isActive
+      }"
+    ></div>
     <!-- Tabs Container -->
-    <div class="flex items-center flex-1 h-full max-h-[30px] min-w-0">
+    <div class="flex items-center flex-1 h-full max-h-[30px] min-w-0 relative z-10">
       <div class="flex items-center h-full max-h-[30px] overflow-hidden">
         <Tab
           v-for="tab in panel.tabs"
@@ -27,7 +35,7 @@
     </div>
 
     <!-- Panel Controls -->
-    <div class="flex items-center h-full max-h-[30px] flex-shrink-0">
+    <div class="flex items-center h-full max-h-[30px] flex-shrink-0 relative z-10">
       <!-- Split Horizontal Button -->
       <Button
         title="Split horizontal"
@@ -69,6 +77,7 @@ import type { Panel, Tab as TabType } from '../../types/panel'
 interface Props {
   panel: Panel
   windowWidth: number
+  isActive: boolean
 }
 
 const props = defineProps<Props>()

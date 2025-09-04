@@ -7,7 +7,6 @@
         :terminals="terminals"
         :window-width="windowWidth"
         :is-active="layout.panel!.id === activePanelId"
-        :show-dashboard="showDashboard && layout.panel!.id === activePanelId"
         @select-tab="selectTab"
         @close-tab="closeTab"
         @add-tab="addTab"
@@ -16,7 +15,6 @@
         @close-panel="closePanel"
         @move-tab="moveTab"
         @terminal-ready="terminalReady"
-        @open-ssh-profiles="openSSHProfiles"
         @panel-click="setActivePanel"
       />
     </div>
@@ -39,7 +37,6 @@
             :terminals="terminals"
             :window-width="windowWidth"
             :active-panel-id="activePanelId"
-            :show-dashboard="showDashboard"
             @select-tab="selectTab"
             @close-tab="closeTab"
             @add-tab="addTab"
@@ -48,7 +45,6 @@
             @close-panel="closePanel"
             @move-tab="moveTab"
             @terminal-ready="terminalReady"
-            @open-ssh-profiles="openSSHProfiles"
             @set-active-panel="setActivePanel"
             @layout-updated="layoutUpdated"
           />
@@ -68,7 +64,6 @@ interface Props {
   terminals: TerminalInstance[]
   windowWidth: number
   activePanelId: string
-  showDashboard: boolean
 }
 
 const props = defineProps<Props>()
@@ -82,7 +77,6 @@ const emit = defineEmits<{
   closePanel: [panelId: string]
   moveTab: [fromPanelId: string, toPanelId: string, tabId: string, targetTabId?: string]
   terminalReady: [terminalId: string]
-  openSSHProfiles: []
   setActivePanel: [panelId: string]
   layoutUpdated: [layout: PanelLayout]
 }>()
@@ -128,10 +122,6 @@ const moveTab = (
 
 const terminalReady = (terminalId: string): void => {
   emit('terminalReady', terminalId)
-}
-
-const openSSHProfiles = (): void => {
-  emit('openSSHProfiles')
 }
 
 const setActivePanel = (panelId: string): void => {

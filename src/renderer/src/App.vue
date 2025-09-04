@@ -5,6 +5,7 @@
       :is-dashboard-active="showDashboard"
       :sync-status-refresh="syncStatusRefreshCounter"
       @open-dashboard="openDashboard"
+      @open-workspace="openWorkspace"
       @toggle-ssh-drawer="toggleSSHDrawer"
       @toggle-saved-commands="toggleSavedCommands"
       @toggle-ssh-tunnels="toggleSSHTunnels"
@@ -12,12 +13,22 @@
     />
 
     <div class="flex-grow overflow-hidden">
+      <!-- Dashboard Page -->
+      <Dashboard
+        v-show="showDashboard"
+        class="h-full"
+        @create-terminal="createTerminalFromDashboard"
+        @open-ssh-profiles="toggleSSHDrawer"
+      />
+
+      <!-- Workspace with Panels -->
       <PanelManager
+        v-show="!showDashboard"
+        class="h-full"
         :layout="panelLayout"
         :terminals="terminals"
         :window-width="windowWidth"
         :active-panel-id="activePanelId"
-        :show-dashboard="showDashboard"
         @select-tab="selectTab"
         @close-tab="closeTab"
         @add-tab="addTab"
@@ -113,6 +124,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Wifi } from 'lucide-vue-next'
 import TopBar from './components/TopBar.vue'
+import Dashboard from './components/Dashboard.vue'
 import PanelManager from './components/PanelManager.vue'
 import SSHProfileDrawer from './components/SSHProfileDrawer.vue'
 import SSHProfileModal from './components/SSHProfileModal.vue'
@@ -263,6 +275,19 @@ const splitPanelInLayout = (
 
 const openDashboard = (): void => {
   showDashboard.value = true
+}
+
+const openWorkspace = (): void => {
+  showDashboard.value = false
+}
+
+const createTerminalFromDashboard = (): void => {
+  // Switch to workspace and create a new terminal in the first available panel
+  showDashboard.value = false
+  const firstPanel = findFirstPanel(panelLayout.value)
+  if (firstPanel) {
+    addTab(firstPanel.id)
+  }
 }
 
 const setActivePanel = (panelId: string): void => {

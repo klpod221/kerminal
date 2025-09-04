@@ -8,10 +8,24 @@
       :class="{ 'bg-gray-800': isDashboardActive }"
       @click="openDashboard"
     >
-      <LayoutDashboard
+      <img
+        src="../assets/images/logo_500.png"
+        alt="Dashboard"
+        class="w-4 h-4 transition-opacity duration-200"
+        :class="isDashboardActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'"
+      />
+    </div>
+
+    <!-- Workspace Icon -->
+    <div
+      class="no-drag flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      :class="{ 'bg-gray-800': !isDashboardActive }"
+      @click="openWorkspace"
+    >
+      <LayoutGrid
         :size="16"
         class="transition-colors duration-200"
-        :class="isDashboardActive ? 'text-blue-400' : 'text-gray-400 hover:text-white'"
+        :class="!isDashboardActive ? 'text-blue-400' : 'text-gray-400 hover:text-white'"
       />
     </div>
 
@@ -20,7 +34,7 @@
       class="no-drag flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
       @click="toggleSSHDrawer"
     >
-      <PanelLeft :size="16" class="transition-colors duration-200 text-gray-400 hover:text-white" />
+      <Server :size="16" class="transition-colors duration-200 text-gray-400 hover:text-white" />
     </div>
 
     <!-- Draggable space - Always visible with flex-1 -->
@@ -73,12 +87,12 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import {
-  LayoutDashboard,
+  LayoutGrid,
   X,
   Minus,
   Minimize2,
   Maximize2,
-  PanelLeft,
+  Server,
   Bookmark,
   Cloud,
   Wifi
@@ -96,6 +110,7 @@ const { isDashboardActive = false, syncStatusRefresh = 0 } = defineProps<Props>(
 
 const emit = defineEmits<{
   'open-dashboard': []
+  'open-workspace': []
   'toggle-ssh-drawer': []
   'toggle-saved-commands': []
   'toggle-ssh-tunnels': []
@@ -195,6 +210,10 @@ watch(
 
 const openDashboard = (): void => {
   emit('open-dashboard')
+}
+
+const openWorkspace = (): void => {
+  emit('open-workspace')
 }
 
 const toggleSSHDrawer = (): void => {

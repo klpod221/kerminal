@@ -1,9 +1,27 @@
 <template>
-  <div class="flex flex-col h-full bg-[#0D0D0D]" :class="{ 'border border-blue-500': isActive }">
+  <div class="flex flex-col h-full cursor-pointer relative bg-[#0D0D0D]" @click="handlePanelClick">
+    <!-- Active panel background overlay -->
+    <div
+      class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
+      :class="{
+        'opacity-100 bg-gradient-to-br from-[#141a20] to-[#0D0D0D]': isActive,
+        'opacity-0 bg-[#0D0D0D]': !isActive
+      }"
+    ></div>
+    <!-- Active panel blue tint -->
+    <div
+      class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
+      :class="{
+        'opacity-100 bg-blue-500/5': isActive,
+        'opacity-0': !isActive
+      }"
+    ></div>
     <!-- Tab Bar -->
     <TabBar
+      class="relative z-10"
       :panel="panel"
       :window-width="windowWidth"
+      :is-active="isActive"
       @select-tab="selectTab"
       @close-tab="closeTab"
       @add-tab="addTab"
@@ -14,17 +32,9 @@
     />
 
     <!-- Panel Content -->
-    <div class="flex-1 overflow-hidden">
-      <!-- Dashboard -->
-      <Dashboard
-        v-if="showDashboard"
-        @create-terminal="() => addTab(panel.id)"
-        @open-ssh-profiles="openSSHProfiles"
-      />
-
+    <div class="flex-1 overflow-hidden relative z-10">
       <!-- Terminal Manager -->
       <TerminalManager
-        v-else
         :terminals="activeTerminals"
         :active-terminal-id="panel.activeTabId"
         @terminal-ready="onTerminalReady"
@@ -36,7 +46,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import TabBar from './ui/TabBar.vue'
-import Dashboard from './Dashboard.vue'
 import TerminalManager from './TerminalManager.vue'
 import type { Panel, TerminalInstance } from '../types/panel'
 
@@ -45,7 +54,6 @@ interface Props {
   terminals: TerminalInstance[]
   windowWidth: number
   isActive: boolean
-  showDashboard: boolean
 }
 
 const props = defineProps<Props>()
@@ -59,7 +67,6 @@ const emit = defineEmits<{
   closePanel: [panelId: string]
   moveTab: [fromPanelId: string, toPanelId: string, tabId: string, targetTabId?: string]
   terminalReady: [terminalId: string]
-  openSSHProfiles: []
   panelClick: [panelId: string]
 }>()
 
@@ -108,7 +115,10 @@ const onTerminalReady = (terminalId: string): void => {
   emit('terminalReady', terminalId)
 }
 
-const openSSHProfiles = (): void => {
-  emit('openSSHProfiles')
+const handlePanelClick = (): void => {
+  // Only activate panel, don't prevent event propagation
+  // This allows clicks on panel background to activate the panel
+  // while still allowing normal interactions with child elements
+  emit('panelClick', props.panel.id)
 }
 </script>
