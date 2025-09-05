@@ -38,26 +38,27 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libfuse2 squashfs-tools patchelf
 
+
       - name: Install dependencies
-        run: npm install
+        run: yarn install --frozen-lockfile
 
       - name: Build for macOS
         if: matrix.os == 'macos-latest'
         run: |
-          npm run build
-          npx --no-install electron-builder --mac
+          yarn build
+          yarn run electron-builder --mac
 
       - name: Build for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          npm run build
-          npx --no-install electron-builder --linux
+          yarn build
+          yarn run electron-builder --linux
 
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
         run: |
-          npm run build
-          npx --no-install electron-builder --win
+          yarn build
+          yarn run electron-builder --win
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
