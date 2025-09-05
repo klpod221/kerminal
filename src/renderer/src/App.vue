@@ -567,8 +567,28 @@ const findFirstPanel = (layout: PanelLayout): Panel | null => {
 }
 
 /**
+ * Find panel containing a specific tab.
+ * @param {PanelLayout} layout - The layout to search in.
+ * @param {string} tabId - The tab ID to find.
+ * @returns {Panel | null} The panel containing the tab or null.
+ */
+const findPanelContainingTab = (layout: PanelLayout, tabId: string): Panel | null => {
+  if (layout.type === 'panel' && layout.panel) {
+    const hasTab = layout.panel.tabs.some((tab) => tab.id === tabId)
+    if (hasTab) return layout.panel
+  }
+  if (layout.type === 'split' && layout.children) {
+    for (const child of layout.children) {
+      const found = findPanelContainingTab(child, tabId)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/**
  * Move a tab between panels or reorder within the same panel.
- * @param {string} fromPanelId - Source panel ID.
+ * @param {string} fromPanelId - Source panel ID (can be empty to auto-detect).
  * @param {string} toPanelId - Destination panel ID.
  * @param {string} tabId - Tab ID to move.
  * @param {string} [targetTabId] - Target tab ID for reordering.
@@ -579,10 +599,21 @@ const moveTab = (
   tabId: string,
   targetTabId?: string
 ): void => {
-  if (fromPanelId === toPanelId) {
-    reorderTabWithinPanel(fromPanelId, tabId, targetTabId)
+  // Auto-detect source panel if not provided
+  let actualFromPanelId = fromPanelId
+  if (!actualFromPanelId) {
+    actualFromPanelId = findPanelContainingTab(panelLayout.value, tabId)?.id || ''
+  }
+
+  if (!actualFromPanelId) {
+    console.warn(`Cannot find source panel for tab ${tabId}`)
+    return
+  }
+
+  if (actualFromPanelId === toPanelId) {
+    reorderTabWithinPanel(actualFromPanelId, tabId, targetTabId)
   } else {
-    moveTabBetweenPanels(fromPanelId, toPanelId, tabId, targetTabId)
+    moveTabBetweenPanels(actualFromPanelId, toPanelId, tabId, targetTabId)
   }
 }
 

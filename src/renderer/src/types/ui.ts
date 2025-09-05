@@ -290,6 +290,7 @@ export interface TabProps {
   isConnecting?: boolean
   minWidth: number
   maxWidth: number
+  panelId: string
 }
 
 /**

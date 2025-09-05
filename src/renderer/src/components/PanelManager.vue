@@ -170,12 +170,14 @@ const onPaneResize = debounce(handlePaneResize, 150)
   opacity: 1;
 }
 
-/* Adjust splitter size */
+/* Adjust splitter size and cursor */
 :deep(.splitpanes--vertical > .splitpanes__splitter) {
   width: 4px;
+  cursor: col-resize;
 }
 
 :deep(.splitpanes--horizontal > .splitpanes__splitter) {
   height: 4px;
+  cursor: row-resize;
 }
 </style>

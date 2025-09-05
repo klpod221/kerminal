@@ -2,7 +2,7 @@
   "name": "kerminal",
   "productName": "Kerminal",
   "description": "Modern terminal app with SSH Profile Support",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "main": "./out/main/index.js",
   "author": "klpod221",
   "homepage": "https://github.com/klpod221/kerminal",

@@ -3,12 +3,14 @@
     class="no-drag flex items-center px-2 h-full max-h-[30px] border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden"
     :class="{
       'bg-[#171717] border-b-2 border-b-blue-500': isActive,
-      'hover:bg-gray-800': !isActive
+      'hover:bg-gray-800': !isActive,
+      'opacity-50': isDragging
     }"
     :style="{ minWidth: minWidth + 'px', maxWidth: maxWidth + 'px' }"
     draggable="true"
     @click="$emit('select')"
     @dragstart="onDragStart"
+    @dragend="onDragEnd"
     @dragover="onDragOver"
     @drop="onDrop"
   >
@@ -47,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Terminal, X } from 'lucide-vue-next'
 import type { TabProps, TabEmits } from '../../types/ui'
 import type { Tab } from '../../types/panel'
@@ -57,12 +60,25 @@ const props = withDefaults(defineProps<TabProps>(), {
 
 const emit = defineEmits<TabEmits>()
 
+// Drag state
+const isDragging = ref(false)
+
 const onDragStart = (event: DragEvent): void => {
+  isDragging.value = true
   if (event.dataTransfer) {
-    event.dataTransfer.setData('application/json', JSON.stringify(props.tab))
+    // Store both tab data and source panel info
+    const dragData = {
+      tab: props.tab,
+      sourcePanelId: props.panelId
+    }
+    event.dataTransfer.setData('application/json', JSON.stringify(dragData))
     event.dataTransfer.effectAllowed = 'move'
   }
   emit('dragStart', props.tab)
+}
+
+const onDragEnd = (): void => {
+  isDragging.value = false
 }
 
 const onDragOver = (event: DragEvent): void => {
@@ -77,14 +93,25 @@ const onDrop = (event: DragEvent): void => {
   if (event.dataTransfer) {
     const draggedTabData = event.dataTransfer.getData('application/json')
     if (draggedTabData) {
-      const draggedTab = JSON.parse(draggedTabData) as Tab
-      emit('drop', draggedTab, props.tab)
+      try {
+        const dragData = JSON.parse(draggedTabData)
+        const draggedTab = dragData.tab as Tab
+        emit('drop', draggedTab, props.tab)
+      } catch (error) {
+        console.error('Error parsing dragged tab data:', error)
+      }
     }
   }
 }
 </script>
 
 <style scoped>
+/* Drag state styles */
+.group.opacity-50 {
+  transform: rotate(2deg) scale(0.98);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
 /* Add a subtle shimmer effect for new tabs */
 @keyframes shimmer {
   0% {
