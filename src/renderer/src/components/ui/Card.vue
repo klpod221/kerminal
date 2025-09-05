@@ -147,3 +147,61 @@ function handleClick(event: MouseEvent): void {
   emit('click', event)
 }
 </script>
+
+<style scoped>
+/* Card entrance animation */
+.card-enter-active {
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.card-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+/* Enhanced hover effects */
+.cursor-pointer:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Icon animation on hover */
+.rounded-lg.p-3:hover {
+  transform: scale(1.05);
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Ripple effect on click */
+.cursor-pointer {
+  position: relative;
+  overflow: hidden;
+}
+
+.cursor-pointer::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+  transform: translate(-50%, -50%);
+  transition:
+    width 0.3s,
+    height 0.3s;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cursor-pointer:active::before {
+  width: 200px;
+  height: 200px;
+}
+
+/* Content z-index to stay above ripple */
+.cursor-pointer > * {
+  position: relative;
+  z-index: 2;
+}
+</style>

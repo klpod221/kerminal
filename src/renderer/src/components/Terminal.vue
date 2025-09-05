@@ -1,5 +1,5 @@
 <template>
-  <div ref="terminalRef" class="w-full h-full bg-[#171717]"></div>
+  <div ref="terminalRef" class="w-full h-full bg-[#171717] terminal-container"></div>
 </template>
 
 <script setup lang="ts">
@@ -195,3 +195,36 @@ onBeforeUnmount(() => {
   term?.dispose()
 })
 </script>
+
+<style scoped>
+.terminal-container {
+  animation: terminalFadeIn 0.5s ease-out;
+}
+
+@keyframes terminalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Terminal cursor blink enhancement */
+:deep(.xterm-cursor) {
+  animation: terminalCursor 1s infinite;
+}
+
+@keyframes terminalCursor {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0;
+  }
+}
+</style>

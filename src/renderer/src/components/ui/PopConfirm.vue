@@ -65,7 +65,7 @@
 
     <!-- Backdrop -->
     <Teleport to="body">
-      <div v-if="visible" class="fixed inset-0 z-40" @click="handleBackdropClick" />
+      <div v-if="visible" class="fixed inset-0 z-50" @click="handleBackdropClick" />
     </Teleport>
   </div>
 </template>

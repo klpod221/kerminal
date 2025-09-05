@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full bg-[#171717] text-white p-4 overflow-y-auto">
+  <div class="h-full bg-[#171717] text-white p-4 overflow-y-auto dashboard-container">
     <div class="max-w-6xl mx-auto animate-fade-in">
       <div class="mt-4 mb-12">
         <img :src="Logo" alt="Kerminal Logo" class="h-32 mx-auto mb-4" />
@@ -698,3 +698,82 @@ onUnmounted(() => {
   stopTimers()
 })
 </script>
+
+<style scoped>
+.dashboard-container {
+  animation: dashboardFadeIn 0.8s ease-out;
+}
+
+@keyframes dashboardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Card hover animations */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Loading spinner enhancement */
+.animate-spin {
+  animation: enhancedSpin 1s linear infinite;
+}
+
+@keyframes enhancedSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Stagger animation for grid items */
+.grid > *:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.grid > *:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.grid > *:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.grid > *:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+.grid > *:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+.grid > *:nth-child(6) {
+  animation-delay: 0.6s;
+}
+
+.grid > * {
+  animation: slideInUp 0.6s ease-out forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+@keyframes slideInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

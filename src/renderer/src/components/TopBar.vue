@@ -1,10 +1,10 @@
 <template>
   <div
-    class="title-bar flex items-center h-[30px] min-h-[30px] max-h-[30px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-50"
+    class="flex items-center h-[30px] min-h-[30px] max-h-[30px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-40 topbar-container"
   >
     <!-- Dashboard Icon -->
     <div
-      class="no-drag flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
       :class="{ 'bg-gray-800': isDashboardActive }"
       @click="openDashboard"
     >
@@ -18,7 +18,7 @@
 
     <!-- Workspace Icon -->
     <div
-      class="no-drag flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
       :class="{ 'bg-gray-800': !isDashboardActive }"
       @click="openWorkspace"
     >
@@ -31,13 +31,12 @@
 
     <!-- SSH Profiles Icon -->
     <div
-      class="no-drag flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
       @click="toggleSSHDrawer"
     >
       <Server :size="16" class="transition-colors duration-200 text-gray-400 hover:text-white" />
     </div>
 
-    <!-- Draggable space - Always visible with flex-1 -->
     <div class="draggable flex-1 h-full"></div>
 
     <!-- Window Controls -->
@@ -248,15 +247,45 @@ const closeWindow = (): void => {
 </script>
 
 <style scoped>
-.title-bar {
-  -webkit-app-region: no-drag;
+/* TopBar slide down animation */
+.topbar-container {
+  animation: topbarSlideDown 0.5s ease-out;
 }
 
-.draggable {
-  -webkit-app-region: drag;
+@keyframes topbarSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.no-drag {
-  -webkit-app-region: no-drag;
+/* Icon hover effects */
+.flex.items-center.px-3:hover {
+  background-color: rgba(55, 65, 81, 0.8);
+}
+
+/* Logo pulse effect */
+img:hover {
+  animation: logoPulse 0.6s ease-in-out;
+}
+
+@keyframes logoPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+/* Button hover enhancement */
+:deep(.btn):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 </style>

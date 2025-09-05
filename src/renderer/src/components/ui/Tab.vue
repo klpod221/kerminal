@@ -1,6 +1,6 @@
 <template>
   <div
-    class="no-drag flex items-center px-2 h-full max-h-[30px] border-r border-gray-800 cursor-pointer group transition-all duration-200 flex-1"
+    class="no-drag flex items-center px-2 h-full max-h-[30px] border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden"
     :class="{
       'bg-[#171717] border-b-2 border-b-blue-500': isActive,
       'hover:bg-gray-800': !isActive
@@ -32,7 +32,7 @@
     <X
       v-if="minWidth >= 100"
       :size="14"
-      class="text-gray-500 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+      class="text-gray-500 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out flex-shrink-0 transform hover:scale-110"
       @click.stop="$emit('close')"
     />
   </div>
@@ -84,3 +84,53 @@ const onDrop = (event: DragEvent): void => {
   }
 }
 </script>
+
+<style scoped>
+/* Add a subtle shimmer effect for new tabs */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.group::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.group:hover::before {
+  left: 100%;
+}
+
+/* Enhanced active tab indicator */
+.group.bg-\[#171717\]::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #06b6d4, #3b82f6);
+  background-size: 200% 100%;
+  animation: gradientShift 2s ease-in-out infinite;
+}
+
+@keyframes gradientShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+</style>

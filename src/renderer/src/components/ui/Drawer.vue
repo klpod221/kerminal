@@ -9,7 +9,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-if="visible" class="fixed inset-0 bg-black/50 z-40" @click="handleOverlayClick"></div>
+      <div v-if="visible" class="fixed inset-0 bg-black/50 z-50" @click="handleOverlayClick"></div>
     </Transition>
 
     <!-- Drawer -->
@@ -23,12 +23,12 @@
     >
       <div
         v-if="visible"
-        class="fixed top-0 bottom-0 z-50 bg-[#1a1a1a] border-gray-700 flex flex-col"
+        class="no-drag fixed top-0 bottom-0 z-50 bg-[#1a1a1a] border-gray-700 flex flex-col"
         :class="[position === 'left' ? 'left-0 border-r' : 'right-0 border-l', widthClass]"
       >
         <!-- Header -->
         <div
-          class="no-drag flex items-center justify-between px-4 py-2 border-b border-gray-700 flex-shrink-0"
+          class="flex items-center justify-between px-4 py-2 border-b border-gray-700 flex-shrink-0"
         >
           <div class="flex items-center space-x-3">
             <div

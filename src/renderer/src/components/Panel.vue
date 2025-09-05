@@ -122,3 +122,35 @@ const handlePanelClick = (): void => {
   emit('panelClick', props.panel.id)
 }
 </script>
+
+<style scoped>
+/* Panel entrance animation */
+.panel-enter-active {
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.panel-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.panel-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(-10px);
+}
+
+.panel-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+
+/* Active panel glow effect */
+.bg-\[#0D0D0D\]:has(.opacity-100) {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+/* Smooth background transitions */
+.absolute.inset-0 {
+  transition: all 0.3s ease;
+}
+</style>
