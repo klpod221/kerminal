@@ -21,10 +21,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Install Windows dependencies
-        if: matrix.os == 'windows-latest'
-        run: npm install --global --production windows-build-tools
-
       - name: Install Windows SDK
         if: matrix.os == 'windows-latest'
         uses: microsoft/setup-msbuild@v2
