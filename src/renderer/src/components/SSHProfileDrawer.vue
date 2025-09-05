@@ -22,7 +22,7 @@
 
       <!-- Filter Toggle -->
       <div class="flex items-center justify-between">
-        <Checkbox v-model="showFavoritesOnly" label="Favorites only" />
+        <Checkbox v-model="showFavoritesOnly" label="Favorites only" :helper="false" />
 
         <Button
           title="Refresh profiles"
@@ -73,7 +73,7 @@
         <!-- Grouped Profiles -->
         <div v-for="group in filteredGroups" :key="group.id" class="space-y-2">
           <!-- Group Header -->
-          <div class="flex items-center justify-between pt-2 group">
+          <div class="flex items-center justify-between group">
             <div class="flex items-center space-x-2">
               <div
                 class="w-3 h-3 rounded-full"

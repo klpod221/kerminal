@@ -1,8 +1,7 @@
 <template>
   <button
     :class="[
-      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 cursor-pointer',
-      'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
+      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none cursor-pointer',
       'disabled:opacity-50 disabled:cursor-not-allowed',
       'active:scale-95 active:transform',
       sizeClasses,
@@ -47,20 +46,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Component } from 'vue'
+import type { ButtonProps } from '../../types/ui'
 
-interface Props {
-  variant?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger' | 'ghost' | 'outline'
-  size?: 'sm' | 'md' | 'lg'
-  icon?: Component
-  iconRight?: boolean
-  text?: string
-  loading?: boolean
-  title?: string
-  disabled?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<ButtonProps>(), {
   variant: 'primary',
   size: 'md',
   iconRight: false,

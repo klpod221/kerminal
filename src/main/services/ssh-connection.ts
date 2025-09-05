@@ -52,6 +52,9 @@ export class SSHConnection {
    */
   async connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      // Notify connecting state
+      this.safeSend('terminal.sshConnecting', { terminalId: this.terminalId })
+
       const connectConfig: ConnectConfig = {
         host: this.config.host,
         port: this.config.port || 22,
@@ -66,13 +69,19 @@ export class SSHConnection {
         try {
           connectConfig.privateKey = fs.readFileSync(this.config.keyPath)
         } catch (error) {
+          this.safeSend('terminal.sshError', {
+            terminalId: this.terminalId,
+            error: `Failed to read SSH key: ${error}`
+          })
           reject(new Error(`Failed to read SSH key: ${error}`))
           return
         }
       } else if (this.config.password) {
         connectConfig.password = this.config.password
       } else {
-        reject(new Error('No authentication method provided'))
+        const errorMsg = 'No authentication method provided'
+        this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: errorMsg })
+        reject(new Error(errorMsg))
         return
       }
 
@@ -80,6 +89,7 @@ export class SSHConnection {
       this.client.once('ready', () => {
         console.log(`SSH connection ready for terminal ${this.terminalId}`)
         this.isConnected = true
+        this.safeSend('terminal.sshConnected', { terminalId: this.terminalId })
         this.startShell()
         resolve()
       })

@@ -72,27 +72,9 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import type { PopConfirmProps } from '../../types/ui'
 
-interface Props {
-  title?: string
-  content: string
-  okText?: string
-  cancelText?: string
-  okType?: 'primary' | 'danger'
-  trigger?: 'click' | 'hover'
-  placement?:
-    | 'top'
-    | 'bottom'
-    | 'left'
-    | 'right'
-    | 'topLeft'
-    | 'topRight'
-    | 'bottomLeft'
-    | 'bottomRight'
-  disabled?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<PopConfirmProps>(), {
   okText: 'OK',
   cancelText: 'Cancel',
   okType: 'primary',

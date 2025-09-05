@@ -1,4 +1,4 @@
-import { ipcMain, shell, clipboard, dialog } from 'electron'
+import { ipcMain, shell, clipboard, dialog, Menu, BrowserWindow } from 'electron'
 import { TerminalManager } from './services/terminal-manager'
 import { WindowManager } from './services/window-manager'
 import { SystemInfoService } from './services/system-info'
@@ -192,7 +192,41 @@ function setupUtilityHandlers(): void {
 
   // Handle copy to clipboard
   ipcMain.on('copy-to-clipboard', (_event, text) => {
-    clipboard.writeText(text)
+    try {
+      if (text && typeof text === 'string') {
+        clipboard.writeText(text)
+      }
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error)
+    }
+  })
+
+  // Handle get clipboard text
+  ipcMain.handle('get-clipboard-text', async () => {
+    try {
+      return clipboard.readText()
+    } catch (error) {
+      console.error('Failed to read from clipboard:', error)
+      return ''
+    }
+  })
+
+  // Handle context menu
+  ipcMain.on('show-context-menu', (event, { items }) => {
+    const menuTemplate = (items as import('./types/main').MenuItem[]).map((item) => ({
+      label: item.label,
+      enabled: item.enabled,
+      click: () => {
+        // Send click event back to renderer
+        event.reply('context-menu-click', item.label)
+      }
+    }))
+
+    const menu = Menu.buildFromTemplate(menuTemplate)
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) {
+      menu.popup({ window })
+    }
   })
 
   // Handle file dialog for SSH key selection

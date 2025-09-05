@@ -19,6 +19,7 @@
             :key="tab.id"
             :tab="tab"
             :is-active="tab.id === panel.activeTabId"
+            :is-connecting="getTerminalConnectingState(tab.id)"
             :min-width="tabMinWidth"
             :max-width="tabMaxWidth"
             @select="selectTab(tab.id)"
@@ -81,25 +82,14 @@ import { computed } from 'vue'
 import { Plus, SplitSquareHorizontal, SplitSquareVertical, X } from 'lucide-vue-next'
 import Tab from './Tab.vue'
 import Button from './Button.vue'
-import type { Panel, Tab as TabType } from '../../types/panel'
+import type { TabBarProps, TabBarEmits } from '../../types/components'
+import type { Tab as TabType } from '../../types/panel'
 
-interface Props {
-  panel: Panel
-  windowWidth: number
-  isActive: boolean
-}
+const props = withDefaults(defineProps<TabBarProps>(), {
+  terminals: () => []
+})
 
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  selectTab: [panelId: string, tabId: string]
-  closeTab: [panelId: string, tabId: string]
-  addTab: [panelId: string]
-  splitHorizontal: [panelId: string]
-  splitVertical: [panelId: string]
-  closePanel: [panelId: string]
-  moveTab: [fromPanelId: string, toPanelId: string, tabId: string, targetTabId?: string]
-}>()
+const emit = defineEmits<TabBarEmits>()
 
 // Computed properties for responsive tab sizing
 const tabMinWidth = computed(() => {
@@ -126,6 +116,11 @@ const tabMaxWidth = computed(() => {
   if (tabCount <= 4) return 180
   return 200
 })
+
+const getTerminalConnectingState = (tabId: string): boolean => {
+  const terminal = props.terminals.find((t) => t.id === tabId)
+  return terminal?.isSSHConnecting || false
+}
 
 const selectTab = (tabId: string): void => {
   emit('selectTab', props.panel.id, tabId)

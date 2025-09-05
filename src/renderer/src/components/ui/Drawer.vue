@@ -9,7 +9,11 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-if="visible" class="fixed inset-0 bg-black/50 z-50" @click="handleOverlayClick"></div>
+      <div
+        v-if="visible"
+        class="fixed inset-0 bg-black/50 z-40 top-[30px] backdrop-blur-xs"
+        @click="handleOverlayClick"
+      ></div>
     </Transition>
 
     <!-- Drawer -->
@@ -23,7 +27,7 @@
     >
       <div
         v-if="visible"
-        class="no-drag fixed top-0 bottom-0 z-50 bg-[#1a1a1a] border-gray-700 flex flex-col"
+        class="no-drag fixed top-[30px] bottom-0 z-50 bg-[#1a1a1a] border-gray-700 flex flex-col"
         :class="[position === 'left' ? 'left-0 border-r' : 'right-0 border-l', widthClass]"
       >
         <!-- Header -->
@@ -61,20 +65,9 @@
 import { computed, watch } from 'vue'
 import { X } from 'lucide-vue-next'
 import Button from './Button.vue'
-import type { Component } from 'vue'
+import type { DrawerProps } from '../../types/ui'
 
-interface Props {
-  visible?: boolean
-  title?: string
-  position?: 'left' | 'right'
-  width?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
-  icon?: Component
-  iconBackground?: string
-  iconColor?: string
-  closeOnOverlay?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<DrawerProps>(), {
   visible: false,
   title: '',
   position: 'left',

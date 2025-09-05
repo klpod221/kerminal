@@ -2,7 +2,7 @@
   <div class="h-screen w-screen flex flex-col bg-[#0D0D0D] overflow-hidden">
     <TopBar
       class="flex-shrink-0"
-      :is-dashboard-active="showDashboard"
+      :top-bar-state="topBarState"
       :sync-status-refresh="syncStatusRefreshCounter"
       @open-dashboard="openDashboard"
       @open-workspace="openWorkspace"
@@ -15,7 +15,7 @@
     <div class="flex-grow overflow-hidden">
       <!-- Dashboard Page -->
       <Dashboard
-        v-show="showDashboard"
+        v-show="topBarState.isDashboardActive.value"
         class="h-full"
         @create-terminal="createTerminalFromDashboard"
         @open-ssh-profiles="toggleSSHDrawer"
@@ -23,7 +23,7 @@
 
       <!-- Workspace with Panels -->
       <PanelManager
-        v-show="!showDashboard"
+        v-show="topBarState.isWorkspaceActive.value"
         class="h-full"
         :layout="panelLayout"
         :terminals="terminals"
@@ -46,7 +46,8 @@
     <!-- SSH Profiles Drawer -->
     <SSHProfileDrawer
       ref="sshProfileDrawerRef"
-      v-model:visible="showSSHDrawer"
+      :visible="topBarState.isSSHDrawerActive.value"
+      @update:visible="handleSSHDrawerVisibilityChange"
       @connect-profile="connectToSSHProfile"
       @edit-profile="editSSHProfile"
       @create-profile="createSSHProfile"
@@ -79,13 +80,14 @@
 
     <!-- Saved Commands Drawer -->
     <SavedCommandDrawer
-      v-model:visible="showSavedCommands"
+      :visible="topBarState.isSavedCommandsActive.value"
       :active-terminal-id="getCurrentActiveTerminalId()"
+      @update:visible="handleSavedCommandsVisibilityChange"
     />
 
     <!-- SSH Tunnel Manager Modal -->
     <Modal
-      :visible="showSSHTunnels"
+      :visible="topBarState.isSSHTunnelsActive.value"
       title="SSH Tunnels"
       :icon="Wifi"
       icon-background="bg-purple-500/20"
@@ -103,7 +105,7 @@
 
     <!-- Sync Settings Modal -->
     <SyncSettingsModal
-      :visible="showSyncSettings"
+      :visible="topBarState.isSyncSettingsActive.value"
       @close="closeSyncSettings"
       @config-updated="onSyncConfigUpdated"
     />
@@ -134,6 +136,7 @@ import SyncSettingsModal from './components/SyncSettingsModal.vue'
 import Modal from './components/ui/Modal.vue'
 import SSHTunnelManager from './components/SSHTunnelManager.vue'
 import SSHTunnelModal from './components/SSHTunnelModal.vue'
+import { useTopBarState } from './composables/useTopBarState'
 import type {
   SSHProfileWithConfig,
   SSHGroup,
@@ -146,13 +149,12 @@ import type { SyncConfig } from './types/sync'
 import type { PanelLayout, Panel, Tab, TerminalInstance } from './types/panel'
 import { message } from './utils/message'
 
-const showDashboard = ref(false)
-const showSSHDrawer = ref(false)
+// Initialize TopBar state management
+const topBarState = useTopBarState()
+
+// Modal states - using topBarState for main navigation
 const showSSHProfileModal = ref(false)
 const showSSHGroupModal = ref(false)
-const showSavedCommands = ref(false)
-const showSyncSettings = ref(false)
-const showSSHTunnels = ref(false)
 const showSSHTunnelModal = ref(false)
 const selectedTunnel = ref<SSHTunnelWithProfile | null>(null)
 const sshProfiles = ref<SSHProfile[]>([])
@@ -274,16 +276,16 @@ const splitPanelInLayout = (
 }
 
 const openDashboard = (): void => {
-  showDashboard.value = true
+  topBarState.setPage('dashboard')
 }
 
 const openWorkspace = (): void => {
-  showDashboard.value = false
+  topBarState.setPage('workspace')
 }
 
 const createTerminalFromDashboard = (): void => {
   // Switch to workspace and create a new terminal in the first available panel
-  showDashboard.value = false
+  topBarState.setPage('workspace')
   const firstPanel = findFirstPanel(panelLayout.value)
   if (firstPanel) {
     addTab(firstPanel.id)
@@ -299,7 +301,7 @@ const selectTab = (panelId: string, tabId: string): void => {
   if (panel) {
     panel.activeTabId = tabId
     activePanelId.value = panelId
-    showDashboard.value = false
+    topBarState.setPage('workspace')
   }
 }
 
@@ -325,9 +327,9 @@ const addTab = (panelId: string): void => {
   // Add terminal instance
   terminals.value.push(newTerminal)
 
-  // Set active panel and hide dashboard
+  // Set active panel and switch to workspace
   activePanelId.value = panelId
-  showDashboard.value = false
+  topBarState.setPage('workspace')
 
   // Request new terminal from main process
   window.api?.send('terminal.create', { terminalId: newTabId })
@@ -381,12 +383,12 @@ const autoClosePanel = (panelId: string): void => {
         activePanelId.value = firstPanel.id
       } else {
         // No panels left, show dashboard
-        showDashboard.value = true
+        topBarState.setPage('dashboard')
       }
     }
   } else {
     // All panels closed, show dashboard
-    showDashboard.value = true
+    topBarState.setPage('dashboard')
   }
 }
 
@@ -521,12 +523,12 @@ const closePanel = (panelId: string): void => {
         activePanelId.value = firstPanel.id
       } else {
         // No panels left, show dashboard
-        showDashboard.value = true
+        topBarState.setPage('dashboard')
       }
     }
   } else {
     // All panels closed, show dashboard
-    showDashboard.value = true
+    topBarState.setPage('dashboard')
   }
 }
 
@@ -690,7 +692,51 @@ const updateTabTitle = (terminalId: string, title: string): void => {
 
 // SSH-related methods
 const toggleSSHDrawer = (): void => {
-  showSSHDrawer.value = !showSSHDrawer.value
+  topBarState.toggleModal('ssh-drawer')
+}
+
+/**
+ * Generic handler for modal/drawer visibility changes
+ */
+const handleModalVisibilityChange = (visible: boolean): void => {
+  if (!visible) {
+    topBarState.closeModal()
+  }
+}
+
+const handleSSHDrawerVisibilityChange = handleModalVisibilityChange
+
+// Saved Commands methods
+const toggleSavedCommands = (): void => {
+  topBarState.toggleModal('saved-commands')
+}
+
+const handleSavedCommandsVisibilityChange = handleModalVisibilityChange
+
+// SSH Tunnels methods
+const toggleSSHTunnels = (): void => {
+  topBarState.toggleModal('ssh-tunnels')
+}
+
+const closeSSHTunnels = (): void => {
+  topBarState.closeModal()
+}
+
+const hideSSHTunnelsModal = (): void => {
+  topBarState.closeModal()
+}
+
+const showSSHTunnelsModal = (): void => {
+  topBarState.openModal('ssh-tunnels')
+}
+
+// Sync Settings methods
+const openSyncSettings = (): void => {
+  topBarState.openModal('sync-settings')
+}
+
+const closeSyncSettings = (): void => {
+  topBarState.closeModal()
 }
 
 const loadSSHGroups = async (): Promise<void> => {
@@ -734,7 +780,8 @@ const connectToSSHProfile = (profile: SSHProfileWithConfig): void => {
 
   const newTerminal: TerminalInstance = {
     id: newTabId,
-    ready: false
+    ready: false,
+    isSSHConnecting: true
   }
 
   // Add tab to active panel
@@ -742,9 +789,9 @@ const connectToSSHProfile = (profile: SSHProfileWithConfig): void => {
   activePanel.activeTabId = newTabId
   terminals.value.push(newTerminal)
 
-  // Switch to terminal and close drawer
-  showDashboard.value = false
-  showSSHDrawer.value = false
+  // Switch to terminal and close modals
+  topBarState.setPage('workspace')
+  topBarState.closeModal()
 
   // Request new SSH terminal from main process
   window.api?.send('terminal.createSSH', {
@@ -758,13 +805,13 @@ const connectToSSHProfile = (profile: SSHProfileWithConfig): void => {
 const editSSHProfile = (profile: SSHProfileWithConfig): void => {
   editingProfile.value = profile
   showSSHProfileModal.value = true
-  showSSHDrawer.value = false
+  topBarState.closeModal() // Close drawer when opening modal
 }
 
 const createSSHProfile = (): void => {
   editingProfile.value = null
   showSSHProfileModal.value = true
-  showSSHDrawer.value = false
+  topBarState.closeModal() // Close drawer when opening modal
 }
 
 const createSSHProfileInGroup = (group: SSHGroupWithProfiles): void => {
@@ -772,7 +819,7 @@ const createSSHProfileInGroup = (group: SSHGroupWithProfiles): void => {
   // Pre-select the group for the new profile
   selectedGroupForNewProfile.value = group
   showSSHProfileModal.value = true
-  showSSHDrawer.value = false
+  topBarState.closeModal() // Close drawer when opening modal
 }
 
 const saveSSHProfile = async (profileData: Partial<SSHProfile>): Promise<void> => {
@@ -781,7 +828,7 @@ const saveSSHProfile = async (profileData: Partial<SSHProfile>): Promise<void> =
     showSSHProfileModal.value = false
     selectedGroupForNewProfile.value = null // Reset selected group
     await refreshAllData() // Refresh all data
-    showSSHDrawer.value = true // Reopen drawer after saving profile
+    topBarState.openModal('ssh-drawer') // Reopen drawer after saving profile
     // Force refresh the drawer
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
@@ -798,7 +845,7 @@ const updateSSHProfile = async (id: string, updates: Partial<SSHProfile>): Promi
     showSSHProfileModal.value = false
     editingProfile.value = null
     await refreshAllData() // Refresh all data
-    showSSHDrawer.value = true // Reopen drawer after updating profile
+    topBarState.openModal('ssh-drawer') // Reopen drawer after updating profile
     // Force refresh the drawer
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
@@ -811,13 +858,13 @@ const updateSSHProfile = async (id: string, updates: Partial<SSHProfile>): Promi
 
 const handleSSHProfileModalClose = (): void => {
   selectedGroupForNewProfile.value = null // Reset selected group
-  showSSHDrawer.value = true // Reopen drawer when profile modal is closed
+  topBarState.openModal('ssh-drawer') // Reopen drawer when profile modal is closed
 }
 
 const editSSHGroup = (group: SSHGroupWithProfiles): void => {
   editingGroup.value = group
   showSSHGroupModal.value = true
-  showSSHDrawer.value = false
+  topBarState.closeModal() // Close drawer when opening modal
 }
 
 const deleteSSHGroup = async (group: SSHGroupWithProfiles): Promise<void> => {
@@ -825,7 +872,7 @@ const deleteSSHGroup = async (group: SSHGroupWithProfiles): Promise<void> => {
     await window.api.invoke('ssh-groups.delete', group.id)
     await refreshAllData() // Refresh all data
     // Force refresh the drawer if it's open
-    if (showSSHDrawer.value && sshProfileDrawerRef.value) {
+    if (topBarState.isSSHDrawerActive.value && sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
     console.log('SSH group deleted successfully')
@@ -840,7 +887,7 @@ const deleteSSHProfile = async (profile: SSHProfileWithConfig): Promise<void> =>
     await window.api.invoke('ssh-profiles.delete', profile.id)
     await refreshAllData() // Refresh all data
     // Force refresh the drawer if it's open
-    if (showSSHDrawer.value && sshProfileDrawerRef.value) {
+    if (topBarState.isSSHDrawerActive.value && sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
     console.log('SSH profile deleted successfully')
@@ -855,14 +902,14 @@ const openCreateSSHGroup = (): void => {
   console.log('Opening SSH Group Modal...')
   editingGroup.value = null
   showSSHGroupModal.value = true
-  showSSHDrawer.value = false // Close drawer when opening group modal
+  topBarState.closeModal() // Close drawer when opening group modal
   console.log('showSSHGroupModal:', showSSHGroupModal.value)
 }
 
 const handleSSHGroupModalClose = (): void => {
   showSSHGroupModal.value = false
   editingGroup.value = null
-  showSSHDrawer.value = true // Reopen drawer when group modal is closed via X or Cancel
+  topBarState.openModal('ssh-drawer') // Reopen drawer when group modal is closed via X or Cancel
 }
 
 const saveSSHGroup = async (
@@ -872,7 +919,7 @@ const saveSSHGroup = async (
     await window.api.invoke('ssh-groups.create', groupData)
     showSSHGroupModal.value = false
     await refreshAllData() // Refresh all data
-    showSSHDrawer.value = true // Reopen drawer after saving group
+    topBarState.openModal('ssh-drawer') // Reopen drawer after saving group
     // Force refresh the drawer
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
@@ -889,7 +936,7 @@ const updateSSHGroup = async (id: string, updates: Partial<SSHGroup>): Promise<v
     showSSHGroupModal.value = false
     editingGroup.value = null
     await refreshAllData() // Refresh all data
-    showSSHDrawer.value = true // Reopen drawer after updating group
+    topBarState.openModal('ssh-drawer') // Reopen drawer after updating group
     // Force refresh the drawer
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
@@ -898,28 +945,6 @@ const updateSSHGroup = async (id: string, updates: Partial<SSHGroup>): Promise<v
   } catch (error) {
     console.error('Failed to update SSH group:', error)
   }
-}
-
-// Saved Commands methods
-const toggleSavedCommands = (): void => {
-  showSavedCommands.value = !showSavedCommands.value
-}
-
-// SSH Tunnels methods
-const toggleSSHTunnels = (): void => {
-  showSSHTunnels.value = !showSSHTunnels.value
-}
-
-const closeSSHTunnels = (): void => {
-  showSSHTunnels.value = false
-}
-
-const hideSSHTunnelsModal = (): void => {
-  showSSHTunnels.value = false
-}
-
-const showSSHTunnelsModal = (): void => {
-  showSSHTunnels.value = true
 }
 
 // SSH Tunnel Modal handlers
@@ -965,15 +990,6 @@ const handleCloseTunnelModal = (): void => {
   showSSHTunnelsModal() // Show manager again
 }
 
-// Sync Settings methods
-const openSyncSettings = (): void => {
-  showSyncSettings.value = true
-}
-
-const closeSyncSettings = (): void => {
-  showSyncSettings.value = false
-}
-
 const onSyncConfigUpdated = (config: SyncConfig | null): void => {
   console.log('Sync config updated:', config)
   // Force refresh sync status in TopBar
@@ -987,6 +1003,23 @@ const loadSSHProfiles = async (): Promise<void> => {
   } catch (error) {
     console.error('Failed to load SSH profiles:', error)
   }
+}
+
+/**
+ * Find panel containing a specific terminal ID
+ */
+const findPanelForTerminal = (layout: PanelLayout, terminalId: string): string | null => {
+  if (layout.type === 'panel' && layout.panel) {
+    const hasTab = layout.panel.tabs.some((tab) => tab.id === terminalId)
+    if (hasTab) return layout.panel.id
+  }
+  if (layout.type === 'split' && layout.children) {
+    for (const child of layout.children) {
+      const found = findPanelForTerminal(child, terminalId)
+      if (found) return found
+    }
+  }
+  return null
 }
 
 // Auto create first tab when app starts
@@ -1013,6 +1046,50 @@ onMounted(() => {
   const unsubscribeTitleChanged = window.api?.on('terminal.titleChanged', (...args: unknown[]) => {
     const data = args[0] as { terminalId: string; title: string }
     updateTabTitle(data.terminalId, data.title)
+  })
+
+  // Listen for SSH connecting state
+  const unsubscribeSSHConnecting = window.api?.on(
+    'terminal.sshConnecting',
+    (...args: unknown[]) => {
+      const data = args[0] as { terminalId: string }
+      const terminal = terminals.value.find((t) => t.id === data.terminalId)
+      if (terminal) {
+        terminal.isSSHConnecting = true
+      }
+    }
+  )
+
+  // Listen for SSH connected state
+  const unsubscribeSSHConnected = window.api?.on('terminal.sshConnected', (...args: unknown[]) => {
+    const data = args[0] as { terminalId: string }
+    const terminal = terminals.value.find((t) => t.id === data.terminalId)
+    if (terminal) {
+      terminal.isSSHConnecting = false
+    }
+  })
+
+  // Listen for SSH connection errors
+  const unsubscribeSSHError = window.api?.on('terminal.sshError', (...args: unknown[]) => {
+    const data = args[0] as { terminalId: string; error: string }
+
+    // Remove connecting state
+    const terminal = terminals.value.find((t) => t.id === data.terminalId)
+    if (terminal) {
+      terminal.isSSHConnecting = false
+    }
+
+    // Show error message
+    message.error(`SSH Connection Failed: ${data.error}`)
+    console.error('SSH connection error:', data.error)
+
+    // Auto close the tab with error
+    const panelId = findPanelForTerminal(panelLayout.value, data.terminalId)
+    if (panelId) {
+      setTimeout(() => {
+        closeTab(panelId, data.terminalId)
+      }, 1000) // Give user time to see the error
+    }
   })
 
   // Listen for terminal auto close events
@@ -1045,6 +1122,9 @@ onMounted(() => {
   onUnmounted(() => {
     unsubscribeTitleChanged?.()
     unsubscribeAutoClose?.()
+    unsubscribeSSHConnecting?.()
+    unsubscribeSSHConnected?.()
+    unsubscribeSSHError?.()
     window.removeEventListener('resize', updateWindowWidth)
     // Remove global error handler
     window.removeEventListener('unhandledrejection', () => {})

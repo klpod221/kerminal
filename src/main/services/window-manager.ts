@@ -2,18 +2,8 @@ import { BrowserWindow, shell } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 import { IWindowManager } from '../interfaces/terminal.interface'
+import type { WindowConfig } from '../types/main'
 import icon from '../../../resources/icon.png?asset'
-
-/**
- * Configuration options for creating a window.
- */
-export interface WindowConfig {
-  width?: number
-  height?: number
-  show?: boolean
-  autoHideMenuBar?: boolean
-  frame?: boolean
-}
 
 /**
  * Manages the main application window and window controls.

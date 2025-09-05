@@ -5,6 +5,7 @@
       :key="terminal.id"
       :ref="(el) => setTerminalRef(terminal.id, el)"
       :terminal-id="terminal.id"
+      :is-connecting="terminal.isSSHConnecting || false"
       :class="{ hidden: terminal.id !== activeTerminalId }"
       class="w-full h-full absolute inset-0"
       @terminal-ready="onTerminalReady"
@@ -14,26 +15,11 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue'
-import Terminal from './Terminal.vue'
-
-interface TerminalInstance {
-  id: string
-  ready: boolean
-}
-
-interface TerminalComponent extends ComponentPublicInstance {
-  focus: () => void
-  fitAndFocus: () => void
-}
-
-interface Props {
-  terminals: TerminalInstance[]
-  activeTerminalId?: string
-}
-
-const props = defineProps<Props>()
-
 import type { ComponentPublicInstance } from 'vue'
+import Terminal from './Terminal.vue'
+import type { TerminalManagerProps, TerminalComponent } from '../types/components'
+
+const props = defineProps<TerminalManagerProps>()
 
 const terminalRefs = ref<Record<string, ComponentPublicInstance | null>>({})
 

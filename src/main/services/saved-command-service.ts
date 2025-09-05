@@ -98,13 +98,24 @@ export class SavedCommandService extends BaseService {
   }
 
   /**
-   * Copy command to clipboard
+   * Copy command to clipboard with improved error handling
    */
   async copyCommandToClipboard(command: string): Promise<void> {
     try {
+      if (!command || typeof command !== 'string') {
+        throw new Error('Invalid command: must be a non-empty string')
+      }
+
       const { clipboard } = await import('electron')
-      clipboard.writeText(command)
-      this.logger?.info('Command copied to clipboard')
+
+      // Sanitize command before copying
+      const sanitizedCommand = command.trim()
+      if (!sanitizedCommand) {
+        throw new Error('Command cannot be empty after trimming')
+      }
+
+      clipboard.writeText(sanitizedCommand)
+      this.logger?.info(`Command copied to clipboard: ${sanitizedCommand.substring(0, 50)}...`)
     } catch (error) {
       this.logger?.error('Failed to copy command to clipboard:', error as Error)
       throw error

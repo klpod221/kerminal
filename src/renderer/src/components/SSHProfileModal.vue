@@ -193,16 +193,10 @@ import Checkbox from './ui/Checkbox.vue'
 import Button from './ui/Button.vue'
 import ProxySettings from './ui/ProxySettings.vue'
 import { useValidation, validationRules } from '../composables/useValidation'
+import type { SSHProfileModalProps } from '../types/modals'
 import type { SSHGroup, SSHProfile, SSHProfileWithConfig, SSHProxy } from '../types/ssh'
 
-interface Props {
-  visible?: boolean
-  profile?: SSHProfileWithConfig | null
-  groups?: SSHGroup[]
-  preselectedGroup?: SSHGroup | null
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<SSHProfileModalProps>(), {
   visible: false,
   profile: null,
   groups: () => [],

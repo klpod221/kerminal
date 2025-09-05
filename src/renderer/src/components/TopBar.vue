@@ -1,40 +1,51 @@
 <template>
   <div
-    class="flex items-center h-[30px] min-h-[30px] max-h-[30px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-40 topbar-container"
+    class="flex items-center h-[30px] min-h-[30px] max-h-[30px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-50 topbar-container"
   >
     <!-- Dashboard Icon -->
     <div
       class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
-      :class="{ 'bg-gray-800': isDashboardActive }"
+      :class="{ 'bg-gray-800': topBarState.isDashboardActive.value }"
       @click="openDashboard"
     >
       <img
         src="../assets/images/logo_500.png"
         alt="Dashboard"
         class="w-4 h-4 transition-opacity duration-200"
-        :class="isDashboardActive ? 'opacity-100' : 'opacity-60 hover:opacity-100'"
+        :class="
+          topBarState.isDashboardActive.value ? 'opacity-100' : 'opacity-60 hover:opacity-100'
+        "
       />
     </div>
 
     <!-- Workspace Icon -->
     <div
       class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
-      :class="{ 'bg-gray-800': !isDashboardActive }"
+      :class="{ 'bg-gray-800': topBarState.isWorkspaceActive.value }"
       @click="openWorkspace"
     >
       <LayoutGrid
         :size="16"
         class="transition-colors duration-200"
-        :class="!isDashboardActive ? 'text-blue-400' : 'text-gray-400 hover:text-white'"
+        :class="
+          topBarState.isWorkspaceActive.value ? 'text-blue-400' : 'text-gray-400 hover:text-white'
+        "
       />
     </div>
 
     <!-- SSH Profiles Icon -->
     <div
       class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      :class="{ 'bg-gray-800': topBarState.isSSHDrawerActive.value }"
       @click="toggleSSHDrawer"
     >
-      <Server :size="16" class="transition-colors duration-200 text-gray-400 hover:text-white" />
+      <Server
+        :size="16"
+        class="transition-colors duration-200"
+        :class="
+          topBarState.isSSHDrawerActive.value ? 'text-orange-400' : 'text-gray-400 hover:text-white'
+        "
+      />
     </div>
 
     <div class="draggable flex-1 h-full"></div>
@@ -46,6 +57,9 @@
         variant="ghost"
         size="sm"
         :icon="BookmarkIcon"
+        :class="
+          topBarState.isSavedCommandsActive.value ? 'bg-gray-800 text-blue-400' : 'text-gray-400'
+        "
         @click="toggleSavedCommands"
       />
       <Button
@@ -53,7 +67,13 @@
         variant="ghost"
         size="sm"
         :icon="Wifi"
-        :class="hasActiveTunnels ? 'text-green-400' : 'text-gray-400'"
+        :class="
+          topBarState.isSSHTunnelsActive.value
+            ? 'bg-gray-800 text-purple-400'
+            : hasActiveTunnels
+              ? 'text-green-400'
+              : 'text-gray-400'
+        "
         @click="() => emit('toggle-ssh-tunnels')"
       />
       <Button
@@ -61,7 +81,13 @@
         variant="ghost"
         size="sm"
         :icon="CloudIcon"
-        :class="syncStatus?.isConnected ? 'text-green-400' : 'text-gray-400'"
+        :class="
+          topBarState.isSyncSettingsActive.value
+            ? 'bg-gray-800 text-blue-400'
+            : syncStatus?.isConnected
+              ? 'text-green-400'
+              : 'text-gray-400'
+        "
         @click="openSyncSettings"
       />
       <Button
@@ -97,15 +123,16 @@ import {
   Wifi
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
+import { useTopBarState } from '../composables/useTopBarState'
 import type { SyncStatus } from '../types/sync'
 import type { SSHTunnelWithProfile } from '../types/ssh'
 
 interface Props {
-  isDashboardActive?: boolean
+  topBarState: ReturnType<typeof useTopBarState>
   syncStatusRefresh?: number // Add this to force refresh sync status
 }
 
-const { isDashboardActive = false, syncStatusRefresh = 0 } = defineProps<Props>()
+const { topBarState, syncStatusRefresh = 0 } = defineProps<Props>()
 
 const emit = defineEmits<{
   'open-dashboard': []

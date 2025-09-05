@@ -28,55 +28,60 @@
         @focus="handleFocus"
         @input="handleColorInput"
       />
-      <!-- Hex input sử dụng Input component -->
+
+      <!-- Hex input -->
       <input
         v-model="hexInput"
         type="text"
         :disabled="disabled"
         :readonly="readonly"
-        :placeholder="'#RRGGBB'"
+        placeholder="#RRGGBB"
         maxlength="7"
-        :class="localError ? 'border-red-500 bg-red-500/5' : ''"
-        class="block w-full rounded-lg border transition-all duration-200 text-sm px-3 py-2 bg-gray-800 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed readonly:bg-gray-700 readonly:cursor-default border-gray-600 hover:border-gray-500"
+        :class="[
+          'block flex-1 rounded-lg border transition-all duration-200',
+          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'readonly:bg-gray-700 readonly:cursor-default',
+          sizeClasses,
+          hexStateClasses
+        ]"
         @input="handleHexInput"
       />
     </div>
 
-    <div class="h-2">
-      <!-- Helper text -->
-      <p v-if="!helperText" class="text-xs text-gray-400">{{ helperText }}</p>
+    <div v-if="helper" class="min-h-[1.25rem]">
+      <!-- Helper text (only show if no error) -->
+      <p v-if="helperText && !errorMessage && !localError" class="text-xs text-gray-400">
+        {{ helperText }}
+      </p>
 
       <!-- Error message -->
-      <p v-if="errorMessage" class="text-xs text-red-400">{{ errorMessage }}</p>
+      <p v-if="errorMessage || localError" class="text-xs text-red-400 flex items-center">
+        <span class="mr-1">⚠</span>
+        {{ errorMessage || localError }}
+      </p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import type { ColorPickerProps } from '../../types/ui'
 
-interface Props {
-  modelValue?: string
-  label?: string
-  helperText?: string
-  errorMessage?: string
-  rules?: Array<string | ((value: string) => boolean)>
-  disabled?: boolean
-  readonly?: boolean
-  id?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<ColorPickerProps>(), {
   modelValue: '#000000',
+  size: 'md',
   disabled: false,
   readonly: false,
-  required: false
+  helper: true
 })
 
 const emit = defineEmits(['update:modelValue', 'blur', 'focus'])
 
 // Refs
 const pickerRef = ref<HTMLInputElement>()
+const hexInput = ref('')
+const localError = ref('')
 
 // Computed
 const pickerId = computed(
@@ -88,8 +93,16 @@ const colorValue = computed({
   set: (value: string) => emit('update:modelValue', value)
 })
 
-const hexInput = ref(colorValue.value)
-const localError = ref<string>('')
+const sizeClasses = computed(() => {
+  switch (props.size) {
+    case 'sm':
+      return 'text-sm px-2 py-1.5'
+    case 'lg':
+      return 'text-lg px-4 py-3'
+    default:
+      return 'text-base px-3 py-2'
+  }
+})
 
 const stateClasses = computed(() => {
   if (props.errorMessage || localError.value) {
@@ -102,6 +115,22 @@ const stateClasses = computed(() => {
     return 'border-gray-600 bg-gray-700'
   }
   return 'border-gray-600 bg-gray-800 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500'
+})
+
+const hexStateClasses = computed(() => {
+  if (props.errorMessage || localError.value) {
+    return 'border-red-500 bg-red-500/5 text-white focus:border-red-400 focus:ring-red-500'
+  }
+
+  if (props.disabled) {
+    return 'border-gray-600 bg-gray-800 text-gray-400'
+  }
+
+  if (props.readonly) {
+    return 'border-gray-600 bg-gray-700 text-gray-300'
+  }
+
+  return 'border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500'
 })
 
 // Methods
@@ -126,8 +155,10 @@ const handleHexInput = (event: Event): void => {
   if (isValidHex(value)) {
     emit('update:modelValue', value)
     localError.value = ''
-  } else {
+  } else if (value && value !== '#') {
     localError.value = 'Invalid hex color code.'
+  } else {
+    localError.value = ''
   }
 }
 
@@ -143,7 +174,8 @@ watch(
       hexInput.value = val!
       localError.value = ''
     }
-  }
+  },
+  { immediate: true }
 )
 
 // Expose methods for parent components

@@ -12,7 +12,7 @@
         <div
           v-if="visible"
           :class="[
-            'flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-sm',
+            'flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-xs',
             messageClasses
           ]"
         >
@@ -50,17 +50,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import type { MessageProps } from '../../types/ui'
 
-interface Props {
-  type?: 'success' | 'error' | 'warning' | 'info' | 'loading'
-  title?: string
-  content: string
-  duration?: number
-  closable?: boolean
-  onClose?: () => void
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<MessageProps>(), {
   type: 'info',
   duration: 3000,
   closable: true

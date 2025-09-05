@@ -111,14 +111,10 @@ import Textarea from './ui/Textarea.vue'
 import Button from './ui/Button.vue'
 import ProxySettings from './ui/ProxySettings.vue'
 import { useValidation, validationRules } from '../composables/useValidation'
-import type { SSHGroup, SSHProxy } from '../types/ssh'
+import type { SSHGroupModalProps } from '../types/modals'
+import type { SSHProxy } from '../types/ssh'
 
-interface Props {
-  show: boolean
-  group?: SSHGroup | null
-}
-
-const props = defineProps<Props>()
+const props = defineProps<SSHGroupModalProps>()
 
 // Debug log
 watch(

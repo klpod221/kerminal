@@ -68,66 +68,10 @@
 </template>
 
 <script setup lang="ts">
-import type { Component } from 'vue'
-
-// Props interface
-interface Props {
-  /**
-   * Card title displayed in header
-   */
-  title?: string
-  /**
-   * Icon component to display in header
-   */
-  icon?: Component
-  /**
-   * Background color class for icon container
-   */
-  iconBackground?: string
-  /**
-   * Color class for icon
-   */
-  iconColor?: string
-  /**
-   * Card size variant
-   */
-  size?: 'sm' | 'md' | 'lg'
-  /**
-   * Enable hover effects
-   */
-  hover?: boolean
-  /**
-   * Enable scale transform on hover
-   */
-  scale?: boolean
-  /**
-   * Remove default padding
-   */
-  noPadding?: boolean
-  /**
-   * Add default spacing between content elements
-   */
-  spacing?: boolean
-  /**
-   * Center align content (for action buttons)
-   */
-  center?: boolean
-  /**
-   * Custom CSS classes to apply
-   */
-  customClass?: string
-}
-
-// Emits interface
-interface Emits {
-  /**
-   * Emitted when card is clicked
-   */
-  click: [event: MouseEvent]
-}
+import type { CardProps, CardEmits } from '../../types/ui'
 
 // Define props with defaults
-withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<CardProps>(), {
   size: 'md',
   hover: false,
   scale: false,
@@ -137,13 +81,12 @@ withDefaults(defineProps<Props>(), {
 })
 
 // Define emits
-const emit = defineEmits<Emits>()
+const emit = defineEmits<CardEmits>()
 
 /**
- * Handle card click event
- * @param event - Mouse click event
+ * Handle click event
  */
-function handleClick(event: MouseEvent): void {
+const handleClick = (event: MouseEvent): void => {
   emit('click', event)
 }
 </script>

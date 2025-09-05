@@ -1,25 +1,6 @@
 import * as os from 'os'
 import { spawn } from 'child_process'
-
-/**
- * Interface for network interface information.
- */
-export interface NetworkInterface {
-  name: string
-  address: string
-  netmask: string
-  mac: string
-  isConnected?: boolean
-}
-
-/**
- * Interface for network status information.
- */
-export interface NetworkStatus {
-  isConnected: boolean
-  primaryInterface: NetworkInterface | null
-  interfaces: NetworkInterface[]
-}
+import type { NetworkInterface, NetworkStatus } from '../types/main'
 
 /**
  * Provides system information and utilities.

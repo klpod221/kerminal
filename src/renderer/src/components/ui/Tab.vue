@@ -12,8 +12,16 @@
     @dragover="onDragOver"
     @drop="onDrop"
   >
+    <div
+      v-if="isConnecting && minWidth >= 80"
+      class="mr-2 transition-colors duration-200 flex-shrink-0"
+    >
+      <div
+        class="animate-spin rounded-full h-3 w-3 border border-blue-400 border-t-transparent"
+      ></div>
+    </div>
     <Terminal
-      v-if="minWidth >= 80"
+      v-else-if="minWidth >= 80"
       :size="14"
       class="mr-2 transition-colors duration-200 flex-shrink-0"
       :class="isActive ? 'text-blue-400' : 'text-gray-400'"
@@ -27,7 +35,7 @@
       class="text-sm truncate flex-1 transition-colors duration-200"
       :class="isActive ? 'text-white' : 'text-gray-300'"
     >
-      {{ tab.title }}
+      {{ isConnecting ? 'Connecting...' : tab.title }}
     </span>
     <X
       v-if="minWidth >= 100"
@@ -40,23 +48,14 @@
 
 <script setup lang="ts">
 import { Terminal, X } from 'lucide-vue-next'
+import type { TabProps, TabEmits } from '../../types/ui'
 import type { Tab } from '../../types/panel'
 
-interface Props {
-  tab: Tab
-  isActive: boolean
-  minWidth: number
-  maxWidth: number
-}
+const props = withDefaults(defineProps<TabProps>(), {
+  isConnecting: false
+})
 
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  select: []
-  close: []
-  dragStart: [tab: Tab]
-  drop: [draggedTab: Tab, targetTab: Tab]
-}>()
+const emit = defineEmits<TabEmits>()
 
 const onDragStart = (event: DragEvent): void => {
   if (event.dataTransfer) {

@@ -86,27 +86,9 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
-import type { Component } from 'vue'
+import type { InputProps } from '../../types/ui'
 
-interface Props {
-  modelValue?: string | number
-  type?: 'text' | 'password' | 'email' | 'number' | 'tel' | 'url' | 'search'
-  label?: string
-  placeholder?: string
-  rules?: Array<string | ((value: string) => boolean)>
-  helperText?: string
-  errorMessage?: string
-  size?: 'sm' | 'md' | 'lg'
-  leftIcon?: Component
-  rightIcon?: Component
-  disabled?: boolean
-  readonly?: boolean
-  autocomplete?: string
-  helper?: boolean
-  id?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<InputProps>(), {
   type: 'text',
   size: 'md',
   disabled: false,

@@ -57,29 +57,12 @@
 <script setup lang="ts">
 import { Splitpanes, Pane } from 'splitpanes'
 import Panel from './Panel.vue'
-import type { PanelLayout, TerminalInstance } from '../types/panel'
+import type { PanelManagerProps, PanelManagerEmits } from '../types/components'
+import type { PanelLayout } from '../types/panel'
 
-interface Props {
-  layout: PanelLayout
-  terminals: TerminalInstance[]
-  windowWidth: number
-  activePanelId: string
-}
+const props = defineProps<PanelManagerProps>()
 
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  selectTab: [panelId: string, tabId: string]
-  closeTab: [panelId: string, tabId: string]
-  addTab: [panelId: string]
-  splitHorizontal: [panelId: string]
-  splitVertical: [panelId: string]
-  closePanel: [panelId: string]
-  moveTab: [fromPanelId: string, toPanelId: string, tabId: string, targetTabId?: string]
-  terminalReady: [terminalId: string]
-  setActivePanel: [panelId: string]
-  layoutUpdated: [layout: PanelLayout]
-}>()
+const emit = defineEmits<PanelManagerEmits>()
 
 const getPaneSize = (index: number): number => {
   const size = props.layout.sizes?.[index] || 1 / (props.layout.children?.length || 1)

@@ -20,6 +20,7 @@
     <TabBar
       class="relative z-10"
       :panel="panel"
+      :terminals="terminals"
       :window-width="windowWidth"
       :is-active="isActive"
       @select-tab="selectTab"
@@ -47,28 +48,11 @@
 import { computed } from 'vue'
 import TabBar from './ui/TabBar.vue'
 import TerminalManager from './TerminalManager.vue'
-import type { Panel, TerminalInstance } from '../types/panel'
+import type { PanelProps, PanelEmits } from '../types/components'
 
-interface Props {
-  panel: Panel
-  terminals: TerminalInstance[]
-  windowWidth: number
-  isActive: boolean
-}
+const props = defineProps<PanelProps>()
 
-const props = defineProps<Props>()
-
-const emit = defineEmits<{
-  selectTab: [panelId: string, tabId: string]
-  closeTab: [panelId: string, tabId: string]
-  addTab: [panelId: string]
-  splitHorizontal: [panelId: string]
-  splitVertical: [panelId: string]
-  closePanel: [panelId: string]
-  moveTab: [fromPanelId: string, toPanelId: string, tabId: string, targetTabId?: string]
-  terminalReady: [terminalId: string]
-  panelClick: [panelId: string]
-}>()
+const emit = defineEmits<PanelEmits>()
 
 // Filter terminals that belong to this panel's tabs
 const activeTerminals = computed(() => {

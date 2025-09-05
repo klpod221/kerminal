@@ -25,4 +25,5 @@ export interface PanelLayout {
 export interface TerminalInstance {
   id: string
   ready: boolean
+  isSSHConnecting?: boolean
 }

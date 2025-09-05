@@ -11,8 +11,6 @@
     <form class="space-y-6" @submit.prevent="handleSubmit">
       <!-- Basic Information -->
       <div class="space-y-1">
-        <h3 class="text-lg font-medium text-white">Basic Information</h3>
-
         <!-- Command Name -->
         <Input
           v-model="commandForm.name"
@@ -32,13 +30,8 @@
           :error-message="descriptionError"
           @blur="validation.validateField('description')"
         />
-      </div>
 
-      <!-- Command Details -->
-      <div class="space-y-1">
-        <h3 class="text-lg font-medium text-white">Command Details</h3>
-
-        <!-- Command Text -->
+        <!-- Command -->
         <Textarea
           v-model="commandForm.command"
           label="Command"
