@@ -13,18 +13,19 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
 
-    env:
-      _WIN32_WINNT: '0x0A00'
-
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
-      - name: Setup MSBuild for Windows
+      - name: Install Windows dependencies
+        if: matrix.os == 'windows-latest'
+        run: npm install --global --production windows-build-tools
+
+      - name: Install Windows SDK
         if: matrix.os == 'windows-latest'
         uses: microsoft/setup-msbuild@v2
 
@@ -38,27 +39,26 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y libfuse2 squashfs-tools patchelf
 
-
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm install
 
       - name: Build for macOS
         if: matrix.os == 'macos-latest'
         run: |
-          yarn build
-          yarn run electron-builder --mac
+          npm run build
+          npx --no-install electron-builder --mac
 
       - name: Build for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
-          yarn build
-          yarn run electron-builder --linux
+          npm run build
+          npx --no-install electron-builder --linux
 
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
         run: |
-          yarn build
-          yarn run electron-builder --win
+          npm run build
+          npx --no-install electron-builder --win
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
