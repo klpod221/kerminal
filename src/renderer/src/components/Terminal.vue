@@ -30,6 +30,7 @@
 import { onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue'
 import { processClipboardText } from '../utils/clipboard'
 import { debounce } from '../utils/debounce'
+import { TerminalBufferManager } from '../services/terminal-buffer-manager'
 
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
@@ -56,6 +57,7 @@ let term: Terminal
 let fitAddon: FitAddon
 let removeListener: (() => void) | null = null
 let contextMenuListener: (() => void) | null = null
+const bufferManager = TerminalBufferManager.getInstance()
 
 /**
  * Handles paste operation by reading from clipboard and writing to terminal.
@@ -85,6 +87,24 @@ async function handlePaste(): Promise<void> {
   } catch (error) {
     console.error('Failed to paste from clipboard:', error)
     // Silently fail - don't show error to user as paste failures are common
+  }
+}
+
+/**
+ * Restores terminal buffer from main process if available
+ * @returns {Promise<void>}
+ */
+async function restoreTerminalBuffer(): Promise<void> {
+  try {
+    // Check if there's a buffer to restore and terminal is ready
+    if (!term || !props.terminalId) {
+      return
+    }
+
+    // Try to restore buffer from main process
+    await bufferManager.restoreBuffer(props.terminalId, term)
+  } catch (error) {
+    console.error(`Failed to restore buffer for terminal ${props.terminalId}:`, error)
   }
 }
 
@@ -205,6 +225,9 @@ onMounted(async () => {
     fitAddon.fit()
     sendTerminalSize()
     term.focus()
+
+    // Try to restore buffer from main process after terminal is ready
+    restoreTerminalBuffer()
   }, 150)
 
   // Register window resize event listener
@@ -221,6 +244,9 @@ onMounted(async () => {
     const terminalId = args[1] as string
     // Only process data for this terminal instance
     if (terminalId === props.terminalId) {
+      // Save to local buffer for quick access
+      bufferManager.saveToLocalBuffer(terminalId, data)
+      // Write to terminal display
       term.write(data)
     }
   })
@@ -380,13 +406,22 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  // Cleanup IPC listeners
   if (removeListener) {
     removeListener()
   }
   if (contextMenuListener) {
     contextMenuListener()
   }
+
+  // Cleanup event listeners
   window.removeEventListener('resize', handleResize)
+
+  // Note: We intentionally do NOT clear the buffer here
+  // The buffer should persist even when component unmounts
+  // to allow for restoration when component mounts again
+
+  // Dispose terminal
   term?.dispose()
 })
 </script>

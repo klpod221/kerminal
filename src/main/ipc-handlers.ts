@@ -141,6 +141,57 @@ function setupTerminalHandlers(
     // Destroy regular terminal
     terminalManager.destroyTerminal(terminalId)
   })
+
+  // Terminal Buffer Management IPC handlers
+
+  // Get terminal buffer
+  ipcMain.handle('terminal.buffer.get', (_event, terminalId: string) => {
+    try {
+      return terminalManager.getTerminalBuffer(terminalId)
+    } catch (error) {
+      console.error(`Failed to get buffer for terminal ${terminalId}:`, error)
+      return []
+    }
+  })
+
+  // Get terminal buffer as string
+  ipcMain.handle('terminal.buffer.getString', (_event, terminalId: string) => {
+    try {
+      return terminalManager.getTerminalBufferAsString(terminalId)
+    } catch (error) {
+      console.error(`Failed to get buffer string for terminal ${terminalId}:`, error)
+      return ''
+    }
+  })
+
+  // Check if terminal has buffer
+  ipcMain.handle('terminal.buffer.has', (_event, terminalId: string) => {
+    try {
+      return terminalManager.hasTerminalBuffer(terminalId)
+    } catch (error) {
+      console.error(`Failed to check buffer for terminal ${terminalId}:`, error)
+      return false
+    }
+  })
+
+  // Get buffer statistics
+  ipcMain.handle('terminal.buffer.stats', () => {
+    try {
+      return terminalManager.getBufferStats()
+    } catch (error) {
+      console.error('Failed to get buffer stats:', error)
+      return { totalTerminals: 0, totalLines: 0, memoryUsage: 0 }
+    }
+  })
+
+  // Cleanup orphaned buffers
+  ipcMain.on('terminal.buffer.cleanup', () => {
+    try {
+      terminalManager.cleanupOrphanedBuffers()
+    } catch (error) {
+      console.error('Failed to cleanup orphaned buffers:', error)
+    }
+  })
 }
 
 /**

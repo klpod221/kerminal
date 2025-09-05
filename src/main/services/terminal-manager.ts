@@ -3,6 +3,7 @@ import * as os from 'os'
 import * as pty from 'node-pty'
 import { ResolvedSSHConfig } from '../types/ssh'
 import { SSHConnection } from './ssh-connection'
+import { TerminalBufferManager } from './terminal-buffer-manager'
 
 /**
  * Manages terminal instances and PTY processes.
@@ -15,12 +16,15 @@ export class TerminalManager {
   private readonly sshConnections: Record<string, SSHConnection> = {}
   private isRendererReady = false
   private readonly shellPath: string
+  private readonly bufferManager: TerminalBufferManager
 
   constructor(private readonly mainWindow: BrowserWindow) {
     this.shellPath =
       os.platform() === 'win32'
         ? process.env.COMSPEC || 'cmd.exe'
         : process.env.SHELL || '/bin/bash'
+
+    this.bufferManager = TerminalBufferManager.getInstance()
   }
 
   /**
@@ -172,6 +176,11 @@ export class TerminalManager {
           .replace(/.*bash: completion: function `.*' not found.*\n?/g, '')
       }
 
+      // Always save to buffer manager for persistence
+      if (filteredData) {
+        this.bufferManager.saveToBuffer(terminalId, filteredData)
+      }
+
       if (this.isRendererReady && filteredData) {
         this.safeSend('terminal.incomingData', filteredData, terminalId)
       } else if (filteredData) {
@@ -198,6 +207,9 @@ export class TerminalManager {
       // Clean up terminal
       delete this.terminals[terminalId]
       delete this.initialBuffers[terminalId]
+
+      // Clear buffer from buffer manager
+      this.bufferManager.clearBuffer(terminalId)
     })
   }
 
@@ -306,6 +318,9 @@ export class TerminalManager {
       delete this.sshConnections[terminalId]
       delete this.sshTerminals[terminalId]
       delete this.initialBuffers[terminalId]
+
+      // Clear buffer from buffer manager
+      this.bufferManager.clearBuffer(terminalId)
       return
     }
 
@@ -316,6 +331,9 @@ export class TerminalManager {
       delete this.terminals[terminalId]
       delete this.initialBuffers[terminalId]
       delete this.sshTerminals[terminalId]
+
+      // Clear buffer from buffer manager
+      this.bufferManager.clearBuffer(terminalId)
     }
   }
 
@@ -332,5 +350,51 @@ export class TerminalManager {
     Object.keys(this.terminals).forEach((terminalId) => {
       this.destroyTerminal(terminalId)
     })
+
+    // Cleanup buffer manager
+    this.bufferManager.cleanup()
+  }
+
+  /**
+   * Get buffer for specific terminal
+   * @param terminalId - Terminal identifier
+   * @returns Buffer lines array
+   */
+  getTerminalBuffer(terminalId: string): string[] {
+    return this.bufferManager.getBuffer(terminalId)
+  }
+
+  /**
+   * Get buffer as string for specific terminal
+   * @param terminalId - Terminal identifier
+   * @returns Buffer as joined string
+   */
+  getTerminalBufferAsString(terminalId: string): string {
+    return this.bufferManager.getBufferAsString(terminalId)
+  }
+
+  /**
+   * Check if terminal has buffer
+   * @param terminalId - Terminal identifier
+   * @returns Whether buffer exists
+   */
+  hasTerminalBuffer(terminalId: string): boolean {
+    return this.bufferManager.hasBuffer(terminalId)
+  }
+
+  /**
+   * Get buffer manager statistics
+   * @returns Buffer statistics
+   */
+  getBufferStats(): { totalTerminals: number; totalLines: number; memoryUsage: number } {
+    return this.bufferManager.getStats()
+  }
+
+  /**
+   * Cleanup orphaned buffers
+   */
+  cleanupOrphanedBuffers(): void {
+    const activeTerminalIds = [...Object.keys(this.terminals), ...Object.keys(this.sshConnections)]
+    this.bufferManager.cleanupOrphanedBuffers(activeTerminalIds)
   }
 }

@@ -2,6 +2,7 @@ import { Client, ConnectConfig, ClientChannel } from 'ssh2'
 import { BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import { ResolvedSSHConfig } from '../types/ssh'
+import { TerminalBufferManager } from './terminal-buffer-manager'
 
 /**
  * SSH Connection Manager using ssh2 library
@@ -14,6 +15,7 @@ export class SSHConnection {
   private readonly config: ResolvedSSHConfig
   private readonly profileName: string
   private stream: ClientChannel | null = null
+  private readonly bufferManager: TerminalBufferManager
 
   constructor(
     terminalId: string,
@@ -26,6 +28,7 @@ export class SSHConnection {
     this.mainWindow = mainWindow
     this.profileName = profileName
     this.client = new Client()
+    this.bufferManager = TerminalBufferManager.getInstance()
     this.setupEventHandlers()
   }
 
@@ -145,6 +148,10 @@ export class SSHConnection {
           .replace(/.*bash: completion: function `.*' not found.*\n?/g, '')
 
         if (output) {
+          // Save to buffer manager for SSH terminal persistence
+          this.bufferManager.saveToBuffer(this.terminalId, output)
+
+          // Send to renderer
           this.safeSend('terminal.incomingData', output, this.terminalId)
           this.handleTitleChange(output)
         }
@@ -304,6 +311,9 @@ export class SSHConnection {
     if (this.client) {
       this.client.end()
       this.isConnected = false
+
+      // Clear buffer when SSH connection is permanently closed
+      this.bufferManager.clearBuffer(this.terminalId)
     }
   }
 

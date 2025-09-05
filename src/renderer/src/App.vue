@@ -149,6 +149,7 @@ import type { SyncConfig } from './types/sync'
 import type { PanelLayout, Panel, Tab, TerminalInstance } from './types/panel'
 import { message } from './utils/message'
 import { debounce } from './utils/debounce'
+import { TerminalBufferManager } from './services/terminal-buffer-manager'
 
 // Initialize TopBar state management
 const topBarState = useTopBarState()
@@ -167,6 +168,9 @@ const editingProfile = ref<SSHProfileWithConfig | null>(null)
 const editingGroup = ref<SSHGroup | null>(null)
 const sshGroups = ref<SSHGroup[]>([])
 const selectedGroupForNewProfile = ref<SSHGroupWithProfiles | null>(null)
+
+// Initialize Terminal Buffer Manager
+const bufferManager = TerminalBufferManager.getInstance()
 
 // Panel system state
 const panelLayout = ref<PanelLayout>({
@@ -364,6 +368,9 @@ const closeTab = (panelId: string, tabId: string): void => {
       // Request terminal destruction from main process
       window.api?.send('terminal.destroy', { terminalId: tabId })
       terminals.value.splice(terminalIndex, 1)
+
+      // Clear local buffer for this terminal as it's being permanently closed
+      bufferManager.clearLocalBuffer(tabId)
     }
 
     // Remove the tab
@@ -1166,6 +1173,11 @@ onMounted(() => {
     window.removeEventListener('resize', updateWindowWidth)
     // Remove global error handler
     window.removeEventListener('unhandledrejection', () => {})
+
+    // Cleanup terminal buffers
+    bufferManager.cleanup()
+    // Trigger cleanup in main process as well
+    bufferManager.triggerCleanup().catch(console.error)
   })
 })
 </script>
