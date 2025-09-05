@@ -12,29 +12,43 @@
       <!-- Connection Status -->
       <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">Sync Status</h3>
-        <div class="status-card" :class="statusClass">
-          <div class="status-info">
+        <div
+          class="flex items-center justify-between p-4 rounded-lg border transition-colors"
+          :class="{
+            'bg-gray-800 border-gray-600':
+              !syncStatus.isConnected && !syncStatus.lastError && !syncStatus.isLoading,
+            'bg-green-900/50 border-green-500': syncStatus.isConnected && !syncStatus.isLoading,
+            'bg-red-900/50 border-red-500': syncStatus.lastError,
+            'bg-amber-900/50 border-amber-500': syncStatus.isLoading
+          }"
+        >
+          <div class="flex flex-col gap-1">
             <div class="flex items-center gap-2">
-              <span class="status-label">{{ statusLabel }}</span>
+              <span class="font-medium text-white">{{ statusLabel }}</span>
               <span
                 v-if="currentConfig?.autoSync && syncStatus.isConnected"
-                class="auto-sync-badge"
+                class="inline-flex items-center px-2 py-0.5 text-xs font-medium text-green-400 bg-green-900/50 border border-green-500 rounded-full"
               >
                 Auto Sync
               </span>
             </div>
-            <span v-if="syncStatus.lastSync" class="last-sync">
+            <span v-if="syncStatus.lastSync" class="text-sm text-gray-400">
               Last sync: {{ formatRelativeTime(syncStatus.lastSync) }}
             </span>
-            <span v-else-if="syncStatus.isConnected" class="last-sync"> Never synced </span>
-            <span v-if="currentConfig?.autoSync && syncStatus.isConnected" class="sync-interval">
+            <span v-else-if="syncStatus.isConnected" class="text-sm text-gray-400">
+              Never synced
+            </span>
+            <span
+              v-if="currentConfig?.autoSync && syncStatus.isConnected"
+              class="text-xs text-gray-400 italic"
+            >
               Syncing every {{ currentConfig.syncInterval }} seconds
             </span>
-            <span v-if="syncStatus.lastError" class="error-message">
+            <span v-if="syncStatus.lastError" class="text-sm text-red-400">
               {{ syncStatus.lastError }}
             </span>
           </div>
-          <div class="status-actions">
+          <div>
             <Button
               v-if="syncStatus.isConnected"
               variant="secondary"
@@ -166,13 +180,6 @@ const formData = reactive<SyncConfig>({
 })
 
 // Computed
-const statusClass = computed(() => {
-  if (syncStatus.value.isLoading) return 'loading'
-  if (syncStatus.value.isConnected) return 'connected'
-  if (syncStatus.value.lastError) return 'error'
-  return 'disconnected'
-})
-
 const statusLabel = computed(() => {
   if (syncStatus.value.isLoading) return 'Syncing...'
   if (syncStatus.value.isConnected) return 'Connected'
@@ -378,69 +385,3 @@ onUnmounted(() => {
   stopStatusRefresh()
 })
 </script>
-
-<style scoped>
-.status-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid rgb(75 85 99);
-  background: rgb(31 41 55);
-}
-
-.status-card.connected {
-  background: rgb(6 78 59);
-  border-color: rgb(34 197 94);
-}
-
-.status-card.error {
-  background: rgb(127 29 29);
-  border-color: rgb(239 68 68);
-}
-
-.status-card.loading {
-  background: rgb(120 53 15);
-  border-color: rgb(245 158 11);
-}
-
-.status-info {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.status-label {
-  font-weight: 500;
-  color: white;
-}
-
-.last-sync {
-  font-size: 0.875rem;
-  color: rgb(156 163 175);
-}
-
-.error-message {
-  font-size: 0.875rem;
-  color: rgb(239 68 68);
-}
-
-.auto-sync-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: rgb(34 197 94);
-  background: rgb(6 78 59);
-  border: 1px solid rgb(34 197 94);
-  border-radius: 9999px;
-}
-
-.sync-interval {
-  font-size: 0.75rem;
-  color: rgb(156 163 175);
-  font-style: italic;
-}
-</style>

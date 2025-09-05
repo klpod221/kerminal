@@ -2,10 +2,11 @@
   <div
     :class="[
       'bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] rounded-xl border border-gray-600',
-      'transition-all duration-300',
+      'transition-all duration-300 relative overflow-hidden',
       {
-        'hover:border-gray-500 hover:shadow-lg cursor-pointer': hover,
-        'hover:scale-105 transform': hover && scale,
+        'hover:border-gray-500 hover:shadow-lg cursor-pointer hover:-translate-y-0.5 hover:scale-[1.02]':
+          hover,
+        'card-ripple': hover,
         'p-4': !noPadding,
         'p-6': size === 'sm' && !noPadding,
         'p-8': size === 'lg' && !noPadding
@@ -17,7 +18,10 @@
     <!-- Header Section -->
     <div
       v-if="$slots.header || title || icon"
-      :class="['mb-6', center ? 'flex flex-col items-center text-center' : 'flex items-center']"
+      :class="[
+        'mb-6 relative z-[2]',
+        center ? 'flex flex-col items-center text-center' : 'flex items-center'
+      ]"
     >
       <!-- Icon -->
       <div
@@ -25,9 +29,9 @@
         :class="[
           'rounded-lg p-3 transition-all duration-300',
           center ? 'w-fit mx-auto mb-3' : 'mr-4',
+          'hover:scale-105',
           iconBackground || 'bg-blue-500/20'
         ]"
-        :style="hover && center ? 'transition: background-color 0.3s ease;' : ''"
       >
         <slot name="icon">
           <component :is="icon" :class="['w-8 h-8', iconColor || 'text-blue-400']" />
@@ -56,12 +60,12 @@
     </div>
 
     <!-- Content Section -->
-    <div :class="{ 'space-y-3': spacing }">
+    <div :class="[{ 'space-y-3': spacing }, 'relative z-[2]']">
       <slot />
     </div>
 
     <!-- Footer Section -->
-    <div v-if="$slots.footer" class="mt-6">
+    <div v-if="$slots.footer" class="mt-6 relative z-[2]">
       <slot name="footer" />
     </div>
   </div>
@@ -92,35 +96,8 @@ const handleClick = (event: MouseEvent): void => {
 </script>
 
 <style scoped>
-/* Card entrance animation */
-.card-enter-active {
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.card-enter-from {
-  opacity: 0;
-  transform: translateY(20px) scale(0.95);
-}
-
-/* Enhanced hover effects */
-.cursor-pointer:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-/* Icon animation on hover */
-.rounded-lg.p-3:hover {
-  transform: scale(1.05);
-  background-color: rgba(59, 130, 246, 0.3);
-}
-
-/* Ripple effect on click */
-.cursor-pointer {
-  position: relative;
-  overflow: hidden;
-}
-
-.cursor-pointer::before {
+/* Ripple effect on click - cannot be achieved with Tailwind alone */
+.card-ripple::before {
   content: '';
   position: absolute;
   top: 50%;
@@ -137,14 +114,8 @@ const handleClick = (event: MouseEvent): void => {
   z-index: 1;
 }
 
-.cursor-pointer:active::before {
+.card-ripple:active::before {
   width: 200px;
   height: 200px;
-}
-
-/* Content z-index to stay above ripple */
-.cursor-pointer > * {
-  position: relative;
-  z-index: 2;
 }
 </style>
