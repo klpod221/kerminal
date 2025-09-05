@@ -28,7 +28,7 @@
       >
         <!-- Header -->
         <div
-          class="flex items-center justify-between px-4 py-2 border-b border-gray-700 flex-shrink-0"
+          class="no-drag flex items-center justify-between px-4 py-2 border-b border-gray-700 flex-shrink-0"
         >
           <div class="flex items-center space-x-3">
             <div
