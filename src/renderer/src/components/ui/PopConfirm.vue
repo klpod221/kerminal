@@ -10,6 +10,11 @@
       <slot />
     </div>
 
+    <!-- Backdrop -->
+    <Teleport to="body">
+      <div v-if="visible" class="fixed inset-0 z-40" @click="handleBackdropClick" />
+    </Teleport>
+
     <!-- PopConfirm Overlay -->
     <Teleport to="body">
       <div v-if="visible" ref="popconfirmRef" :style="popconfirmStyle" class="fixed z-50">
@@ -24,6 +29,7 @@
           <div
             v-if="visible"
             class="bg-[#1f1f1f] border border-gray-600 rounded-lg shadow-lg p-4 min-w-[280px] max-w-[400px]"
+            @click.stop
           >
             <!-- Header with Icon and Title -->
             <div class="flex items-start space-x-3 mb-3">
@@ -45,7 +51,7 @@
               <button
                 type="button"
                 class="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors rounded border border-gray-600 hover:border-gray-500"
-                @click="handleCancel"
+                @click.stop="handleCancel"
               >
                 {{ cancelText }}
               </button>
@@ -53,7 +59,7 @@
                 type="button"
                 :class="confirmButtonClass"
                 class="px-3 py-1.5 text-sm font-medium rounded transition-colors"
-                @click="handleConfirm"
+                @click.stop="handleConfirm"
               >
                 {{ okText }}
               </button>
@@ -61,11 +67,6 @@
           </div>
         </Transition>
       </div>
-    </Teleport>
-
-    <!-- Backdrop -->
-    <Teleport to="body">
-      <div v-if="visible" class="fixed inset-0 z-50" @click="handleBackdropClick" />
     </Teleport>
   </div>
 </template>

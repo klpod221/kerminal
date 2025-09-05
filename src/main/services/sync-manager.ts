@@ -50,7 +50,8 @@ export class SyncManager {
       const config = await this.syncConfigStorage.getConfig()
 
       if (config?.enabled) {
-        const success = await this.syncService.initialize(config)
+        const storages = this.storageRegistry.getAll()
+        const success = await this.syncService.initialize(config, storages)
         if (success) {
           this.logger.info('Sync manager initialized with existing configuration')
         } else {
@@ -86,7 +87,8 @@ export class SyncManager {
       const hasLocalData = await this.hasExistingLocalData()
 
       // Initialize sync service
-      const initialized = await this.syncService.initialize(config)
+      const storages = this.storageRegistry.getAll()
+      const initialized = await this.syncService.initialize(config, storages)
 
       if (!initialized) {
         throw new Error('Failed to initialize sync service')
@@ -158,7 +160,8 @@ export class SyncManager {
    * Enable sync
    */
   async enableSync(config: SyncConfig): Promise<boolean> {
-    const success = await this.syncService.enableSync(config)
+    const storages = this.storageRegistry.getAll()
+    const success = await this.syncService.enableSync(config, storages)
     if (success) {
       await this.syncConfigStorage.saveConfig(config)
     }
@@ -197,7 +200,8 @@ export class SyncManager {
    * Update sync configuration
    */
   async updateSyncConfig(config: SyncConfig): Promise<boolean> {
-    const success = await this.syncService.updateConfig(config)
+    const storages = this.storageRegistry.getAll()
+    const success = await this.syncService.updateConfig(config, storages)
     if (success) {
       await this.syncConfigStorage.saveConfig(config)
     }
@@ -234,5 +238,24 @@ export class SyncManager {
     await this.disableSync()
     await this.syncConfigStorage.deleteConfig()
     this.logger.info('Sync configuration deleted')
+  }
+
+  /**
+   * Restart auto sync if enabled
+   */
+  restartAutoSync(): void {
+    const storages = this.storageRegistry.getAll()
+    this.syncService.setStorageMap(storages)
+    this.syncService.restartAutoSync()
+    this.logger.info('Auto sync restarted')
+  }
+
+  /**
+   * Check if auto sync is currently running
+   */
+  isAutoSyncRunning(): boolean {
+    const status = this.syncService.getStatus()
+    const config = this.syncService.getConfig()
+    return status.isConnected && config?.autoSync === true
   }
 }

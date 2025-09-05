@@ -14,9 +14,21 @@
         <h3 class="text-lg font-medium text-white">Sync Status</h3>
         <div class="status-card" :class="statusClass">
           <div class="status-info">
-            <span class="status-label">{{ statusLabel }}</span>
+            <div class="flex items-center gap-2">
+              <span class="status-label">{{ statusLabel }}</span>
+              <span
+                v-if="currentConfig?.autoSync && syncStatus.isConnected"
+                class="auto-sync-badge"
+              >
+                Auto Sync
+              </span>
+            </div>
             <span v-if="syncStatus.lastSync" class="last-sync">
-              Last sync: {{ formatDate(syncStatus.lastSync) }}
+              Last sync: {{ formatRelativeTime(syncStatus.lastSync) }}
+            </span>
+            <span v-else-if="syncStatus.isConnected" class="last-sync"> Never synced </span>
+            <span v-if="currentConfig?.autoSync && syncStatus.isConnected" class="sync-interval">
+              Syncing every {{ currentConfig.syncInterval }} seconds
             </span>
             <span v-if="syncStatus.lastError" class="error-message">
               {{ syncStatus.lastError }}
@@ -111,12 +123,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Database, Save } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
 import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
 import { message } from '../utils/message'
+import { formatRelativeTime } from '../utils/formatter'
 import type { SyncConfig, SyncStatus } from '../types/sync'
 
 interface Props {
@@ -137,6 +150,7 @@ const isMigrating = ref(false)
 const isDeleting = ref(false)
 const hasExistingData = ref(false)
 const currentConfig = ref<SyncConfig | null>(null)
+const statusRefreshInterval = ref<number | null>(null)
 const syncStatus = ref<SyncStatus>({
   isConnected: false,
   isLoading: false
@@ -243,17 +257,24 @@ async function handleSave(): Promise<void> {
 
 async function performSync(): Promise<void> {
   try {
-    syncStatus.value.isLoading = true
+    // Set loading state immediately
+    syncStatus.value = { ...syncStatus.value, isLoading: true, lastError: '' }
+
     const success = await window.api.invoke('sync.performSync')
     if (success) {
       message.success('Sync completed successfully!')
-      syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
+      // Refresh status immediately after successful sync
+      await refreshSyncStatus()
     } else {
       message.error('Sync failed')
+      // Still refresh status to get any error messages
+      await refreshSyncStatus()
     }
   } catch (error) {
     message.error('Sync failed')
     console.error('Sync error:', error)
+    // Refresh status to get error details
+    await refreshSyncStatus()
   }
 }
 
@@ -311,9 +332,25 @@ async function deleteSyncConfig(): Promise<void> {
   }
 }
 
-function formatDate(date: Date | string): string {
-  const d = new Date(date)
-  return d.toLocaleString()
+async function refreshSyncStatus(): Promise<void> {
+  try {
+    const status = (await window.api.invoke('sync.getStatus')) as SyncStatus
+    syncStatus.value = status
+  } catch (error) {
+    console.error('Failed to refresh sync status:', error)
+  }
+}
+
+function startStatusRefresh(): void {
+  // Refresh status every 10 seconds
+  statusRefreshInterval.value = window.setInterval(refreshSyncStatus, 10000)
+}
+
+function stopStatusRefresh(): void {
+  if (statusRefreshInterval.value) {
+    clearInterval(statusRefreshInterval.value)
+    statusRefreshInterval.value = null
+  }
 }
 
 // Watchers
@@ -322,6 +359,9 @@ watch(
   (visible) => {
     if (visible) {
       loadConfig()
+      startStatusRefresh()
+    } else {
+      stopStatusRefresh()
     }
   }
 )
@@ -330,7 +370,12 @@ watch(
 onMounted(() => {
   if (props.visible) {
     loadConfig()
+    startStatusRefresh()
   }
+})
+
+onUnmounted(() => {
+  stopStatusRefresh()
 })
 </script>
 
@@ -379,5 +424,23 @@ onMounted(() => {
 .error-message {
   font-size: 0.875rem;
   color: rgb(239 68 68);
+}
+
+.auto-sync-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgb(34 197 94);
+  background: rgb(6 78 59);
+  border: 1px solid rgb(34 197 94);
+  border-radius: 9999px;
+}
+
+.sync-interval {
+  font-size: 0.75rem;
+  color: rgb(156 163 175);
+  font-style: italic;
 }
 </style>

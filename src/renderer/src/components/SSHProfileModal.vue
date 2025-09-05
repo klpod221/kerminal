@@ -417,15 +417,33 @@ const applyGroupDefaults = (group: SSHGroup): void => {
 }
 
 const handleSubmit = async (): Promise<void> => {
-  if (!canSubmit.value || isSaving.value) return
-
-  // Validate all fields before submitting
-  if (!validation.validateAll()) {
+  if (!canSubmit.value) {
+    validation.validateAll()
     return
   }
 
   try {
     isSaving.value = true
+
+    // Clean proxy object to ensure it's serializable
+    const cleanProxy = form.value.proxy
+      ? {
+          type: form.value.proxy.type,
+          host: form.value.proxy.host,
+          port: form.value.proxy.port,
+          ...(form.value.proxy.username && { username: form.value.proxy.username }),
+          ...(form.value.proxy.password && { password: form.value.proxy.password }),
+          ...(form.value.proxy.jumpHost && { jumpHost: form.value.proxy.jumpHost }),
+          ...(form.value.proxy.jumpPort && { jumpPort: form.value.proxy.jumpPort }),
+          ...(form.value.proxy.jumpUser && { jumpUser: form.value.proxy.jumpUser }),
+          ...(form.value.proxy.jumpKeyPath && {
+            jumpKeyPath: form.value.proxy.jumpKeyPath
+          }),
+          ...(form.value.proxy.jumpPassword && {
+            jumpPassword: form.value.proxy.jumpPassword
+          })
+        }
+      : undefined
 
     const profileData: Partial<SSHProfile> = {
       name: form.value.name,
@@ -438,7 +456,7 @@ const handleSubmit = async (): Promise<void> => {
       groupId: form.value.groupId || undefined,
       color: form.value.color,
       favorite: form.value.favorite,
-      proxy: form.value.proxy || undefined
+      proxy: cleanProxy
     }
 
     if (isEditing.value && props.profile) {

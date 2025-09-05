@@ -195,7 +195,7 @@ const emitProxy = (): void => {
     return
   }
 
-  // Build clean proxy object
+  // Build clean proxy object with only necessary properties
   const cleanProxy: SSHProxy = {
     type: proxyData.value.type,
     host: proxyData.value.host || '',
@@ -203,6 +203,7 @@ const emitProxy = (): void => {
   }
 
   if (proxyData.value.type !== 'jump') {
+    // Only add username and password if they have actual values
     if (proxyData.value.username?.trim()) {
       cleanProxy.username = proxyData.value.username.trim()
     }
@@ -210,10 +211,12 @@ const emitProxy = (): void => {
       cleanProxy.password = proxyData.value.password.trim()
     }
   } else {
+    // Jump host specific properties
     cleanProxy.jumpHost = proxyData.value.jumpHost?.trim() || ''
     cleanProxy.jumpPort = proxyData.value.jumpPort || 22
     cleanProxy.jumpUser = proxyData.value.jumpUser?.trim() || ''
 
+    // Only add authentication method being used
     if (jumpAuthType.value === 'key' && proxyData.value.jumpKeyPath?.trim()) {
       cleanProxy.jumpKeyPath = proxyData.value.jumpKeyPath.trim()
     } else if (jumpAuthType.value === 'password' && proxyData.value.jumpPassword?.trim()) {
@@ -221,7 +224,8 @@ const emitProxy = (): void => {
     }
   }
 
-  emit('update:proxy', cleanProxy)
+  // Create a new clean object to break any potential references
+  emit('update:proxy', JSON.parse(JSON.stringify(cleanProxy)))
 }
 
 // Watch for prop changes

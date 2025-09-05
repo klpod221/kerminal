@@ -318,6 +318,36 @@ const saveGroup = (): void => {
     return
   }
 
+  // Clean proxy object to ensure it's serializable
+  const cleanDefaultProxy = groupData.value.defaultProxy
+    ? {
+        type: groupData.value.defaultProxy.type,
+        host: groupData.value.defaultProxy.host,
+        port: groupData.value.defaultProxy.port,
+        ...(groupData.value.defaultProxy.username && {
+          username: groupData.value.defaultProxy.username
+        }),
+        ...(groupData.value.defaultProxy.password && {
+          password: groupData.value.defaultProxy.password
+        }),
+        ...(groupData.value.defaultProxy.jumpHost && {
+          jumpHost: groupData.value.defaultProxy.jumpHost
+        }),
+        ...(groupData.value.defaultProxy.jumpPort && {
+          jumpPort: groupData.value.defaultProxy.jumpPort
+        }),
+        ...(groupData.value.defaultProxy.jumpUser && {
+          jumpUser: groupData.value.defaultProxy.jumpUser
+        }),
+        ...(groupData.value.defaultProxy.jumpKeyPath && {
+          jumpKeyPath: groupData.value.defaultProxy.jumpKeyPath
+        }),
+        ...(groupData.value.defaultProxy.jumpPassword && {
+          jumpPassword: groupData.value.defaultProxy.jumpPassword
+        })
+      }
+    : undefined
+
   const data = {
     name: groupData.value.name.trim(),
     description: groupData.value.description.trim() || undefined,
@@ -326,7 +356,7 @@ const saveGroup = (): void => {
     defaultPort: groupData.value.defaultPort || undefined,
     defaultKeyPath: groupData.value.defaultKeyPath.trim() || undefined,
     defaultPassword: groupData.value.defaultPassword.trim() || undefined,
-    defaultProxy: groupData.value.defaultProxy || undefined,
+    defaultProxy: cleanDefaultProxy,
     color: groupData.value.color
   }
 

@@ -13,6 +13,7 @@ export class SyncService {
   private readonly logger: ConsoleLogger
   private config: SyncConfig | null = null
   private syncInterval: NodeJS.Timeout | null = null
+  private storageMap: Array<{ name: string; storage: ISyncableStorage }> = []
   private readonly status: SyncStatus = {
     isConnected: false,
     lastSync: undefined,
@@ -28,9 +29,16 @@ export class SyncService {
   /**
    * Initialize sync service with configuration
    */
-  async initialize(config: SyncConfig): Promise<boolean> {
+  async initialize(
+    config: SyncConfig,
+    storageMap?: Array<{ name: string; storage: ISyncableStorage }>
+  ): Promise<boolean> {
     this.config = config
     this.mongoService.setConfig(config)
+
+    if (storageMap) {
+      this.storageMap = storageMap
+    }
 
     if (!config.enabled) {
       this.logger.info('Sync is disabled')
@@ -49,8 +57,8 @@ export class SyncService {
         this.status.isConnected = true
         this.status.lastSync = new Date()
 
-        if (config.autoSync) {
-          this.startAutoSync()
+        if (config.autoSync && this.storageMap.length > 0) {
+          this.startAutoSync(this.storageMap)
         }
 
         this.logger.info('Sync service initialized successfully')
@@ -96,9 +104,18 @@ export class SyncService {
       throw new Error('Sync service not properly initialized')
     }
 
+    // Prevent concurrent sync operations
+    if (this.status.isLoading) {
+      this.logger.warn('Sync operation already in progress, skipping...')
+      return
+    }
+
     this.status.isLoading = true
 
     try {
+      // Clear previous errors
+      this.status.lastError = ''
+
       for (const { name, storage } of storageMap) {
         await this.syncStorage(name, storage)
       }
@@ -108,6 +125,17 @@ export class SyncService {
     } catch (error) {
       this.status.lastError = (error as Error).message
       this.logger.error('Full sync failed:', error as Error)
+
+      // Check if error is due to connection issues
+      if (
+        (error as Error).message.includes('connection') ||
+        (error as Error).message.includes('network') ||
+        (error as Error).message.includes('timeout')
+      ) {
+        this.status.isConnected = false
+        this.logger.warn('Connection lost during sync')
+      }
+
       throw error
     } finally {
       this.status.isLoading = false
@@ -271,19 +299,29 @@ export class SyncService {
   /**
    * Start automatic sync
    */
-  private startAutoSync(): void {
+  private startAutoSync(storageMap: Array<{ name: string; storage: ISyncableStorage }>): void {
     if (!this.config?.autoSync) return
 
     this.stopAutoSync()
 
-    const intervalMs = this.config.syncInterval * 1000 // Convert seconds to ms
+    const intervalMs = this.config.syncInterval * 1000
     this.syncInterval = setInterval(async () => {
+      // Only perform sync if we're connected and not already syncing
+      if (!this.status.isConnected || this.status.isLoading) {
+        return
+      }
+
       try {
-        // Note: We would need to inject storage instances or maintain a registry
         this.logger.info('Performing automatic sync...')
-        // await this.performFullSync(storageInstances)
+        await this.performFullSync(storageMap)
       } catch (error) {
         this.logger.error('Automatic sync failed:', error as Error)
+        this.status.lastError = (error as Error).message
+
+        // If we lose connection, try to reconnect on next sync
+        if (!this.status.isConnected) {
+          this.logger.warn('Connection lost, will attempt to reconnect on next sync')
+        }
       }
     }, intervalMs)
 
@@ -304,8 +342,11 @@ export class SyncService {
   /**
    * Enable sync
    */
-  async enableSync(config: SyncConfig): Promise<boolean> {
-    return await this.initialize(config)
+  async enableSync(
+    config: SyncConfig,
+    storageMap?: Array<{ name: string; storage: ISyncableStorage }>
+  ): Promise<boolean> {
+    return await this.initialize(config, storageMap)
   }
 
   /**
@@ -316,6 +357,7 @@ export class SyncService {
     await this.mongoService.disconnect()
     this.status.isConnected = false
     this.config = null
+    this.storageMap = []
     this.logger.info('Sync disabled')
   }
 
@@ -336,12 +378,15 @@ export class SyncService {
   /**
    * Update sync configuration
    */
-  async updateConfig(config: SyncConfig): Promise<boolean> {
+  async updateConfig(
+    config: SyncConfig,
+    storageMap?: Array<{ name: string; storage: ISyncableStorage }>
+  ): Promise<boolean> {
     if (this.status.isConnected) {
       await this.disableSync()
     }
 
-    return await this.initialize(config)
+    return await this.initialize(config, storageMap)
   }
 
   /**
@@ -355,6 +400,27 @@ export class SyncService {
     }
 
     await this.performFullSync(storageMap)
+  }
+
+  /**
+   * Set storage map for sync operations
+   */
+  setStorageMap(storageMap: Array<{ name: string; storage: ISyncableStorage }>): void {
+    this.storageMap = storageMap
+
+    // If auto sync is enabled and we're connected, restart it with new storage map
+    if (this.config?.autoSync && this.status.isConnected && this.storageMap.length > 0) {
+      this.startAutoSync(this.storageMap)
+    }
+  }
+
+  /**
+   * Restart auto sync with current settings
+   */
+  restartAutoSync(): void {
+    if (this.config?.autoSync && this.status.isConnected && this.storageMap.length > 0) {
+      this.startAutoSync(this.storageMap)
+    }
   }
 
   /**

@@ -22,7 +22,7 @@
             <h3 class="text-lg font-semibold text-white">{{ tunnel.name }}</h3>
             <div
               :class="[
-                'px-3 py-1 rounded-full text-xs font-medium',
+                'px-3 py-1 rounded-full text-xs font-medium w-fit',
                 getTunnelTypeColor(tunnel.type)
               ]"
             >
