@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { Wifi } from 'lucide-vue-next'
 import TopBar from './components/TopBar.vue'
 import Dashboard from './components/Dashboard.vue'
@@ -148,6 +148,7 @@ import type {
 import type { SyncConfig } from './types/sync'
 import type { PanelLayout, Panel, Tab, TerminalInstance } from './types/panel'
 import { message } from './utils/message'
+import { debounce } from './utils/debounce'
 
 // Initialize TopBar state management
 const topBarState = useTopBarState()
@@ -182,6 +183,19 @@ const windowWidth = ref(window.innerWidth)
 
 let tabCounter = 1
 let panelCounter = 2 // Start from 2 since panel-1 is already created
+
+/**
+ * Triggers resize for all visible terminals (debounced)
+ */
+const triggerTerminalResize = debounce((): void => {
+  // Use a small delay to ensure DOM has updated
+  nextTick(() => {
+    setTimeout(() => {
+      // Trigger resize event for all terminals to adjust to new layout
+      window.dispatchEvent(new Event('resize'))
+    }, 50) // Reduced delay since we're already debouncing
+  })
+}, 150) // Debounce for 150ms to prevent excessive resize calls
 
 const findPanelInLayout = (layout: PanelLayout, panelId: string): Panel | null => {
   if (layout.type === 'panel' && layout.panel?.id === panelId) {
@@ -661,7 +675,31 @@ const getCurrentActiveTerminalId = (): string => {
 const updateLayout = (newLayout: PanelLayout): void => {
   // Deep clone to ensure reactivity
   panelLayout.value = JSON.parse(JSON.stringify(newLayout))
+  // Trigger terminal resize after layout update
+  triggerTerminalResize()
 }
+
+// Watch for window width changes to trigger terminal resize
+watch(windowWidth, () => {
+  triggerTerminalResize()
+})
+
+// Watch for active panel changes to trigger terminal resize for visibility
+watch(activePanelId, () => {
+  // Small delay to ensure new active terminal is visible
+  setTimeout(() => {
+    triggerTerminalResize()
+  }, 100)
+})
+
+// Watch for panel layout changes to trigger terminal resize
+watch(
+  panelLayout,
+  () => {
+    triggerTerminalResize()
+  },
+  { deep: true }
+)
 
 const onTerminalReady = (terminalId: string): void => {
   const terminal = terminals.value.find((t) => t.id === terminalId)

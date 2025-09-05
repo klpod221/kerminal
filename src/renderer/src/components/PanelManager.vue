@@ -57,6 +57,7 @@
 <script setup lang="ts">
 import { Splitpanes, Pane } from 'splitpanes'
 import Panel from './Panel.vue'
+import { debounce } from '../utils/debounce'
 import type { PanelManagerProps, PanelManagerEmits } from '../types/components'
 import type { PanelLayout } from '../types/panel'
 
@@ -115,8 +116,8 @@ const layoutUpdated = (layout: PanelLayout): void => {
   emit('layoutUpdated', layout)
 }
 
-// Handle splitpanes resize
-const onPaneResize = (paneComponents: { size: number }[]): void => {
+// Handle splitpanes resize with debounce
+const handlePaneResize = (paneComponents: { size: number }[]): void => {
   if (!props.layout.children || paneComponents.length !== props.layout.children.length) {
     return
   }
@@ -127,7 +128,15 @@ const onPaneResize = (paneComponents: { size: number }[]): void => {
   // Update layout with new sizes
   const updatedLayout = { ...props.layout, sizes: newSizes }
   emit('layoutUpdated', updatedLayout)
+
+  // Trigger window resize event to make terminals adjust
+  setTimeout(() => {
+    window.dispatchEvent(new Event('resize'))
+  }, 50)
 }
+
+// Debounced version to prevent excessive layout updates
+const onPaneResize = debounce(handlePaneResize, 150)
 </script>
 
 <style scoped>

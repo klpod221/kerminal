@@ -29,6 +29,7 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, nextTick, watch } from 'vue'
 import { processClipboardText } from '../utils/clipboard'
+import { debounce } from '../utils/debounce'
 
 import { Terminal } from '@xterm/xterm'
 import '@xterm/xterm/css/xterm.css'
@@ -88,38 +89,38 @@ async function handlePaste(): Promise<void> {
 }
 
 /**
- * Sends the current terminal size to the main process.
+ * Sends the current terminal size to the main process (debounced).
  * @returns {void}
  */
-function sendTerminalSize(): void {
+const sendTerminalSize = debounce((): void => {
   if (term) {
     const { cols, rows } = term
     window.api.send('terminal.resize', { terminalId: props.terminalId, cols, rows })
   }
-}
+}, 100) // Debounce for 100ms to prevent excessive IPC calls
 
 /**
- * Handles window resize event and fits the terminal to the container.
+ * Handles window resize event and fits the terminal to the container (debounced).
  * @returns {void}
  */
-function handleResize(): void {
+const handleResize = debounce((): void => {
   if (fitAddon && props.isVisible) {
     fitAddon.fit()
   }
-}
+}, 100) // Debounce for 100ms to prevent excessive resize calls
 
 /**
- * Force terminal to fit and focus
+ * Force terminal to fit and focus (debounced)
  * @returns {void}
  */
-function fitAndFocus(): void {
+const fitAndFocus = debounce((): void => {
   if (fitAddon && term && props.isVisible) {
     nextTick(() => {
       fitAddon.fit()
       term.focus()
     })
   }
-}
+}, 50) // Shorter debounce for immediate user actions
 
 /**
  * Focus the terminal
@@ -206,7 +207,10 @@ onMounted(async () => {
     term.focus()
   }, 150)
 
-  // Handle terminal resize events
+  // Register window resize event listener
+  window.addEventListener('resize', handleResize)
+
+  // Handle terminal resize events (debounced to prevent excessive IPC calls)
   term.onResize(() => {
     sendTerminalSize()
   })
