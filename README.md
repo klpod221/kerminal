@@ -198,7 +198,7 @@ For developers or users who want to build from source:
 
 #### Prerequisites
 
-- **Node.js** 20.0.0 or higher
+- **Node.js** 22.0.0 or higher
 - **Git** for cloning the repository
 - **npm** or **yarn** package manager
 
