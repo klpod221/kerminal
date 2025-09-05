@@ -110,7 +110,7 @@ jobs:
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
 
       - name: Clone AUR Repository
-        run: git clone ssh://aur@aur.archlinux.org/kerminal-bin.git /tmp/aur-repo
+        run: git clone ssh://aur@aur.archlinux.org/kerminal.git /tmp/aur-repo
 
       - name: Change Repo Ownership
         run: chown -R builder:builder /tmp/aur-repo
