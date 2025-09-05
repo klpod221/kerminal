@@ -14,34 +14,47 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
+
+      - name: Setup MSBuild for Windows
+        if: matrix.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v2
+
       - name: Install Python dependencies
+        if: matrix.os != 'windows-latest'
         run: python3 -m pip install --break-system-packages setuptools
+
       - name: Install AppImage dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y libfuse2 squashfs-tools patchelf
+
       - name: Install dependencies
         run: npm install
+
       - name: Build for macOS
         if: matrix.os == 'macos-latest'
         run: |
           npm run build
           npx --no-install electron-builder --mac
+
       - name: Build for Linux
         if: matrix.os == 'ubuntu-latest'
         run: |
           npm run build
           npx --no-install electron-builder --linux
+
       - name: Build for Windows
         if: matrix.os == 'windows-latest'
         run: |
           npm run build
           npx --no-install electron-builder --win
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -63,6 +76,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v2
         with:
@@ -81,20 +95,25 @@ jobs:
           pacman -S --noconfirm git openssh base-devel pacman-contrib sudo
           useradd -m builder
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
           git config --global core.sshCommand "ssh -i ~/.ssh/aur -o StrictHostKeyChecking=no"
+
       - name: Configure Git
         run: |
           git config --global user.name "${{ github.actor }}"
           git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
       - name: Clone AUR Repository
         run: git clone ssh://aur@aur.archlinux.org/kerminal-bin.git /tmp/aur-repo
+
       - name: Change Repo Ownership
         run: chown -R builder:builder /tmp/aur-repo
+
       - name: Update PKGBUILD as non-root user
         run: |
           sudo -u builder bash -c '
@@ -104,12 +123,14 @@ jobs:
             sed -i "s/^pkgver=.*/pkgver=$CLEAN_VERSION/" PKGBUILD
             updpkgsums
           '
+
       - name: Update .SRCINFO as non-root user
         run: |
           sudo -u builder bash -c '
             cd /tmp/aur-repo
             makepkg --printsrcinfo > .SRCINFO
           '
+
       - name: Commit and Push to AUR
         run: |
           cd /tmp/aur-repo
