@@ -88,7 +88,7 @@ Download the appropriate installer for your operating system from the [Releases 
 
 #### Linux
 
-- **kerminal-bin** - Arch Linux (AUR)
+- **kerminal** - Arch Linux (AUR)
 - **kerminal_{version}_amd64.deb** - Debian/Ubuntu package
 - **kerminal-{version}.AppImage** - Portable AppImage
 - **kerminal-{version}.tar.gz** - Compressed archive
@@ -144,14 +144,14 @@ Download the appropriate installer for your operating system from the [Releases 
 
    ```bash
    # Using yay AUR helper
-   yay -S kerminal-bin
+   yay -S kerminal
 
    # Using paru AUR helper
-   paru -S kerminal-bin
+   paru -S kerminal
 
    # Manual installation from AUR
-   git clone https://aur.archlinux.org/kerminal-bin.git
-   cd kerminal-bin
+   git clone https://aur.archlinux.org/kerminal.git
+   cd kerminal
    makepkg -si
    ```
 
