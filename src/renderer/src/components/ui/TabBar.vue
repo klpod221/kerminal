@@ -66,6 +66,10 @@
               :max-width="tabMaxWidth"
               @select="selectTab(tab.id)"
               @close="closeTab(tab.id)"
+              @duplicate="handleTabDuplicate"
+              @close-others="handleCloseOthers"
+              @close-to-right="handleCloseToRight"
+              @move-to-new-panel="handleMoveToNewPanel"
               @drag-start="onTabDragStart"
               @drop="onTabDrop"
             />
@@ -168,13 +172,13 @@ const showScrollButtons = computed(() => maxScrollOffset.value > 0)
 /**
  * Set the ref for a tab element.
  * @param {string} tabId - The tab id.
- * @param {HTMLElement | ComponentPublicInstance | null} el - The ref value.
+ * @param {unknown} el - The ref value.
  */
-const setTabRef = (tabId: string, el: HTMLElement | { $el: HTMLElement } | null): void => {
+const setTabRef = (tabId: string, el: unknown): void => {
   if (el && typeof el === 'object' && '$el' in el) {
-    tabRefs.value[tabId] = el.$el
-  } else if (el) {
-    tabRefs.value[tabId] = el as HTMLElement
+    tabRefs.value[tabId] = (el as { $el: HTMLElement }).$el
+  } else if (el && el instanceof HTMLElement) {
+    tabRefs.value[tabId] = el
   } else {
     delete tabRefs.value[tabId]
   }
@@ -387,6 +391,46 @@ const splitVertical = (): void => {
 
 const closePanel = (): void => {
   emit('closePanel', props.panel.id)
+}
+
+/**
+ * Handle tab duplication from context menu
+ */
+const handleTabDuplicate = (tab: TabType): void => {
+  // Emit custom event for tab duplication - this should be handled by parent component
+  emit('duplicateTab', props.panel.id, tab.id)
+}
+
+/**
+ * Handle close other tabs from context menu
+ */
+const handleCloseOthers = (tab: TabType): void => {
+  // Close all tabs except the selected one
+  const otherTabs = props.panel.tabs.filter((t) => t.id !== tab.id)
+  otherTabs.forEach((otherTab) => {
+    emit('closeTab', props.panel.id, otherTab.id)
+  })
+}
+
+/**
+ * Handle close tabs to the right from context menu
+ */
+const handleCloseToRight = (tab: TabType): void => {
+  const tabIndex = props.panel.tabs.findIndex((t) => t.id === tab.id)
+  if (tabIndex !== -1) {
+    const tabsToClose = props.panel.tabs.slice(tabIndex + 1)
+    tabsToClose.forEach((tabToClose) => {
+      emit('closeTab', props.panel.id, tabToClose.id)
+    })
+  }
+}
+
+/**
+ * Handle move tab to new panel from context menu
+ */
+const handleMoveToNewPanel = (tab: TabType): void => {
+  // Emit custom event for moving tab to new panel
+  emit('moveTabToNewPanel', props.panel.id, tab.id)
 }
 
 const onTabDragStart = (tab: TabType): void => {

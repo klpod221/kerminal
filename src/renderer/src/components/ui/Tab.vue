@@ -9,6 +9,7 @@
     :style="{ minWidth: minWidth + 'px', maxWidth: maxWidth + 'px' }"
     draggable="true"
     @click="$emit('select')"
+    @contextmenu="onContextMenu"
     @dragstart="onDragStart"
     @dragend="onDragEnd"
     @dragover="onDragOver"
@@ -45,13 +46,21 @@
       class="text-gray-500 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out flex-shrink-0 transform hover:scale-110"
       @click.stop="$emit('close')"
     />
+
+    <!-- Context Menu -->
+    <ContextMenu
+      ref="contextMenuRef"
+      :items="contextMenuItems"
+      @item-click="handleContextMenuAction"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Terminal, X } from 'lucide-vue-next'
-import type { TabProps, TabEmits } from '../../types/ui'
+import { Terminal, X, Copy, ExternalLink, Trash2, ArrowRight, Minus } from 'lucide-vue-next'
+import ContextMenu from './ContextMenu.vue'
+import type { TabProps, TabEmits, ContextMenuItem } from '../../types/ui'
 import type { Tab } from '../../types/panel'
 
 const props = withDefaults(defineProps<TabProps>(), {
@@ -60,8 +69,92 @@ const props = withDefaults(defineProps<TabProps>(), {
 
 const emit = defineEmits<TabEmits>()
 
+// Refs
+const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
+
 // Drag state
 const isDragging = ref(false)
+
+/**
+ * Context menu items configuration
+ */
+const contextMenuItems: ContextMenuItem[] = [
+  {
+    id: 'duplicate',
+    label: 'Duplicate Tab',
+    icon: Copy,
+    action: 'duplicate'
+  },
+  {
+    id: 'move-new-panel',
+    label: 'Move to New Panel',
+    icon: ExternalLink,
+    action: 'moveToNewPanel'
+  },
+  {
+    id: 'divider-1',
+    type: 'divider'
+  },
+  {
+    id: 'close-others',
+    label: 'Close Other Tabs',
+    icon: Minus,
+    action: 'closeOthers'
+  },
+  {
+    id: 'close-to-right',
+    label: 'Close Tabs to the Right',
+    icon: ArrowRight,
+    action: 'closeToRight'
+  },
+  {
+    id: 'divider-2',
+    type: 'divider'
+  },
+  {
+    id: 'close',
+    label: 'Close Tab',
+    icon: Trash2,
+    danger: true,
+    action: 'close',
+    shortcut: 'Ctrl+W'
+  }
+]
+
+/**
+ * Handle context menu event
+ */
+const onContextMenu = (event: MouseEvent): void => {
+  event.preventDefault()
+  event.stopPropagation()
+
+  if (contextMenuRef.value) {
+    contextMenuRef.value.show(event.clientX, event.clientY)
+  }
+}
+
+/**
+ * Handle context menu action selection
+ */
+const handleContextMenuAction = (item: ContextMenuItem): void => {
+  switch (item.action) {
+    case 'duplicate':
+      emit('duplicate', props.tab)
+      break
+    case 'moveToNewPanel':
+      emit('moveToNewPanel', props.tab)
+      break
+    case 'closeOthers':
+      emit('closeOthers', props.tab)
+      break
+    case 'closeToRight':
+      emit('closeToRight', props.tab)
+      break
+    case 'close':
+      emit('close')
+      break
+  }
+}
 
 const onDragStart = (event: DragEvent): void => {
   isDragging.value = true

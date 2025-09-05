@@ -30,6 +30,8 @@
       @split-vertical="splitVertical"
       @close-panel="closePanel"
       @move-tab="moveTab"
+      @duplicate-tab="duplicateTab"
+      @move-tab-to-new-panel="moveTabToNewPanel"
     />
 
     <!-- Panel Content -->
@@ -93,6 +95,14 @@ const moveTab = (
   targetTabId?: string
 ): void => {
   emit('moveTab', fromPanelId, toPanelId, tabId, targetTabId)
+}
+
+const duplicateTab = (panelId: string, tabId: string): void => {
+  emit('duplicateTab', panelId, tabId)
+}
+
+const moveTabToNewPanel = (panelId: string, tabId: string): void => {
+  emit('moveTabToNewPanel', panelId, tabId)
 }
 
 const onTerminalReady = (terminalId: string): void => {

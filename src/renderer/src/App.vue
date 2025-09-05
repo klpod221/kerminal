@@ -36,6 +36,8 @@
         @split-vertical="splitVertical"
         @close-panel="closePanel"
         @move-tab="moveTab"
+        @duplicate-tab="duplicateTab"
+        @move-tab-to-new-panel="moveTabToNewPanel"
         @terminal-ready="onTerminalReady"
         @open-ssh-profiles="toggleSSHDrawer"
         @set-active-panel="setActivePanel"
@@ -703,6 +705,88 @@ function updateActiveTabsAfterMove(
   }
   toPanel.activeTabId = tabId
   activePanelId.value = toPanel.id
+}
+
+/**
+ * Handle tab duplication from context menu
+ */
+const duplicateTab = (panelId: string, tabId: string): void => {
+  const panel = findPanelInLayout(panelLayout.value, panelId)
+  if (!panel) return
+
+  const sourceTab = panel.tabs.find((tab) => tab.id === tabId)
+  if (!sourceTab) return
+
+  const newTabId = tabCounter.toString()
+  const newTab: Tab = {
+    id: newTabId,
+    title: `${sourceTab.title} (Copy)`,
+    color: sourceTab.color,
+    profileId: sourceTab.profileId,
+    groupId: sourceTab.groupId
+  }
+
+  const newTerminal: TerminalInstance = { id: newTabId, ready: false }
+
+  // Add tab to panel
+  const sourceIndex = panel.tabs.findIndex((tab) => tab.id === tabId)
+  panel.tabs.splice(sourceIndex + 1, 0, newTab)
+  panel.activeTabId = newTabId
+  terminals.value.push(newTerminal)
+
+  // Set active panel and switch to workspace
+  activePanelId.value = panelId
+  topBarState.setPage('workspace')
+
+  // Request new terminal from main process
+  if (sourceTab.profileId) {
+    // Clone SSH connection
+    window.api?.send('terminal.createSSH', {
+      terminalId: newTabId,
+      profileId: sourceTab.profileId
+    })
+  } else {
+    // Clone regular terminal
+    window.api?.send('terminal.create', { terminalId: newTabId })
+  }
+
+  tabCounter++
+}
+
+/**
+ * Handle move tab to new panel from context menu
+ */
+const moveTabToNewPanel = (panelId: string, tabId: string): void => {
+  const sourcePanel = findPanelInLayout(panelLayout.value, panelId)
+  if (!sourcePanel) return
+
+  const tab = sourcePanel.tabs.find((t) => t.id === tabId)
+  if (!tab) return
+
+  // Create new panel with the moved tab
+  const newPanelId = `panel-${panelCounter++}`
+  const newPanel: Panel = {
+    id: newPanelId,
+    activeTabId: tab.id,
+    tabs: [tab]
+  }
+
+  // Remove tab from source panel
+  const tabIndex = sourcePanel.tabs.findIndex((t) => t.id === tabId)
+  sourcePanel.tabs.splice(tabIndex, 1)
+
+  // Update source panel's active tab if needed
+  if (sourcePanel.activeTabId === tabId) {
+    if (sourcePanel.tabs.length > 0) {
+      sourcePanel.activeTabId = sourcePanel.tabs[Math.min(tabIndex, sourcePanel.tabs.length - 1)].id
+    } else {
+      sourcePanel.activeTabId = ''
+    }
+  }
+
+  // Split the source panel layout to add the new panel
+  splitPanelInLayout(panelLayout.value, panelId, newPanel, 'horizontal')
+  activePanelId.value = newPanelId
 }
 
 const getCurrentActiveTerminalId = (): string => {

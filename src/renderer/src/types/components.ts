@@ -50,6 +50,8 @@ export interface PanelManagerEmits {
   terminalReady: [terminalId: string]
   setActivePanel: [panelId: string]
   layoutUpdated: [layout: import('./panel').PanelLayout]
+  duplicateTab: [panelId: string, tabId: string]
+  moveTabToNewPanel: [panelId: string, tabId: string]
 }
 
 /**
@@ -75,6 +77,8 @@ export interface PanelEmits {
   moveTab: [fromPanelId: string, toPanelId: string, tabId: string, targetTabId?: string]
   terminalReady: [terminalId: string]
   panelClick: [panelId: string]
+  duplicateTab: [panelId: string, tabId: string]
+  moveTabToNewPanel: [panelId: string, tabId: string]
 }
 
 /**
@@ -98,4 +102,6 @@ export interface TabBarEmits {
   splitVertical: [panelId: string]
   closePanel: [panelId: string]
   moveTab: [fromPanelId: string, toPanelId: string, tabId: string, targetTabId?: string]
+  duplicateTab: [panelId: string, tabId: string]
+  moveTabToNewPanel: [panelId: string, tabId: string]
 }

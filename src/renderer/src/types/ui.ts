@@ -301,4 +301,36 @@ export interface TabEmits {
   close: []
   dragStart: [tab: import('./panel').Tab]
   drop: [draggedTab: import('./panel').Tab, targetTab: import('./panel').Tab]
+  duplicate: [tab: import('./panel').Tab]
+  closeOthers: [tab: import('./panel').Tab]
+  closeToRight: [tab: import('./panel').Tab]
+  moveToNewPanel: [tab: import('./panel').Tab]
+}
+
+/**
+ * Context menu item interface
+ */
+export interface ContextMenuItem {
+  id: string
+  label?: string // Optional for dividers
+  icon?: unknown // Accept any icon component (Lucide, etc.)
+  shortcut?: string
+  danger?: boolean
+  disabled?: boolean
+  type?: 'item' | 'divider'
+  action?: string
+}
+
+/**
+ * Props interface for ContextMenu component
+ */
+export interface ContextMenuProps {
+  items: ContextMenuItem[]
+}
+
+/**
+ * ContextMenu component emits
+ */
+export interface ContextMenuEmits {
+  itemClick: [item: ContextMenuItem]
 }

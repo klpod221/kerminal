@@ -14,6 +14,8 @@
         @split-vertical="splitVertical"
         @close-panel="closePanel"
         @move-tab="moveTab"
+        @duplicate-tab="duplicateTab"
+        @move-tab-to-new-panel="moveTabToNewPanel"
         @terminal-ready="terminalReady"
         @panel-click="setActivePanel"
       />
@@ -44,6 +46,8 @@
             @split-vertical="splitVertical"
             @close-panel="closePanel"
             @move-tab="moveTab"
+            @duplicate-tab="duplicateTab"
+            @move-tab-to-new-panel="moveTabToNewPanel"
             @terminal-ready="terminalReady"
             @set-active-panel="setActivePanel"
             @layout-updated="layoutUpdated"
@@ -110,6 +114,14 @@ const terminalReady = (terminalId: string): void => {
 
 const setActivePanel = (panelId: string): void => {
   emit('setActivePanel', panelId)
+}
+
+const duplicateTab = (panelId: string, tabId: string): void => {
+  emit('duplicateTab', panelId, tabId)
+}
+
+const moveTabToNewPanel = (panelId: string, tabId: string): void => {
+  emit('moveTabToNewPanel', panelId, tabId)
 }
 
 const layoutUpdated = (layout: PanelLayout): void => {
