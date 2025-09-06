@@ -3,7 +3,11 @@
     <div class="max-w-6xl mx-auto animate-fade-in">
       <div class="mt-4 mb-12">
         <img :src="Logo" alt="Kerminal Logo" class="h-32 mx-auto mb-4" />
-        <h1 class="text-4xl font-bold text-center">Kerminal</h1>
+        <h1
+          class="text-center text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent"
+        >
+          Kerminal
+        </h1>
         <p class="text-center text-xl mt-1">
           Modern Terminal with SSH, Tunneling & Cross-Device Sync
         </p>

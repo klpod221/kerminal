@@ -290,10 +290,10 @@ export class SSHTunnelService {
     const tunnel = await this.tunnelStorage.getById(id)
     if (!tunnel) return 'stopped'
 
-    // Check if we have the process in our map
+    // Check if have the process in our map
     const process = this.activeTunnels.get(id)
     if (!process) {
-      // Update status to stopped if we don't track it
+      // Update status to stopped if don't track it
       if (tunnel.status !== 'stopped') {
         await this.tunnelStorage.updateStatus(id, 'stopped')
       }

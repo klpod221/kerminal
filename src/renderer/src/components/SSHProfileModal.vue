@@ -104,8 +104,7 @@
             v-model="form.password"
             label="Password"
             :type="showPassword ? 'text' : 'password'"
-            placeholder="Enter password (optional - can prompt when connecting)"
-            helper-text="Leave empty to be prompted for password when connecting"
+            placeholder="Enter password"
             :right-icon="showPassword ? EyeOff : Eye"
             @right-icon-click="showPassword = !showPassword"
           />
@@ -144,10 +143,10 @@
 
         <div class="flex flex-col space-y-2">
           <!-- Favorite -->
-          <Checkbox v-model="form.favorite" label="Mark as favorite" />
+          <Checkbox v-model="form.favorite" label="Mark as favorite" :helper="false" />
 
           <!-- Keep Alive -->
-          <Checkbox v-model="form.keepAlive" label="Keep connection alive" />
+          <Checkbox v-model="form.keepAlive" label="Keep connection alive" :helper="false" />
         </div>
       </div>
 

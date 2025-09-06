@@ -83,7 +83,7 @@ export class SyncManager {
         throw new Error('Failed to connect to MongoDB')
       }
 
-      // Check if we have existing local data to migrate
+      // Check if have existing local data to migrate
       const hasLocalData = await this.hasExistingLocalData()
 
       // Initialize sync service

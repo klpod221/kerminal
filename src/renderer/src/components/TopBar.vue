@@ -181,7 +181,7 @@ async function refreshSyncStatus(): Promise<void> {
   for (let i = 0; i < 3; i++) {
     await loadSyncStatus()
     if (syncStatus.value?.isConnected) {
-      break // Stop retrying if we got a connected status
+      break // Stop retrying if got a connected status
     }
     if (i < 2) {
       await new Promise((resolve) => setTimeout(resolve, 200)) // Wait 200ms before retry

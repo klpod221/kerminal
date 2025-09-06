@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kerminal - Modern Terminal with SSH, Tunneling & Cross-Device Sync</title>
+  <meta name="description" content="A powerful, cross-platform terminal application with advanced SSH management, comprehensive tunneling capabilities, and seamless data synchronization across all your devices.">
+  <meta name="keywords" content="terminal, ssh, tunneling, cross-device sync, electron, modern terminal, command line">
+  <meta name="author" content="klpod221">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://github.com/klpod221/kerminal">
+  <meta property="og:title" content="Kerminal - Modern Terminal with SSH, Tunneling & Cross-Device Sync">
+  <meta property="og:description" content="A powerful, cross-platform terminal application with advanced SSH management, comprehensive tunneling capabilities, and seamless data synchronization across all your devices.">
+  <meta property="og:image" content="https://github.com/klpod221/kerminal/raw/main/screenshots/main-interface.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://github.com/klpod221/kerminal">
+  <meta property="twitter:title" content="Kerminal - Modern Terminal with SSH, Tunneling & Cross-Device Sync">
+  <meta property="twitter:description" content="A powerful, cross-platform terminal application with advanced SSH management, comprehensive tunneling capabilities, and seamless data synchronization across all your devices.">
+  <meta property="twitter:image" content="https://github.com/klpod221/kerminal/raw/main/screenshots/main-interface.png">
+
+  <link rel="icon" type="image/png" href="./resources/icon.png">
+
+  <style>
+    @font-face {
+      font-family: 'Fira Code Nerd Font';
+      src: url('./src/renderer/src/assets/fonts/FiraCodeNerdFont.ttf') format('truetype');
+    }
+  </style>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#74c7ec',
+            secondary: '#facc15',
+            accent: '#a78bfa',
+            success: '#34d399',
+            bgdark: '#0f172a',
+            bgdarker: '#020617',
+            textlight: '#f8fafc',
+            textgray: '#94a3b8',
+            cardbg: '#1e293b',
+            bordercolor: '#334155',
+          },
+          fontFamily: {
+            fira: ['Fira Code Nerd Font', 'monospace']
+          },
+        },
+      },
+    }
+  </script>
+</head>
+
+<body class="font-fira text-textlight bg-gradient-to-br from-bgdarker to-bgdark min-h-screen">
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-cardbg/90 backdrop-blur border-b border-bordercolor">
+    <nav class="max-w-6xl mx-auto flex justify-between items-center py-4 px-5">
+      <div class="flex items-center gap-2 text-2xl font-bold text-primary logo">
+        <img src="./resources/icon.png" alt="Kerminal Logo" class="w-10 h-10 rounded-lg">
+        <span>Kerminal</span>
+      </div>
+      <ul class="hidden md:flex gap-8 text-textgray nav-links">
+        <li><a href="#features" class="hover:text-primary transition">Features</a></li>
+        <li><a href="#screenshots" class="hover:text-primary transition">Screenshots</a></li>
+        <li><a href="#download" class="hover:text-primary transition">Download</a></li>
+        <li><a href="https://github.com/klpod221/kerminal" class="hover:text-primary transition">GitHub</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero pt-32 pb-20 text-center">
+    <div class="max-w-6xl mx-auto px-5">
+      <h1 class="text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Kerminal</h1>
+      <p class="text-xl text-textgray mb-2">Modern Terminal with SSH, Tunneling & Cross-Device Sync</p>
+      <p class="text-base text-textgray mb-8 max-w-2xl mx-auto">A powerful, cross-platform terminal application with advanced SSH management, comprehensive tunneling capabilities, and seamless data synchronization across all your devices.</p>
+
+      <div class="flex flex-wrap justify-center gap-4 my-8">
+        <img class="rounded" src="https://img.shields.io/github/last-commit/klpod221/kerminal?style=for-the-badge&color=74c7ec&labelColor=111827" alt="Last Commit">
+        <img class="rounded" src="https://img.shields.io/github/stars/klpod221/kerminal?style=for-the-badge&color=facc15&labelColor=111827" alt="GitHub Stars">
+        <img class="rounded" src="https://img.shields.io/github/repo-size/klpod221/kerminal?style=for-the-badge&color=a78bfa&labelColor=111827" alt="Repo Size">
+        <img class="rounded" src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&color=34d399&labelColor=111827" alt="License">
+      </div>
+
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="https://github.com/klpod221/kerminal/releases" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-primary text-bgdarker hover:bg-transparent hover:text-primary border-2 border-primary transition">
+          <i data-lucide="download" class="w-5 h-5"></i>
+          Download Now
+        </a>
+        <a href="https://github.com/klpod221/kerminal" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-transparent border-2 border-bordercolor text-textlight hover:border-secondary hover:text-secondary transition">
+          <i data-lucide="github" class="w-5 h-5"></i>
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="py-20 bg-cardbg/30">
+    <div class="max-w-4xl mx-auto px-5">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-12 text-textlight">Key Features</h2>
+      <div class="flex flex-wrap justify-center gap-8 text-center">
+        <div class="bg-cardbg p-6 rounded-xl border border-bordercolor hover:border-primary transition feature-card w-64 flex flex-col items-center">
+          <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-blue-500/20 mb-3 feature-icon">
+            <i data-lucide="server" class="w-8 h-8 text-blue-400"></i>
+          </div>
+          <h3 class="text-lg font-semibold mb-1 text-textlight">SSH Management</h3>
+          <p class="text-textgray text-sm">Organize SSH profiles easily.</p>
+        </div>
+        <div class="bg-cardbg p-6 rounded-xl border border-bordercolor hover:border-primary transition feature-card w-64 flex flex-col items-center">
+          <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-orange-500/20 mb-3 feature-icon">
+            <i data-lucide="network" class="w-8 h-8 text-orange-400"></i>
+          </div>
+          <h3 class="text-lg font-semibold mb-1 text-textlight">Port Tunneling</h3>
+          <p class="text-textgray text-sm">Manage SSH tunnels visually.</p>
+        </div>
+        <div class="bg-cardbg p-6 rounded-xl border border-bordercolor hover:border-primary transition feature-card w-64 flex flex-col items-center">
+          <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-green-500/20 mb-3 feature-icon">
+            <i data-lucide="cloud" class="w-8 h-8 text-green-400"></i>
+          </div>
+          <h3 class="text-lg font-semibold mb-1 text-textlight">Sync</h3>
+          <p class="text-textgray text-sm">Sync data across devices.</p>
+        </div>
+        <div class="bg-cardbg p-6 rounded-xl border border-bordercolor hover:border-primary transition feature-card w-64 flex flex-col items-center">
+          <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-purple-500/20 mb-3 feature-icon">
+            <i data-lucide="zap" class="w-8 h-8 text-purple-400"></i>
+          </div>
+          <h3 class="text-lg font-semibold mb-1 text-textlight">Modern UI</h3>
+          <p class="text-textgray text-sm">Split panels, dark theme.</p>
+        </div>
+        <div class="bg-cardbg p-6 rounded-xl border border-bordercolor hover:border-primary transition feature-card w-64 flex flex-col items-center">
+          <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-cyan-500/20 mb-3 feature-icon">
+            <i data-lucide="command" class="w-8 h-8 text-cyan-400"></i>
+          </div>
+          <h3 class="text-lg font-semibold mb-1 text-textlight">Saved Commands</h3>
+          <p class="text-textgray text-sm">Tag & search commands.</p>
+        </div>
+        <div class="bg-cardbg p-6 rounded-xl border border-bordercolor hover:border-primary transition feature-card w-64 flex flex-col items-center">
+          <div class="w-14 h-14 flex items-center justify-center rounded-xl bg-pink-500/20 mb-3 feature-icon">
+            <i data-lucide="monitor" class="w-8 h-8 text-pink-400"></i>
+          </div>
+          <h3 class="text-lg font-semibold mb-1 text-textlight">Cross-Platform</h3>
+          <p class="text-textgray text-sm">Windows, macOS, Linux.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Screenshots Section -->
+  <section id="screenshots" class="py-20">
+    <div class="max-w-6xl mx-auto px-5">
+      <h2 class="text-3xl md:text-4xl font-bold text-center mb-12 text-textlight">Screenshots</h2>
+      <div id="gallery-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="bg-cardbg rounded-xl overflow-hidden border border-bordercolor transition hover:scale-105 screenshot-item cursor-pointer" data-index="0">
+          <img src="./screenshots/main-interface.png" alt="Kerminal Main Interface" loading="lazy" class="w-full">
+          <div class="p-4 text-textgray text-center">Main interface with terminal tabs and split panels</div>
+        </div>
+        <div class="bg-cardbg rounded-xl overflow-hidden border border-bordercolor transition hover:scale-105 screenshot-item cursor-pointer" data-index="1">
+          <img src="./screenshots/ssh-profiles.png" alt="SSH Profiles Management" loading="lazy" class="w-full">
+          <div class="p-4 text-textgray text-center">SSH profiles management with groups</div>
+        </div>
+        <div class="bg-cardbg rounded-xl overflow-hidden border border-bordercolor transition hover:scale-105 screenshot-item cursor-pointer" data-index="2">
+          <img src="./screenshots/ssh-tunneling.png" alt="SSH Tunneling" loading="lazy" class="w-full">
+          <div class="p-4 text-textgray text-center">Visual SSH tunnel management</div>
+        </div>
+        <div class="bg-cardbg rounded-xl overflow-hidden border border-bordercolor transition hover:scale-105 screenshot-item cursor-pointer" data-index="3">
+          <img src="./screenshots/saved-commands.png" alt="Saved Commands" loading="lazy" class="w-full">
+          <div class="p-4 text-textgray text-center">Saved commands with tags and search</div>
+        </div>
+        <div class="bg-cardbg rounded-xl overflow-hidden border border-bordercolor transition hover:scale-105 screenshot-item cursor-pointer" data-index="4">
+          <img src="./screenshots/sync-settings.png" alt="Sync Settings" loading="lazy" class="w-full">
+          <div class="p-4 text-textgray text-center">Cross-device synchronization settings</div>
+        </div>
+        <div class="bg-cardbg rounded-xl overflow-hidden border border-bordercolor transition hover:scale-105 screenshot-item cursor-pointer" data-index="5">
+          <img src="./screenshots/dashboard.png" alt="Dashboard" loading="lazy" class="w-full">
+          <div class="p-4 text-textgray text-center">Dashboard with system information</div>
+        </div>
+      </div>
+
+      <!-- Gallery Modal -->
+      <div id="gallery-modal" class="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 hidden">
+        <button id="gallery-close" class="absolute top-6 right-8 text-white text-3xl font-bold z-10">&times;</button>
+        <button id="gallery-prev" class="absolute left-4 md:left-12 text-white text-3xl z-10 px-2 py-1 bg-black/30 rounded hover:bg-black/60">&#8592;</button>
+        <div class="flex flex-col items-center">
+          <img id="gallery-img" src="" alt="Screenshot" class="max-h-[80vh] max-w-[90vw] object-contain transition-transform duration-500 ease-in-out cursor-grab" style="transform: scale(1);">
+          <div id="gallery-caption" class="mt-4 text-textgray text-center"></div>
+        </div>
+        <button id="gallery-next" class="absolute right-4 md:right-12 text-white text-3xl z-10 px-2 py-1 bg-black/30 rounded hover:bg-black/60">&#8594;</button>
+        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-4">
+          <button id="gallery-zoom-in" class="text-white text-2xl bg-black/30 rounded px-3 py-1 hover:bg-black/60">+</button>
+          <button id="gallery-zoom-out" class="text-white text-2xl bg-black/30 rounded px-3 py-1 hover:bg-black/60">-</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download Section -->
+  <section id="download" class="py-20 bg-cardbg/30 text-center">
+    <div class="max-w-6xl mx-auto px-5">
+      <h2 class="text-3xl md:text-4xl font-bold mb-4 text-textlight">Download Kerminal</h2>
+      <p class="text-textgray mb-8 text-lg">Get the latest version for your platform</p>
+      <div class="flex flex-wrap justify-center gap-4">
+        <a href="https://github.com/klpod221/kerminal/releases" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-primary text-bgdarker hover:bg-transparent hover:text-primary border-2 border-primary transition">
+          <i data-lucide="monitor" class="w-5 h-5"></i>
+          Windows
+        </a>
+        <a href="https://github.com/klpod221/kerminal/releases" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-primary text-bgdarker hover:bg-transparent hover:text-primary border-2 border-primary transition">
+          <i data-lucide="apple" class="w-5 h-5"></i>
+          macOS
+        </a>
+        <a href="https://github.com/klpod221/kerminal/releases" class="inline-flex items-center gap-2 px-6 py-3 rounded-lg font-semibold bg-primary text-bgdarker hover:bg-transparent hover:text-primary border-2 border-primary transition">
+          <i data-lucide="terminal" class="w-5 h-5"></i>
+          Linux
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-bgdarker border-t border-bordercolor py-8 text-center">
+    <div class="max-w-6xl mx-auto px-5">
+      <p class="text-textgray mb-4">Make with ❤️ by <a href="https://klpod221.com" class="hover:text-primary transition font-bold underline">klpod221</a>. Licensed under MIT License.</p>
+      <ul class="flex justify-center gap-8 list-none footer-links">
+        <li><a href="https://github.com/klpod221/kerminal" class="hover:text-primary transition text-textgray">GitHub</a></li>
+        <li><a href="https://github.com/klpod221/kerminal/issues" class="hover:text-primary transition text-textgray">Issues</a></li>
+        <li><a href="https://github.com/klpod221/kerminal/blob/main/LICENSE" class="hover:text-primary transition text-textgray">License</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    // Smooth scrolling for navigation links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function(e) {
+        if (this.getAttribute('href').length > 1) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute('href'));
+          if (target) {
+            target.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start'
+            });
+          }
+        }
+      });
+    });
+
+    // Add scroll effect to header
+    window.addEventListener('scroll', () => {
+      const header = document.querySelector('header');
+      if (window.scrollY > 100) {
+        header.classList.add('bg-cardbg/95');
+      } else {
+        header.classList.remove('bg-cardbg/95');
+      }
+    });
+
+    // Animate feature cards and screenshots on scroll
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -100px 0px'
+    };
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('opacity-100', 'translate-y-0');
+        }
+      });
+    }, observerOptions);
+    document.querySelectorAll('.feature-card, .screenshot-item').forEach(card => {
+      card.classList.add('opacity-0', 'translate-y-8', 'transition', 'duration-700');
+      observer.observe(card);
+    });
+
+    // Gallery logic
+    const screenshots = [{
+        src: './screenshots/main-interface.png',
+        caption: 'Main interface with terminal tabs and split panels'
+      },
+      {
+        src: './screenshots/ssh-profiles.png',
+        caption: 'SSH profiles management with groups'
+      },
+      {
+        src: './screenshots/ssh-tunneling.png',
+        caption: 'Visual SSH tunnel management'
+      },
+      {
+        src: './screenshots/saved-commands.png',
+        caption: 'Saved commands with tags and search'
+      },
+      {
+        src: './screenshots/sync-settings.png',
+        caption: 'Cross-device synchronization settings'
+      },
+      {
+        src: './screenshots/dashboard.png',
+        caption: 'Dashboard with system information'
+      }
+    ];
+    let currentIndex = 0;
+    let zoomLevel = 1;
+    let isDragging = false;
+    let dragStart = {
+      x: 0,
+      y: 0
+    };
+    let imgOffset = {
+      x: 0,
+      y: 0
+    };
+    let imgCurrentOffset = {
+      x: 0,
+      y: 0
+    };
+    let isTransitioning = false;
+
+    const modal = document.getElementById('gallery-modal');
+    const img = document.getElementById('gallery-img');
+    const caption = document.getElementById('gallery-caption');
+    const closeBtn = document.getElementById('gallery-close');
+    const prevBtn = document.getElementById('gallery-prev');
+    const nextBtn = document.getElementById('gallery-next');
+    const zoomInBtn = document.getElementById('gallery-zoom-in');
+    const zoomOutBtn = document.getElementById('gallery-zoom-out');
+
+    function openModal(index) {
+      currentIndex = index;
+      zoomLevel = 1;
+      imgOffset = {
+        x: 0,
+        y: 0
+      };
+      imgCurrentOffset = {
+        x: 0,
+        y: 0
+      };
+      updateModal(true);
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    function updateModal(isInstant = false) {
+      img.src = screenshots[currentIndex].src;
+      caption.textContent = screenshots[currentIndex].caption;
+      img.style.transition = isInstant ? 'none' : 'transform 0.5s cubic-bezier(0.4,0,0.2,1)';
+      img.style.transform = `scale(${zoomLevel}) translate(${imgOffset.x}px,${imgOffset.y}px)`;
+      setTimeout(() => {
+        img.style.transition = 'transform 0.5s cubic-bezier(0.4,0,0.2,1)';
+      }, 10);
+    }
+
+    function showPrev() {
+      if (isTransitioning) return;
+      isTransitioning = true;
+      img.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+      img.style.transform += ' translateX(-100vw)';
+      setTimeout(() => {
+        currentIndex = (currentIndex - 1 + screenshots.length) % screenshots.length;
+        zoomLevel = 1;
+        imgOffset = {
+          x: 0,
+          y: 0
+        };
+        imgCurrentOffset = {
+          x: 0,
+          y: 0
+        };
+        updateModal(true);
+        img.style.transform = `scale(${zoomLevel}) translate(100vw,0)`;
+        setTimeout(() => {
+          img.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+          img.style.transform = `scale(${zoomLevel}) translate(0,0)`;
+          setTimeout(() => {
+            isTransitioning = false;
+          }, 400);
+        }, 10);
+      }, 400);
+    }
+
+    function showNext() {
+      if (isTransitioning) return;
+      isTransitioning = true;
+      img.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+      img.style.transform += ' translateX(100vw)';
+      setTimeout(() => {
+        currentIndex = (currentIndex + 1) % screenshots.length;
+        zoomLevel = 1;
+        imgOffset = {
+          x: 0,
+          y: 0
+        };
+        imgCurrentOffset = {
+          x: 0,
+          y: 0
+        };
+        updateModal(true);
+        img.style.transform = `scale(${zoomLevel}) translate(-100vw,0)`;
+        setTimeout(() => {
+          img.style.transition = 'transform 0.4s cubic-bezier(0.4,0,0.2,1)';
+          img.style.transform = `scale(${zoomLevel}) translate(0,0)`;
+          setTimeout(() => {
+            isTransitioning = false;
+          }, 400);
+        }, 10);
+      }, 400);
+    }
+
+    function zoomIn() {
+      zoomLevel = Math.min(zoomLevel + 0.2, 3);
+      updateModal();
+    }
+
+    function zoomOut() {
+      zoomLevel = Math.max(zoomLevel - 0.2, 0.5);
+      updateModal();
+    }
+
+
+    // Drag to move image when zoomed > 1, middle mouse to zoom anytime
+    img.addEventListener('mousedown', (e) => {
+      if (e.button === 1) { // Middle mouse for zoom in/out
+        if (e.shiftKey) {
+          zoomLevel = Math.max(zoomLevel - 0.2, 0.5);
+        } else {
+          zoomLevel = Math.min(zoomLevel + 0.2, 3);
+        }
+        updateModal();
+        e.preventDefault();
+        return;
+      }
+      if (zoomLevel <= 1) return;
+      isDragging = true;
+      img.classList.add('cursor-grabbing');
+      dragStart = {
+        x: e.clientX,
+        y: e.clientY
+      };
+      imgCurrentOffset = {
+        ...imgOffset
+      };
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      if (zoomLevel <= 1) return;
+      const dx = e.clientX - dragStart.x;
+      const dy = e.clientY - dragStart.y;
+      imgOffset = {
+        x: imgCurrentOffset.x + dx,
+        y: imgCurrentOffset.y + dy
+      };
+      updateModal(true);
+    });
+    window.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        img.classList.remove('cursor-grabbing');
+      }
+    });
+
+    // Touch support for drag
+    img.addEventListener('touchstart', (e) => {
+      if (zoomLevel <= 1) return;
+      isDragging = true;
+      dragStart = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      };
+      imgCurrentOffset = {
+        ...imgOffset
+      };
+    });
+    window.addEventListener('touchmove', (e) => {
+      if (!isDragging || zoomLevel <= 1) return;
+      const dx = e.touches[0].clientX - dragStart.x;
+      const dy = e.touches[0].clientY - dragStart.y;
+      imgOffset = {
+        x: imgCurrentOffset.x + dx,
+        y: imgCurrentOffset.y + dy
+      };
+      updateModal(true);
+    }, {
+      passive: false
+    });
+    window.addEventListener('touchend', () => {
+      if (isDragging) {
+        isDragging = false;
+      }
+    });
+
+    const _updateModal = updateModal;
+    updateModal = function(isInstant = false) {
+      if (zoomLevel <= 1) {
+        imgOffset = {
+          x: 0,
+          y: 0
+        };
+      }
+      _updateModal(isInstant);
+    }
+
+    document.querySelectorAll('#gallery-grid .screenshot-item').forEach(item => {
+      item.addEventListener('click', () => {
+        openModal(Number(item.getAttribute('data-index')));
+      });
+    });
+    closeBtn.addEventListener('click', closeModal);
+    prevBtn.addEventListener('click', showPrev);
+    nextBtn.addEventListener('click', showNext);
+    zoomInBtn.addEventListener('click', zoomIn);
+    zoomOutBtn.addEventListener('click', zoomOut);
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (modal.classList.contains('hidden')) return;
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'ArrowLeft') showPrev();
+      if (e.key === 'ArrowRight') showNext();
+      if (e.key === '+') zoomIn();
+      if (e.key === '-') zoomOut();
+    });
+
+    // Prevent scroll on modal
+    modal.addEventListener('wheel', (e) => {
+      if (!modal.classList.contains('hidden')) {
+        if (e.ctrlKey || zoomLevel > 1) {
+          if (e.deltaY < 0) zoomIn();
+          else zoomOut();
+          e.preventDefault();
+        }
+      }
+    }, {
+      passive: false
+    });
+  </script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      if (window.lucide) lucide.createIcons();
+    });
+  </script>
+</body>
+
+</html>

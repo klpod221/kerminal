@@ -258,8 +258,6 @@ export class SSHConnectionService {
 
     // Add password authentication if no key is provided
     if (!config.keyPath && config.password) {
-      // Note: For password authentication, we would typically use sshpass or expect
-      // For now, we'll rely on interactive password prompt
       args.push('-o', 'PreferredAuthentications=password')
     }
 
@@ -490,7 +488,7 @@ export class SSHConnectionService {
     })
 
     stream.on('data', () => {
-      // Command output - we don't need to process it
+      // Command output - don't need to process it
     })
 
     stream.stderr.on('data', (data: Buffer) => {

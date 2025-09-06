@@ -272,7 +272,7 @@ const splitPanelInLayout = (
   direction: 'horizontal' | 'vertical'
 ): boolean => {
   if (layout.type === 'panel' && layout.panel?.id === panelId) {
-    // This is the panel we want to split
+    // This is the panel want to split
     // We need to replace this layout with a split layout
     const originalPanel = layout.panel
 

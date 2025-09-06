@@ -70,14 +70,11 @@
           max="65535"
           :rules="['required']"
           :error-message="localPortError"
-          helper-text="Port on your local machine"
           @blur="validation.validateField('localPort')"
         />
 
         <!-- Remote Configuration (for local/remote tunnels) -->
         <div v-if="form.type !== 'dynamic'" class="space-y-3">
-          <h4 class="text-sm font-medium text-gray-300">Remote Configuration</h4>
-
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               v-model="form.remoteHost"
@@ -133,7 +130,11 @@
 
         <div class="flex flex-col space-y-2">
           <!-- Auto Start -->
-          <Checkbox v-model="form.autoStart" label="Auto-start tunnel when app opens" />
+          <Checkbox
+            v-model="form.autoStart"
+            label="Auto-start tunnel when app opens"
+            :helper="false"
+          />
         </div>
       </div>
     </form>
