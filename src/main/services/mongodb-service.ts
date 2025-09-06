@@ -42,7 +42,7 @@ export class MongoDBService {
     }
 
     try {
-      this.client = new MongoClient(this.config.mongoUri, {
+      this.client = new MongoClient(this.config.connectionString || this.config.mongoUri!, {
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000
@@ -80,7 +80,7 @@ export class MongoDBService {
     }
 
     try {
-      const testClient = new MongoClient(this.config.mongoUri, {
+      const testClient = new MongoClient(this.config.connectionString || this.config.mongoUri!, {
         serverSelectionTimeoutMS: 5000
       })
 

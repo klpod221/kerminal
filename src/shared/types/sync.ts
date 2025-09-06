@@ -4,6 +4,16 @@
  */
 
 /**
+ * Conflict resolution strategy type
+ */
+export type ConflictResolutionStrategy = 'local-wins' | 'remote-wins' | 'latest-wins' | 'manual'
+
+/**
+ * Conflict resolution type
+ */
+export type ConflictResolution = 'local' | 'remote' | 'merge' | 'ask'
+
+/**
  * Sync configuration interface
  */
 export interface SyncConfig {
@@ -11,6 +21,7 @@ export interface SyncConfig {
   provider: 'mongodb'
   enabled: boolean
   connectionString?: string
+  mongoUri?: string
   databaseName?: string
   collectionPrefix?: string
   encryptionKey?: string
@@ -19,6 +30,8 @@ export interface SyncConfig {
   syncInterval?: number
   deviceName?: string
   deviceId?: string
+  conflictResolutionStrategy?: ConflictResolutionStrategy
+  retainTombstoneDays?: number
   created: Date
   updated: Date
 }
@@ -28,15 +41,23 @@ export interface SyncConfig {
  */
 export interface SyncStatus {
   isEnabled: boolean
+  isConnected?: boolean
+  isLoading?: boolean
+  syncInProgress?: boolean
   lastSync?: Date
   lastSyncStatus: 'success' | 'error' | 'in-progress' | 'never'
   lastSyncError?: string
+  lastError?: string
   nextSync?: Date
   deviceCount?: number
   lastActivity?: Date
   lastPull?: Date
   lastPush?: Date
   pendingChanges?: number
+  totalItems?: number
+  syncedItems?: number
+  conflictCount?: number
+  tombstoneCount?: number
 }
 
 /**
@@ -82,6 +103,7 @@ export interface SyncRecord {
   type: 'ssh-profile' | 'ssh-group' | 'saved-command' | 'ssh-tunnel'
   data: Record<string, unknown>
   metadata: SyncMetadata
+  version?: DataVersion
   isDeleted?: boolean
 }
 
@@ -214,21 +236,13 @@ export class SyncableStorageRegistry {
 }
 
 /**
- * Conflict resolution strategy type
- */
-export type ConflictResolutionStrategy = 'local-wins' | 'remote-wins' | 'latest-wins' | 'manual'
-
-/**
- * Conflict resolution type
- */
-export type ConflictResolution = 'local' | 'remote' | 'merge' | 'ask'
-
-/**
  * Sync operation result interface
  */
 export interface SyncOperationResult {
   success: boolean
   recordsProcessed: number
+  itemsProcessed: number
+  tombstonesProcessed: number
   conflictsResolved: number
   errors: string[]
   lastSync: Date
@@ -239,6 +253,7 @@ export interface SyncOperationResult {
  */
 export interface DeviceInfo {
   id: string
+  deviceId?: string
   name: string
   platform: string
   lastActivity: Date

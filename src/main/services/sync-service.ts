@@ -27,8 +27,10 @@ export class SyncService {
   private storageMap: Array<{ name: string; storage: ISyncableStorage }> = []
   private readonly deviceInfo: DeviceInfo
   private readonly status: SyncStatus = {
+    isEnabled: false,
     isConnected: false,
     lastSync: undefined,
+    lastSyncStatus: 'never',
     lastError: '',
     isLoading: false,
     totalItems: 0,
@@ -53,11 +55,12 @@ export class SyncService {
     const machineId = this.generateMachineId()
 
     return {
+      id: machineId,
       deviceId: machineId,
-      deviceName: hostname,
+      name: hostname,
       platform,
-      lastSeen: new Date(),
-      version: process.env.APP_VERSION || '1.0.0'
+      lastActivity: new Date(),
+      syncVersion: process.env.APP_VERSION || '1.0.0'
     }
   }
 
@@ -137,17 +140,21 @@ export class SyncService {
     try {
       const devicesCollection = 'sync_devices'
       const existingDevice = await this.mongoService.findOne(devicesCollection, {
-        deviceId: this.deviceInfo.deviceId
+        deviceId: this.deviceInfo.deviceId || this.deviceInfo.id
       })
 
       if (existingDevice) {
-        await this.mongoService.replaceOne(devicesCollection, this.deviceInfo.deviceId, {
-          ...this.deviceInfo,
-          lastSeen: new Date()
-        })
+        await this.mongoService.replaceOne(
+          devicesCollection,
+          this.deviceInfo.deviceId || this.deviceInfo.id,
+          {
+            ...this.deviceInfo,
+            lastSeen: new Date()
+          }
+        )
       } else {
         await this.mongoService.insertOne(devicesCollection, {
-          _id: this.deviceInfo.deviceId,
+          _id: this.deviceInfo.deviceId || this.deviceInfo.id,
           ...this.deviceInfo
         })
       }
@@ -161,11 +168,15 @@ export class SyncService {
    */
   async testConnection(mongoUri: string, databaseName: string): Promise<boolean> {
     const tempConfig: SyncConfig = {
+      id: 'temp-test-config',
+      provider: 'mongodb',
       mongoUri,
       databaseName,
       enabled: true,
       autoSync: false,
-      syncInterval: 5
+      syncInterval: 5,
+      created: new Date(),
+      updated: new Date()
     }
 
     this.mongoService.setConfig(tempConfig)
@@ -186,10 +197,12 @@ export class SyncService {
       this.logger.warn('Sync operation already in progress, skipping...')
       return {
         success: false,
+        recordsProcessed: 0,
         itemsProcessed: 0,
         conflictsResolved: 0,
         tombstonesProcessed: 0,
-        errors: ['Sync already in progress']
+        errors: ['Sync already in progress'],
+        lastSync: new Date()
       }
     }
 
@@ -198,10 +211,12 @@ export class SyncService {
 
     const result: SyncOperationResult = {
       success: true,
+      recordsProcessed: 0,
       itemsProcessed: 0,
       conflictsResolved: 0,
       tombstonesProcessed: 0,
-      errors: []
+      errors: [],
+      lastSync: new Date()
     }
 
     try {
@@ -250,10 +265,12 @@ export class SyncService {
     const collectionName = this.getCollectionName(name)
     const result: SyncOperationResult = {
       success: true,
+      recordsProcessed: 0,
       itemsProcessed: 0,
       conflictsResolved: 0,
       tombstonesProcessed: 0,
-      errors: []
+      errors: [],
+      lastSync: new Date()
     }
 
     try {
@@ -404,25 +421,22 @@ export class SyncService {
     localChange: SyncRecord,
     remoteChange: Document
   ): Promise<SyncRecord> {
-    const strategy = this.config?.conflictResolutionStrategy || 'version'
+    const strategy = this.config?.conflictResolutionStrategy || 'latest-wins'
 
     switch (strategy) {
-      case 'version':
-        return this.resolveByVersion(localChange, remoteChange)
-
-      case 'timestamp':
+      case 'latest-wins':
         return this.resolveByTimestamp(localChange, remoteChange)
 
-      case 'last-writer-wins':
+      case 'local-wins':
+        return localChange
+
+      case 'remote-wins':
         return this.convertRemoteToLocalChange(remoteChange)
 
-      case 'merge':
-        return this.resolveByVersion(localChange, remoteChange) // Fallback for now
-
       case 'manual':
-        // Emit conflict event and fallback to version-based
+        // Emit conflict event and fallback to latest-wins
         this.emitSyncEvent('sync.conflictResolutionRequired')
-        return this.resolveByVersion(localChange, remoteChange)
+        return this.resolveByTimestamp(localChange, remoteChange)
 
       default:
         return this.resolveByVersion(localChange, remoteChange)
@@ -433,8 +447,8 @@ export class SyncService {
    * Resolve conflict by version number (higher version wins)
    */
   private resolveByVersion(localChange: SyncRecord, remoteChange: Document): SyncRecord {
-    const localVersion = localChange.version?.version || 0
-    const remoteVersion = remoteChange._syncMeta?.version?.version || 0
+    const localVersion = localChange.version?.timestamp || 0
+    const remoteVersion = remoteChange._syncMeta?.version?.timestamp || 0
 
     return localVersion > remoteVersion
       ? localChange
@@ -459,19 +473,23 @@ export class SyncService {
 
     return {
       id: _id,
-      collection: _syncMeta?.collection || 'unknown',
-      action: _syncMeta?.action || 'update',
+      type: _syncMeta?.type || 'ssh-profile',
       data,
-      version: _syncMeta?.version || {
-        version: 1,
-        timestamp: new Date(),
-        deviceId: 'unknown'
+      metadata: {
+        version: _syncMeta?.version || {
+          deviceId: 'unknown',
+          timestamp: Date.now(),
+          hash: 'unknown'
+        },
+        lastModified: new Date(),
+        deviceId: _syncMeta?.version?.deviceId || 'unknown',
+        checksum: _syncMeta?.version?.hash || 'unknown'
       },
-      previousVersion: (_syncMeta?.version?.version || 1) - 1,
-      isTombstone: _syncMeta?.isTombstone || false,
-      timestamp: _syncMeta?.version?.timestamp || new Date(),
-      synced: true,
-      deviceId: _syncMeta?.version?.deviceId || 'unknown'
+      version: _syncMeta?.version || {
+        deviceId: 'unknown',
+        timestamp: Date.now(),
+        hash: 'unknown'
+      }
     }
   }
 
@@ -489,7 +507,12 @@ export class SyncService {
         tombstone.id
       )
 
-      if (!existingTombstone || existingTombstone.version < tombstone.version) {
+      if (
+        !existingTombstone ||
+        (existingTombstone.version &&
+          tombstone.version &&
+          existingTombstone.version < tombstone.version)
+      ) {
         await this.mongoService.replaceOne(tombstoneCollectionName, tombstone.id, {
           _id: tombstone.id,
           ...tombstone,
@@ -516,7 +539,7 @@ export class SyncService {
     collectionName: string
   ): Promise<void> {
     try {
-      if (change.data && !change.isTombstone) {
+      if (change.data && !change.isDeleted) {
         // Save data locally with version info if supported
         if (storage.saveDataWithVersion && change.version) {
           await storage.saveDataWithVersion(change.id, change.data, change.version)
@@ -528,10 +551,8 @@ export class SyncService {
           ...change.data,
           _syncMeta: {
             version: change.version,
-            collection: change.collection,
-            action: change.action,
-            isTombstone: change.isTombstone,
-            deviceId: this.deviceInfo.deviceId,
+            type: change.type,
+            deviceId: this.deviceInfo.deviceId || this.deviceInfo.id,
             updatedAt: new Date()
           }
         })
@@ -696,7 +717,7 @@ export class SyncService {
 
     this.stopAutoSync()
 
-    const intervalMs = this.config.syncInterval * 1000
+    const intervalMs = (this.config.syncInterval || 300) * 1000
     this.syncInterval = setInterval(async () => {
       if (!this.status.isConnected || this.status.syncInProgress) {
         return

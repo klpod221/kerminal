@@ -75,8 +75,8 @@ export class SyncManager {
     try {
       // Test connection first
       const connectionTest = await this.syncService.testConnection(
-        config.mongoUri,
-        config.databaseName
+        config.connectionString || config.mongoUri!,
+        config.databaseName || 'kerminal'
       )
 
       if (!connectionTest) {
@@ -249,6 +249,6 @@ export class SyncManager {
   async isAutoSyncRunning(): Promise<boolean> {
     const config = await this.syncConfigStorage.getConfig()
     const status = this.syncService.getStatus()
-    return status.isConnected && config?.enabled === true && config?.autoSync === true
+    return status.isConnected === true && config?.enabled === true && config?.autoSync === true
   }
 }
