@@ -50,23 +50,12 @@
 
     <div class="draggable flex-1 h-full"></div>
 
-    <!-- Window Controls -->
     <div class="flex items-center h-full max-h-[30px] flex-shrink-0">
-      <Button
-        title="Saved Commands"
-        variant="ghost"
-        size="sm"
-        :icon="BookmarkIcon"
-        :class="
-          topBarState.isSavedCommandsActive.value ? 'bg-gray-800 text-blue-400' : 'text-gray-400'
-        "
-        @click="toggleSavedCommands"
-      />
       <Button
         title="SSH Tunnels"
         variant="ghost"
         size="sm"
-        :icon="Wifi"
+        :icon="Network"
         :class="
           topBarState.isSSHTunnelsActive.value
             ? 'bg-gray-800 text-purple-400'
@@ -91,6 +80,16 @@
         @click="openSyncSettings"
       />
       <Button
+        title="Saved Commands"
+        variant="ghost"
+        size="sm"
+        :icon="CommandIcon"
+        :class="
+          topBarState.isSavedCommandsActive.value ? 'bg-gray-800 text-blue-400' : 'text-gray-400'
+        "
+        @click="toggleSavedCommands"
+      />
+      <Button
         title="Keyboard Shortcuts (Ctrl+?)"
         variant="ghost"
         size="sm"
@@ -98,6 +97,11 @@
         class="text-gray-400 hover:text-white"
         @click="openKeyboardShortcuts"
       />
+
+      <!-- Separator -->
+      <div class="h-4 w-px bg-gray-600 mx-2 flex-shrink-0"></div>
+
+      <!-- Window Controls -->
       <Button
         title="Minimize window"
         variant="ghost"
@@ -126,9 +130,9 @@ import {
   Minimize2,
   Maximize2,
   Server,
-  Bookmark,
+  Command,
   Cloud,
-  Wifi,
+  Network,
   Keyboard
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
@@ -149,7 +153,7 @@ const emit = defineEmits<{
 }>()
 
 // Use icons
-const BookmarkIcon = Bookmark
+const CommandIcon = Command
 const CloudIcon = Cloud
 const KeyboardIcon = Keyboard
 

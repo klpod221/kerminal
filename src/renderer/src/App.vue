@@ -20,6 +20,9 @@
         class="h-full"
         @create-terminal="createTerminalFromDashboard"
         @open-ssh-profiles="toggleSSHDrawer"
+        @open-saved-commands="toggleSavedCommands"
+        @open-ssh-tunnel="toggleSSHTunnels"
+        @open-sync-settings="openSyncSettings"
       />
 
       <!-- Workspace with Panels -->

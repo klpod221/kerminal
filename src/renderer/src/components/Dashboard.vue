@@ -18,6 +18,88 @@
         </p>
       </div>
 
+      <!-- Quick Actions -->
+      <div class="mb-8">
+        <h2 class="text-2xl font-bold mb-6 text-center">Quick Actions</h2>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 max-w-5xl mx-auto">
+          <!-- New Terminal -->
+          <Card
+            class="cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            :hover="true"
+            :center="true"
+            @click="createTerminal"
+          >
+            <div class="flex flex-col items-center space-y-2">
+              <div class="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Terminal :size="24" class="text-blue-400" />
+              </div>
+              <span class="text-sm font-medium text-white">New Terminal</span>
+            </div>
+          </Card>
+
+          <!-- SSH Profiles -->
+          <Card
+            class="cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            :hover="true"
+            :center="true"
+            @click="openSSHProfiles"
+          >
+            <div class="flex flex-col items-center space-y-2">
+              <div class="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
+                <Server :size="24" class="text-green-400" />
+              </div>
+              <span class="text-sm font-medium text-white">SSH Profiles</span>
+            </div>
+          </Card>
+
+          <!-- Saved Commands -->
+          <Card
+            class="cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            :hover="true"
+            :center="true"
+            @click="openSavedCommands"
+          >
+            <div class="flex flex-col items-center space-y-2">
+              <div class="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <Command :size="24" class="text-purple-400" />
+              </div>
+              <span class="text-sm font-medium text-white">Saved Commands</span>
+            </div>
+          </Card>
+
+          <!-- SSH Tunnel -->
+          <Card
+            class="cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            :hover="true"
+            :center="true"
+            @click="openSSHTunnel"
+          >
+            <div class="flex flex-col items-center space-y-2">
+              <div class="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                <Network :size="24" class="text-orange-400" />
+              </div>
+              <span class="text-sm font-medium text-white">SSH Tunnel</span>
+            </div>
+          </Card>
+
+          <!-- Sync Settings -->
+          <Card
+            class="cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+            :hover="true"
+            :center="true"
+            @click="openSyncSettings"
+          >
+            <div class="flex flex-col items-center space-y-2">
+              <div class="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <Cloud :size="24" class="text-red-400" />
+              </div>
+              <span class="text-sm font-medium text-white">Sync Settings</span>
+            </div>
+          </Card>
+        </div>
+      </div>
+
       <!-- Recent SSH Connections -->
       <div class="mb-8">
         <h2 class="text-2xl font-bold mb-6 text-center">Recent SSH Connections</h2>
@@ -311,7 +393,19 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Server, Cpu, MemoryStick, Monitor, Computer, Wifi, RefreshCw } from 'lucide-vue-next'
+import {
+  Server,
+  Cpu,
+  MemoryStick,
+  Monitor,
+  Computer,
+  Wifi,
+  RefreshCw,
+  Terminal,
+  Command,
+  Cloud,
+  Network
+} from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import Card from './ui/Card.vue'
 import { formatRelativeTime } from '../utils/formatter'
@@ -341,6 +435,9 @@ let countdownTimer: number | null = null
 const emit = defineEmits<{
   'create-terminal': []
   'open-ssh-profiles': []
+  'open-saved-commands': []
+  'open-ssh-tunnel': []
+  'open-sync-settings': []
 }>()
 
 // Computed properties for formatted system information
@@ -629,6 +726,34 @@ function stopTimers(): void {
  */
 function openSSHProfiles(): void {
   emit('open-ssh-profiles')
+}
+
+/**
+ * Create a new terminal
+ */
+function createTerminal(): void {
+  emit('create-terminal')
+}
+
+/**
+ * Open Saved Commands drawer
+ */
+function openSavedCommands(): void {
+  emit('open-saved-commands')
+}
+
+/**
+ * Open SSH Tunnel manager
+ */
+function openSSHTunnel(): void {
+  emit('open-ssh-tunnel')
+}
+
+/**
+ * Open Sync Settings modal
+ */
+function openSyncSettings(): void {
+  emit('open-sync-settings')
 }
 
 // Load system information and recent connections on component mount

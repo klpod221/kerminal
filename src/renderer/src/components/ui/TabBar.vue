@@ -74,6 +74,19 @@
               @drop="onTabDrop"
             />
           </transition-group>
+
+          <!-- Add Tab Button - Inside scrollable area when not scrolling -->
+          <Transition name="fade">
+            <Button
+              v-show="!showScrollButtons"
+              title="Add new tab"
+              variant="ghost"
+              size="sm"
+              :icon="Plus"
+              class="add-tab-btn flex-shrink-0 ml-1"
+              @click="addTab"
+            />
+          </Transition>
         </div>
       </div>
 
@@ -88,15 +101,18 @@
         @click="scrollRight"
       />
 
-      <!-- Add Tab Button -->
-      <Button
-        title="Add new tab"
-        variant="ghost"
-        size="sm"
-        :icon="Plus"
-        class="add-tab-btn flex-shrink-0"
-        @click="addTab"
-      />
+      <!-- Add Tab Button - Outside when scrolling is needed -->
+      <Transition name="fade">
+        <Button
+          v-show="showScrollButtons"
+          title="Add new tab"
+          variant="ghost"
+          size="sm"
+          :icon="Plus"
+          class="add-tab-btn flex-shrink-0"
+          @click="addTab"
+        />
+      </Transition>
     </div>
 
     <!-- Panel Controls -->
@@ -339,7 +355,7 @@ onBeforeUnmount(() => {
 // Computed properties for responsive tab sizing
 const tabMinWidth = computed(() => {
   const tabCount = props.panel.tabs.length
-  const addButtonWidth = 32 // Add button width
+  const addButtonWidth = showScrollButtons.value ? 32 : 36 // Add button width (larger when inside scrollable area)
   const scrollButtonsWidth = showScrollButtons.value ? 64 : 0 // Scroll buttons
   const panelControlsWidth = 128 // Split + close buttons
   const padding = 16
@@ -634,6 +650,7 @@ const onPanelDrop = (event: DragEvent): void => {
 :deep(.add-tab-btn) {
   position: relative;
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 :deep(.add-tab-btn):hover {
@@ -655,6 +672,32 @@ const onPanelDrop = (event: DragEvent): void => {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   animation: ripple 0.6s ease-out;
+}
+
+/* Add fade transition for add button position change */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease-in-out;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.add-tab-btn {
+  opacity: 1;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.add-tab-btn.v-enter-active,
+.add-tab-btn.v-leave-active {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.add-tab-btn.v-enter-from,
+.add-tab-btn.v-leave-to {
+  opacity: 0;
 }
 
 @keyframes ripple {
