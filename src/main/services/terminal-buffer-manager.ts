@@ -2,10 +2,13 @@
  * Terminal Buffer Manager for Main Process
  * Manages terminal output buffers to prevent data loss during re-renders
  */
+import { ConsoleLogger } from '../utils/logger'
+
 export class TerminalBufferManager {
   private static instance: TerminalBufferManager
   private readonly buffers: Map<string, string[]> = new Map()
   private readonly MAX_BUFFER_LINES = 2000
+  private readonly logger = new ConsoleLogger('TerminalBufferManager')
 
   /**
    * Get singleton instance
@@ -50,7 +53,7 @@ export class TerminalBufferManager {
       // Trim buffer to prevent memory overflow
       this.trimBuffer(buffer)
     } catch (error) {
-      console.error(`Failed to save buffer for terminal ${terminalId}:`, error)
+      this.logger.error(`Failed to save buffer for terminal ${terminalId}:`, error as Error)
     }
   }
 

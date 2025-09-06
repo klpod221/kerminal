@@ -105,3 +105,52 @@ export interface TabBarEmits {
   duplicateTab: [panelId: string, tabId: string]
   moveTabToNewPanel: [panelId: string, tabId: string]
 }
+
+/**
+ * TopBar page types
+ */
+export type TopBarPage = 'dashboard' | 'workspace'
+
+/**
+ * TopBar modal types
+ */
+export type TopBarModal = 'ssh-drawer' | 'saved-commands' | 'ssh-tunnels' | 'sync-settings'
+
+/**
+ * TopBar state interface
+ */
+export interface TopBarState {
+  currentPage: import('vue').Ref<TopBarPage>
+  activeModal: import('vue').Ref<TopBarModal | null>
+}
+
+/**
+ * TopBar component props
+ */
+export interface TopBarProps {
+  topBarState: ReturnType<typeof import('../composables/useTopBarState').useTopBarState>
+  syncStatusRefresh?: number
+}
+
+/**
+ * SSHTunnelManager component props
+ */
+export interface SSHTunnelManagerProps {
+  onHideManager?: () => void
+  onShowManager?: () => void
+}
+
+/**
+ * SavedCommandDrawer component props
+ */
+export interface SavedCommandDrawerProps {
+  visible?: boolean
+  activeTerminalId?: string
+}
+
+/**
+ * SSHProfileDrawer component props
+ */
+export interface SSHProfileDrawerProps {
+  visible?: boolean
+}

@@ -1,12 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-
-export type TopBarPage = 'dashboard' | 'workspace'
-export type TopBarModal = 'ssh-drawer' | 'saved-commands' | 'ssh-tunnels' | 'sync-settings'
-
-interface TopBarState {
-  currentPage: Ref<TopBarPage>
-  activeModal: Ref<TopBarModal | null>
-}
+import type { TopBarPage, TopBarModal, TopBarState } from '../types/components'
 
 /**
  * Composable for managing TopBar active states in a centralized way

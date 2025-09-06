@@ -561,13 +561,6 @@ const handleTestConnection = async (): Promise<void> => {
 
     // Increment key to force re-render of Message component
     testConnectionMessageKey.value++
-
-    // Show results in console for debugging
-    if (result.success) {
-      console.log(`✅ Connection test successful: ${result.message} (${result.duration}ms)`)
-    } else {
-      console.error(`❌ Connection test failed: ${result.message}`)
-    }
   } catch (error) {
     console.error('Failed to test connection:', error)
     testConnectionResult.value = {

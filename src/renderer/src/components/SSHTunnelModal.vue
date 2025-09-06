@@ -170,17 +170,12 @@ import Select from './ui/Select.vue'
 import Textarea from './ui/Textarea.vue'
 import Checkbox from './ui/Checkbox.vue'
 import Button from './ui/Button.vue'
-import { useValidation, validationRules, type ValidationValue } from '../composables/useValidation'
-import type { SSHTunnel, SSHTunnelWithProfile, SSHProfile } from '../types/ssh'
+import { useValidation, validationRules } from '../composables/useValidation'
+import type { ValidationValue } from '../types/ui'
+import type { SSHTunnel, SSHTunnelWithProfile } from '../types/ssh'
+import type { SSHTunnelModalProps } from '../types/modals'
 
-interface Props {
-  visible?: boolean
-  tunnel?: SSHTunnelWithProfile | null
-  profiles?: SSHProfile[]
-  preselectedProfile?: SSHProfile | null
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<SSHTunnelModalProps>(), {
   visible: false,
   tunnel: null,
   profiles: () => [],

@@ -8,35 +8,12 @@ import {
   isValidPort,
   isValidSSHKeyPath
 } from '../utils/validation'
-
-export type ValidationValue = string | number | undefined
-
-export interface FieldValidation {
-  value: Ref<ValidationValue>
-  rules: ValidationRule[]
-  touched: Ref<boolean>
-  error: Ref<string | null>
-}
-
-export interface ValidationRule {
-  name: string
-  validate: (value: ValidationValue) => boolean
-  message: string
-}
-
-export interface UseValidationReturn {
-  fields: Ref<Record<string, FieldValidation>>
-  registerField: (
-    name: string,
-    value: Ref<ValidationValue>,
-    rules: ValidationRule[]
-  ) => FieldValidation
-  validateField: (name: string) => boolean
-  validateAll: () => boolean
-  resetValidation: () => void
-  isFormValid: Ref<boolean>
-  hasBeenTouched: Ref<boolean>
-}
+import type {
+  ValidationValue,
+  FieldValidation,
+  ValidationRule,
+  UseValidationReturn
+} from '../types/ui'
 
 /**
  * Composable for form validation

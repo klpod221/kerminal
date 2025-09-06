@@ -40,7 +40,8 @@ export interface SSHGroupModalEmits {
 export interface SSHTunnelModalProps {
   visible: boolean
   tunnel?: SSHTunnelWithProfile | null
-  sshProfiles: SSHProfile[]
+  profiles: SSHProfile[]
+  preselectedProfile?: SSHProfile | null
 }
 
 /**
@@ -69,8 +70,8 @@ export interface SyncSettingsModalEmits {
  * Props interface for SavedCommandModal component
  */
 export interface SavedCommandModalProps {
-  visible: boolean
-  command?: import('./ssh').SavedCommand | null
+  visible?: boolean
+  editingCommand?: import('./ssh').SavedCommand | null
 }
 
 /**
@@ -79,4 +80,28 @@ export interface SavedCommandModalProps {
 export interface SavedCommandModalEmits {
   close: []
   save: [command: import('./ssh').SavedCommand]
+}
+
+/**
+ * Form interface for SavedCommandModal component
+ */
+export interface CommandForm {
+  name: string
+  command: string
+  description: string
+}
+
+/**
+ * Form errors interface for SavedCommandModal component
+ */
+export interface CommandFormErrors {
+  name?: string
+  command?: string
+}
+
+/**
+ * KeyboardShortcutsModal component props
+ */
+export interface KeyboardShortcutsModalProps {
+  isVisible: boolean
 }

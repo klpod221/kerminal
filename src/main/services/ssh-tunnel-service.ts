@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from 'child_process'
 import { SSHTunnel, SSHTunnelOptions, SSHTunnelWithProfile } from '../types/ssh'
 import { SSHTunnelStorage } from '../storage/ssh-tunnel-storage'
 import { SSHProfileService } from './ssh-profile-service'
+import { ConsoleLogger } from '../utils/logger'
 
 /**
  * SSH Tunnel Manager Service
@@ -13,6 +14,7 @@ export class SSHTunnelService {
   private readonly activeTunnels = new Map<string, ChildProcess>()
   private readonly reconnectTimers = new Map<string, NodeJS.Timeout>()
   private readonly manuallyStoppedTunnels = new Set<string>()
+  private readonly logger = new ConsoleLogger('SSHTunnelService')
 
   constructor() {
     this.tunnelStorage = new SSHTunnelStorage()
@@ -82,7 +84,6 @@ export class SSHTunnelService {
       status: 'stopped'
     })
 
-    console.log(`Created SSH tunnel: ${tunnel.name} (${tunnel.id})`)
     return tunnel
   }
 
@@ -102,9 +103,6 @@ export class SSHTunnelService {
     }
 
     const tunnel = await this.tunnelStorage.update(id, updates)
-    if (tunnel) {
-      console.log(`Updated SSH tunnel: ${tunnel.name} (${tunnel.id})`)
-    }
     return tunnel
   }
 
@@ -116,9 +114,6 @@ export class SSHTunnelService {
     await this.stopTunnel(id)
 
     const success = await this.tunnelStorage.delete(id)
-    if (success) {
-      console.log(`Deleted SSH tunnel: ${id}`)
-    }
     return success
   }
 
@@ -160,22 +155,24 @@ export class SSHTunnelService {
       // Store active tunnel
       this.activeTunnels.set(id, sshProcess)
 
-      // Handle process events
-      sshProcess.on('spawn', () => {
-        console.log(`SSH tunnel started: ${tunnel.name} (${id})`)
-        this.tunnelStorage.updateStatus(id, 'running')
+      // Handle successful spawn
+      process.on('spawn', () => {
+        tunnel.status = 'running'
+        this.tunnelStorage.update(id, { status: 'running' })
         options?.onConnect?.()
       })
 
       sshProcess.on('error', (error) => {
-        console.error(`SSH tunnel error: ${tunnel.name} (${id})`, error)
+        this.logger.error(`SSH tunnel error: ${tunnel.name} (${id})`, error)
         this.tunnelStorage.updateStatus(id, 'error', error.message)
         this.activeTunnels.delete(id)
         options?.onError?.(error)
       })
 
       sshProcess.on('exit', (code, signal) => {
-        console.warn(`SSH tunnel exited: ${tunnel.name} (${id}) - Code: ${code}, Signal: ${signal}`)
+        this.logger.warn(
+          `SSH tunnel exited: ${tunnel.name} (${id}) - Code: ${code}, Signal: ${signal}`
+        )
         this.activeTunnels.delete(id)
 
         // Only auto-reconnect if:
@@ -244,7 +241,6 @@ export class SSHTunnelService {
 
     // Update status
     await this.tunnelStorage.updateStatus(id, 'stopped')
-    console.log(`SSH tunnel stopped: ${tunnel.name} (${id})`)
   }
 
   /**
@@ -257,7 +253,7 @@ export class SSHTunnelService {
       try {
         await this.startTunnel(tunnel.id)
       } catch (error) {
-        console.error(`Failed to start auto-start tunnel: ${tunnel.name}`, error)
+        this.logger.error(`Failed to start auto-start tunnel: ${tunnel.name}`, error as Error)
       }
     }
   }
@@ -272,7 +268,7 @@ export class SSHTunnelService {
       try {
         await this.stopTunnel(tunnelId)
       } catch (error) {
-        console.error(`Failed to stop tunnel: ${tunnelId}`, error)
+        this.logger.error(`Failed to stop tunnel: ${tunnelId}`, error as Error)
       }
     }
 
@@ -372,18 +368,18 @@ export class SSHTunnelService {
       for (const pid of tunnelProcesses) {
         try {
           process.kill(Number(pid), 'SIGTERM')
-          console.log(`Killed orphaned SSH tunnel process: ${pid}`)
+          this.logger.info(`Killed orphaned SSH tunnel process: ${pid}`)
         } catch (error) {
           // Process might already be dead or not owned by us
-          console.log(`Could not kill process ${pid}:`, error)
+          this.logger.info(`Could not kill process ${pid}:`, error)
         }
       }
 
       if (tunnelProcesses.length > 0) {
-        console.log(`Cleaned up ${tunnelProcesses.length} orphaned SSH tunnel processes`)
+        this.logger.info(`Cleaned up ${tunnelProcesses.length} orphaned SSH tunnel processes`)
       }
     } catch (error) {
-      console.error('Failed to clean up orphaned processes:', error)
+      this.logger.error('Failed to clean up orphaned processes:', error as Error)
     }
   }
 
@@ -486,7 +482,7 @@ export class SSHTunnelService {
         await this.startTunnel(id, options)
         options?.onReconnect?.()
       } catch (error) {
-        console.error(`Failed to reconnect tunnel: ${id}`, error)
+        this.logger.error(`Failed to reconnect tunnel: ${id}`, error as Error)
         await this.tunnelStorage.updateStatus(id, 'error', (error as Error).message)
       }
     }, 5000)

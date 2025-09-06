@@ -132,16 +132,11 @@ import {
   Keyboard
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
-import { useTopBarState } from '../composables/useTopBarState'
 import type { SyncStatus } from '../types/sync'
 import type { SSHTunnelWithProfile } from '../types/ssh'
+import type { TopBarProps } from '../types/components'
 
-interface Props {
-  topBarState: ReturnType<typeof useTopBarState>
-  syncStatusRefresh?: number // Add this to force refresh sync status
-}
-
-const { topBarState, syncStatusRefresh = 0 } = defineProps<Props>()
+const { topBarState, syncStatusRefresh = 0 } = defineProps<TopBarProps>()
 
 const emit = defineEmits<{
   'open-dashboard': []

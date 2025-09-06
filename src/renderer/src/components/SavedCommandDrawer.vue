@@ -158,13 +158,9 @@ import PopConfirm from './ui/PopConfirm.vue'
 import SavedCommandModal from './SavedCommandModal.vue'
 import { message } from '../utils/message'
 import type { SavedCommand } from '../types/ssh'
+import type { SavedCommandDrawerProps } from '../types/components'
 
-interface Props {
-  visible?: boolean
-  activeTerminalId?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<SavedCommandDrawerProps>(), {
   visible: false,
   activeTerminalId: ''
 })

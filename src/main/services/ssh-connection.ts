@@ -3,6 +3,7 @@ import { BrowserWindow } from 'electron'
 import * as fs from 'fs'
 import { ResolvedSSHConfig } from '../types/ssh'
 import { TerminalBufferManager } from './terminal-buffer-manager'
+import { ConsoleLogger } from '../utils/logger'
 
 /**
  * SSH Connection Manager using ssh2 library
@@ -16,6 +17,7 @@ export class SSHConnection {
   private readonly profileName: string
   private stream: ClientChannel | null = null
   private readonly bufferManager: TerminalBufferManager
+  private readonly logger = new ConsoleLogger('SSHConnection')
 
   constructor(
     terminalId: string,
@@ -46,7 +48,7 @@ export class SSHConnection {
         this.mainWindow.webContents.send(channel, ...args)
       }
     } catch (err) {
-      console.error(`SSHConnection.safeSend error for ${channel}:`, err)
+      this.logger.error(`SSHConnection.safeSend error for ${channel}:`, err as Error)
     }
   }
 
@@ -90,7 +92,6 @@ export class SSHConnection {
 
       // Setup connection handlers
       this.client.once('ready', () => {
-        console.log(`SSH connection ready for terminal ${this.terminalId}`)
         this.isConnected = true
         this.safeSend('terminal.sshConnected', { terminalId: this.terminalId })
         this.startShell()
@@ -98,7 +99,7 @@ export class SSHConnection {
       })
 
       this.client.once('error', (error) => {
-        console.error(`SSH connection error for terminal ${this.terminalId}:`, error)
+        this.logger.error(`SSH connection error for terminal ${this.terminalId}:`, error)
         reject(new Error(error.message || 'SSH connection failed'))
       })
 
@@ -127,12 +128,10 @@ export class SSHConnection {
 
     this.client.shell(shellOptions, (err, stream) => {
       if (err) {
-        console.error(`Failed to start shell for terminal ${this.terminalId}:`, err)
+        this.logger.error(`Failed to start shell for terminal ${this.terminalId}:`, err)
         this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: err.message })
         return
       }
-
-      console.log(`Shell started for SSH terminal ${this.terminalId}`)
 
       // Handle shell data
       stream.on('data', (data: Buffer) => {
@@ -159,7 +158,6 @@ export class SSHConnection {
 
       // Handle shell close
       stream.on('close', () => {
-        console.log(`SSH shell closed for terminal ${this.terminalId}`)
         this.isConnected = false
         this.safeSend('terminal.sshDisconnected', { terminalId: this.terminalId })
         // Auto close the tab when SSH shell closes
@@ -171,7 +169,7 @@ export class SSHConnection {
 
       // Handle shell errors
       stream.on('error', (error: Error) => {
-        console.error(`SSH shell error for terminal ${this.terminalId}:`, error)
+        this.logger.error(`SSH shell error for terminal ${this.terminalId}:`, error)
         this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: error.message })
       })
 
@@ -185,7 +183,7 @@ export class SSHConnection {
       if (this.config.commands && this.config.commands.length > 0) {
         setTimeout(() => {
           for (const command of this.config.commands!) {
-            console.log(`Executing command: ${command}`)
+            this.logger.info(`Executing command: ${command}`)
             this.writeToShell(`${command}\n`)
           }
         }, 1000)
@@ -198,17 +196,17 @@ export class SSHConnection {
    */
   private setupEventHandlers(): void {
     this.client.on('error', (error) => {
-      console.error(`SSH client error for terminal ${this.terminalId}:`, error)
+      this.logger.error(`SSH client error for terminal ${this.terminalId}:`, error)
       this.safeSend('terminal.sshError', { terminalId: this.terminalId, error: error.message })
     })
 
     this.client.on('end', () => {
-      console.log(`SSH connection ended for terminal ${this.terminalId}`)
+      this.logger.info(`SSH connection ended for terminal ${this.terminalId}`)
       this.isConnected = false
     })
 
     this.client.on('close', () => {
-      console.log(`SSH connection closed for terminal ${this.terminalId}`)
+      this.logger.info(`SSH connection closed for terminal ${this.terminalId}`)
       this.isConnected = false
       this.safeSend('terminal.sshDisconnected', { terminalId: this.terminalId })
       // Auto close the tab when SSH connection closes

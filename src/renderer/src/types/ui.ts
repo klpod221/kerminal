@@ -1,4 +1,34 @@
-import type { Component } from 'vue'
+import type { Component, Ref } from 'vue'
+
+// Validation types
+export type ValidationValue = string | number | undefined
+
+export interface FieldValidation {
+  value: Ref<ValidationValue>
+  rules: ValidationRule[]
+  touched: Ref<boolean>
+  error: Ref<string | null>
+}
+
+export interface ValidationRule {
+  name: string
+  validate: (value: ValidationValue) => boolean
+  message: string
+}
+
+export interface UseValidationReturn {
+  fields: Ref<Record<string, FieldValidation>>
+  registerField: (
+    name: string,
+    value: Ref<ValidationValue>,
+    rules: ValidationRule[]
+  ) => FieldValidation
+  validateField: (name: string) => boolean
+  validateAll: () => boolean
+  resetValidation: () => void
+  isFormValid: Ref<boolean>
+  hasBeenTouched: Ref<boolean>
+}
 
 /**
  * Common UI size variants
@@ -333,4 +363,33 @@ export interface ContextMenuProps {
  */
 export interface ContextMenuEmits {
   itemClick: [item: ContextMenuItem]
+}
+
+/**
+ * Message service options
+ */
+export interface MessageOptions {
+  type?: MessageType | 'loading'
+  title?: string
+  content: string
+  duration?: number
+  closable?: boolean
+}
+
+/**
+ * ProxySettings component props
+ */
+export interface ProxySettingsProps {
+  proxy?: import('./ssh').SSHProxy | null
+  disabled?: boolean
+}
+
+/**
+ * KeyBadge component props
+ */
+export interface KeyBadgeProps {
+  keys: string[]
+  size?: 'sm' | 'md'
+  variant?: 'default' | 'light'
+  showSeparator?: boolean
 }

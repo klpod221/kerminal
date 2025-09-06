@@ -8,6 +8,9 @@ import { SavedCommandService } from './services/saved-command-service'
 import { SyncManager } from './services/sync-manager'
 import { SSHTunnelService } from './services/ssh-tunnel-service'
 import { ResolvedSSHConfig, SSHProxy } from './types/ssh'
+import { ConsoleLogger } from './utils/logger'
+
+const logger = new ConsoleLogger('IpcHandlers')
 
 /**
  * Sets up all IPC (Inter-Process Communication) handlers for the application.
@@ -30,7 +33,7 @@ export function setupIpcHandlers(
     try {
       await syncManager.initialize()
     } catch (error) {
-      console.error(error)
+      logger.error('Failed to initialize sync manager:', error as Error)
     }
   })()
 
@@ -60,9 +63,6 @@ export function setupIpcHandlers(
 
   // Toast IPC handlers
   setupToastHandlers()
-
-  // Test IPC handler
-  ipcMain.on('ping', () => console.log('pong'))
 }
 
 /**
@@ -126,10 +126,8 @@ function setupTerminalHandlers(
 
       // Record connection attempt
       await sshProfileService.recordConnection(profileId, 'connected')
-
-      console.log(`SSH terminal created for profile ${profileId} with terminal ID ${terminalId}`)
     } catch (error) {
-      console.error(`Failed to create SSH terminal:`, error)
+      logger.error(`Failed to create SSH terminal:`, error as Error)
       _event.reply('terminal.sshError', {
         terminalId,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -139,7 +137,7 @@ function setupTerminalHandlers(
       try {
         await sshProfileService.recordConnection(profileId, 'failed')
       } catch (recordError) {
-        console.error('Failed to record connection failure:', recordError)
+        logger.error('Failed to record connection failure:', recordError as Error)
       }
     }
   })
@@ -159,7 +157,7 @@ function setupTerminalHandlers(
     try {
       return terminalManager.getTerminalBuffer(terminalId)
     } catch (error) {
-      console.error(`Failed to get buffer for terminal ${terminalId}:`, error)
+      logger.error(`Failed to get buffer for terminal ${terminalId}:`, error as Error)
       return []
     }
   })
@@ -169,7 +167,7 @@ function setupTerminalHandlers(
     try {
       return terminalManager.getTerminalBufferAsString(terminalId)
     } catch (error) {
-      console.error(`Failed to get buffer string for terminal ${terminalId}:`, error)
+      logger.error(`Failed to get buffer string for terminal ${terminalId}:`, error as Error)
       return ''
     }
   })
@@ -179,7 +177,7 @@ function setupTerminalHandlers(
     try {
       return terminalManager.hasTerminalBuffer(terminalId)
     } catch (error) {
-      console.error(`Failed to check buffer for terminal ${terminalId}:`, error)
+      logger.error(`Failed to check buffer for terminal ${terminalId}:`, error as Error)
       return false
     }
   })
@@ -189,7 +187,7 @@ function setupTerminalHandlers(
     try {
       return terminalManager.getBufferStats()
     } catch (error) {
-      console.error('Failed to get buffer stats:', error)
+      logger.error('Failed to get buffer stats:', error as Error)
       return { totalTerminals: 0, totalLines: 0, memoryUsage: 0 }
     }
   })
@@ -199,7 +197,7 @@ function setupTerminalHandlers(
     try {
       terminalManager.cleanupOrphanedBuffers()
     } catch (error) {
-      console.error('Failed to cleanup orphaned buffers:', error)
+      logger.error('Failed to cleanup orphaned buffers:', error as Error)
     }
   })
 }
@@ -258,7 +256,7 @@ function setupUtilityHandlers(): void {
         clipboard.writeText(text)
       }
     } catch (error) {
-      console.error('Failed to copy to clipboard:', error)
+      logger.error('Failed to copy to clipboard:', error as Error)
     }
   })
 
@@ -267,7 +265,7 @@ function setupUtilityHandlers(): void {
     try {
       return clipboard.readText()
     } catch (error) {
-      console.error('Failed to read from clipboard:', error)
+      logger.error('Failed to read from clipboard:', error as Error)
       return ''
     }
   })
@@ -550,7 +548,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     try {
       return await syncManager.testConnection(mongoUri, databaseName)
     } catch (error) {
-      console.error('Sync test connection error:', error)
+      logger.error('Sync test connection error:', error as Error)
       return false
     }
   })
@@ -560,7 +558,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     try {
       return await syncManager.setupSync(config)
     } catch (error) {
-      console.error('Sync setup error:', error)
+      logger.error('Sync setup error:', error as Error)
       return false
     }
   })
@@ -570,7 +568,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     try {
       return await syncManager.enableSync(config)
     } catch (error) {
-      console.error('Sync enable error:', error)
+      logger.error('Sync enable error:', error as Error)
       return false
     }
   })
@@ -581,7 +579,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       await syncManager.disableSync()
       return true
     } catch (error) {
-      console.error('Sync disable error:', error)
+      logger.error('Sync disable error:', error as Error)
       return false
     }
   })
@@ -596,7 +594,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     try {
       return await syncManager.getSyncConfig()
     } catch (error) {
-      console.error('Get sync config error:', error)
+      logger.error('Get sync config error:', error as Error)
       return null
     }
   })
@@ -606,7 +604,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     try {
       return await syncManager.updateSyncConfig(config)
     } catch (error) {
-      console.error('Update sync config error:', error)
+      logger.error('Update sync config error:', error as Error)
       return false
     }
   })
@@ -616,7 +614,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     try {
       return await syncManager.isSyncEnabled()
     } catch (error) {
-      console.error('Check sync enabled error:', error)
+      logger.error('Check sync enabled error:', error as Error)
       return false
     }
   })
@@ -627,7 +625,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       await syncManager.performSync()
       return true
     } catch (error) {
-      console.error('Perform sync error:', error)
+      logger.error('Perform sync error:', error as Error)
       return false
     }
   })
@@ -638,7 +636,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       await syncManager.forceSyncNow()
       return true
     } catch (error) {
-      console.error('Force sync error:', error)
+      logger.error('Force sync error:', error as Error)
       return false
     }
   })
@@ -649,7 +647,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       await syncManager.migrateExistingData()
       return true
     } catch (error) {
-      console.error('Migrate data error:', error)
+      logger.error('Migrate data error:', error as Error)
       return false
     }
   })
@@ -660,7 +658,7 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       await syncManager.deleteSyncConfig()
       return true
     } catch (error) {
-      console.error('Delete sync config error:', error)
+      logger.error('Delete sync config error:', error as Error)
       return false
     }
   })
@@ -671,22 +669,22 @@ function setupSyncHandlers(syncManager: SyncManager): void {
  */
 function setupToastHandlers(): void {
   ipcMain.handle('toast.success', async (_event, { title, message }) => {
-    console.log(`✅ ${title}: ${message}`)
+    logger.info(`✅ ${title}: ${message}`)
     return true
   })
 
   ipcMain.handle('toast.error', async (_event, { title, message }) => {
-    console.log(`❌ ${title}: ${message}`)
+    logger.error(`❌ ${title}: ${message}`)
     return true
   })
 
   ipcMain.handle('toast.info', async (_event, { title, message }) => {
-    console.log(`ℹ️ ${title}: ${message}`)
+    logger.info(`ℹ️ ${title}: ${message}`)
     return true
   })
 
   ipcMain.handle('toast.warning', async (_event, { title, message }) => {
-    console.log(`⚠️ ${title}: ${message}`)
+    logger.warn(`⚠️ ${title}: ${message}`)
     return true
   })
 }

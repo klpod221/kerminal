@@ -313,11 +313,9 @@ import PopConfirm from './ui/PopConfirm.vue'
 import { formatRelativeTime } from '../utils/formatter'
 import type { SSHGroupWithProfiles, SSHProfileWithConfig } from '../types/ssh'
 
-interface Props {
-  visible?: boolean
-}
+import type { SSHProfileDrawerProps } from '../types/components'
 
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<SSHProfileDrawerProps>(), {
   visible: false
 })
 

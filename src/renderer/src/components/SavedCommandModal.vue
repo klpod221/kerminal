@@ -76,25 +76,9 @@ import Textarea from './ui/Textarea.vue'
 import Button from './ui/Button.vue'
 import { useValidation, validationRules } from '../composables/useValidation'
 import { message } from '../utils/message'
-import type { SavedCommand } from '../types/ssh'
+import type { SavedCommandModalProps, CommandForm, CommandFormErrors } from '../types/modals'
 
-interface Props {
-  visible?: boolean
-  editingCommand?: SavedCommand | null
-}
-
-interface CommandForm {
-  name: string
-  command: string
-  description: string
-}
-
-interface CommandFormErrors {
-  name?: string
-  command?: string
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<SavedCommandModalProps>(), {
   visible: false,
   editingCommand: null
 })

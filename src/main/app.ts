@@ -4,6 +4,7 @@ import { WindowManager } from './services/window-manager'
 import { TerminalManager } from './services/terminal-manager'
 import { SSHTunnelService } from './services/ssh-tunnel-service'
 import { setupIpcHandlers } from './ipc-handlers'
+import { ConsoleLogger } from './utils/logger'
 
 /**
  * Main application class that orchestrates the entire application.
@@ -12,6 +13,7 @@ class ElectronApp {
   private readonly windowManager: WindowManager
   private terminalManager: TerminalManager | null = null
   private sshTunnelService: SSHTunnelService | null = null
+  private readonly logger = new ConsoleLogger('ElectronApp')
 
   constructor() {
     this.windowManager = new WindowManager()
@@ -52,18 +54,17 @@ class ElectronApp {
     try {
       await this.sshTunnelService.killOrphanedTunnelProcesses()
     } catch (error) {
-      console.error('Failed to clean up orphaned SSH tunnel processes:', error)
+      this.logger.error('Failed to clean up orphaned SSH tunnel processes:', error as Error)
     }
 
     // Start auto-start tunnels after a short delay
     setTimeout(async () => {
       try {
         await this.sshTunnelService?.startAutoStartTunnels()
-        console.log('Auto-start SSH tunnels initialized')
       } catch (error) {
-        console.error('Failed to start auto-start SSH tunnels:', error)
+        this.logger.error('Failed to start auto-start SSH tunnels:', error as Error)
       }
-    }, 2000) // 2 second delay to ensure app is fully loaded
+    }, 2000)
   }
 
   /**
@@ -105,11 +106,12 @@ class ElectronApp {
 
 // Initialize and start the application
 const klTermApp = new ElectronApp()
+const logger = new ConsoleLogger('Main')
 ;(async () => {
   try {
     await klTermApp.initialize()
   } catch (error) {
-    console.error('Failed to initialize application:', error)
+    logger.error('Failed to initialize application:', error as Error)
     app.quit()
   }
 })()

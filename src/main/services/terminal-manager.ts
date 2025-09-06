@@ -4,6 +4,7 @@ import * as pty from 'node-pty'
 import { ResolvedSSHConfig } from '../types/ssh'
 import { SSHConnection } from './ssh-connection'
 import { TerminalBufferManager } from './terminal-buffer-manager'
+import { ConsoleLogger } from '../utils/logger'
 
 /**
  * Manages terminal instances and PTY processes.
@@ -17,6 +18,7 @@ export class TerminalManager {
   private isRendererReady = false
   private readonly shellPath: string
   private readonly bufferManager: TerminalBufferManager
+  private readonly logger = new ConsoleLogger('TerminalManager')
 
   constructor(private readonly mainWindow: BrowserWindow) {
     this.shellPath =
@@ -47,12 +49,12 @@ export class TerminalManager {
         this.mainWindow.webContents.send(channel, ...args)
       } else {
         // Window/webContents already destroyed — ignore send
-        console.warn(
+        this.logger.warn(
           `safeSend: skipped sending ${channel} because window/webContents are destroyed`
         )
       }
     } catch (err) {
-      console.error(`safeSend error for channel ${channel}:`, err)
+      this.logger.error(`safeSend error for channel ${channel}:`, err as Error)
     }
   }
 
@@ -109,8 +111,6 @@ export class TerminalManager {
     profileName: string
   ): Promise<void> {
     try {
-      console.log(`Creating SSH terminal ${terminalId} for ${config.user}@${config.host}`)
-
       // Create SSH connection instance
       const sshConnection = new SSHConnection(terminalId, config, this.mainWindow, profileName)
 
@@ -121,10 +121,8 @@ export class TerminalManager {
 
       // Connect to SSH server
       await sshConnection.connect()
-
-      console.log(`SSH terminal ${terminalId} connected successfully`)
     } catch (error) {
-      console.error(`Failed to create SSH terminal ${terminalId}:`, error)
+      this.logger.error(`Failed to create SSH terminal ${terminalId}:`, error as Error)
 
       // Clean up on failure
       delete this.sshConnections[terminalId]
@@ -195,8 +193,6 @@ export class TerminalManager {
 
     // Handle terminal process exit
     ptyProcess.onExit((exitCode) => {
-      console.log(`Terminal ${terminalId} exited with code ${exitCode.exitCode}`)
-
       // Auto close the tab when terminal exits
       this.safeSend('terminal.autoClose', {
         terminalId,

@@ -123,13 +123,9 @@ import Input from './Input.vue'
 import Select from './Select.vue'
 import Checkbox from './Checkbox.vue'
 import type { SSHProxy } from '../../types/ssh'
+import type { ProxySettingsProps } from '../../types/ui'
 
-interface Props {
-  proxy?: SSHProxy | null
-  disabled?: boolean
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<ProxySettingsProps>(), {
   proxy: null,
   disabled: false
 })

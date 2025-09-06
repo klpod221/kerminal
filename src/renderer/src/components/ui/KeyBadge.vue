@@ -23,14 +23,9 @@
 </template>
 
 <script setup lang="ts">
-interface Props {
-  keys: string[]
-  size?: 'sm' | 'md'
-  variant?: 'default' | 'light'
-  showSeparator?: boolean
-}
+import type { KeyBadgeProps } from '../../types/ui'
 
-withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<KeyBadgeProps>(), {
   size: 'md',
   variant: 'default',
   showSeparator: true

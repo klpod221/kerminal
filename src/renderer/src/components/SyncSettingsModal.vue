@@ -145,12 +145,9 @@ import Input from './ui/Input.vue'
 import { message } from '../utils/message'
 import { formatRelativeTime } from '../utils/formatter'
 import type { SyncConfig, SyncStatus } from '../types/sync'
+import type { SyncSettingsModalProps } from '../types/modals'
 
-interface Props {
-  visible: boolean
-}
-
-const props = defineProps<Props>()
+const props = defineProps<SyncSettingsModalProps>()
 
 const emit = defineEmits<{
   close: []

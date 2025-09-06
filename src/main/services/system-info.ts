@@ -1,11 +1,13 @@
 import * as os from 'os'
 import { spawn } from 'child_process'
 import type { NetworkInterface, NetworkStatus } from '../types/main'
+import { ConsoleLogger } from '../utils/logger'
 
 /**
  * Provides system information and utilities.
  */
 export class SystemInfoService {
+  private static readonly logger = new ConsoleLogger('SystemInfoService')
   /**
    * Executes a command and returns its output.
    * @param command - Command to execute.
@@ -134,7 +136,7 @@ export class SystemInfoService {
         ...linuxInfo
       }
     } catch (error) {
-      console.error('Error getting system info:', error)
+      this.logger.error('Error getting system info:', error as Error)
       return null
     }
   }
@@ -165,7 +167,7 @@ export class SystemInfoService {
 
       return interfaces
     } catch (error) {
-      console.error('Error getting network info:', error)
+      this.logger.error('Error getting network info:', error as Error)
       return []
     }
   }
@@ -201,7 +203,7 @@ export class SystemInfoService {
         interfaces
       }
     } catch (error) {
-      console.error('Error getting network status:', error)
+      this.logger.error('Error getting network status:', error as Error)
       return {
         isConnected: false,
         primaryInterface: null,

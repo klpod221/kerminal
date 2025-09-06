@@ -200,14 +200,9 @@ import Button from './ui/Button.vue'
 import PopConfirm from './ui/PopConfirm.vue'
 import { message } from '../utils/message'
 import type { SSHTunnelWithProfile, SSHProfile } from '../types/ssh'
+import type { SSHTunnelManagerProps } from '../types/components'
 
-// Props
-interface Props {
-  onHideManager?: () => void
-  onShowManager?: () => void
-}
-
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<SSHTunnelManagerProps>(), {
   onHideManager: undefined,
   onShowManager: undefined
 })

@@ -16,7 +16,7 @@ import crypto from 'crypto'
 import os from 'os'
 
 /**
- * Enhanced sync service for managing data synchronization between local files and MongoDB
+ * Sync service for managing data synchronization between local files and MongoDB
  * with improved version control, tombstone handling, and conflict resolution
  */
 export class SyncService {
@@ -113,7 +113,7 @@ export class SyncService {
           this.startAutoSync(this.storageMap)
         }
 
-        this.logger.info('Enhanced sync service initialized successfully')
+        this.logger.info('Sync service initialized successfully')
         return true
       } else {
         this.status.isConnected = false
@@ -123,7 +123,7 @@ export class SyncService {
     } catch (error) {
       this.status.isConnected = false
       this.status.lastError = (error as Error).message
-      this.logger.error('Failed to initialize enhanced sync service:', error as Error)
+      this.logger.error('Failed to initialize Sync service:', error as Error)
       return false
     } finally {
       this.status.isLoading = false
@@ -225,7 +225,7 @@ export class SyncService {
       this.status.tombstoneCount = result.tombstonesProcessed
 
       this.logger.info(
-        `Enhanced sync completed: ${result.itemsProcessed} items processed, ${result.conflictsResolved} conflicts resolved`
+        `Sync completed: ${result.itemsProcessed} items processed, ${result.conflictsResolved} conflicts resolved`
       )
 
       // Emit sync completion event
@@ -234,7 +234,7 @@ export class SyncService {
       result.success = false
       result.errors.push((error as Error).message)
       this.status.lastError = (error as Error).message
-      this.logger.error('Enhanced sync failed:', error as Error)
+      this.logger.error('Sync failed:', error as Error)
     } finally {
       this.status.syncInProgress = false
       this.status.isLoading = false
@@ -257,11 +257,11 @@ export class SyncService {
     }
 
     try {
-      // Check if storage supports enhanced sync features
+      // Check if storage supports Sync features
       const hasEnhancedSync = this.hasEnhancedSyncSupport(storage)
 
       if (hasEnhancedSync) {
-        // Use enhanced sync with version control and tombstones
+        // Use Sync with version control and tombstones
         await this.performEnhancedSync(name, storage, collectionName, result)
       } else {
         // Fallback to basic sync
@@ -277,7 +277,7 @@ export class SyncService {
   }
 
   /**
-   * Check if storage supports enhanced sync features
+   * Check if storage supports Sync features
    */
   private hasEnhancedSyncSupport(storage: ISyncableStorage): boolean {
     return !!(
@@ -289,7 +289,7 @@ export class SyncService {
   }
 
   /**
-   * Perform enhanced sync with version control and tombstones
+   * Perform Sync with version control and tombstones
    */
   private async performEnhancedSync(
     name: string,
@@ -325,7 +325,7 @@ export class SyncService {
     }
 
     this.logger.debug(
-      `Enhanced sync ${name}: ${result.itemsProcessed} items, ${result.tombstonesProcessed} tombstones`
+      `Sync ${name}: ${result.itemsProcessed} items, ${result.tombstonesProcessed} tombstones`
     )
   }
 

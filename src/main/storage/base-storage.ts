@@ -9,6 +9,7 @@ import {
   DataVersion,
   SyncRecord
 } from '../interfaces/sync.interface'
+import { ConsoleLogger } from '../utils/logger'
 
 /**
  * Base storage service for handling file operations with sync support
@@ -18,6 +19,7 @@ export class BaseStorage implements ISyncableStorage {
   protected readonly metadataFile: string
   protected readonly tombstoneFile: string
   protected readonly filename: string
+  private readonly logger = new ConsoleLogger('BaseStorage')
 
   constructor(fileName: string) {
     this.filename = fileName
@@ -47,10 +49,8 @@ export class BaseStorage implements ISyncableStorage {
       await this.ensureDataDirectory()
       const data = await fs.readFile(this.dataPath, 'utf-8')
       const parsed = JSON.parse(data)
-      // Ensure we always return an array
       return Array.isArray(parsed) ? parsed : []
     } catch {
-      // File doesn't exist or is invalid, return empty array
       return []
     }
   }
@@ -70,17 +70,16 @@ export class BaseStorage implements ISyncableStorage {
       for (const item of data) {
         const recordItem = item as Record<string, unknown>
         if (recordItem.id) {
-          const existingMeta = await this.getItemMetadata(recordItem.id as string)
-          const newVersion = (existingMeta?.version?.version || 0) + 1
-
           const metadata: SyncMetadata = {
             id: recordItem.id as string,
             version: {
-              version: newVersion,
-              timestamp: currentTime,
               deviceId,
+              timestamp: currentTime.getTime(),
               hash: this.generateHash(recordItem)
             },
+            lastModified: currentTime,
+            deviceId,
+            checksum: this.generateHash(recordItem),
             isDeleted: false
           }
 
@@ -88,7 +87,7 @@ export class BaseStorage implements ISyncableStorage {
         }
       }
     } catch (error) {
-      console.error('Failed to write data to file:', error)
+      this.logger.error('Failed to write data to file:', error as Error)
       throw new Error('Failed to save data')
     }
   }
@@ -183,14 +182,15 @@ export class BaseStorage implements ISyncableStorage {
    */
   async markAsDeleted(id: string, deletedBy: string): Promise<void> {
     const metadata = await this.getItemMetadata(id)
-    const currentVersion = metadata?.version?.version || 0
 
     const tombstone: TombstoneRecord = {
       id,
-      collection: this.getCollectionName(),
+      deviceId: deletedBy,
       deletedAt: new Date(),
+      type: this.getCollectionName(),
+      collection: this.getCollectionName(),
       deletedBy,
-      version: currentVersion + 1
+      version: 1
     }
 
     // Add to tombstones
@@ -210,9 +210,9 @@ export class BaseStorage implements ISyncableStorage {
       metadata.isDeleted = true
       metadata.tombstone = tombstone
       metadata.version = {
-        version: currentVersion + 1,
-        timestamp: new Date(),
-        deviceId: deletedBy
+        deviceId: deletedBy,
+        timestamp: new Date().getTime(),
+        hash: metadata.version.hash
       }
       await this.updateItemMetadata(id, metadata)
     }
@@ -259,9 +259,9 @@ export class BaseStorage implements ISyncableStorage {
 
     const metadata = await this.getItemMetadata(id)
     const version = metadata?.version || {
-      version: 1,
-      timestamp: new Date(),
-      deviceId: 'unknown'
+      deviceId: 'unknown',
+      timestamp: Date.now(),
+      hash: this.generateHash(item)
     }
 
     return { data: item, version }
@@ -295,6 +295,9 @@ export class BaseStorage implements ISyncableStorage {
         ...version,
         hash: this.generateHash(itemWithId)
       },
+      lastModified: new Date(version.timestamp),
+      deviceId: version.deviceId,
+      checksum: this.generateHash(itemWithId),
       isDeleted: false
     }
 
@@ -311,27 +314,24 @@ export class BaseStorage implements ISyncableStorage {
 
     // Check modified items
     for (const meta of metadata) {
-      if (meta.version.timestamp > timestamp) {
+      if (meta.id && meta.version.timestamp > timestamp.getTime()) {
         const item = data.find((d) => d.id === meta.id)
-
-        let action: 'create' | 'update' | 'delete' = 'create'
-        if (meta.isDeleted) {
-          action = 'delete'
-        } else if (item) {
-          action = 'update'
-        }
 
         records.push({
           id: meta.id,
-          collection: this.getCollectionName(),
-          action,
-          data: item,
-          version: meta.version,
-          previousVersion: meta.version.version - 1,
-          isTombstone: meta.isDeleted,
-          timestamp: meta.version.timestamp,
-          synced: true,
-          deviceId: meta.version.deviceId
+          type: this.getCollectionName() as
+            | 'ssh-profile'
+            | 'ssh-group'
+            | 'saved-command'
+            | 'ssh-tunnel',
+          data: item || {},
+          metadata: {
+            version: meta.version,
+            lastModified: meta.lastModified,
+            deviceId: meta.deviceId,
+            checksum: meta.checksum
+          },
+          isDeleted: meta.isDeleted || false
         })
       }
     }
@@ -342,17 +342,23 @@ export class BaseStorage implements ISyncableStorage {
       if (tombstone.deletedAt > timestamp) {
         records.push({
           id: tombstone.id,
-          collection: this.getCollectionName(),
-          action: 'delete',
-          version: {
-            version: tombstone.version,
-            timestamp: tombstone.deletedAt,
-            deviceId: tombstone.deletedBy
+          type: this.getCollectionName() as
+            | 'ssh-profile'
+            | 'ssh-group'
+            | 'saved-command'
+            | 'ssh-tunnel',
+          data: {},
+          metadata: {
+            version: {
+              deviceId: tombstone.deletedBy || tombstone.deviceId,
+              timestamp: tombstone.deletedAt.getTime(),
+              hash: ''
+            },
+            lastModified: tombstone.deletedAt,
+            deviceId: tombstone.deletedBy || tombstone.deviceId,
+            checksum: ''
           },
-          isTombstone: true,
-          timestamp: tombstone.deletedAt,
-          synced: true,
-          deviceId: tombstone.deletedBy
+          isDeleted: true
         })
       }
     }
@@ -377,6 +383,7 @@ export class BaseStorage implements ISyncableStorage {
   async cleanup(retainDays: number): Promise<void> {
     const cutoffDate = new Date()
     cutoffDate.setDate(cutoffDate.getDate() - retainDays)
+    const cutoffTimestamp = cutoffDate.getTime()
 
     // Cleanup old tombstones
     const tombstones = await this.getTombstones()
@@ -386,7 +393,7 @@ export class BaseStorage implements ISyncableStorage {
     // Cleanup metadata for deleted items older than cutoff
     const metadata = await this.getSyncMetadata()
     const cleanedMetadata = metadata.filter((meta) => {
-      if (meta.isDeleted && meta.version.timestamp < cutoffDate) {
+      if (meta.isDeleted && meta.version.timestamp < cutoffTimestamp) {
         return false // Remove old deleted items
       }
       return true

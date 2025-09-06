@@ -119,8 +119,8 @@ const props = defineProps<SSHGroupModalProps>()
 // Debug log
 watch(
   () => props.show,
-  (newShow) => {
-    console.log('SSHGroupModal show prop changed:', newShow)
+  () => {
+    // Reset form when modal opens/closes
   }
 )
 

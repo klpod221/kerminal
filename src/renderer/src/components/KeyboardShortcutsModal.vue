@@ -122,12 +122,9 @@ import PopConfirm from './ui/PopConfirm.vue'
 import { useKeyboardShortcuts } from '../services/keyboard-shortcut-service'
 import { KEYBOARD_SHORTCUT_CATEGORY_LABELS } from '../types/keyboard'
 import type { KeyboardShortcutCategory } from '../types/keyboard'
+import type { KeyboardShortcutsModalProps } from '../types/modals'
 
-interface Props {
-  isVisible: boolean
-}
-
-const { isVisible } = defineProps<Props>()
+const { isVisible } = defineProps<KeyboardShortcutsModalProps>()
 
 const emit = defineEmits<{
   'update:isVisible': [value: boolean]

@@ -3,6 +3,7 @@ import * as fs from 'fs/promises'
 import { Client } from 'ssh2'
 import { ResolvedSSHConfig, SSHConnectionOptions, SSHProxy } from '../types/ssh'
 import { SSHProfileService } from './ssh-profile-service'
+import { ConsoleLogger } from '../utils/logger'
 
 /**
  * SSH Connection Manager
@@ -11,6 +12,7 @@ import { SSHProfileService } from './ssh-profile-service'
 export class SSHConnectionService {
   private readonly profileService: SSHProfileService
   private readonly activeConnections = new Map<string, ChildProcess>()
+  private readonly logger = new ConsoleLogger('SSHConnectionService')
 
   constructor() {
     this.profileService = new SSHProfileService()
@@ -52,22 +54,18 @@ export class SSHConnectionService {
 
       // Handle process events
       sshProcess.on('spawn', () => {
-        console.log(`SSH connection established for terminal ${terminalId}`)
         this.profileService.recordConnection(profileId, 'connected')
         options.onConnect?.()
       })
 
       sshProcess.on('error', (error) => {
-        console.error(`SSH connection error for terminal ${terminalId}:`, error)
+        this.logger.error(`SSH connection error for terminal ${terminalId}:`, error)
         this.profileService.recordConnection(profileId, 'failed')
         this.activeConnections.delete(terminalId)
         options.onError?.(error)
       })
 
-      sshProcess.on('exit', (code, signal) => {
-        console.log(
-          `SSH connection closed for terminal ${terminalId} (code: ${code}, signal: ${signal})`
-        )
+      sshProcess.on('exit', () => {
         this.activeConnections.delete(terminalId)
         options.onDisconnect?.()
       })
@@ -79,7 +77,10 @@ export class SSHConnectionService {
 
       return sshProcess
     } catch (error) {
-      console.error(`Failed to create SSH connection for terminal ${terminalId}:`, error)
+      this.logger.error(
+        `Failed to create SSH connection for terminal ${terminalId}:`,
+        error as Error
+      )
       await this.profileService.recordConnection(profileId, 'failed')
       throw error
     }

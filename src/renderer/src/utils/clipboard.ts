@@ -33,7 +33,6 @@ export function validateClipboardContent(
 
   // Check length
   if (text.length > maxLength) {
-    console.warn(`Clipboard content too long: ${text.length} > ${maxLength}`)
     return false
   }
 
@@ -47,7 +46,6 @@ export function validateClipboardContent(
 
   for (const pattern of dangerousPatterns) {
     if (pattern.test(text)) {
-      console.warn('Blocked dangerous pattern in clipboard:', pattern)
       return false
     }
   }
@@ -56,7 +54,6 @@ export function validateClipboardContent(
   if (allowedPatterns.length > 0) {
     const isAllowed = allowedPatterns.some((pattern) => pattern.test(text))
     if (!isAllowed) {
-      console.warn('Clipboard content does not match allowed patterns')
       return false
     }
   }
@@ -64,7 +61,6 @@ export function validateClipboardContent(
   // Check for multiline content
   if (multilineConfirm && text.includes('\n')) {
     // In a real implementation, you might want to show a confirmation dialog
-    console.info('Multi-line paste detected')
   }
 
   return true

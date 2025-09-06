@@ -4,6 +4,7 @@ import { is } from '@electron-toolkit/utils'
 import { IWindowManager } from '../interfaces/terminal.interface'
 import type { WindowConfig } from '../types/main'
 import icon from '../../../resources/icon.png?asset'
+import { ConsoleLogger } from '../utils/logger'
 
 /**
  * Manages the main application window and window controls.
@@ -11,6 +12,7 @@ import icon from '../../../resources/icon.png?asset'
  */
 export class WindowManager implements IWindowManager {
   private mainWindow: BrowserWindow | null = null
+  private readonly logger = new ConsoleLogger('WindowManager')
   private readonly defaultConfig: WindowConfig = {
     width: 900,
     height: 670,
@@ -72,7 +74,7 @@ export class WindowManager implements IWindowManager {
           this.mainWindow.webContents.send(channel, ...args)
         }
       } catch (err) {
-        console.error(`WindowManager.safeSend error for ${channel}:`, err)
+        this.logger.error(`WindowManager.safeSend error for ${channel}:`, err as Error)
       }
     }
 

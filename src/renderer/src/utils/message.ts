@@ -1,13 +1,6 @@
 import { createApp, App as VueApp } from 'vue'
 import Message from '../components/ui/Message.vue'
-
-interface MessageOptions {
-  type?: 'success' | 'error' | 'warning' | 'info' | 'loading'
-  title?: string
-  content: string
-  duration?: number
-  closable?: boolean
-}
+import type { MessageOptions } from '../types/ui'
 
 class MessageService {
   private readonly instances: Set<VueApp> = new Set()
