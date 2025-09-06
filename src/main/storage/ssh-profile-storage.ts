@@ -170,14 +170,6 @@ export class SSHProfileStorage extends BaseStorage {
   }
 
   /**
-   * Check if a profile exists
-   */
-  async profileExists(id: string): Promise<boolean> {
-    const profile = await this.getById(id)
-    return profile !== null
-  }
-
-  /**
    * Serialize profile for storage (convert dates to strings)
    */
   private serializeProfile(profile: SSHProfile): Record<string, unknown> {

@@ -3,26 +3,6 @@
  */
 
 /**
- * Check if a string is a valid email address
- */
-export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email.trim())
-}
-
-/**
- * Check if a string is a valid URL
- */
-export function isValidUrl(url: string): boolean {
-  try {
-    new URL(url)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
  * Check if a value is a valid port number
  */
 export function isValidPort(port: number | string): boolean {
@@ -98,23 +78,10 @@ export function hasMaxLength(value: string, maxLength: number): boolean {
 }
 
 /**
- * Validate that value is within a numeric range
+ * Validate SSH key path
  */
-export function isInRange(value: number, min: number, max: number): boolean {
-  return value >= min && value <= max
-}
-
-/**
- * Validate that a string matches a pattern
- */
-export function matchesPattern(value: string, pattern: RegExp): boolean {
-  return pattern.test(value)
-}
-
-/**
- * Validate file path (basic check)
- */
-export function isValidFilePath(path: string): boolean {
+export function isValidSSHKeyPath(path: string): boolean {
+  // Check for basic validation
   if (!path || path.trim().length === 0) return false
 
   // Check for invalid characters
@@ -124,58 +91,8 @@ export function isValidFilePath(path: string): boolean {
   // Check for relative path indicators
   if (path.includes('..')) return false
 
-  return true
-}
-
-/**
- * Validate SSH key path
- */
-export function isValidSSHKeyPath(path: string): boolean {
-  if (!isValidFilePath(path)) return false
-
   // Common SSH key file patterns
   const sshKeyPatterns = [/id_rsa$/, /id_dsa$/, /id_ecdsa$/, /id_ed25519$/, /\.pem$/, /\.key$/]
 
   return sshKeyPatterns.some((pattern) => pattern.test(path.toLowerCase()))
-}
-
-/**
- * Create a validation result object
- */
-export interface ValidationResult {
-  valid: boolean
-  errors: string[]
-  warnings?: string[]
-}
-
-/**
- * Create a validator function that combines multiple validation rules
- */
-export function createValidator<T>(
-  rules: Array<{
-    validate: (value: T) => boolean
-    message: string
-    type?: 'error' | 'warning'
-  }>
-): (value: T) => ValidationResult {
-  return (value: T): ValidationResult => {
-    const errors: string[] = []
-    const warnings: string[] = []
-
-    for (const rule of rules) {
-      if (!rule.validate(value)) {
-        if (rule.type === 'warning') {
-          warnings.push(rule.message)
-        } else {
-          errors.push(rule.message)
-        }
-      }
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors,
-      warnings
-    }
-  }
 }
