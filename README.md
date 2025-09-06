@@ -79,7 +79,7 @@ Download the appropriate installer for your operating system from the [Releases 
 #### Windows
 
 - **kerminal-{version}-setup.exe** - Windows installer (recommended)
-- **kerminal_{version}_amd64.deb** - For Windows Subsystem for Linux (WSL)
+- **kerminal\_{version}\_amd64.deb** - For Windows Subsystem for Linux (WSL)
 
 #### macOS
 
@@ -89,7 +89,7 @@ Download the appropriate installer for your operating system from the [Releases 
 #### Linux
 
 - **kerminal** - Arch Linux (AUR)
-- **kerminal_{version}_amd64.deb** - Debian/Ubuntu package
+- **kerminal\_{version}\_amd64.deb** - Debian/Ubuntu package
 - **kerminal-{version}.AppImage** - Portable AppImage
 - **kerminal-{version}.tar.gz** - Compressed archive
 
@@ -381,6 +381,7 @@ Kerminal provides comprehensive SSH tunneling capabilities for secure port forwa
 #### Tunnel Configuration Examples
 
 **Database Access (Local Forward):**
+
 ```text
 Name: Production Database
 Type: Local Port Forwarding
@@ -392,6 +393,7 @@ Auto-start: Enabled
 ```
 
 **Web Development (Remote Forward):**
+
 ```text
 Name: Local Dev Server
 Type: Remote Port Forwarding
@@ -403,6 +405,7 @@ Auto-start: Disabled
 ```
 
 **Secure Browsing (Dynamic/SOCKS):**
+
 ```text
 Name: Secure Proxy
 Type: Dynamic Port Forwarding
@@ -562,4 +565,5 @@ Check the [Releases page](https://github.com/klpod221/kerminal/releases) for the
 </div>
 
 ---
+
 _This README was crafted with assistance from an AI model._

@@ -105,7 +105,11 @@ class ElectronApp {
 
 // Initialize and start the application
 const klTermApp = new ElectronApp()
-klTermApp.initialize().catch((error) => {
-  console.error('Failed to initialize application:', error)
-  app.quit()
-})
+;(async () => {
+  try {
+    await klTermApp.initialize()
+  } catch (error) {
+    console.error('Failed to initialize application:', error)
+    app.quit()
+  }
+})()

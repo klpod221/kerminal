@@ -1,4 +1,10 @@
-import { SSHGroup, SSHProfile, SSHProfileWithConfig, ResolvedSSHConfig } from '../types/ssh'
+import {
+  SSHGroup,
+  SSHProfile,
+  SSHProfileWithConfig,
+  ResolvedSSHConfig,
+  SSHProxy
+} from '../types/ssh'
 import { SSHGroupStorage } from '../storage/ssh-group-storage'
 import { SSHProfileStorage } from '../storage/ssh-profile-storage'
 import { SSHConnectionStorage } from '../storage/ssh-connection-storage'
@@ -300,5 +306,28 @@ export class SSHProfileService {
     const allProfiles = await this.profileStorage.getAll()
     const ungroupedProfiles = allProfiles.filter((profile) => !profile.groupId)
     return Promise.all(ungroupedProfiles.map((profile) => this.resolveProfileConfig(profile)))
+  }
+
+  /**
+   * Create a resolved SSH config from profile form data for testing
+   */
+  createResolvedConfigFromFormData(formData: {
+    host: string
+    port: number
+    user: string
+    authType: 'password' | 'key' | 'agent'
+    password?: string
+    privateKeyPath?: string
+    proxy?: SSHProxy
+  }): ResolvedSSHConfig {
+    return {
+      host: formData.host,
+      port: formData.port,
+      user: formData.user,
+      password: formData.authType === 'password' ? formData.password : undefined,
+      keyPath: formData.authType === 'key' ? formData.privateKeyPath : undefined,
+      proxy: formData.proxy || undefined,
+      commands: []
+    }
   }
 }

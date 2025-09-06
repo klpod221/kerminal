@@ -559,20 +559,18 @@ async function loadRecentConnections(): Promise<void> {
 /**
  * Connect to SSH profile from recent connection
  */
-function connectToProfile(connection: SSHConnection): void {
-  // Find the profile by ID and emit connect event
-  window.api
-    .invoke('ssh-profiles.getById', connection.profileId)
-    .then((profile) => {
-      if (profile) {
-        // For now, just open SSH profiles drawer
-        openSSHProfiles()
-      }
-    })
-    .catch(() => {
-      // Profile might not exist anymore, just open SSH profiles
+async function connectToProfile(connection: SSHConnection): Promise<void> {
+  try {
+    // Find the profile by ID and emit connect event
+    const profile = await window.api.invoke('ssh-profiles.getById', connection.profileId)
+    if (profile) {
+      // For now, just open SSH profiles drawer
       openSSHProfiles()
-    })
+    }
+  } catch {
+    // Profile might not exist anymore, just open SSH profiles
+    openSSHProfiles()
+  }
 }
 
 /**

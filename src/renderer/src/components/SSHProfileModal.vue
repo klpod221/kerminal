@@ -156,6 +156,28 @@
         <h3 class="text-lg font-medium text-white">Proxy Settings</h3>
         <ProxySettings v-model:proxy="form.proxy" />
       </div>
+
+      <!-- Test Connection Result -->
+      <div v-if="testConnectionResult || isTestingConnection">
+        <Message
+          v-if="isTestingConnection"
+          key="loading"
+          type="loading"
+          title="Testing Connection"
+          content="Connecting to the SSH server..."
+          :closable="false"
+        />
+        <Message
+          v-else-if="testConnectionResult"
+          :key="testConnectionMessageKey"
+          :type="testConnectionResult.success ? 'success' : 'error'"
+          :title="testConnectionResult.success ? 'Connection Successful' : 'Connection Failed'"
+          :content="getTestConnectionMessage(testConnectionResult)"
+          :duration="testConnectionResult.success ? 5000 : 0"
+          :closable="true"
+          @close="clearTestResult"
+        />
+      </div>
     </form>
 
     <template #footer>
@@ -163,6 +185,15 @@
         <Button variant="ghost" size="sm" @click="handleClose">Cancel</Button>
 
         <div class="flex space-x-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            :disabled="!canTestConnection || isTestingConnection"
+            :loading="isTestingConnection"
+            @click="handleTestConnection"
+          >
+            Test Connection
+          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -192,6 +223,7 @@ import Textarea from './ui/Textarea.vue'
 import Checkbox from './ui/Checkbox.vue'
 import Button from './ui/Button.vue'
 import ProxySettings from './ui/ProxySettings.vue'
+import Message from './ui/Message.vue'
 import { useValidation, validationRules } from '../composables/useValidation'
 import type { SSHProfileModalProps } from '../types/modals'
 import type { SSHGroup, SSHProfile, SSHProfileWithConfig, SSHProxy } from '../types/ssh'
@@ -209,6 +241,13 @@ const emit = defineEmits(['update:visible', 'save', 'update', 'close'])
 const showPassword = ref(false)
 const showPassphrase = ref(false)
 const isSaving = ref(false)
+const isTestingConnection = ref(false)
+const testConnectionResult = ref<{
+  success: boolean
+  message: string
+  duration?: number
+} | null>(null)
+const testConnectionMessageKey = ref(0)
 
 // Form data
 const form = ref({
@@ -326,6 +365,17 @@ const canSubmit = computed(() => {
   )
 })
 
+const canTestConnection = computed(() => {
+  return (
+    form.value.host &&
+    form.value.user &&
+    !hostError.value &&
+    !userError.value &&
+    !portError.value &&
+    !privateKeyPathError.value
+  )
+})
+
 // Methods
 const resetForm = (): void => {
   form.value = {
@@ -344,6 +394,9 @@ const resetForm = (): void => {
     keepAlive: true,
     proxy: null
   }
+
+  // Clear test results
+  clearTestResult()
 
   // Only reset validation if fields are properly initialized
   if (validation.fields.value && Object.keys(validation.fields.value).length > 0) {
@@ -473,10 +526,76 @@ const handleSubmit = async (): Promise<void> => {
   }
 }
 
+const handleTestConnection = async (): Promise<void> => {
+  if (!canTestConnection.value) {
+    validation.validateAll()
+    return
+  }
+
+  try {
+    isTestingConnection.value = true
+    testConnectionResult.value = null
+
+    // Create form data for testing
+    const formData = {
+      host: form.value.host,
+      port: form.value.port,
+      user: form.value.user,
+      authType: form.value.authType,
+      password: form.value.password,
+      privateKeyPath: form.value.privateKeyPath,
+      proxy: form.value.proxy
+    }
+
+    // Create resolved config from form data
+    const config = await window.api.invoke('ssh.createResolvedConfigFromFormData', formData)
+
+    // Test the connection
+    const result = (await window.api.invoke('ssh.testConnection', config)) as {
+      success: boolean
+      message: string
+      duration?: number
+      error?: string
+    }
+    testConnectionResult.value = result
+
+    // Increment key to force re-render of Message component
+    testConnectionMessageKey.value++
+
+    // Show results in console for debugging
+    if (result.success) {
+      console.log(`✅ Connection test successful: ${result.message} (${result.duration}ms)`)
+    } else {
+      console.error(`❌ Connection test failed: ${result.message}`)
+    }
+  } catch (error) {
+    console.error('Failed to test connection:', error)
+    testConnectionResult.value = {
+      success: false,
+      message: error instanceof Error ? error.message : 'Unknown error occurred'
+    }
+    testConnectionMessageKey.value++
+  } finally {
+    isTestingConnection.value = false
+  }
+}
+
 const handleClose = (): void => {
   emit('update:visible', false)
   emit('close')
   resetForm()
+}
+
+const getTestConnectionMessage = (result: { message: string; duration?: number }): string => {
+  let message = result.message
+  if (result.duration) {
+    message += ` (${result.duration}ms)`
+  }
+  return message
+}
+
+const clearTestResult = (): void => {
+  testConnectionResult.value = null
 }
 
 // Watch for profile changes
@@ -512,7 +631,16 @@ watch(
     if (!visible) {
       showPassword.value = false
       showPassphrase.value = false
+      clearTestResult()
     }
+  }
+)
+
+// Clear test results when connection settings change
+watch(
+  () => [form.value.host, form.value.port, form.value.user, form.value.authType],
+  () => {
+    clearTestResult()
   }
 )
 </script>

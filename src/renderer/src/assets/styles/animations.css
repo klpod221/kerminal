@@ -109,7 +109,8 @@
 }
 
 @keyframes pulseSoft {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -150,7 +151,9 @@
 }
 
 @keyframes loadingDots {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: scale(0);
   }
   40% {
@@ -224,7 +227,9 @@
   border-radius: 50%;
   background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
   transform: translate(-50%, -50%);
-  transition: width 0.3s, height 0.3s;
+  transition:
+    width 0.3s,
+    height 0.3s;
   pointer-events: none;
   z-index: 1;
 }

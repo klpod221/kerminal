@@ -1,7 +1,12 @@
 <template>
   <div class="space-y-4">
     <!-- Enable Proxy -->
-    <Checkbox :model-value="enabled" label="Use Proxy" @update:model-value="handleToggleProxy" />
+    <Checkbox
+      :model-value="enabled"
+      label="Use Proxy"
+      :helper="false"
+      @update:model-value="handleToggleProxy"
+    />
 
     <!-- Proxy Configuration -->
     <div v-if="enabled" class="space-y-4 pl-6 border-l-2 border-gray-600">

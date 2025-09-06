@@ -7,6 +7,7 @@ import { SSHConnectionService } from './services/ssh-connection-service'
 import { SavedCommandService } from './services/saved-command-service'
 import { SyncManager } from './services/sync-manager'
 import { SSHTunnelService } from './services/ssh-tunnel-service'
+import { ResolvedSSHConfig, SSHProxy } from './types/ssh'
 
 /**
  * Sets up all IPC (Inter-Process Communication) handlers for the application.
@@ -25,7 +26,13 @@ export function setupIpcHandlers(
   const sshTunnelService = new SSHTunnelService()
 
   // Initialize sync manager
-  syncManager.initialize().catch(console.error)
+  ;(async () => {
+    try {
+      await syncManager.initialize()
+    } catch (error) {
+      console.error(error)
+    }
+  })()
 
   // Terminal-related IPC handlers
   setupTerminalHandlers(terminalManager, sshConnectionService, sshProfileService)
@@ -50,6 +57,9 @@ export function setupIpcHandlers(
 
   // Utility IPC handlers
   setupUtilityHandlers()
+
+  // Toast IPC handlers
+  setupToastHandlers()
 
   // Test IPC handler
   ipcMain.on('ping', () => console.log('pong'))
@@ -397,6 +407,29 @@ function setupSSHHandlers(
   ipcMain.handle('ssh.getActiveConnections', async () => {
     return sshConnectionService.getActiveConnectionCount()
   })
+
+  // SSH Connection Test
+  ipcMain.handle('ssh.testConnection', async (_event, config: ResolvedSSHConfig) => {
+    return sshConnectionService.testConnection(config)
+  })
+
+  ipcMain.handle(
+    'ssh.createResolvedConfigFromFormData',
+    async (
+      _event,
+      formData: {
+        host: string
+        port: number
+        user: string
+        authType: 'password' | 'key' | 'agent'
+        password?: string
+        privateKeyPath?: string
+        proxy?: SSHProxy
+      }
+    ) => {
+      return sshProfileService.createResolvedConfigFromFormData(formData)
+    }
+  )
 }
 
 /**
@@ -630,5 +663,30 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       console.error('Delete sync config error:', error)
       return false
     }
+  })
+}
+
+/**
+ * Sets up toast notification IPC handlers.
+ */
+function setupToastHandlers(): void {
+  ipcMain.handle('toast.success', async (_event, { title, message }) => {
+    console.log(`✅ ${title}: ${message}`)
+    return true
+  })
+
+  ipcMain.handle('toast.error', async (_event, { title, message }) => {
+    console.log(`❌ ${title}: ${message}`)
+    return true
+  })
+
+  ipcMain.handle('toast.info', async (_event, { title, message }) => {
+    console.log(`ℹ️ ${title}: ${message}`)
+    return true
+  })
+
+  ipcMain.handle('toast.warning', async (_event, { title, message }) => {
+    console.log(`⚠️ ${title}: ${message}`)
+    return true
   })
 }

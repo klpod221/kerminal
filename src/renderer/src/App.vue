@@ -1360,7 +1360,13 @@ onMounted(() => {
     // Cleanup terminal buffers
     bufferManager.cleanup()
     // Trigger cleanup in main process as well
-    bufferManager.triggerCleanup().catch(console.error)
+    ;(async () => {
+      try {
+        await bufferManager.triggerCleanup()
+      } catch (error) {
+        console.error(error)
+      }
+    })()
   })
 })
 </script>
