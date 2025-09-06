@@ -4,7 +4,7 @@
     <div class="flex justify-between items-center">
       <div>
         <h2 class="text-2xl font-bold text-white">SSH Tunnels</h2>
-        <p class="text-gray-400 mt-1">Manage your SSH port forwarding tunnels</p>
+        <p class="text-gray-400 mt-1">Manage your SSH port forwarding</p>
       </div>
       <Button variant="primary" :icon="Plus" @click="handleCreateTunnel">Create Tunnel</Button>
     </div>

@@ -7,7 +7,7 @@ import { ConsoleLogger } from '../utils/logger'
 export class TerminalBufferManager {
   private static instance: TerminalBufferManager
   private readonly buffers: Map<string, string[]> = new Map()
-  private readonly MAX_BUFFER_LINES = 2000
+  private readonly MAX_BUFFER_LINES = 1000
   private readonly logger = new ConsoleLogger('TerminalBufferManager')
 
   /**

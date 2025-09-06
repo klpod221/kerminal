@@ -1,6 +1,6 @@
 <div align="center">
-    <h1>Kerminal: Terminal with SSH Profile Support</h1>
-    <p>A modern, feature-rich terminal application built with Electron and Vue.js, offering seamless SSH connections and command management.</p>
+    <h1>Kerminal: Modern Terminal with SSH, Tunneling & Cross-Device Sync</h1>
+    <p>A powerful, cross-platform terminal application with advanced SSH management, comprehensive tunneling capabilities, and seamless data synchronization across all your devices.</p>
     <img src="https://img.shields.io/github/last-commit/klpod221/kerminal?style=for-the-badge&color=74c7ec&labelColor=111827" alt="Last Commit">
     <img src="https://img.shields.io/github/stars/klpod221/kerminal?style=for-the-badge&color=facc15&labelColor=111827" alt="GitHub Stars">
     <img src="https://img.shields.io/github/repo-size/klpod221/kerminal?style=for-the-badge&color=a78bfa&labelColor=111827" alt="Repo Size">
@@ -9,58 +9,91 @@
 
 ## 📝 Description
 
-**Kerminal** is a modern terminal application that combines the power of a traditional terminal with advanced SSH connection management, command automation, and cross-device synchronization features. Built with Electron and Vue.js, it provides a sleek, user-friendly interface for developers and system administrators who work with multiple remote servers.
+**Kerminal** is a modern terminal application that combines powerful SSH management, comprehensive tunneling capabilities, and cross-device synchronization. Built with Electron and Vue.js, it provides an intuitive interface for developers and system administrators.
 
-Key highlights include secure SSH profile management, saved command functionality, MongoDB-powered cross-device synchronization, and a beautiful dark-themed interface optimized for productivity. Whether you're managing cloud infrastructure, developing on remote servers, or collaborating across multiple devices, Kerminal streamlines your workflow and keeps your configurations synchronized.
+**Key Features:**
+
+- **SSH Management** - Organize profiles with groups and secure proxy support
+- **Port Tunneling** - Visual tunnel management with real-time monitoring
+- **Cross-Device Sync** - MongoDB-powered synchronization across devices
+- **Modern Interface** - Split panels, keyboard shortcuts, and dark themes
+
+Perfect for managing cloud infrastructure, remote development, and multi-server environments.
+
+## 📸 Screenshots
+
+### Main Interface
+
+![Kerminal Main Interface](screenshots/main-interface.png)
+
+_Main interface showing terminal tabs, SSH profiles, and split panels_
+
+### Dashboard
+
+![Dashboard](screenshots/dashboard.png)
+
+_Dashboard with quick access, recent connections, and machine info_
+
+### SSH Profiles
+
+![SSH Profiles](screenshots/ssh-profiles.png)
+
+_Manage SSH profiles with groups and proxy settings_
+
+### Saved Commands
+
+![Saved Commands](screenshots/saved-commands.png)
+
+_Store and quickly access your frequently used commands_
+
+### SSH Tunneling
+
+![SSH Tunneling](screenshots/ssh-tunneling.png)
+
+_Visual SSH tunnel management with real-time status_
+
+### Sync Settings
+
+![Sync Settings](screenshots/sync-settings.png)
+
+_Manage synchronization data with MongoDB_
 
 ## ✨ Features
 
-### 🖥️ **Modern Terminal Experience**
+### 🖥️ **Modern Terminal**
 
-- **Multi-tab Support**: Work with multiple terminal sessions simultaneously
-- **Beautiful Dark Theme**: Eye-friendly interface optimized for long coding sessions
-- **Advanced Terminal Emulation**: Powered by xterm.js with full feature support
-- **Cross-platform**: Available for Windows, macOS, and Linux
+- Multi-tab and split panel support
+- Customizable keyboard shortcuts
+- Beautiful dark theme optimized for coding
+- Cross-platform (Windows, macOS, Linux)
 
-### 🔐 **SSH Connection Management**
+### 🔐 **SSH Management**
 
-- **SSH Profiles**: Create and manage multiple SSH connection profiles
-- **Group Organization**: Organize your SSH connections into logical groups with default settings
-- **SSH Tunneling**: Comprehensive port forwarding with visual management
-  - **Local Port Forwarding**: Forward local ports to remote destinations
-  - **Remote Port Forwarding**: Forward remote ports to local destinations
-  - **Dynamic Port Forwarding**: SOCKS proxy for secure browsing and application routing
-  - **Visual Tunnel Management**: Intuitive interface with tunnel flow visualization
-  - **Auto-start Tunnels**: Automatically start tunnels when the application launches
-  - **Real-time Status Monitoring**: Live tunnel status updates with color-coded indicators
-- **Proxy Support**: Connect through HTTP, SOCKS4, SOCKS5, or Jump Host proxies
-  - HTTP/HTTPS proxy with authentication support
-  - SOCKS4/SOCKS5 proxy with optional authentication
-  - SSH Jump Host (ProxyJump) for bastion host setups
-  - Group-level default proxy settings
-- **Secure Storage**: Encrypted storage of SSH credentials and configurations
-- **Quick Connect**: One-click connection to your favorite servers
+- Profile organization with groups
+- HTTP, SOCKS, and Jump Host proxy support
+- Secure credential storage
+- One-click server connections
 
-### ⚡ **Command Automation**
+### 🌐 **Port Tunneling**
 
-- **Saved Commands**: Store and quickly execute frequently used commands
-- **Command History**: Access your command history across sessions
-- **Custom Scripts**: Execute complex command sequences with a single click
+- Local, remote, and dynamic (SOCKS) forwarding
+- Visual tunnel management with real-time status
+- Auto-start tunnels on launch
+- Color-coded status indicators
 
-### ☁️ **Data Synchronization**
+### ☁️ **Cross-Device Sync**
 
-- **MongoDB Sync**: Synchronize your SSH profiles and saved commands across devices
-- **Real-time Sync**: Automatic synchronization with configurable intervals (5-3600 seconds)
-- **Conflict Resolution**: Intelligent merging of changes from multiple devices
-- **Data Migration**: Seamless migration from local storage to cloud storage
-- **Cross-device Access**: Access your configurations from any device with Kerminal
+- MongoDB-powered synchronization
+- Real-time sync with configurable intervals
+- Intelligent conflict resolution
+- Seamless data migration
 
-### 🛠️ **Developer-Friendly**
+### ⚡ **Automation & Tools**
 
-- **Auto-updates**: Seamless application updates via electron-updater
-- **Customizable Interface**: Tailored experience for different workflows
-- **Export/Import**: Backup and share your configurations
-- **Search Functionality**: Quickly find connections and commands
+- Saved commands with quick execution
+- Command history across sessions
+- Auto-updates and export/import
+- Advanced search functionality
 
 ## 🚀 Installation Guide
 
@@ -222,259 +255,167 @@ npm run build
 npm run build:win    # Windows
 npm run build:mac    # macOS
 npm run build:linux  # Linux
-
-# Create distributable packages
-npm run dist
 ```
-
-### Verification
-
-After installation, verify Kerminal is working correctly:
-
-1. **Launch the application**
-2. **Check version**: Help → About or view the title bar
-3. **Test terminal functionality**: Open a new terminal tab
-4. **Test SSH connection**: Create a test SSH profile (optional)
-
-### Troubleshooting
-
-#### Common Issues
-
-1. **Permission Denied (Linux/macOS)**:
-
-   ```bash
-   chmod +x kerminal-{version}.AppImage
-   ```
-
-2. **Missing Dependencies (Linux)**:
-
-   ```bash
-   sudo apt-get update
-   sudo apt-get install -f
-   ```
-
-3. **macOS Security Warning**:
-   - Go to System Preferences → Security & Privacy
-   - Click "Open Anyway" for Kerminal
-
-4. **Windows SmartScreen Warning**:
-   - Click "More info" → "Run anyway"
-   - The application is safe but unsigned
-
-#### Getting Help
-
-If you encounter issues during installation:
-
-- Check the [Issues page](https://github.com/klpod221/kerminal/issues)
-- Create a new issue with your system details
-- Contact: [klpod221@gmail.com](mailto:klpod221@gmail.com)
-
-## ⚙️ Configuration
-
-### SSH Proxy Configuration
-
-Kerminal supports multiple proxy types to help you connect to servers behind firewalls or through intermediate hosts.
-
-#### Supported Proxy Types
-
-1. **HTTP Proxy**
-   - Standard HTTP proxy with optional authentication
-   - Commonly used in corporate environments
-   - Supports username/password authentication
-
-2. **SOCKS4 Proxy**
-   - SOCKS4 protocol proxy
-   - No authentication support
-   - Lightweight and fast
-
-3. **SOCKS5 Proxy**
-   - SOCKS5 protocol proxy with optional authentication
-   - Supports username/password authentication
-   - Most versatile proxy type
-
-4. **Jump Host (SSH ProxyJump)**
-   - SSH-based proxy through an intermediate server
-   - Uses SSH key or password authentication
-   - Perfect for accessing servers through bastion hosts
-
-#### Proxy Configuration Examples
-
-**HTTP Proxy with Authentication:**
-
-```text
-Type: HTTP Proxy
-Host: proxy.company.com
-Port: 8080
-Username: your_username
-Password: your_password
-```
-
-**SOCKS5 Proxy:**
-
-```text
-Type: SOCKS5
-Host: socks-proxy.example.com
-Port: 1080
-Username: proxy_user (optional)
-Password: proxy_pass (optional)
-```
-
-**Jump Host Configuration:**
-
-```text
-Type: Jump Host
-Jump Host: bastion.example.com
-Jump Port: 22
-Jump User: jump_user
-Authentication: SSH Key (/path/to/jump_key) or Password
-```
-
-#### Setting Up Proxy in SSH Profiles
-
-1. **Create or Edit SSH Profile**: Open the SSH profile modal
-2. **Navigate to Proxy Settings**: Scroll to the "Proxy Settings" section
-3. **Enable Proxy**: Check "Use Proxy"
-4. **Configure Proxy Type**: Select your proxy type and fill in the details
-5. **Test Connection**: Save and test your SSH connection
-
-#### Group-Level Proxy Defaults
-
-You can set default proxy settings at the group level:
-
-1. **Create or Edit SSH Group**: Open the SSH group modal
-2. **Configure Default Proxy**: Set up proxy in "Default Proxy Settings"
-3. **Apply to New Profiles**: New profiles in this group will inherit proxy settings
-
-### SSH Tunneling Configuration
-
-Kerminal provides comprehensive SSH tunneling capabilities for secure port forwarding and network access.
-
-#### Tunnel Types
-
-1. **Local Port Forwarding**
-   - Forward traffic from your local machine to a remote destination
-   - Format: `localhost:local_port → remote_host:remote_port`
-   - Use case: Access remote services securely (databases, web servers, etc.)
-
-2. **Remote Port Forwarding**
-   - Forward traffic from the remote server to your local machine
-   - Format: `remote_host:remote_port → localhost:local_port`
-   - Use case: Expose local services to the remote network
-
-3. **Dynamic Port Forwarding (SOCKS Proxy)**
-   - Creates a SOCKS proxy on your local machine
-   - Format: `SOCKS Proxy @ localhost:local_port`
-   - Use case: Secure browsing, route applications through SSH tunnel
-
-#### Creating SSH Tunnels
-
-1. **Access Tunnel Manager**: Click the tunnel icon in the top bar (green when active)
-2. **Create New Tunnel**: Click "Create SSH Tunnel"
-3. **Configure Tunnel**:
-   - **Name & Description**: Identify your tunnel
-   - **SSH Profile**: Select the profile to tunnel through
-   - **Tunnel Type**: Choose Local, Remote, or Dynamic
-   - **Port Configuration**: Set local and remote ports
-   - **Auto-start**: Enable to start tunnel automatically
-4. **Save & Start**: Save the tunnel and start it immediately
-
-#### Tunnel Configuration Examples
-
-**Database Access (Local Forward):**
-
-```text
-Name: Production Database
-Type: Local Port Forwarding
-SSH Profile: Production Server
-Local Port: 5432
-Remote Host: db.internal.company.com
-Remote Port: 5432
-Auto-start: Enabled
-```
-
-**Web Development (Remote Forward):**
-
-```text
-Name: Local Dev Server
-Type: Remote Port Forwarding
-SSH Profile: Development Server
-Local Port: 3000
-Remote Host: 0.0.0.0
-Remote Port: 8080
-Auto-start: Disabled
-```
-
-**Secure Browsing (Dynamic/SOCKS):**
-
-```text
-Name: Secure Proxy
-Type: Dynamic Port Forwarding
-SSH Profile: VPN Server
-Local Port: 1080
-Auto-start: Enabled
-```
-
-#### Managing Tunnels
-
-- **Visual Status**: Tunnels show real-time status with color indicators
-- **Quick Actions**: Start, stop, edit, or delete tunnels with one click
-- **Flow Visualization**: See tunnel flow direction and connection details
-- **Status Monitoring**: Monitor tunnel health and connection status
-- **Auto-start Management**: Configure tunnels to start automatically
-
-### MongoDB Sync Setup
-
-Kerminal supports optional MongoDB synchronization to keep your SSH profiles and saved commands in sync across multiple devices.
-
-#### MongoDB Requirements
-
-- MongoDB Atlas account (recommended) or self-hosted MongoDB instance
-- MongoDB connection URI with read/write permissions
-
-#### Setup Steps
-
-1. **Open Sync Settings**: Click the sync icon in the top bar
-2. **Configure Connection**:
-   - Enter your MongoDB URI (e.g., `mongodb+srv://user:pass@cluster.mongodb.net`)
-   - Set the database name (default: `kerminal`)
-   - Configure sync interval (5-3600 seconds, default: 30 seconds)
-3. **Test Connection**: Use the "Test Connection" button to verify your setup
-4. **Save Configuration**: Click "Save Configuration" to enable sync
-
-#### MongoDB URI Examples
-
-```bash
-# MongoDB Atlas
-mongodb+srv://username:password@cluster0.example.mongodb.net
-
-# Self-hosted MongoDB
-mongodb://username:password@localhost:27017
-
-# MongoDB with additional options
-mongodb://user:pass@host:port/database?authSource=admin
-```
-
-#### Data Migration
-
-If you have existing local data, Kerminal will automatically offer to migrate it to MongoDB when you first enable sync.
 
 ## 🔧 Development
 
 ### Project Structure
 
 ```text
-src/
-├── main/           # Electron main process
-│   ├── services/   # Core services (SSH, Terminal, Storage)
-│   ├── storage/    # Data persistence layer
-│   └── utils/      # Utilities and helpers
-├── preload/        # Electron preload scripts
-└── renderer/       # Vue.js frontend
-    └── src/
-        ├── components/  # Vue components
-        ├── composables/ # Vue composition functions
-        └── utils/       # Frontend utilities
+kerminal/
+├── build/                          # Build resources and assets
+│   ├── entitlements.mac.plist     # macOS entitlements for code signing
+│   ├── icon.icns                  # macOS application icon
+│   ├── icon.ico                   # Windows application icon
+│   └── icon.png                   # Application icon (PNG format)
+│
+├── resources/                      # Static application resources
+│   └── icon.png                   # Application icon resource
+│
+├── src/                           # Main source code directory
+│   ├── main/                      # Electron main process (Backend)
+│   │   ├── app.ts                 # Main application entry point
+│   │   ├── index.ts               # Electron main process initialization
+│   │   ├── ipc-handlers.ts        # IPC communication handlers
+│   │   │
+│   │   ├── base/                  # Base classes and abstractions
+│   │   │   └── base-service.ts    # Base service class for all services
+│   │   │
+│   │   ├── interfaces/            # TypeScript interfaces and contracts
+│   │   │   ├── application.interface.ts    # Application-wide interfaces
+│   │   │   ├── ssh.interface.ts           # SSH-related interfaces
+│   │   │   ├── sync.interface.ts          # Synchronization interfaces
+│   │   │   ├── syncable-storage.interface.ts  # Storage sync interfaces
+│   │   │   └── terminal.interface.ts      # Terminal-related interfaces
+│   │   │
+│   │   ├── services/              # Core business logic services
+│   │   │   ├── mongodb-service.ts         # MongoDB connection service
+│   │   │   ├── saved-command-service.ts   # Saved commands management
+│   │   │   ├── ssh-connection-service.ts  # SSH connection handling
+│   │   │   ├── ssh-connection.ts          # SSH connection implementation
+│   │   │   ├── ssh-profile-service.ts     # SSH profile management
+│   │   │   ├── ssh-tunnel-service.ts      # SSH tunneling service
+│   │   │   ├── sync-manager.ts            # Data synchronization manager
+│   │   │   ├── sync-service.ts            # Synchronization service
+│   │   │   ├── system-info.ts             # System information service
+│   │   │   ├── terminal-buffer-manager.ts # Terminal buffer management
+│   │   │   ├── terminal-manager.ts        # Terminal session management
+│   │   │   └── window-manager.ts          # Application window management
+│   │   │
+│   │   ├── storage/               # Data persistence layer
+│   │   │   ├── base-storage.ts            # Base storage class
+│   │   │   ├── saved-command-storage.ts   # Saved commands storage
+│   │   │   ├── ssh-connection-storage.ts  # SSH connections storage
+│   │   │   ├── ssh-group-storage.ts       # SSH groups storage
+│   │   │   ├── ssh-profile-storage.ts     # SSH profiles storage
+│   │   │   ├── ssh-tunnel-storage.ts      # SSH tunnels storage
+│   │   │   └── sync-config-storage.ts     # Sync configuration storage
+│   │   │
+│   │   ├── types/                 # TypeScript type definitions
+│   │   │   ├── main.ts            # Main process type definitions
+│   │   │   └── ssh.ts             # SSH-related type definitions
+│   │   │
+│   │   ├── utils/                 # Main process utilities
+│   │   │   └── logger.ts          # Logging utility
+│   │   │
+│   │   └── validators/            # Data validation modules
+│   │       └── ssh-config-validator.ts    # SSH configuration validator
+│   │
+│   ├── preload/                   # Electron preload scripts (Security layer)
+│   │   ├── index.d.ts             # Preload type definitions
+│   │   └── index.ts               # Main preload script for IPC bridge
+│   │
+│   ├── renderer/                  # Frontend application (Vue.js)
+│   │   ├── index.html             # Main HTML template
+│   │   └── src/
+│   │       ├── App.vue            # Root Vue component
+│   │       ├── main.ts            # Vue application entry point
+│   │       ├── env.d.ts           # Environment type definitions
+│   │       │
+│   │       ├── assets/            # Static frontend assets
+│   │       │   ├── fonts/         # Custom fonts
+│   │       │   ├── images/        # Images and icons
+│   │       │   └── styles/        # CSS/SCSS stylesheets
+│   │       │
+│   │       ├── components/        # Vue components
+│   │       │   ├── Dashboard.vue              # Main dashboard component
+│   │       │   ├── KeyboardShortcutsModal.vue # Keyboard shortcuts modal
+│   │       │   ├── Panel.vue                  # Split panel component
+│   │       │   ├── PanelManager.vue           # Panel management component
+│   │       │   ├── SavedCommandDrawer.vue     # Saved commands drawer
+│   │       │   ├── SavedCommandModal.vue      # Saved command modal
+│   │       │   ├── SSHGroupModal.vue          # SSH group modal
+│   │       │   ├── SSHProfileDrawer.vue       # SSH profile drawer
+│   │       │   ├── SSHProfileModal.vue        # SSH profile modal
+│   │       │   ├── SSHTunnelManager.vue       # SSH tunnel manager
+│   │       │   ├── SSHTunnelModal.vue         # SSH tunnel modal
+│   │       │   ├── SyncSettingsModal.vue      # Sync settings modal
+│   │       │   ├── Terminal.vue               # Terminal component
+│   │       │   ├── TerminalManager.vue        # Terminal manager component
+│   │       │   ├── TopBar.vue                 # Top navigation bar
+│   │       │   └── ui/                        # Reusable UI components
+│   │       │
+│   │       ├── composables/       # Vue composition functions
+│   │       │   ├── useTopBarState.ts  # Top bar state management
+│   │       │   └── useValidation.ts   # Form validation composable
+│   │       │
+│   │       ├── services/          # Frontend services
+│   │       │   ├── keyboard-shortcut-service.ts   # Keyboard shortcuts
+│   │       │   └── terminal-buffer-manager.ts     # Terminal buffer management
+│   │       │
+│   │       ├── types/             # Frontend type definitions
+│   │       │   ├── components.ts      # Component-related types
+│   │       │   ├── keyboard.ts        # Keyboard-related types
+│   │       │   ├── modals.ts          # Modal-related types
+│   │       │   ├── panel.ts           # Panel-related types
+│   │       │   ├── splitpanes.d.ts    # Split panes type definitions
+│   │       │   ├── ssh.ts             # SSH-related types
+│   │       │   ├── sync.ts            # Synchronization types
+│   │       │   ├── system.ts          # System-related types
+│   │       │   └── ui.ts              # UI-related types
+│   │       │
+│   │       └── utils/             # Frontend utilities
+│   │           ├── clipboard.ts       # Clipboard operations
+│   │           ├── debounce.ts        # Debounce utility
+│   │           ├── formatter.ts       # Data formatting utilities
+│   │           ├── message.ts         # Message handling utility
+│   │           └── ...                # Additional utility files
+│   │
+│   └── shared/                    # Shared code between main and renderer
+│       ├── index.ts               # Shared exports
+│       └── types/                 # Shared type definitions
+│           ├── application.ts         # Application-wide types
+│           ├── index.ts               # Type exports
+│           ├── ssh.ts                 # SSH-related shared types
+│           ├── sync.ts                # Synchronization shared types
+│           └── terminal.ts            # Terminal-related shared types
+│
+├── dev-app-update.yml             # Auto-updater configuration for development
+├── electron-builder.yml           # Electron builder configuration
+├── electron.vite.config.ts        # Vite configuration for Electron
+├── eslint.config.mjs              # ESLint configuration
+├── package.json                   # Project dependencies and scripts
+├── tsconfig.json                  # TypeScript configuration (main)
+├── tsconfig.node.json             # TypeScript configuration (Node.js)
+├── tsconfig.web.json              # TypeScript configuration (Web/Renderer)
+├── LICENSE                        # MIT License
+└── README.md                      # Project documentation
 ```
+
+#### Architecture Overview
+
+**Electron Multi-Process Architecture:**
+
+- **Main Process**: Manages application lifecycle, system integration, and core services
+- **Renderer Process**: Handles the user interface using Vue.js
+- **Preload Scripts**: Secure bridge between main and renderer processes
+
+**Key Design Patterns:**
+
+- **Service-Oriented Architecture**: Modular services for different functionalities
+- **Storage Abstraction**: Base storage class with specific implementations
+- **Interface-Driven Development**: Clear contracts between modules
+- **Composable Architecture**: Vue 3 composition API for reactive state management
 
 ### Tech Stack
 
@@ -486,30 +427,6 @@ src/
 - **Proxy Support**: HTTP, SOCKS4, SOCKS5, and SSH Jump Host proxies
 - **Storage**: Secure local file-based storage with optional MongoDB synchronization
 - **Database**: MongoDB for cross-device data synchronization
-
-### Scripts
-
-```bash
-npm run dev         # Start development server
-npm run build       # Build for production
-npm run lint        # Run linter
-npm run format      # Format code with Prettier
-npm run typecheck   # Type checking
-```
-
-## 📦 Building
-
-Kerminal uses electron-builder for creating distributable packages:
-
-```bash
-# Build for all platforms
-npm run build:win
-npm run build:mac
-npm run build:linux
-
-# Create unpacked directory (for testing)
-npm run build:unpack
-```
 
 ## 🤝 Contributing
 

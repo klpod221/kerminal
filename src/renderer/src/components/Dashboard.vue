@@ -4,7 +4,9 @@
       <div class="mt-4 mb-12">
         <img :src="Logo" alt="Kerminal Logo" class="h-32 mx-auto mb-4" />
         <h1 class="text-4xl font-bold text-center">Kerminal</h1>
-        <p class="text-center text-xl mt-1">Modern terminal app with SSH Profile Support</p>
+        <p class="text-center text-xl mt-1">
+          Modern Terminal with SSH, Tunneling & Cross-Device Sync
+        </p>
         <p class="text-center text-gray-400 mt-1">
           Made with ❤️ by
           <a

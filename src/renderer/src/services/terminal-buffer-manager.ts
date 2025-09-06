@@ -5,7 +5,7 @@
 export class TerminalBufferManager {
   private static instance: TerminalBufferManager
   private readonly localBuffers: Map<string, string[]> = new Map()
-  private readonly MAX_LOCAL_BUFFER_LINES = 2000
+  private readonly MAX_LOCAL_BUFFER_LINES = 500
 
   /**
    * Get singleton instance
