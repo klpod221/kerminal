@@ -91,6 +91,14 @@
         @click="openSyncSettings"
       />
       <Button
+        title="Keyboard Shortcuts (Ctrl+?)"
+        variant="ghost"
+        size="sm"
+        :icon="KeyboardIcon"
+        class="text-gray-400 hover:text-white"
+        @click="openKeyboardShortcuts"
+      />
+      <Button
         title="Minimize window"
         variant="ghost"
         size="sm"
@@ -120,7 +128,8 @@ import {
   Server,
   Bookmark,
   Cloud,
-  Wifi
+  Wifi,
+  Keyboard
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import { useTopBarState } from '../composables/useTopBarState'
@@ -141,11 +150,13 @@ const emit = defineEmits<{
   'toggle-saved-commands': []
   'toggle-ssh-tunnels': []
   'open-sync-settings': []
+  'open-keyboard-shortcuts': []
 }>()
 
 // Use icons
 const BookmarkIcon = Bookmark
 const CloudIcon = Cloud
+const KeyboardIcon = Keyboard
 
 const isMaximized = ref(false)
 const syncStatus = ref<SyncStatus | null>(null)
@@ -252,6 +263,10 @@ const toggleSavedCommands = (): void => {
 
 const openSyncSettings = (): void => {
   emit('open-sync-settings')
+}
+
+const openKeyboardShortcuts = (): void => {
+  emit('open-keyboard-shortcuts')
 }
 
 const minimizeWindow = (): void => {

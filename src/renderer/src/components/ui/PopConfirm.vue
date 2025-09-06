@@ -20,24 +20,26 @@
       <div v-if="visible" ref="popconfirmRef" :style="popconfirmStyle" class="fixed z-50">
         <Transition
           enter-active-class="transition-all duration-200 ease-out"
-          enter-from-class="opacity-0 transform scale-95"
-          enter-to-class="opacity-100 transform scale-100"
+          enter-from-class="opacity-0 scale-95 translate-y-2"
+          enter-to-class="opacity-100 scale-100 translate-y-0"
           leave-active-class="transition-all duration-150 ease-in"
-          leave-from-class="opacity-100 transform scale-100"
-          leave-to-class="opacity-0 transform scale-95"
+          leave-from-class="opacity-100 scale-100 translate-y-0"
+          leave-to-class="opacity-0 scale-95 translate-y-2"
         >
           <div
             v-if="visible"
-            class="bg-[#1f1f1f] border border-gray-600 rounded-lg shadow-lg p-4 min-w-[280px] max-w-[400px]"
+            class="bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-2xl p-4 min-w-[280px] max-w-[400px]"
             @click.stop
           >
             <!-- Header with Icon and Title -->
-            <div class="flex items-start space-x-3 mb-3">
+            <div class="flex items-start space-x-3 mb-4">
               <div class="flex-shrink-0 mt-0.5">
-                <component :is="iconComponent" :class="iconClass" class="w-5 h-5" />
+                <div class="rounded-lg p-2" :class="iconBackgroundClass">
+                  <component :is="iconComponent" :class="iconClass" class="w-4 h-4" />
+                </div>
               </div>
               <div class="flex-1 min-w-0">
-                <div v-if="title" class="text-sm font-medium text-white mb-1">
+                <div v-if="title" class="text-sm font-semibold text-white mb-1.5">
                   {{ title }}
                 </div>
                 <div class="text-sm text-gray-300 leading-5">
@@ -48,21 +50,8 @@
 
             <!-- Action Buttons -->
             <div class="flex justify-end space-x-2">
-              <button
-                type="button"
-                class="px-3 py-1.5 text-sm text-gray-400 hover:text-white transition-colors rounded border border-gray-600 hover:border-gray-500"
-                @click.stop="handleCancel"
-              >
-                {{ cancelText }}
-              </button>
-              <button
-                type="button"
-                :class="confirmButtonClass"
-                class="px-3 py-1.5 text-sm font-medium rounded transition-colors"
-                @click.stop="handleConfirm"
-              >
-                {{ okText }}
-              </button>
+              <Button variant="outline" size="sm" :text="cancelText" @click="handleCancel" />
+              <Button :variant="buttonVariant" size="sm" :text="okText" @click="handleConfirm" />
             </div>
           </div>
         </Transition>
@@ -73,6 +62,8 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { AlertTriangle, HelpCircle } from 'lucide-vue-next'
+import Button from './Button.vue'
 import type { PopConfirmProps } from '../../types/ui'
 
 const props = withDefaults(defineProps<PopConfirmProps>(), {
@@ -98,32 +89,25 @@ const popconfirmStyle = ref({})
 
 // Computed
 const iconComponent = computed(() => {
-  return {
-    template: `
-      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-      </svg>
-    `
-  }
+  return props.okType === 'danger' ? AlertTriangle : HelpCircle
 })
 
 const iconClass = computed(() => {
-  if (props.okType === 'danger') {
-    return 'text-red-400'
-  } else {
-    return 'text-yellow-400'
-  }
+  return props.okType === 'danger' ? 'text-red-400' : 'text-blue-400'
 })
 
-const confirmButtonClass = computed(() => {
-  if (props.okType === 'danger') {
-    return 'bg-red-600 hover:bg-red-700 text-white'
-  } else {
-    return 'bg-blue-600 hover:bg-blue-700 text-white'
-  }
+const iconBackgroundClass = computed(() => {
+  return props.okType === 'danger' ? 'bg-red-500/20' : 'bg-blue-500/20'
+})
+
+const buttonVariant = computed(() => {
+  return props.okType === 'danger' ? 'danger' : 'primary'
 })
 
 // Methods
+/**
+ * Calculate the optimal position for the popconfirm
+ */
 const calculatePosition = async (): Promise<void> => {
   if (!triggerRef.value || !popconfirmRef.value) return
 
@@ -138,58 +122,63 @@ const calculatePosition = async (): Promise<void> => {
 
   let top = 0
   let left = 0
+  const offset = 8
 
   switch (props.placement) {
     case 'top':
-      top = triggerRect.top - popconfirmRect.height - 8
+      top = triggerRect.top - popconfirmRect.height - offset
       left = triggerRect.left + (triggerRect.width - popconfirmRect.width) / 2
       break
     case 'bottom':
-      top = triggerRect.bottom + 8
+      top = triggerRect.bottom + offset
       left = triggerRect.left + (triggerRect.width - popconfirmRect.width) / 2
       break
     case 'left':
       top = triggerRect.top + (triggerRect.height - popconfirmRect.height) / 2
-      left = triggerRect.left - popconfirmRect.width - 8
+      left = triggerRect.left - popconfirmRect.width - offset
       break
     case 'right':
       top = triggerRect.top + (triggerRect.height - popconfirmRect.height) / 2
-      left = triggerRect.right + 8
+      left = triggerRect.right + offset
       break
     case 'topLeft':
-      top = triggerRect.top - popconfirmRect.height - 8
+      top = triggerRect.top - popconfirmRect.height - offset
       left = triggerRect.left
       break
     case 'topRight':
-      top = triggerRect.top - popconfirmRect.height - 8
+      top = triggerRect.top - popconfirmRect.height - offset
       left = triggerRect.right - popconfirmRect.width
       break
     case 'bottomLeft':
-      top = triggerRect.bottom + 8
+      top = triggerRect.bottom + offset
       left = triggerRect.left
       break
     case 'bottomRight':
-      top = triggerRect.bottom + 8
+      top = triggerRect.bottom + offset
       left = triggerRect.right - popconfirmRect.width
       break
   }
 
-  // Adjust position to stay within viewport
-  if (left < 8) left = 8
-  if (left + popconfirmRect.width > viewport.width - 8) {
-    left = viewport.width - popconfirmRect.width - 8
+  // Keep popconfirm within viewport bounds
+  const padding = 12
+  if (left < padding) left = padding
+  if (left + popconfirmRect.width > viewport.width - padding) {
+    left = viewport.width - popconfirmRect.width - padding
   }
-  if (top < 8) top = 8
-  if (top + popconfirmRect.height > viewport.height - 8) {
-    top = viewport.height - popconfirmRect.height - 8
+  if (top < padding) top = padding
+  if (top + popconfirmRect.height > viewport.height - padding) {
+    top = viewport.height - popconfirmRect.height - padding
   }
 
   popconfirmStyle.value = {
-    top: `${top}px`,
-    left: `${left}px`
+    top: `${Math.round(top)}px`,
+    left: `${Math.round(left)}px`
   }
 }
 
+/**
+ * Show the popconfirm
+ */
 const show = async (): Promise<void> => {
   if (props.disabled) return
 
@@ -199,6 +188,9 @@ const show = async (): Promise<void> => {
   await calculatePosition()
 }
 
+/**
+ * Hide the popconfirm
+ */
 const hide = (): void => {
   visible.value = false
   emit('visibleChange', false)
@@ -214,16 +206,21 @@ const handleTriggerClick = (): void => {
   }
 }
 
+let hoverTimeout: number | null = null
+
 const handleMouseEnter = (): void => {
   if (props.trigger === 'hover') {
+    if (hoverTimeout) {
+      window.clearTimeout(hoverTimeout)
+      hoverTimeout = null
+    }
     show()
   }
 }
 
 const handleMouseLeave = (): void => {
   if (props.trigger === 'hover') {
-    // Add small delay for hover trigger
-    setTimeout(() => {
+    hoverTimeout = window.setTimeout(() => {
       if (props.trigger === 'hover') {
         hide()
       }
@@ -260,9 +257,12 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('keydown', handleKeydown)
   window.removeEventListener('resize', calculatePosition)
+  if (hoverTimeout) {
+    window.clearTimeout(hoverTimeout)
+  }
 })
 
-// Expose methods
+// Expose methods for programmatic control
 defineExpose({
   show,
   hide

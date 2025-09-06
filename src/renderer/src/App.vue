@@ -10,6 +10,7 @@
       @toggle-saved-commands="toggleSavedCommands"
       @toggle-ssh-tunnels="toggleSSHTunnels"
       @open-sync-settings="openSyncSettings"
+      @open-keyboard-shortcuts="openKeyboardShortcuts"
     />
 
     <div class="flex-grow overflow-hidden">
@@ -121,6 +122,12 @@
       @update="handleUpdateTunnel"
       @close="handleCloseTunnelModal"
     />
+
+    <!-- Keyboard Shortcuts Modal -->
+    <KeyboardShortcutsModal
+      :is-visible="showKeyboardShortcutsModal"
+      @update:is-visible="showKeyboardShortcutsModal = $event"
+    />
   </div>
 </template>
 
@@ -135,10 +142,12 @@ import SSHProfileModal from './components/SSHProfileModal.vue'
 import SSHGroupModal from './components/SSHGroupModal.vue'
 import SavedCommandDrawer from './components/SavedCommandDrawer.vue'
 import SyncSettingsModal from './components/SyncSettingsModal.vue'
+import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue'
 import Modal from './components/ui/Modal.vue'
 import SSHTunnelManager from './components/SSHTunnelManager.vue'
 import SSHTunnelModal from './components/SSHTunnelModal.vue'
 import { useTopBarState } from './composables/useTopBarState'
+import { useKeyboardShortcuts } from './services/keyboard-shortcut-service'
 import type {
   SSHProfileWithConfig,
   SSHGroup,
@@ -156,10 +165,14 @@ import { TerminalBufferManager } from './services/terminal-buffer-manager'
 // Initialize TopBar state management
 const topBarState = useTopBarState()
 
+// Initialize keyboard shortcuts
+const { registerActionHandler, startListening, stopListening } = useKeyboardShortcuts()
+
 // Modal states - using topBarState for main navigation
 const showSSHProfileModal = ref(false)
 const showSSHGroupModal = ref(false)
 const showSSHTunnelModal = ref(false)
+const showKeyboardShortcutsModal = ref(false)
 const selectedTunnel = ref<SSHTunnelWithProfile | null>(null)
 const sshProfiles = ref<SSHProfile[]>([])
 const syncStatusRefreshCounter = ref(0)
@@ -899,6 +912,55 @@ const closeSyncSettings = (): void => {
   topBarState.closeModal()
 }
 
+const openKeyboardShortcuts = (): void => {
+  showKeyboardShortcutsModal.value = true
+}
+
+// Setup keyboard shortcuts handlers
+const setupKeyboardShortcuts = (): void => {
+  // Terminal shortcuts
+  registerActionHandler('terminal:close-tab', () => {
+    const panel = findPanelInLayout(panelLayout.value, activePanelId.value)
+    if (panel && panel.activeTabId) {
+      closeTab(activePanelId.value, panel.activeTabId)
+    }
+  })
+
+  registerActionHandler('terminal:new-tab', () => {
+    const panel = findPanelInLayout(panelLayout.value, activePanelId.value)
+    if (panel) {
+      addTab(activePanelId.value)
+    } else {
+      // If no active panel, add to the first available panel or create one
+      const firstPanel = findFirstPanel(panelLayout.value)
+      if (firstPanel) {
+        addTab(firstPanel.id)
+      }
+    }
+  })
+
+  // General shortcuts
+  registerActionHandler('general:show-shortcuts', () => {
+    showKeyboardShortcutsModal.value = true
+  })
+
+  registerActionHandler('general:toggle-ssh-drawer', () => {
+    toggleSSHDrawer()
+  })
+
+  registerActionHandler('general:toggle-saved-commands', () => {
+    toggleSavedCommands()
+  })
+
+  registerActionHandler('general:show-dashboard', () => {
+    openDashboard()
+  })
+
+  registerActionHandler('general:show-workspace', () => {
+    topBarState.setPage('workspace')
+  })
+}
+
 const loadSSHGroups = async (): Promise<void> => {
   try {
     const groups = (await window.api.invoke('ssh-groups.getAll')) as SSHGroup[]
@@ -1196,6 +1258,10 @@ onMounted(() => {
   refreshAllData() // Use refreshAllData instead of loadSSHGroups
   loadSSHProfiles() // Load SSH profiles for tunnel modal
 
+  // Initialize keyboard shortcuts
+  setupKeyboardShortcuts()
+  startListening()
+
   // Add global error handler to prevent unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
     console.error('Unhandled promise rejection:', event.reason)
@@ -1288,6 +1354,8 @@ onMounted(() => {
     window.removeEventListener('resize', updateWindowWidth)
     // Remove global error handler
     window.removeEventListener('unhandledrejection', () => {})
+    // Cleanup keyboard shortcuts
+    stopListening()
 
     // Cleanup terminal buffers
     bufferManager.cleanup()

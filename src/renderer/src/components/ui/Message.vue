@@ -1,47 +1,44 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+    <div v-if="visible" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50">
       <Transition
         enter-active-class="transition-all duration-300 ease-out"
-        enter-from-class="opacity-0 transform -translate-y-2 scale-95"
+        enter-from-class="opacity-0 transform -translate-y-4 scale-95"
         enter-to-class="opacity-100 transform translate-y-0 scale-100"
         leave-active-class="transition-all duration-200 ease-in"
         leave-from-class="opacity-100 transform translate-y-0 scale-100"
-        leave-to-class="opacity-0 transform -translate-y-2 scale-95"
+        leave-to-class="opacity-0 transform -translate-y-4 scale-95"
       >
         <div
           v-if="visible"
           :class="[
-            'flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg border backdrop-blur-xs',
+            'flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border backdrop-blur-sm',
+            'min-w-[300px] max-w-[500px]',
             messageClasses
           ]"
         >
           <!-- Icon -->
-          <div :class="iconClasses">
-            <component :is="iconComponent" class="w-4 h-4" />
+          <div class="flex-shrink-0">
+            <div class="rounded-lg p-2" :class="iconBackgroundClass">
+              <component :is="iconComponent" :class="iconClass" class="w-4 h-4" />
+            </div>
           </div>
 
           <!-- Content -->
-          <div class="flex-1">
-            <div v-if="title" class="font-medium text-sm">{{ title }}</div>
-            <div class="text-sm" :class="{ 'mt-1': title }">{{ content }}</div>
+          <div class="flex-1 min-w-0">
+            <div v-if="title" class="font-semibold text-sm text-white mb-1">{{ title }}</div>
+            <div class="text-sm text-gray-300 leading-5">{{ content }}</div>
           </div>
 
           <!-- Close button -->
-          <button
+          <Button
             v-if="closable"
-            class="ml-2 text-gray-400 hover:text-gray-600 transition-colors"
+            variant="ghost"
+            size="sm"
+            :icon="X"
+            class="flex-shrink-0 !p-1.5"
             @click="close"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+          />
         </div>
       </Transition>
     </div>
@@ -50,6 +47,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { CheckCircle, XCircle, AlertTriangle, Info, Loader2, X } from 'lucide-vue-next'
+import Button from './Button.vue'
 import type { MessageProps } from '../../types/ui'
 
 const props = withDefaults(defineProps<MessageProps>(), {
@@ -64,82 +63,70 @@ let timer: number | null = null
 const messageClasses = computed(() => {
   switch (props.type) {
     case 'success':
-      return 'bg-green-50/90 border-green-200 text-green-800'
+      return 'bg-[#1a1a1a] border-green-700/50'
     case 'error':
-      return 'bg-red-50/90 border-red-200 text-red-800'
+      return 'bg-[#1a1a1a] border-red-700/50'
     case 'warning':
-      return 'bg-yellow-50/90 border-yellow-200 text-yellow-800'
+      return 'bg-[#1a1a1a] border-yellow-700/50'
     case 'loading':
-      return 'bg-blue-50/90 border-blue-200 text-blue-800'
+      return 'bg-[#1a1a1a] border-blue-700/50'
     default:
-      return 'bg-blue-50/90 border-blue-200 text-blue-800'
+      return 'bg-[#1a1a1a] border-blue-700/50'
   }
 })
 
-const iconClasses = computed(() => {
+const iconBackgroundClass = computed(() => {
   switch (props.type) {
     case 'success':
-      return 'text-green-500'
+      return 'bg-green-500/20'
     case 'error':
-      return 'text-red-500'
+      return 'bg-red-500/20'
     case 'warning':
-      return 'text-yellow-500'
+      return 'bg-yellow-500/20'
     case 'loading':
-      return 'text-blue-500 animate-spin'
+      return 'bg-blue-500/20'
     default:
-      return 'text-blue-500'
+      return 'bg-blue-500/20'
+  }
+})
+
+const iconClass = computed(() => {
+  switch (props.type) {
+    case 'success':
+      return 'text-green-400'
+    case 'error':
+      return 'text-red-400'
+    case 'warning':
+      return 'text-yellow-400'
+    case 'loading':
+      return 'text-blue-400 animate-spin'
+    default:
+      return 'text-blue-400'
   }
 })
 
 const iconComponent = computed(() => {
   switch (props.type) {
     case 'success':
-      return {
-        template: `
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        `
-      }
+      return CheckCircle
     case 'error':
-      return {
-        template: `
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        `
-      }
+      return XCircle
     case 'warning':
-      return {
-        template: `
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-          </svg>
-        `
-      }
+      return AlertTriangle
     case 'loading':
-      return {
-        template: `
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
-          </svg>
-        `
-      }
+      return Loader2
     default:
-      return {
-        template: `
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        `
-      }
+      return Info
   }
 })
 
+/**
+ * Close the message
+ */
 const close = (): void => {
   visible.value = false
   if (timer) {
-    clearTimeout(timer)
+    window.clearTimeout(timer)
     timer = null
   }
   setTimeout(() => {
@@ -150,6 +137,7 @@ const close = (): void => {
 onMounted(() => {
   visible.value = true
 
+  // Auto close after duration (except for loading messages)
   if (props.duration > 0 && props.type !== 'loading') {
     timer = window.setTimeout(() => {
       close()
@@ -157,6 +145,7 @@ onMounted(() => {
   }
 })
 
+// Expose methods for programmatic control
 defineExpose({
   close
 })
