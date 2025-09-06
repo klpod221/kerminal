@@ -203,9 +203,8 @@ const loadCommands = async (): Promise<void> => {
   try {
     // Load all commands
     commands.value = (await window.api.invoke('saved-commands.getAll')) as SavedCommand[]
-  } catch (error) {
-    console.error('Failed to load commands:', error)
-    message.error('Failed to load commands')
+  } catch {
+    message.error('Failed to load saved commands')
   } finally {
     loading.value = false
   }
@@ -250,8 +249,7 @@ const executeCommand = async (command: SavedCommand): Promise<void> => {
 
     // Close drawer after executing command
     emit('update:visible', false)
-  } catch (error) {
-    console.error('Failed to execute command:', error)
+  } catch {
     message.error('Failed to execute command')
   }
 }
@@ -260,8 +258,7 @@ const copyCommand = async (command: SavedCommand): Promise<void> => {
   try {
     await window.api.invoke('saved-commands.copyToClipboard', command.command)
     message.success('Command copied to clipboard')
-  } catch (error) {
-    console.error('Failed to copy command:', error)
+  } catch {
     message.error('Failed to copy command')
   }
 }
@@ -271,8 +268,7 @@ const deleteCommand = async (command: SavedCommand): Promise<void> => {
     await window.api.invoke('saved-commands.delete', command.id)
     message.success('Command deleted successfully')
     await loadCommands()
-  } catch (error) {
-    console.error('Failed to delete command:', error)
+  } catch {
     message.error('Failed to delete command')
   }
 }

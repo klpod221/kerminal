@@ -259,8 +259,7 @@ const loadTunnels = async (): Promise<void> => {
   try {
     const result = await window.api.invoke('ssh-tunnels.getAll')
     tunnels.value = result as SSHTunnelWithProfile[]
-  } catch (error) {
-    console.error('Failed to load tunnels:', error)
+  } catch {
     message.error('Failed to load tunnels')
   }
 }
@@ -269,27 +268,15 @@ const loadProfiles = async (): Promise<void> => {
   try {
     const result = await window.api.invoke('ssh-profiles.getAll')
     profiles.value = result as SSHProfile[]
-  } catch (error) {
-    console.error('Failed to load profiles:', error)
+  } catch {
+    // Silently handle - profiles not critical for tunnel management
   }
 }
 
 const startStatusUpdates = (): void => {
   // Update tunnel status every 5 seconds
   statusUpdateInterval.value = setInterval(async () => {
-    // Also verify real status for each tunnel to catch any inconsistencies
-    for (const tunnel of tunnels.value) {
-      try {
-        const realStatus = await window.api.invoke('ssh-tunnels.getRealStatus', tunnel.id)
-        if (realStatus !== tunnel.status) {
-          console.log(
-            `Status mismatch for tunnel ${tunnel.name}: UI shows ${tunnel.status}, actual is ${realStatus}`
-          )
-        }
-      } catch (error) {
-        console.error('Failed to check real tunnel status:', error)
-      }
-    }
+    // Simply reload tunnels to get fresh status
     await loadTunnels()
   }, 5000)
 }
@@ -300,9 +287,9 @@ const handleStartTunnel = async (tunnel: SSHTunnelWithProfile): Promise<void> =>
     await window.api.invoke('ssh-tunnels.start', tunnel.id)
     message.success(`Tunnel "${tunnel.name}" started successfully`)
     await loadTunnels()
-  } catch (error) {
-    console.error('Failed to start tunnel:', error)
-    message.error(`Failed to start tunnel: ${error}`)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    message.error(`Failed to start tunnel: ${errorMessage}`)
   }
 }
 

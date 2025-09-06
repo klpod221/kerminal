@@ -310,65 +310,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { Computer, Monitor, Cpu, MemoryStick, Wifi, Server, RefreshCw } from 'lucide-vue-next'
-import Card from './ui/Card.vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { Server, Cpu, MemoryStick, Monitor, Computer, Wifi, RefreshCw } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
+import Card from './ui/Card.vue'
 import { formatRelativeTime } from '../utils/formatter'
-import Logo from '../assets/images/logo_500.png'
-
-// Type definitions
-interface SystemInfo {
-  platform: string
-  release: string
-  arch: string
-  hostname: string
-  uptime: number
-  totalMemory: number
-  freeMemory: number
-  loadAverage: number[]
-  cpus: Array<{
-    model: string
-    speed: number
-    times: {
-      user: number
-      nice: number
-      sys: number
-      idle: number
-      irq: number
-    }
-  }>
-  osRelease?: string
-  cpuInfo?: string
-  memInfo?: string
-  gpuInfo?: string
-  resolution?: string
-}
-
-interface NetworkInterface {
-  name: string
-  address: string
-  netmask: string
-  mac: string
-  isConnected?: boolean
-}
-
-interface NetworkStatus {
-  isConnected: boolean
-  primaryInterface: NetworkInterface | null
-  interfaces: NetworkInterface[]
-}
-
-interface SSHConnection {
-  id: string
-  profileId: string
-  profileName: string
-  host: string
-  user: string
-  connectedAt: Date
-  duration?: number
-  status: 'connected' | 'disconnected' | 'failed'
-}
+import type { SSHConnection } from '../types/ssh'
+import type { SystemInfo, NetworkStatus } from '../types/system'
+import Logo from '../assets/images/logo_250.png'
 
 // Reactive state
 const isLoading = ref(true)
@@ -548,8 +497,8 @@ async function loadRecentConnections(): Promise<void> {
       ...conn,
       connectedAt: new Date(conn.connectedAt)
     }))
-  } catch (error) {
-    console.log('Failed to load recent connections:', error)
+  } catch {
+    // Silently handle error - recent connections are not critical
     recentConnections.value = []
   } finally {
     isLoadingConnections.value = false
@@ -622,8 +571,11 @@ async function loadSystemInfo(): Promise<void> {
 
     rawSystemInfo.value = sysInfo
     networkStatus.value = netStatus
-  } catch (error) {
-    console.error('Failed to load system information:', error)
+  } catch {
+    // Silently handle error - system info is not critical for basic functionality
+    // Set fallback values
+    rawSystemInfo.value = null
+    networkStatus.value = { isConnected: false, primaryInterface: null, interfaces: [] }
   }
 }
 

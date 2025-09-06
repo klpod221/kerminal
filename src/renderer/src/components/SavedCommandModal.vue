@@ -217,8 +217,7 @@ const handleSubmit = async (): Promise<void> => {
 
     emit('command-saved')
     handleClose()
-  } catch (error) {
-    console.error('Failed to save command:', error)
+  } catch {
     message.error('Failed to save command')
   } finally {
     isSaving.value = false

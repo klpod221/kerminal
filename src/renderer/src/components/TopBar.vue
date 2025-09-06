@@ -170,8 +170,8 @@ let syncStatusInterval: ReturnType<typeof setInterval> | null = null
 async function loadSyncStatus(): Promise<void> {
   try {
     syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
-  } catch (error) {
-    console.error('Failed to load sync status:', error)
+  } catch {
+    // Silently handle - sync status is not critical
     syncStatus.value = null
   }
 }
@@ -195,8 +195,8 @@ async function loadTunnelStatus(): Promise<void> {
   try {
     const tunnels = (await window.api.invoke('ssh-tunnels.getAll')) as SSHTunnelWithProfile[]
     hasActiveTunnels.value = tunnels.some((tunnel) => tunnel.status === 'running')
-  } catch (error) {
-    console.error('Failed to load tunnel status:', error)
+  } catch {
+    // Silently handle - tunnel status is not critical
     hasActiveTunnels.value = false
   }
 }

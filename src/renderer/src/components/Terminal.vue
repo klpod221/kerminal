@@ -66,27 +66,20 @@ const bufferManager = TerminalBufferManager.getInstance()
  */
 async function handlePaste(): Promise<void> {
   try {
-    const clipboardText = await window.api.invoke('get-clipboard-text')
-    if (clipboardText && typeof clipboardText === 'string' && clipboardText.trim()) {
-      // Process clipboard content with comprehensive validation and sanitization
-      const processedText = processClipboardText(clipboardText, {
-        maxLength: 5000, // Limit paste size
-        multilineConfirm: true // Log multiline pastes
-      })
+    const text = await window.api.invoke('clipboard.read')
+    if (!text || typeof text !== 'string') return
 
-      if (processedText) {
-        // Send the processed text to terminal
-        window.api.send('terminal.keystroke', {
-          terminalId: props.terminalId,
-          data: processedText
-        })
-      } else {
-        console.warn('Clipboard content was rejected by validation')
-      }
+    const processedText = processClipboardText(text)
+
+    if (!processedText) {
+      // Invalid content - silently ignore
+      return
     }
-  } catch (error) {
-    console.error('Failed to paste from clipboard:', error)
-    // Silently fail - don't show error to user as paste failures are common
+
+    // Write to terminal
+    term.paste(processedText)
+  } catch {
+    // Silently handle paste errors - not critical for terminal operation
   }
 }
 
@@ -96,15 +89,9 @@ async function handlePaste(): Promise<void> {
  */
 async function restoreTerminalBuffer(): Promise<void> {
   try {
-    // Check if there's a buffer to restore and terminal is ready
-    if (!term || !props.terminalId) {
-      return
-    }
-
-    // Try to restore buffer from main process
     await bufferManager.restoreBuffer(props.terminalId, term)
-  } catch (error) {
-    console.error(`Failed to restore buffer for terminal ${props.terminalId}:`, error)
+  } catch {
+    // Silently handle - buffer restore failure is not critical
   }
 }
 

@@ -156,7 +156,6 @@ import type {
   SSHTunnelWithProfile,
   SSHTunnel
 } from './types/ssh'
-import type { SyncConfig } from './types/sync'
 import type { PanelLayout, Panel, Tab, TerminalInstance } from './types/panel'
 import { message } from './utils/message'
 import { debounce } from './utils/debounce'
@@ -621,7 +620,7 @@ const moveTab = (
   }
 
   if (!actualFromPanelId) {
-    console.warn(`Cannot find source panel for tab ${tabId}`)
+    // Silently handle missing panel - not critical
     return
   }
 
@@ -969,8 +968,8 @@ const loadSSHGroups = async (): Promise<void> => {
       created: new Date(group.created),
       updated: new Date(group.updated)
     }))
-  } catch (error) {
-    console.error('Failed to load SSH groups:', error)
+  } catch {
+    // Silently handle error - groups will be empty
     sshGroups.value = []
   }
 }
@@ -978,9 +977,9 @@ const loadSSHGroups = async (): Promise<void> => {
 const refreshAllData = async (): Promise<void> => {
   try {
     await loadSSHGroups()
-    console.log('All data refreshed successfully')
-  } catch (error) {
-    console.error('Failed to refresh data:', error)
+    // Data refreshed successfully - no need to log
+  } catch {
+    message.error('Failed to refresh data')
   }
 }
 
@@ -1055,9 +1054,9 @@ const saveSSHProfile = async (profileData: Partial<SSHProfile>): Promise<void> =
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
-    console.log('SSH profile created successfully')
-  } catch (error) {
-    console.error('Failed to create SSH profile:', error)
+    message.success('SSH profile created successfully')
+  } catch {
+    message.error('Failed to create SSH profile')
   }
 }
 
@@ -1072,9 +1071,9 @@ const updateSSHProfile = async (id: string, updates: Partial<SSHProfile>): Promi
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
-    console.log('SSH profile updated successfully')
-  } catch (error) {
-    console.error('Failed to update SSH profile:', error)
+    message.success('SSH profile updated successfully')
+  } catch {
+    message.error('Failed to update SSH profile')
   }
 }
 
@@ -1097,10 +1096,9 @@ const deleteSSHGroup = async (group: SSHGroupWithProfiles): Promise<void> => {
     if (topBarState.isSSHDrawerActive.value && sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
-    console.log('SSH group deleted successfully')
-  } catch (error) {
-    console.error('Failed to delete SSH group:', error)
-    // Don't throw error to avoid unhandled promise rejections
+    message.success('SSH group deleted successfully')
+  } catch {
+    message.error('Failed to delete SSH group')
   }
 }
 
@@ -1112,20 +1110,17 @@ const deleteSSHProfile = async (profile: SSHProfileWithConfig): Promise<void> =>
     if (topBarState.isSSHDrawerActive.value && sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
-    console.log('SSH profile deleted successfully')
-  } catch (error) {
-    console.error('Failed to delete SSH profile:', error)
-    // Don't throw error to avoid unhandled promise rejections
+    message.success('SSH profile deleted successfully')
+  } catch {
+    message.error('Failed to delete SSH profile')
   }
 }
 
 // SSH Group related methods
 const openCreateSSHGroup = (): void => {
-  console.log('Opening SSH Group Modal...')
   editingGroup.value = null
   showSSHGroupModal.value = true
   topBarState.closeModal() // Close drawer when opening group modal
-  console.log('showSSHGroupModal:', showSSHGroupModal.value)
 }
 
 const handleSSHGroupModalClose = (): void => {
@@ -1146,9 +1141,9 @@ const saveSSHGroup = async (
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
-    console.log('SSH group created successfully')
-  } catch (error) {
-    console.error('Failed to create SSH group:', error)
+    message.success('SSH group created successfully')
+  } catch {
+    message.error('Failed to create SSH group')
   }
 }
 
@@ -1163,9 +1158,9 @@ const updateSSHGroup = async (id: string, updates: Partial<SSHGroup>): Promise<v
     if (sshProfileDrawerRef.value) {
       sshProfileDrawerRef.value.refreshProfiles()
     }
-    console.log('SSH group updated successfully')
-  } catch (error) {
-    console.error('Failed to update SSH group:', error)
+    message.success('SSH group updated successfully')
+  } catch {
+    message.error('Failed to update SSH group')
   }
 }
 
@@ -1187,9 +1182,9 @@ const handleSaveTunnel = async (tunnelData: Partial<SSHTunnel>): Promise<void> =
     showSSHTunnelModal.value = false
     selectedTunnel.value = null
     showSSHTunnelsModal() // Show manager again
-  } catch (error) {
-    console.error('Failed to create tunnel:', error)
-    message.error(`Failed to create tunnel: ${error}`)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    message.error(`Failed to create tunnel: ${errorMessage}`)
   }
 }
 
@@ -1200,9 +1195,9 @@ const handleUpdateTunnel = async (id: string, tunnelData: Partial<SSHTunnel>): P
     showSSHTunnelModal.value = false
     selectedTunnel.value = null
     showSSHTunnelsModal() // Show manager again
-  } catch (error) {
-    console.error('Failed to update tunnel:', error)
-    message.error(`Failed to update tunnel: ${error}`)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    message.error(`Failed to update tunnel: ${errorMessage}`)
   }
 }
 
@@ -1212,9 +1207,8 @@ const handleCloseTunnelModal = (): void => {
   showSSHTunnelsModal() // Show manager again
 }
 
-const onSyncConfigUpdated = (config: SyncConfig | null): void => {
-  console.log('Sync config updated:', config)
-  // Force refresh sync status in TopBar
+const onSyncConfigUpdated = (): void => {
+  // Sync config updated - refresh status display
   syncStatusRefreshCounter.value++
 }
 
@@ -1222,8 +1216,8 @@ const loadSSHProfiles = async (): Promise<void> => {
   try {
     const result = await window.api.invoke('ssh-profiles.getAll')
     sshProfiles.value = result as SSHProfile[]
-  } catch (error) {
-    console.error('Failed to load SSH profiles:', error)
+  } catch {
+    message.error('Failed to load SSH profiles')
   }
 }
 
@@ -1264,7 +1258,7 @@ onMounted(() => {
 
   // Add global error handler to prevent unhandled promise rejections
   window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason)
+    // Silently handle unhandled promise rejections in production
     event.preventDefault() // Prevent the default behavior
   })
 
@@ -1307,7 +1301,6 @@ onMounted(() => {
 
     // Show error message
     message.error(`SSH Connection Failed: ${data.error}`)
-    console.error('SSH connection error:', data.error)
 
     // Auto close the tab with error
     const panelId = findPanelForTerminal(panelLayout.value, data.terminalId)
@@ -1321,7 +1314,6 @@ onMounted(() => {
   // Listen for terminal auto close events
   const unsubscribeAutoClose = window.api?.on('terminal.autoClose', (...args: unknown[]) => {
     const data = args[0] as { terminalId: string; reason: string; exitCode?: number }
-    console.log(`Auto closing terminal ${data.terminalId}: ${data.reason}`)
 
     // Find which panel this terminal belongs to
     const findPanelForTerminal = (layout: PanelLayout): string | null => {
@@ -1363,8 +1355,8 @@ onMounted(() => {
     ;(async () => {
       try {
         await bufferManager.triggerCleanup()
-      } catch (error) {
-        console.error(error)
+      } catch {
+        // Silently handle cleanup errors
       }
     })()
   })

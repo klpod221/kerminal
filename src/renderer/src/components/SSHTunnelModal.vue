@@ -401,8 +401,8 @@ const handleSubmit = async (): Promise<void> => {
     }
 
     handleClose()
-  } catch (error) {
-    console.error('Failed to save tunnel:', error)
+  } catch {
+    // Error handling will be done by the parent component
   } finally {
     isSaving.value = false
   }

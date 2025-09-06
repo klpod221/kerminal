@@ -198,8 +198,8 @@ async function loadConfig(): Promise<void> {
 
     // Load sync status
     syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
-  } catch (error) {
-    console.error('Failed to load sync config:', error)
+  } catch {
+    message.error('Failed to load sync configuration')
   }
 }
 
@@ -221,9 +221,8 @@ async function testConnection(): Promise<void> {
     } else {
       message.error('Failed to connect to MongoDB')
     }
-  } catch (error) {
+  } catch {
     message.error('Connection test failed')
-    console.error('Connection test error:', error)
   } finally {
     isTestingConnection.value = false
   }
@@ -254,9 +253,8 @@ async function handleSave(): Promise<void> {
     } else {
       message.error('Failed to save sync configuration')
     }
-  } catch (error) {
+  } catch {
     message.error('Failed to save sync configuration')
-    console.error('Save config error:', error)
   } finally {
     isLoading.value = false
   }
@@ -277,9 +275,8 @@ async function performSync(): Promise<void> {
       // Still refresh status to get any error messages
       await refreshSyncStatus()
     }
-  } catch (error) {
+  } catch {
     message.error('Sync failed')
-    console.error('Sync error:', error)
     // Refresh status to get error details
     await refreshSyncStatus()
   }
@@ -296,9 +293,8 @@ async function migrateData(): Promise<void> {
     } else {
       message.error('Data migration failed')
     }
-  } catch (error) {
+  } catch {
     message.error('Data migration failed')
-    console.error('Migration error:', error)
   } finally {
     isMigrating.value = false
   }
@@ -331,9 +327,8 @@ async function deleteSyncConfig(): Promise<void> {
     } else {
       message.error('Failed to delete sync configuration')
     }
-  } catch (error) {
+  } catch {
     message.error('Failed to delete sync configuration')
-    console.error('Delete config error:', error)
   } finally {
     isDeleting.value = false
   }
@@ -343,8 +338,8 @@ async function refreshSyncStatus(): Promise<void> {
   try {
     const status = (await window.api.invoke('sync.getStatus')) as SyncStatus
     syncStatus.value = status
-  } catch (error) {
-    console.error('Failed to refresh sync status:', error)
+  } catch {
+    // Silently handle sync status refresh errors
   }
 }
 
