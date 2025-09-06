@@ -161,7 +161,8 @@ export class SyncManager {
    */
   async enableSync(config: SyncConfig): Promise<boolean> {
     const storages = this.storageRegistry.getAll()
-    const success = await this.syncService.enableSync(config, storages)
+    config.enabled = true
+    const success = await this.syncService.initialize(config, storages)
     if (success) {
       await this.syncConfigStorage.saveConfig(config)
     }
@@ -172,13 +173,15 @@ export class SyncManager {
    * Disable sync
    */
   async disableSync(): Promise<void> {
-    await this.syncService.disableSync()
-
     // Update config to disabled but keep connection details
     const config = await this.syncConfigStorage.getConfig()
     if (config) {
       config.enabled = false
+      config.autoSync = false
       await this.syncConfigStorage.saveConfig(config)
+
+      // Reinitialize with disabled config
+      await this.syncService.initialize(config, [])
     }
   }
 
@@ -201,7 +204,7 @@ export class SyncManager {
    */
   async updateSyncConfig(config: SyncConfig): Promise<boolean> {
     const storages = this.storageRegistry.getAll()
-    const success = await this.syncService.updateConfig(config, storages)
+    const success = await this.syncService.initialize(config, storages)
     if (success) {
       await this.syncConfigStorage.saveConfig(config)
     }
@@ -228,7 +231,7 @@ export class SyncManager {
    */
   async forceSyncNow(): Promise<void> {
     const storages = this.storageRegistry.getAll()
-    await this.syncService.forceSyncNow(storages)
+    await this.syncService.performFullSync(storages)
   }
 
   /**
@@ -241,21 +244,11 @@ export class SyncManager {
   }
 
   /**
-   * Restart auto sync if enabled
-   */
-  restartAutoSync(): void {
-    const storages = this.storageRegistry.getAll()
-    this.syncService.setStorageMap(storages)
-    this.syncService.restartAutoSync()
-    this.logger.info('Auto sync restarted')
-  }
-
-  /**
    * Check if auto sync is currently running
    */
-  isAutoSyncRunning(): boolean {
+  async isAutoSyncRunning(): Promise<boolean> {
+    const config = await this.syncConfigStorage.getConfig()
     const status = this.syncService.getStatus()
-    const config = this.syncService.getConfig()
-    return status.isConnected && config?.autoSync === true
+    return status.isConnected && config?.enabled === true && config?.autoSync === true
   }
 }

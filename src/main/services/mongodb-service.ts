@@ -132,6 +132,33 @@ export class MongoDBService {
   }
 
   /**
+   * Find one document by filter
+   */
+  async findOne<T = Document>(collectionName: string, filter: Filter<Document>): Promise<T | null> {
+    const collection = this.getCollection(collectionName)
+    const document = await collection.findOne(filter)
+    return document as T | null
+  }
+
+  /**
+   * Find documents by filter
+   */
+  async find<T = Document>(collectionName: string, filter: Filter<Document>): Promise<T[]> {
+    const collection = this.getCollection(collectionName)
+    const documents = await collection.find(filter).toArray()
+    return documents as T[]
+  }
+
+  /**
+   * Delete many documents by filter
+   */
+  async deleteMany(collectionName: string, filter: Filter<Document>): Promise<number> {
+    const collection = this.getCollection(collectionName)
+    const result = await collection.deleteMany(filter)
+    return result.deletedCount || 0
+  }
+
+  /**
    * Insert document
    */
   async insertOne<T = Document>(
