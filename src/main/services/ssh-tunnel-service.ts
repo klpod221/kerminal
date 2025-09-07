@@ -327,39 +327,72 @@ export class SSHTunnelService {
   async killOrphanedTunnelProcesses(): Promise<void> {
     try {
       const { spawn } = await import('child_process')
-
-      // Find SSH processes that look like tunnel processes
-      const psProcess = spawn('ps', ['aux'], { stdio: ['pipe', 'pipe', 'pipe'] })
-
+      const os = await import('os')
       let output = ''
-      psProcess.stdout.on('data', (data) => {
-        output += data.toString()
-      })
-
-      await new Promise((resolve, reject) => {
-        psProcess.on('close', (code) => {
-          if (code === 0) {
-            resolve(void 0)
-          } else {
-            reject(new Error(`ps command failed with code ${code}`))
-          }
-        })
-      })
-
-      // Look for SSH tunnel processes (containing -L, -R, or -D flags with -N)
-      const lines = output.split('\n')
       const tunnelProcesses: string[] = []
 
-      for (const line of lines) {
-        if (
-          line.includes('ssh') &&
-          line.includes('-N') &&
-          (line.includes('-L') || line.includes('-R') || line.includes('-D'))
-        ) {
-          const parts = line.trim().split(/\s+/)
-          const pid = parts[1]
-          if (pid && !isNaN(Number(pid))) {
-            tunnelProcesses.push(pid)
+      if (os.platform() === 'win32') {
+        // Use 'tasklist' on Windows
+        const tasklist = spawn('tasklist', ['/v', '/fo', 'csv'], {
+          stdio: ['pipe', 'pipe', 'pipe']
+        })
+        tasklist.stdout.on('data', (data) => {
+          output += data.toString()
+        })
+        await new Promise((resolve, reject) => {
+          tasklist.on('close', (code) => {
+            if (code === 0) {
+              resolve(void 0)
+            } else {
+              reject(new Error(`tasklist command failed with code ${code}`))
+            }
+          })
+        })
+        // Parse CSV output, look for ssh.exe processes with tunnel flags
+        const lines = output.split('\n')
+        for (const line of lines) {
+          if (
+            line.toLowerCase().includes('ssh.exe') &&
+            (line.includes('-L') || line.includes('-R') || line.includes('-D')) &&
+            line.includes('-N')
+          ) {
+            // CSV: "Image Name","PID",...
+            const parts = line.split(',')
+            if (parts.length > 1) {
+              const pid = parts[1].replace(/"/g, '').trim()
+              if (pid && !isNaN(Number(pid))) {
+                tunnelProcesses.push(pid)
+              }
+            }
+          }
+        }
+      } else {
+        // Use 'ps' on Unix
+        const psProcess = spawn('ps', ['aux'], { stdio: ['pipe', 'pipe', 'pipe'] })
+        psProcess.stdout.on('data', (data) => {
+          output += data.toString()
+        })
+        await new Promise((resolve, reject) => {
+          psProcess.on('close', (code) => {
+            if (code === 0) {
+              resolve(void 0)
+            } else {
+              reject(new Error(`ps command failed with code ${code}`))
+            }
+          })
+        })
+        const lines = output.split('\n')
+        for (const line of lines) {
+          if (
+            line.includes('ssh') &&
+            line.includes('-N') &&
+            (line.includes('-L') || line.includes('-R') || line.includes('-D'))
+          ) {
+            const parts = line.trim().split(/\s+/)
+            const pid = parts[1]
+            if (pid && !isNaN(Number(pid))) {
+              tunnelProcesses.push(pid)
+            }
           }
         }
       }
@@ -370,7 +403,6 @@ export class SSHTunnelService {
           process.kill(Number(pid), 'SIGTERM')
           this.logger.info(`Killed orphaned SSH tunnel process: ${pid}`)
         } catch (error) {
-          // Process might already be dead or not owned by us
           this.logger.info(`Could not kill process ${pid}:`, error)
         }
       }
