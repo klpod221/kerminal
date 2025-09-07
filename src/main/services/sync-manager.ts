@@ -24,6 +24,11 @@ export class SyncManager {
     this.storageRegistry = new SyncableStorageRegistry()
     this.logger = new ConsoleLogger('SyncManager')
 
+    // Set callback for config updates
+    this.syncService.setConfigUpdateCallback(async (config: SyncConfig) => {
+      await this.syncConfigStorage.saveConfig(config)
+    })
+
     this.initializeStorageRegistry()
   }
 

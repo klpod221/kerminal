@@ -26,6 +26,7 @@ export class SyncService {
   private syncInterval: NodeJS.Timeout | null = null
   private storageMap: Array<{ name: string; storage: ISyncableStorage }> = []
   private readonly deviceInfo: DeviceInfo
+  private onConfigUpdate?: (config: SyncConfig) => Promise<void>
   private readonly status: SyncStatus = {
     isEnabled: false,
     isConnected: false,
@@ -44,6 +45,13 @@ export class SyncService {
     this.mongoService = new MongoDBService()
     this.logger = new ConsoleLogger('Sync')
     this.deviceInfo = this.generateDeviceInfo()
+  }
+
+  /**
+   * Set callback for config updates (used by SyncManager to persist config changes)
+   */
+  setConfigUpdateCallback(callback: (config: SyncConfig) => Promise<void>): void {
+    this.onConfigUpdate = callback
   }
 
   /**
@@ -234,10 +242,26 @@ export class SyncService {
         await this.cleanupOldTombstones(storageMap)
       }
 
-      this.status.lastSync = new Date()
+      // Update sync timestamps
+      const now = new Date()
+      this.status.lastSync = now
       this.status.syncedItems = result.itemsProcessed
       this.status.conflictCount = result.conflictsResolved
       this.status.tombstoneCount = result.tombstonesProcessed
+
+      // Update config lastSync for next sync
+      if (this.config) {
+        this.config.lastSync = now
+        // Persist config changes if callback is available
+        if (this.onConfigUpdate) {
+          try {
+            await this.onConfigUpdate(this.config)
+            this.logger.debug('Config lastSync updated and persisted')
+          } catch (error) {
+            this.logger.warn('Failed to persist config update:', error as Error)
+          }
+        }
+      }
 
       this.logger.info(
         `Sync completed: ${result.itemsProcessed} items processed, ${result.conflictsResolved} conflicts resolved`
@@ -315,12 +339,35 @@ export class SyncService {
     result: SyncOperationResult
   ): Promise<void> {
     const lastSyncTime = this.config?.lastSync || new Date(0)
+    const isFirstSync = !this.config?.lastSync
+
+    this.logger.debug(
+      `Enhanced sync for ${name}: isFirstSync=${isFirstSync}, lastSyncTime=${lastSyncTime.toISOString()}`
+    )
 
     // Get local changes since last sync
     const localChanges = await storage.getModifiedSince!(lastSyncTime)
 
+    // Special handling for first sync on new machine:
+    // If local is empty and this is first sync, pull all remote data
+    if (isFirstSync && localChanges.length === 0) {
+      const localData = await storage.readData<Record<string, unknown>>()
+      if (localData.length === 0) {
+        this.logger.info(`First sync on new machine for ${name}, pulling all remote data`)
+        await this.performInitialPullSync(storage, collectionName, result)
+        return
+      }
+    }
+
     // Get remote changes since last sync
-    const remoteChanges = await this.getRemoteChangesSince(collectionName, lastSyncTime)
+    // For first sync, get all remote data instead of filtered changes
+    const remoteChanges = isFirstSync
+      ? await this.mongoService.findAll(collectionName)
+      : await this.getRemoteChangesSince(collectionName, lastSyncTime)
+
+    this.logger.debug(
+      `Sync ${name}: ${localChanges.length} local changes, ${remoteChanges.length} remote changes`
+    )
 
     // Process tombstones first
     const tombstones = await storage.getTombstones!()
@@ -344,6 +391,47 @@ export class SyncService {
     this.logger.debug(
       `Sync ${name}: ${result.itemsProcessed} items, ${result.tombstonesProcessed} tombstones`
     )
+  }
+
+  /**
+   * Perform initial pull sync for new machines (pull all remote data)
+   */
+  private async performInitialPullSync(
+    storage: ISyncableStorage,
+    collectionName: string,
+    result: SyncOperationResult
+  ): Promise<void> {
+    try {
+      // Get all remote data
+      const remoteData = await this.mongoService.findAll(collectionName)
+
+      if (remoteData.length === 0) {
+        this.logger.debug(`No remote data found for ${collectionName}`)
+        return
+      }
+
+      // Convert all remote documents to local format
+      const localData: Record<string, unknown>[] = []
+      for (const remoteDoc of remoteData) {
+        const localFormat = this.convertFromRemoteFormat(remoteDoc)
+        localData.push(localFormat)
+      }
+
+      // Save all data to local storage
+      await storage.writeData(localData)
+
+      result.itemsProcessed = localData.length
+
+      this.logger.info(
+        `Initial sync completed: pulled ${localData.length} items from remote to local`
+      )
+
+      // Emit sync event
+      this.emitSyncEvent('sync.dataChanged')
+    } catch (error) {
+      this.logger.error('Initial pull sync failed:', error as Error)
+      throw error
+    }
   }
 
   /**
