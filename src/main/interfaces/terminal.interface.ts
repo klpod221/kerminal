@@ -1,5 +1,0 @@
-/**
- * Terminal interfaces - re-exported from shared
- */
-
-export * from '@shared/types/terminal'
