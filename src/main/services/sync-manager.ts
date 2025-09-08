@@ -7,6 +7,7 @@ import { SavedCommandStorage } from '../storage/saved-command-storage'
 import { SyncableStorageRegistry } from '../interfaces/syncable-storage.interface'
 import { SyncConfig, SyncStatus } from '../interfaces/sync.interface'
 import { ConsoleLogger } from '../utils/logger'
+import { AuthService } from './auth-service'
 
 /**
  * Main sync manager that coordinates all sync operations
@@ -111,6 +112,9 @@ export class SyncManager {
         this.logger.info('Existing local data migrated to MongoDB')
       }
 
+      // Sync master password to MongoDB if not exists
+      await this.syncMasterPasswordToMongo(config)
+
       // Save configuration
       await this.syncConfigStorage.saveConfig(config)
 
@@ -119,6 +123,75 @@ export class SyncManager {
     } catch (error) {
       this.logger.error('Sync setup failed:', error as Error)
       return false
+    }
+  }
+
+  /**
+   * Setup sync with master password verification (for existing data scenario)
+   */
+  async setupSyncWithPassword(config: SyncConfig, masterPassword: string): Promise<boolean> {
+    try {
+      // Create auth service instance
+      const authService = new AuthService()
+
+      // First verify the provided master password
+      const isValidPassword = await authService.unlockWithMasterPassword(masterPassword)
+      if (!isValidPassword) {
+        throw new Error('Incorrect master password')
+      }
+
+      // Test connection first
+      const connectionTest = await this.syncService.testConnection(
+        config.connectionString || config.mongoUri!,
+        config.databaseName || 'kerminal'
+      )
+
+      if (!connectionTest) {
+        throw new Error('Failed to connect to MongoDB')
+      }
+
+      // Check if have existing local data to migrate
+      const hasLocalData = await this.hasExistingLocalData()
+
+      // Initialize sync service
+      const storages = this.storageRegistry.getAll()
+      const initialized = await this.syncService.initialize(config, storages)
+
+      if (!initialized) {
+        throw new Error('Failed to initialize sync service')
+      }
+
+      // Verify that the connection is actually established
+      const status = this.syncService.getStatus()
+      if (!status.isConnected) {
+        throw new Error('Sync service initialized but not connected')
+      }
+
+      // Migrate existing data if needed
+      if (hasLocalData) {
+        await this.migrateExistingData()
+        this.logger.info('Existing local data migrated to MongoDB')
+      }
+
+      // Connect to MongoDB master password (this will re-encrypt data with MongoDB password)
+      const connectSuccess = await authService.connectToMongoMasterPassword(
+        config.mongoUri!,
+        config.databaseName || 'kerminal',
+        masterPassword
+      )
+
+      if (!connectSuccess) {
+        throw new Error('Failed to connect with MongoDB master password')
+      }
+
+      // Save configuration
+      await this.syncConfigStorage.saveConfig(config)
+
+      this.logger.info('Sync setup with password completed successfully')
+      return true
+    } catch (error) {
+      this.logger.error('Sync setup with password failed:', error as Error)
+      throw error
     }
   }
 
@@ -136,6 +209,41 @@ export class SyncManager {
     }
 
     return false
+  }
+
+  /**
+   * Sync master password to MongoDB during setup
+   */
+  private async syncMasterPasswordToMongo(config: SyncConfig): Promise<void> {
+    try {
+      if (!config.mongoUri || !config.databaseName) {
+        this.logger.warn('MongoDB URI or database name not provided for master password sync')
+        return
+      }
+
+      // Import AuthService to sync master password
+      const authService = new AuthService()
+
+      const success = await authService.syncMasterPasswordToMongo(
+        config.mongoUri,
+        config.databaseName
+      )
+      if (success) {
+        this.logger.info('Master password synced to MongoDB successfully')
+      } else {
+        this.logger.warn('Master password sync to MongoDB skipped or failed')
+      }
+    } catch (error) {
+      this.logger.error('Failed to sync master password to MongoDB:', error as Error)
+      // Don't throw error as this is not critical for sync setup
+    }
+  }
+
+  /**
+   * Check if there's existing local data (public method)
+   */
+  async hasExistingData(): Promise<boolean> {
+    return await this.hasExistingLocalData()
   }
 
   /**

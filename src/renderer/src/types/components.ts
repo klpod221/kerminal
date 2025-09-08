@@ -130,6 +130,7 @@ export interface TopBarState {
 export interface TopBarProps {
   topBarState: ReturnType<typeof import('../composables/useTopBarState').useTopBarState>
   syncStatusRefresh?: number
+  isMasterPasswordModalOpen?: boolean
 }
 
 /**

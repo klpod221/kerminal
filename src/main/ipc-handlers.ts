@@ -562,6 +562,16 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     }
   })
 
+  // Setup sync with master password verification
+  ipcMain.handle('sync.setupWithPassword', async (_event, config, masterPassword) => {
+    try {
+      return await syncManager.setupSyncWithPassword(config, masterPassword)
+    } catch (error) {
+      logger.error('Sync setup with password error:', error as Error)
+      throw error
+    }
+  })
+
   // Enable sync
   ipcMain.handle('sync.enable', async (_event, config) => {
     try {
@@ -658,6 +668,16 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       return true
     } catch (error) {
       logger.error('Delete sync config error:', error as Error)
+      return false
+    }
+  })
+
+  // Check if existing data exists
+  ipcMain.handle('sync.hasExistingData', async () => {
+    try {
+      return await syncManager.hasExistingData()
+    } catch (error) {
+      logger.error('Check existing data error:', error as Error)
       return false
     }
   })
@@ -778,4 +798,51 @@ function setupAuthHandlers(authService: AuthService): void {
       return false
     }
   })
+
+  // Connect to MongoDB with master password
+  ipcMain.handle(
+    'auth:connect-mongo-master-password',
+    async (_event, config: { mongoUri: string; databaseName: string; masterPassword: string }) => {
+      try {
+        return await authService.connectToMongoMasterPassword(
+          config.mongoUri,
+          config.databaseName,
+          config.masterPassword
+        )
+      } catch (error) {
+        logger.error('Connect to MongoDB master password error:', error as Error)
+        return false
+      }
+    }
+  )
+
+  // Create new master password for empty MongoDB database
+  ipcMain.handle(
+    'auth:create-mongo-master-password',
+    async (_event, config: { mongoUri: string; databaseName: string; masterPassword: string }) => {
+      try {
+        return await authService.createNewMongoMasterPassword(
+          config.mongoUri,
+          config.databaseName,
+          config.masterPassword
+        )
+      } catch (error) {
+        logger.error('Create MongoDB master password error:', error as Error)
+        return false
+      }
+    }
+  )
+
+  // Check if MongoDB has master password data
+  ipcMain.handle(
+    'auth:check-mongo-master-password-exists',
+    async (_event, mongoUri: string, databaseName: string) => {
+      try {
+        return await authService.checkMongoMasterPasswordExists(mongoUri, databaseName)
+      } catch (error) {
+        logger.error('Check MongoDB master password exists error:', error as Error)
+        return false
+      }
+    }
+  )
 }

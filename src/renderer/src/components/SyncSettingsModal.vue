@@ -62,7 +62,7 @@
         </div>
       </div>
 
-      <!-- Configuration Form -->
+      <!-- MongoDB Configuration -->
       <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">MongoDB Configuration</h3>
         <form @submit.prevent="handleSave">
@@ -73,7 +73,7 @@
             placeholder="mongodb://username:password@hostname:port"
             :disabled="isLoading"
             required
-            helper-text="Include credentials in the URI. Example: mongodb://user:pass@cluster.mongodb.net"
+            helper-text="Include credentials in the URI"
           />
 
           <Input
@@ -95,7 +95,7 @@
             helper-text="Minimum 5 seconds, maximum 1 hour (3600 seconds)"
           />
 
-          <div class="flex justify-between space-x-3 mt-2">
+          <div class="flex justify-between space-x-3 mt-4">
             <Button
               type="button"
               variant="secondary"
@@ -105,31 +105,78 @@
               Test Connection
             </Button>
             <Button type="submit" variant="primary" :loading="isLoading" :icon="Save">
-              Save
+              {{ connectionTestPassed ? 'Setup Sync' : 'Save Configuration' }}
             </Button>
           </div>
         </form>
       </div>
 
-      <!-- Migration Section -->
-      <div v-if="hasExistingData && !syncStatus.isConnected" class="space-y-1">
-        <h3 class="text-lg font-medium text-white">Data Migration</h3>
-        <p class="text-sm text-gray-400 mb-4">
-          You have existing local data. When you enable sync, your data will be migrated to MongoDB.
-        </p>
-        <Button variant="secondary" :loading="isMigrating" @click="migrateData">
-          Migrate Data Now
-        </Button>
+      <!-- Master Password Verification -->
+      <div v-if="showPasswordVerification && connectionTestPassed" class="space-y-1">
+        <h3 class="text-lg font-medium text-white">Master Password Verification</h3>
+        <div class="bg-blue-900/20 border border-blue-500 rounded-lg p-4">
+          <p class="text-sm text-blue-200 mb-4">
+            Both local and MongoDB database contain data. Please enter the master password from
+            MongoDB to verify and sync your data.
+          </p>
+
+          <div class="space-y-4">
+            <Input
+              v-model="masterPassword"
+              label="MongoDB Master Password"
+              :type="showMasterPassword ? 'text' : 'password'"
+              placeholder="Enter existing MongoDB master password"
+              :right-icon="showMasterPassword ? EyeOff : Eye"
+              @right-icon-click="showMasterPassword = !showMasterPassword"
+            />
+            <p class="text-xs text-gray-400">
+              This is the master password that was used to encrypt data in your MongoDB database.
+            </p>
+
+            <div class="flex justify-end space-x-3">
+              <Button type="button" variant="secondary" @click="cancelPasswordVerification">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                :loading="isLoading"
+                :disabled="!masterPassword.trim()"
+                @click="verifyMasterPassword"
+              >
+                Verify & Setup Sync
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Danger Zone -->
+      <!-- Data Migration Warning -->
+      <div
+        v-if="hasExistingData && !syncStatus.isConnected && connectionTestPassed"
+        class="space-y-1"
+      >
+        <h3 class="text-lg font-medium text-white">Data Migration</h3>
+        <div class="bg-yellow-900/20 border border-yellow-500 rounded-lg p-4">
+          <p class="text-sm text-yellow-200 mb-3">
+            <strong>Warning:</strong> You have existing local data. When you setup sync:
+          </p>
+          <ul class="text-sm text-yellow-200 list-disc list-inside space-y-1">
+            <li v-if="mongoHasMasterPassword">
+              MongoDB already contains data - password verification required
+            </li>
+            <li v-else>Your local data will be uploaded to MongoDB</li>
+            <li>All data will be encrypted using the master password</li>
+            <li>A backup will be created automatically</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Existing Configuration Management -->
       <div v-if="currentConfig" class="space-y-1">
-        <h3 class="text-lg font-medium text-red-400">Danger Zone</h3>
-        <p class="text-sm text-gray-400 mb-4">
-          This will permanently delete your sync configuration and disable synchronization.
-        </p>
-        <Button variant="danger" :loading="isDeleting" @click="deleteSyncConfig">
-          Delete Sync Configuration
+        <h3 class="text-lg font-medium text-white">Manage Configuration</h3>
+        <Button variant="secondary" :loading="isDeleting" @click="deleteSyncConfig">
+          Delete Configuration
         </Button>
       </div>
     </div>
@@ -137,17 +184,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
-import { Database, Save } from 'lucide-vue-next'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { Database, Save, Eye, EyeOff } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
-import Button from './ui/Button.vue'
 import Input from './ui/Input.vue'
+import Button from './ui/Button.vue'
 import { message } from '../utils/message'
-import { formatRelativeTime } from '../utils/formatter'
 import type { SyncConfig, SyncStatus } from '../types/sync'
-import type { SyncSettingsModalProps } from '../types/modals'
 
-const props = defineProps<SyncSettingsModalProps>()
+interface Props {
+  visible?: boolean
+  refreshTrigger?: number
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  visible: false,
+  refreshTrigger: 0
+})
 
 const emit = defineEmits<{
   close: []
@@ -155,25 +208,31 @@ const emit = defineEmits<{
 }>()
 
 // State
+const currentConfig = ref<SyncConfig | null>(null)
+const syncStatus = ref<SyncStatus>({ isConnected: false, isLoading: false })
+const hasExistingData = ref(false)
+const mongoHasMasterPassword = ref(false)
+const connectionTestPassed = ref(false)
+const statusRefreshInterval = ref<number | null>(null)
+
+// Master password verification state
+const showPasswordVerification = ref(false)
+const masterPassword = ref('')
+const showMasterPassword = ref(false)
+const passwordVerified = ref(false)
+
+// Loading states
 const isLoading = ref(false)
 const isTestingConnection = ref(false)
-const isMigrating = ref(false)
 const isDeleting = ref(false)
-const hasExistingData = ref(false)
-const currentConfig = ref<SyncConfig | null>(null)
-const statusRefreshInterval = ref<number | null>(null)
-const syncStatus = ref<SyncStatus>({
-  isConnected: false,
-  isLoading: false
-})
 
 // Form data
-const formData = reactive<SyncConfig>({
+const formData = reactive({
   mongoUri: '',
   databaseName: 'kerminal',
-  enabled: true, // Always enabled
-  autoSync: true, // Always auto sync
-  syncInterval: 30 // seconds instead of minutes
+  enabled: true,
+  autoSync: true,
+  syncInterval: 30
 })
 
 // Computed
@@ -193,8 +252,8 @@ async function loadConfig(): Promise<void> {
       Object.assign(formData, config)
     }
 
-    // Load sync status
     syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
+    hasExistingData.value = (await window.api.invoke('sync.hasExistingData')) as boolean
   } catch {
     message.error('Failed to load sync configuration')
   }
@@ -207,14 +266,26 @@ async function testConnection(): Promise<void> {
   }
 
   isTestingConnection.value = true
+  connectionTestPassed.value = false
+  mongoHasMasterPassword.value = false
+
   try {
     const success = await window.api.invoke(
       'sync.testConnection',
       formData.mongoUri,
       formData.databaseName
     )
+
     if (success) {
       message.success('Connection test successful!')
+      connectionTestPassed.value = true
+
+      // Check if MongoDB has master password data
+      mongoHasMasterPassword.value = (await window.api.invoke(
+        'auth:check-mongo-master-password-exists',
+        formData.mongoUri,
+        formData.databaseName
+      )) as boolean
     } else {
       message.error('Failed to connect to MongoDB')
     }
@@ -226,9 +297,24 @@ async function testConnection(): Promise<void> {
 }
 
 async function handleSave(): Promise<void> {
+  if (!connectionTestPassed.value) {
+    message.error('Please test the connection first')
+    return
+  }
+
+  // Check if password verification is needed
+  if (hasExistingData.value && mongoHasMasterPassword.value && !passwordVerified.value) {
+    showPasswordVerification.value = true
+    return
+  }
+
+  await setupSync()
+}
+
+async function setupSync(): Promise<void> {
   isLoading.value = true
+
   try {
-    // Create a plain object from reactive formData
     const configData = {
       mongoUri: formData.mongoUri,
       databaseName: formData.databaseName,
@@ -237,21 +323,52 @@ async function handleSave(): Promise<void> {
       syncInterval: formData.syncInterval
     }
 
-    const success = await window.api.invoke('sync.setup', configData)
-    if (success) {
-      message.success('Sync configuration saved successfully!')
-      currentConfig.value = { ...configData }
+    // If password verification was required and completed, use the verified password
+    if (showPasswordVerification.value && passwordVerified.value) {
+      const success = await window.api.invoke(
+        'sync.setupWithPassword',
+        configData,
+        masterPassword.value
+      )
 
-      // Wait a bit for sync service to fully initialize before getting status
-      await new Promise((resolve) => setTimeout(resolve, 100))
-      syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
+      if (!success) {
+        message.error('Failed to setup sync with password verification')
+        return
+      }
 
-      emit('configUpdated', currentConfig.value)
+      // Reset password verification state
+      showPasswordVerification.value = false
+      masterPassword.value = ''
+      passwordVerified.value = false
     } else {
-      message.error('Failed to save sync configuration')
+      // Normal setup flow
+      const success = await window.api.invoke('sync.setup', configData)
+
+      if (!success) {
+        message.error('Failed to save sync configuration')
+        return
+      }
     }
-  } catch {
-    message.error('Failed to save sync configuration')
+
+    message.success('Sync configuration saved successfully!')
+    currentConfig.value = { ...configData }
+
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
+
+    emit('configUpdated', currentConfig.value)
+  } catch (error) {
+    console.error('Error setting up sync:', error)
+
+    if (error instanceof Error) {
+      if (error.message.includes('Incorrect master password')) {
+        message.error('Incorrect master password')
+      } else {
+        message.error(`Failed to setup sync: ${error.message}`)
+      }
+    } else {
+      message.error('Failed to setup sync')
+    }
   } finally {
     isLoading.value = false
   }
@@ -259,41 +376,13 @@ async function handleSave(): Promise<void> {
 
 async function performSync(): Promise<void> {
   try {
-    // Set loading state immediately
-    syncStatus.value = { ...syncStatus.value, isLoading: true, lastError: '' }
-
-    const success = await window.api.invoke('sync.performSync')
-    if (success) {
-      message.success('Sync completed successfully!')
-      // Refresh status immediately after successful sync
-      await refreshSyncStatus()
-    } else {
-      message.error('Sync failed')
-      // Still refresh status to get any error messages
-      await refreshSyncStatus()
-    }
+    syncStatus.value.isLoading = true
+    await window.api.invoke('sync.performSync')
+    syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
+    message.success('Sync completed successfully!')
   } catch {
     message.error('Sync failed')
-    // Refresh status to get error details
-    await refreshSyncStatus()
-  }
-}
-
-async function migrateData(): Promise<void> {
-  isMigrating.value = true
-  try {
-    const success = await window.api.invoke('sync.migrateData')
-    if (success) {
-      message.success('Data migration completed successfully!')
-      hasExistingData.value = false
-      syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
-    } else {
-      message.error('Data migration failed')
-    }
-  } catch {
-    message.error('Data migration failed')
-  } finally {
-    isMigrating.value = false
+    syncStatus.value.isLoading = false
   }
 }
 
@@ -308,19 +397,7 @@ async function deleteSyncConfig(): Promise<void> {
     const success = await window.api.invoke('sync.deleteConfig')
     if (success) {
       message.success('Sync configuration deleted successfully!')
-      currentConfig.value = null
-      Object.assign(formData, {
-        mongoUri: '',
-        databaseName: 'kerminal',
-        enabled: true,
-        autoSync: true,
-        syncInterval: 30
-      })
-      syncStatus.value = {
-        isConnected: false,
-        isLoading: false
-      }
-      emit('configUpdated', null)
+      resetForm()
     } else {
       message.error('Failed to delete sync configuration')
     }
@@ -331,18 +408,84 @@ async function deleteSyncConfig(): Promise<void> {
   }
 }
 
-async function refreshSyncStatus(): Promise<void> {
+function formatRelativeTime(date: Date): string {
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000)
+
+  if (diffInSeconds < 60) return `${diffInSeconds} seconds ago`
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+  return `${Math.floor(diffInSeconds / 86400)} days ago`
+}
+
+function resetForm(): void {
+  currentConfig.value = null
+  Object.assign(formData, {
+    mongoUri: '',
+    databaseName: 'kerminal',
+    enabled: true,
+    autoSync: true,
+    syncInterval: 30
+  })
+  syncStatus.value = { isConnected: false, isLoading: false }
+  connectionTestPassed.value = false
+  mongoHasMasterPassword.value = false
+  showPasswordVerification.value = false
+  masterPassword.value = ''
+  passwordVerified.value = false
+}
+
+function cancelPasswordVerification(): void {
+  showPasswordVerification.value = false
+  masterPassword.value = ''
+  passwordVerified.value = false
+}
+
+async function verifyMasterPassword(): Promise<void> {
+  if (!masterPassword.value.trim()) {
+    message.error('Please enter the master password')
+    return
+  }
+
+  isLoading.value = true
   try {
-    const status = (await window.api.invoke('sync.getStatus')) as SyncStatus
-    syncStatus.value = status
+    // Verify the local master password first
+    const verified = (await window.api.invoke(
+      'auth:unlock-with-master-password',
+      masterPassword.value
+    )) as boolean
+
+    if (verified) {
+      passwordVerified.value = true
+      message.success('Master password verified successfully')
+
+      // Now proceed with sync setup
+      await setupSync()
+    } else {
+      message.error('Incorrect master password. Please try again.')
+    }
+  } catch (error) {
+    console.error('Master password verification failed:', error)
+    message.error('Failed to verify master password. Please check your connection and try again.')
+  } finally {
+    isLoading.value = false
+  }
+}
+
+async function loadSyncStatus(): Promise<void> {
+  try {
+    syncStatus.value = (await window.api.invoke('sync.getStatus')) as SyncStatus
   } catch {
-    // Silently handle sync status refresh errors
+    // Ignore errors during status loading
   }
 }
 
 function startStatusRefresh(): void {
-  // Refresh status every 10 seconds
-  statusRefreshInterval.value = window.setInterval(refreshSyncStatus, 10000)
+  if (statusRefreshInterval.value) return
+
+  statusRefreshInterval.value = setInterval(async () => {
+    await loadSyncStatus()
+  }, 5000) as unknown as number
 }
 
 function stopStatusRefresh(): void {
@@ -361,6 +504,16 @@ watch(
       startStatusRefresh()
     } else {
       stopStatusRefresh()
+    }
+  }
+)
+
+// Watch for refresh trigger (when sync config changes externally)
+watch(
+  () => props.refreshTrigger,
+  () => {
+    if (props.visible) {
+      loadConfig()
     }
   }
 )

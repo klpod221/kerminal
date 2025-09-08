@@ -4,6 +4,9 @@ import * as path from 'path'
 import * as fs from 'fs/promises'
 import { CryptoService } from './crypto-service'
 import { ConsoleLogger } from '../utils/logger'
+import { MongoDBService } from './mongodb-service'
+import { SyncManager } from './sync-manager'
+import { SyncService } from './sync-service'
 
 export interface SecuritySettings {
   requirePasswordOnStart: boolean
@@ -360,6 +363,304 @@ export class AuthService {
   }
 
   /**
+   * Connect to MongoDB and verify master password
+   * @param mongoUri - MongoDB connection URI
+   * @param databaseName - Database name
+   * @param masterPassword - The master password from MongoDB
+   * @returns True if connection and password are valid
+   */
+  async connectToMongoMasterPassword(
+    mongoUri: string,
+    databaseName: string,
+    masterPassword: string
+  ): Promise<boolean> {
+    try {
+      this.logger.info('Attempting to connect to MongoDB and verify master password')
+
+      // Use imported MongoDBService directly
+      const mongoService = new MongoDBService()
+
+      // Set temporary config
+      const tempConfig = {
+        id: 'temp-mongo-test',
+        provider: 'mongodb' as const,
+        mongoUri,
+        databaseName,
+        enabled: true,
+        autoSync: false,
+        syncInterval: 30,
+        created: new Date(),
+        updated: new Date()
+      }
+
+      mongoService.setConfig(tempConfig)
+
+      // Test connection
+      const connected = await mongoService.connect()
+      if (!connected) {
+        this.logger.error('Failed to connect to MongoDB')
+        return false
+      }
+
+      // Check if master-password collection exists and verify password
+      const masterPasswordValid = await this.verifyMongoMasterPassword(mongoService, masterPassword)
+
+      await mongoService.disconnect()
+
+      if (masterPasswordValid) {
+        // If verification successful, create local master password with MongoDB key
+        await this.createMasterPasswordFromMongo(masterPassword, mongoUri, databaseName)
+        return true
+      }
+
+      return false
+    } catch (error) {
+      this.logger.error('Failed to connect to MongoDB master password:', error as Error)
+      return false
+    }
+  }
+
+  /**
+   * Create new master password for empty MongoDB database
+   * @param mongoUri - MongoDB connection URI
+   * @param databaseName - Database name
+   * @param masterPassword - The new master password to create
+   * @returns True if creation was successful
+   */
+  async createNewMongoMasterPassword(
+    mongoUri: string,
+    databaseName: string,
+    masterPassword: string
+  ): Promise<boolean> {
+    try {
+      this.logger.info('Creating new master password for MongoDB database')
+
+      // Use imported MongoDBService directly
+      const mongoService = new MongoDBService()
+
+      // Set temporary config
+      const tempConfig = {
+        id: 'temp-mongo-create',
+        provider: 'mongodb' as const,
+        mongoUri,
+        databaseName,
+        enabled: true,
+        autoSync: false,
+        syncInterval: 30,
+        created: new Date(),
+        updated: new Date()
+      }
+
+      mongoService.setConfig(tempConfig)
+
+      // Test connection
+      const connected = await mongoService.connect()
+      if (!connected) {
+        this.logger.error('Failed to connect to MongoDB')
+        return false
+      }
+
+      // Create master password in MongoDB
+      await this.createMasterPasswordInMongo(mongoService, masterPassword)
+
+      await mongoService.disconnect()
+
+      // Create local master password configuration
+      await this.createMasterPasswordFromMongo(masterPassword, mongoUri, databaseName)
+
+      this.logger.info('New MongoDB master password created successfully')
+      return true
+    } catch (error) {
+      this.logger.error('Failed to create new MongoDB master password:', error as Error)
+      return false
+    }
+  }
+
+  /**
+   * Create master password document in MongoDB
+   * @param mongoService - MongoDB service instance
+   * @param password - Master password to store
+   */
+  private async createMasterPasswordInMongo(
+    mongoService: MongoDBService,
+    password: string
+  ): Promise<void> {
+    try {
+      // Derive key and create verification hash
+      const { salt } = this.cryptoService.deriveKey(password)
+      const verificationHash = this.cryptoService.createVerificationHash(password, salt)
+
+      // Store in MongoDB master-password collection
+      const db = mongoService.getDatabase()
+      const collection = db.collection('master-password')
+
+      const masterPasswordDoc = {
+        salt: salt.toString('base64'),
+        verificationHash,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+
+      await collection.insertOne(masterPasswordDoc)
+
+      this.logger.info('Master password created in MongoDB successfully')
+    } catch (error) {
+      this.logger.error('Failed to create master password in MongoDB:', error as Error)
+      throw error
+    }
+  }
+
+  /**
+   * Verify master password against MongoDB data
+   * @param mongoService - MongoDB service instance
+   * @param password - Password to verify
+   * @returns True if password is valid
+   */
+  private async verifyMongoMasterPassword(
+    mongoService: MongoDBService,
+    password: string
+  ): Promise<boolean> {
+    try {
+      // Check if master-password collection exists
+      const db = mongoService.getDatabase()
+      const collection = db.collection('master-password')
+
+      const masterPasswordDoc = await collection.findOne({})
+
+      if (!masterPasswordDoc) {
+        this.logger.info('No master password found in MongoDB')
+        return false
+      }
+
+      // Verify password using stored salt and verification hash
+      const salt = Buffer.from(masterPasswordDoc.salt, 'base64')
+      const storedHash = masterPasswordDoc.verificationHash
+
+      return this.cryptoService.verifyMasterPassword(password, storedHash, salt)
+    } catch (error) {
+      this.logger.error('Error verifying MongoDB master password:', error as Error)
+      return false
+    }
+  }
+
+  /**
+   * Create local master password configuration from MongoDB data
+   * @param password - The verified master password
+   * @param mongoUri - MongoDB URI for sync config
+   * @param databaseName - Database name for sync config
+   */
+  private async createMasterPasswordFromMongo(
+    password: string,
+    mongoUri: string,
+    databaseName: string
+  ): Promise<void> {
+    try {
+      // Derive key from password (same as MongoDB)
+      const { key, salt } = this.cryptoService.deriveKey(password)
+      const verificationHash = this.cryptoService.createVerificationHash(password, salt)
+
+      // Create default security settings
+      const settings: SecuritySettings = {
+        requirePasswordOnStart: true,
+        autoLockTimeout: 15
+      }
+
+      // Store local configuration
+      const masterPasswordData: MasterPasswordData = {
+        salt: salt.toString('base64'),
+        verificationHash,
+        settings
+      }
+
+      await fs.writeFile(this.configFile, JSON.stringify(masterPasswordData, null, 2))
+
+      // Set internal state
+      this.derivedKey = key
+      this.isUnlockedState = true
+
+      // Setup sync configuration
+      await this.setupSyncConfiguration(mongoUri, databaseName, password)
+
+      this.logger.info('Master password created from MongoDB successfully')
+    } catch (error) {
+      this.logger.error('Failed to create master password from MongoDB:', error as Error)
+      throw error
+    }
+  }
+
+  /**
+   * Setup sync configuration after MongoDB connection
+   * @param mongoUri - MongoDB URI
+   * @param databaseName - Database name
+   * @param masterPassword - Master password for encryption
+   */
+  private async setupSyncConfiguration(
+    mongoUri: string,
+    databaseName: string,
+    masterPassword: string
+  ): Promise<void> {
+    try {
+      // Use imported SyncManager and SyncService directly
+      const syncManager = new SyncManager()
+
+      // Create proper sync config using SyncService helper
+      const syncConfig = SyncService.createSyncConfigFromMongo({
+        mongoUri,
+        databaseName,
+        masterPassword
+      })
+
+      await syncManager.setupSync(syncConfig)
+      this.logger.info('Sync configuration setup completed with auto-sync enabled')
+    } catch (error) {
+      this.logger.error('Failed to setup sync configuration:', error as Error)
+      // Don't throw error here as master password creation was successful
+    }
+  }
+
+  /**
+   * Check if MongoDB has existing master password data
+   * @param mongoUri - MongoDB connection URI
+   * @param databaseName - Database name
+   * @returns True if master password data exists
+   */
+  async checkMongoMasterPasswordExists(mongoUri: string, databaseName: string): Promise<boolean> {
+    try {
+      const mongoService = new MongoDBService()
+
+      const tempConfig = {
+        id: 'temp-check-master-password',
+        provider: 'mongodb' as const,
+        mongoUri,
+        databaseName,
+        enabled: true,
+        autoSync: false,
+        syncInterval: 30,
+        created: new Date(),
+        updated: new Date()
+      }
+
+      mongoService.setConfig(tempConfig)
+
+      const connected = await mongoService.connect()
+      if (!connected) {
+        return false
+      }
+
+      const db = mongoService.getDatabase()
+      const collection = db.collection('master-password')
+      const doc = await collection.findOne({})
+
+      await mongoService.disconnect()
+
+      return doc !== null
+    } catch (error) {
+      this.logger.error('Error checking MongoDB master password:', error as Error)
+      return false
+    }
+  }
+
+  /**
    * Remove key from keychain
    */
   private async removeKeyFromKeychain(): Promise<void> {
@@ -397,5 +698,75 @@ export class AuthService {
       },
       timeoutMinutes * 60 * 1000
     )
+  }
+
+  /**
+   * Sync local master password to MongoDB (when setting up sync with new MongoDB)
+   * @param mongoUri - MongoDB connection URI
+   * @param databaseName - Database name
+   * @returns True if sync was successful
+   */
+  async syncMasterPasswordToMongo(mongoUri: string, databaseName: string): Promise<boolean> {
+    try {
+      // Check if we have local master password data
+      if (!(await this.hasMasterPassword())) {
+        this.logger.warn('No local master password found to sync')
+        return false
+      }
+
+      // Read local master password data
+      const data = await fs.readFile(this.configFile, 'utf8')
+      const masterPasswordData: MasterPasswordData = JSON.parse(data)
+
+      // Connect to MongoDB
+      const mongoService = new MongoDBService()
+      const tempConfig = {
+        id: 'temp-sync-master-password',
+        provider: 'mongodb' as const,
+        mongoUri,
+        databaseName,
+        enabled: true,
+        autoSync: false,
+        syncInterval: 30,
+        created: new Date(),
+        updated: new Date()
+      }
+
+      mongoService.setConfig(tempConfig)
+      const connected = await mongoService.connect()
+      if (!connected) {
+        this.logger.error('Failed to connect to MongoDB for master password sync')
+        return false
+      }
+
+      // Check if master password already exists in MongoDB
+      const db = mongoService.getDatabase()
+      const collection = db.collection('master-password')
+      const existingDoc = await collection.findOne({})
+
+      if (existingDoc) {
+        this.logger.info('Master password already exists in MongoDB, skipping sync')
+        await mongoService.disconnect()
+        return true
+      }
+
+      // Sync local master password to MongoDB
+      const masterPasswordDoc = {
+        salt: masterPasswordData.salt,
+        verificationHash: masterPasswordData.verificationHash,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        syncedFromLocal: true // Flag to indicate this was synced from local
+      }
+
+      await collection.insertOne(masterPasswordDoc)
+      await mongoService.disconnect()
+
+      this.logger.info('Local master password synced to MongoDB successfully')
+      return true
+    } catch (error) {
+      this.logger.error('Failed to sync master password to MongoDB:', error as Error)
+      return false
+    }
   }
 }

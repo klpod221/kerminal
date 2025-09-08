@@ -4,6 +4,7 @@
       class="flex-shrink-0"
       :top-bar-state="topBarState"
       :sync-status-refresh="syncStatusRefreshCounter"
+      :is-master-password-modal-open="showMasterPasswordModal"
       @open-dashboard="openDashboard"
       @open-workspace="openWorkspace"
       @toggle-ssh-drawer="toggleSSHDrawer"
@@ -113,6 +114,7 @@
     <!-- Sync Settings Modal -->
     <SyncSettingsModal
       :visible="topBarState.isSyncSettingsActive.value"
+      :refresh-trigger="syncStatusRefreshCounter"
       @close="closeSyncSettings"
       @config-updated="onSyncConfigUpdated"
     />
@@ -138,7 +140,8 @@
       :visible="showMasterPasswordModal"
       :mode="masterPasswordMode"
       :error="masterPasswordError"
-      @created="handleMasterPasswordCreated"
+      @local-created="handleLocalPasswordCreated"
+      @mongo-connected="handleMongoPasswordConnected"
       @unlocked="handleMasterPasswordUnlocked"
     />
 
@@ -180,7 +183,7 @@ import type {
   SSHTunnelWithProfile,
   SSHTunnel
 } from './types/ssh'
-import type { SecuritySettings } from './types/auth'
+import type { SecuritySettings, MongoConnectionConfig } from './types/auth'
 import type { PanelLayout, Panel, Tab, TerminalInstance } from './types/panel'
 import { message } from './utils/message'
 import { debounce } from './utils/debounce'
@@ -1289,7 +1292,7 @@ const openSecuritySettings = (): void => {
   showSecuritySettingsModal.value = true
 }
 
-const handleMasterPasswordCreated = async (
+const handleLocalPasswordCreated = async (
   password: string,
   settings: SecuritySettings
 ): Promise<void> => {
@@ -1305,8 +1308,33 @@ const handleMasterPasswordCreated = async (
     showMasterPasswordModal.value = false
     isApplicationLocked.value = false
   } catch (error) {
-    console.error('Failed to create master password:', error)
+    console.error('Failed to create local master password:', error)
   }
+}
+
+const handleMongoPasswordConnected = async (
+  _config: MongoConnectionConfig,
+  hasExistingMasterPassword: boolean
+): Promise<void> => {
+  // Connection was already successful when we reach here
+  showMasterPasswordModal.value = false
+  isApplicationLocked.value = false
+
+  // Refresh sync status as sync should be auto-configured
+  syncStatusRefreshCounter.value++
+
+  // Show success message
+  message.success(
+    hasExistingMasterPassword
+      ? 'Successfully connected to MongoDB and imported data with auto-sync enabled'
+      : 'Successfully created new master password in MongoDB with auto-sync enabled'
+  )
+
+  console.log(
+    hasExistingMasterPassword
+      ? 'Successfully connected to MongoDB and imported data with auto-sync enabled'
+      : 'Successfully created new master password in MongoDB with auto-sync enabled'
+  )
 }
 
 const handleMasterPasswordUnlocked = async (): Promise<void> => {

@@ -28,3 +28,10 @@ export interface SyncStatus {
  * Conflict resolution strategies
  */
 export type ConflictResolution = 'local' | 'remote' | 'merge' | 'ask'
+
+/**
+ * Props for SyncSettingsModal component
+ */
+export interface SyncSettingsModalProps {
+  visible: boolean
+}

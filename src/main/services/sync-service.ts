@@ -14,6 +14,7 @@ import { Document } from 'mongodb'
 import { BrowserWindow } from 'electron'
 import crypto from 'crypto'
 import os from 'os'
+import { AuthService } from './auth-service'
 
 /**
  * Sync service for managing data synchronization between local files and MongoDB
@@ -87,6 +88,40 @@ export class SyncService {
   }
 
   /**
+   * Create sync config from MongoDB connection info
+   */
+  static createSyncConfigFromMongo(mongoConfig: {
+    mongoUri: string
+    databaseName: string
+    masterPassword: string
+  }): SyncConfig {
+    const now = new Date()
+    const configId = crypto.randomUUID()
+
+    return {
+      id: configId,
+      provider: 'mongodb',
+      enabled: true,
+      mongoUri: mongoConfig.mongoUri,
+      databaseName: mongoConfig.databaseName,
+      collectionPrefix: 'kerminal_',
+      encryptionKey: mongoConfig.masterPassword,
+      autoSync: true,
+      syncInterval: 30, // 30 seconds
+      deviceName: os.hostname(),
+      deviceId: crypto
+        .createHash('sha256')
+        .update(`${os.hostname()}-${configId}`)
+        .digest('hex')
+        .substring(0, 16),
+      conflictResolutionStrategy: 'latest-wins',
+      retainTombstoneDays: 30,
+      created: now,
+      updated: now
+    }
+  }
+
+  /**
    * Initialize sync service with configuration
    */
   async initialize(
@@ -146,7 +181,7 @@ export class SyncService {
    */
   private async registerDevice(): Promise<void> {
     try {
-      const devicesCollection = 'sync_devices'
+      const devicesCollection = 'sync-devices'
       const existingDevice = await this.mongoService.findOne(devicesCollection, {
         deviceId: this.deviceInfo.deviceId || this.deviceInfo.id
       })
@@ -241,6 +276,9 @@ export class SyncService {
       if (this.config.retainTombstoneDays) {
         await this.cleanupOldTombstones(storageMap)
       }
+
+      // Sync master password if needed (periodic check)
+      await this.syncMasterPasswordPeriodically()
 
       // Update sync timestamps
       const now = new Date()
@@ -881,6 +919,46 @@ export class SyncService {
       throw error
     } finally {
       this.status.isLoading = false
+    }
+  }
+
+  /**
+   * Periodically sync master password to MongoDB if needed
+   * This ensures master password exists in MongoDB for other devices to import
+   */
+  private async syncMasterPasswordPeriodically(): Promise<void> {
+    try {
+      if (!this.config?.mongoUri || !this.config?.databaseName) {
+        return // Not a MongoDB sync, skip
+      }
+
+      // Import AuthService to check and sync master password
+      const authService = new AuthService()
+
+      // Check if local master password exists
+      if (!(await authService.hasMasterPassword())) {
+        return // No local master password to sync
+      }
+
+      // Check if master password exists in MongoDB
+      const db = this.mongoService.getDatabase()
+      const collection = db.collection('master-password')
+      const existingDoc = await collection.findOne({})
+
+      if (!existingDoc) {
+        // Master password doesn't exist in MongoDB, sync it
+        this.logger.info('Master password not found in MongoDB, syncing from local...')
+        const success = await authService.syncMasterPasswordToMongo(
+          this.config.mongoUri,
+          this.config.databaseName
+        )
+        if (success) {
+          this.logger.info('Master password synced to MongoDB during periodic sync')
+        }
+      }
+    } catch (error) {
+      this.logger.warn('Failed to sync master password during periodic sync:', error as Error)
+      // Don't throw error as this is not critical for main sync operation
     }
   }
 }

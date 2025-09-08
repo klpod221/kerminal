@@ -1,31 +1,57 @@
 <template>
   <Modal
     :visible="visible"
-    :title="mode === 'create' ? 'Create Master Password' : 'Unlock Application'"
+    :title="mode === 'create' ? 'Setup Master Password' : 'Unlock Application'"
     :icon="mode === 'create' ? Shield : Lock"
     icon-background="bg-blue-500/20"
     icon-color="text-blue-400"
-    size="md"
+    size="lg"
     :close-on-backdrop="false"
     :show-close-button="false"
   >
-    <form class="space-y-6" @submit.prevent="handleSubmit">
+    <!-- Tab Navigation for Create Mode -->
+    <div v-if="mode === 'create'" class="mb-6">
+      <nav class="flex space-x-1 bg-gray-800/50 rounded-lg p-1">
+        <button
+          v-for="tab in createTabs"
+          :key="tab.id"
+          type="button"
+          class="flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors"
+          :class="{
+            'bg-blue-600 text-white': activeCreateTab === tab.id,
+            'text-gray-300 hover:text-white hover:bg-gray-700': activeCreateTab !== tab.id
+          }"
+          @click="activeCreateTab = tab.id as 'local' | 'mongodb'"
+        >
+          <component :is="tab.icon" class="w-4 h-4 inline-block mr-2" />
+          {{ tab.label }}
+        </button>
+      </nav>
+    </div>
+
+    <!-- Local Password Creation Tab -->
+    <div v-if="mode === 'create' && activeCreateTab === 'local'">
+      <LocalPasswordForm
+        ref="localFormRef"
+        :is-processing="isProcessing"
+        @submit="handleLocalPasswordSubmit"
+      />
+    </div>
+
+    <!-- MongoDB Connection Tab -->
+    <div v-if="mode === 'create' && activeCreateTab === 'mongodb'">
+      <MongoPasswordForm
+        ref="mongoFormRef"
+        :is-processing="isProcessing"
+        @submit="handleMongoPasswordSubmit"
+      />
+    </div>
+
+    <!-- Unlock Mode -->
+    <form v-if="mode === 'unlock'" class="space-y-6" @submit.prevent="handleUnlockSubmit">
       <!-- Description -->
       <div class="text-sm text-gray-300 leading-relaxed">
-        <template v-if="mode === 'create'">
-          <p class="mb-3">
-            Secure all your sensitive data with a master password. This password will encrypt your
-            SSH profiles, saved commands, and tunnel configurations.
-          </p>
-          <p class="text-xs text-yellow-400">
-            <strong>Important:</strong> This password cannot be recovered. Please store it safely.
-          </p>
-        </template>
-        <template v-else>
-          <p>
-            Enter your master password to unlock the application and access your encrypted data.
-          </p>
-        </template>
+        <p>Enter your master password to unlock the application and access your encrypted data.</p>
       </div>
 
       <!-- Error Message -->
@@ -37,103 +63,59 @@
         :closable="false"
       />
 
-      <!-- Password Fields -->
+      <!-- Password Field -->
       <div class="space-y-4">
-        <!-- Master Password -->
         <Input
-          v-model="form.password"
+          v-model="unlockForm.password"
           label="Master Password"
-          :type="showPassword ? 'text' : 'password'"
+          :type="showUnlockPassword ? 'text' : 'password'"
           placeholder="Enter master password"
-          :rules="['required']"
-          :error-message="passwordError"
-          :right-icon="showPassword ? EyeOff : Eye"
-          @right-icon-click="showPassword = !showPassword"
-          @blur="validation.validateField('password')"
+          :right-icon="showUnlockPassword ? EyeOff : Eye"
+          @right-icon-click="showUnlockPassword = !showUnlockPassword"
         />
-
-        <!-- Confirm Password (Create mode only) -->
-        <div v-if="mode === 'create'">
-          <Input
-            v-model="form.confirmPassword"
-            label="Confirm Master Password"
-            :type="showConfirmPassword ? 'text' : 'password'"
-            placeholder="Confirm master password"
-            :rules="['required']"
-            :error-message="confirmPasswordError"
-            :right-icon="showConfirmPassword ? EyeOff : Eye"
-            @right-icon-click="showConfirmPassword = !showConfirmPassword"
-            @blur="validation.validateField('confirmPassword')"
-          />
-        </div>
-      </div>
-
-      <!-- Initial Security Settings (Create mode only) -->
-      <div v-if="mode === 'create'" class="space-y-1">
-        <h3 class="text-sm font-medium text-white">Initial Security Settings</h3>
-        <div class="space-y-3 bg-gray-800/50 rounded-lg p-4">
-          <Checkbox
-            v-model="form.settings.requirePasswordOnStart"
-            label="Require master password on application start"
-            :helper="false"
-          />
-          <p class="text-xs text-gray-400 mt-1 ml-6">
-            When enabled, you'll need to enter your password every time you open the app
-          </p>
-
-          <div class="space-y-2">
-            <label class="block text-sm font-medium text-gray-300">
-              Auto-lock after inactivity
-            </label>
-            <Select v-model="form.settings.autoLockTimeout">
-              <option :value="0">Never</option>
-              <option :value="5">5 minutes</option>
-              <option :value="15">15 minutes</option>
-              <option :value="30">30 minutes</option>
-              <option :value="60">1 hour</option>
-            </Select>
-          </div>
-        </div>
       </div>
 
       <!-- Loading State -->
       <Message
         v-if="isProcessing"
         type="loading"
-        :title="mode === 'create' ? 'Creating Master Password' : 'Unlocking Application'"
-        :content="mode === 'create' ? 'Setting up encryption...' : 'Verifying password...'"
+        title="Unlocking Application"
+        content="Verifying password..."
         :closable="false"
       />
-    </form>
 
-    <template #footer>
+      <!-- Footer -->
       <div class="flex justify-end w-full">
         <Button
           variant="primary"
           size="sm"
-          :disabled="!canSubmit || isProcessing"
+          :disabled="!canUnlockSubmit || isProcessing"
           :loading="isProcessing"
-          :icon="mode === 'create' ? Shield : Unlock"
-          @click="handleSubmit"
+          :icon="Unlock"
+          type="submit"
         >
-          {{ mode === 'create' ? 'Create Master Password' : 'Unlock Application' }}
+          Unlock Application
         </Button>
       </div>
-    </template>
+    </form>
   </Modal>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { Shield, Lock, Unlock, Eye, EyeOff } from 'lucide-vue-next'
+import { Shield, Lock, Unlock, Eye, EyeOff, Database, Monitor } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
-import Checkbox from './ui/Checkbox.vue'
-import Select from './ui/Select.vue'
 import Message from './ui/Message.vue'
-import { useValidation, validationRules } from '../composables/useValidation'
-import type { MasterPasswordModalProps, SecuritySettings } from '../types/auth'
+import LocalPasswordForm from './auth/LocalPasswordForm.vue'
+import MongoPasswordForm from './auth/MongoPasswordForm.vue'
+import { message } from '../utils/message'
+import type {
+  MasterPasswordModalProps,
+  SecuritySettings,
+  MongoConnectionConfig
+} from '../types/auth'
 
 const props = withDefaults(defineProps<MasterPasswordModalProps>(), {
   visible: false,
@@ -142,136 +124,132 @@ const props = withDefaults(defineProps<MasterPasswordModalProps>(), {
 })
 
 const emit = defineEmits<{
-  created: [password: string, settings: SecuritySettings]
+  localCreated: [password: string, settings: SecuritySettings]
+  mongoConnected: [config: MongoConnectionConfig, hasExistingMasterPassword: boolean]
   unlocked: []
 }>()
 
+// Create mode tabs
+const createTabs = [
+  { id: 'local', label: 'Local Only', icon: Monitor },
+  { id: 'mongodb', label: 'Connect to MongoDB', icon: Database }
+]
+
 // State
-const showPassword = ref(false)
-const showConfirmPassword = ref(false)
+const activeCreateTab = ref<'local' | 'mongodb'>('local')
+const showUnlockPassword = ref(false)
 const isProcessing = ref(false)
 
-// Form data
-const form = ref({
-  password: '',
-  confirmPassword: '',
-  settings: {
-    requirePasswordOnStart: true,
-    autoLockTimeout: 15
-  } as SecuritySettings
+// Unlock form
+const unlockForm = ref({
+  password: ''
 })
 
-// Validation setup
-const validation = useValidation()
-
-// Create reactive refs for validation
-const passwordRef = computed({
-  get: () => form.value.password,
-  set: (value) => {
-    form.value.password = value
-  }
-})
-
-const confirmPasswordRef = computed({
-  get: () => form.value.confirmPassword,
-  set: (value) => {
-    form.value.confirmPassword = value
-  }
-})
-
-// Register validation fields
-validation.registerField('password', passwordRef, [
-  validationRules.required('Master password is required'),
-  validationRules.minLength(8, 'Master password must be at least 8 characters')
-])
-
-validation.registerField('confirmPassword', confirmPasswordRef, [
-  validationRules.required('Please confirm your password'),
-  validationRules.custom((value) => {
-    if (props.mode === 'create' && value !== form.value.password) {
-      return false
-    }
-    return true
-  }, 'Passwords do not match')
-])
-
-// Error message computed properties
-const passwordError = computed(() => validation.fields.value?.password?.error?.value || undefined)
-const confirmPasswordError = computed(
-  () => validation.fields.value?.confirmPassword?.error?.value || undefined
-)
+// Component refs
+const localFormRef = ref<InstanceType<typeof LocalPasswordForm> | null>(null)
+const mongoFormRef = ref<InstanceType<typeof MongoPasswordForm> | null>(null)
 
 // Computed
-const canSubmit = computed(() => {
-  const hasPassword = form.value.password.trim().length > 0
-
-  if (props.mode === 'create') {
-    const hasConfirmPassword = form.value.confirmPassword.trim().length > 0
-    const passwordsMatch = form.value.password === form.value.confirmPassword
-    const isValid = !passwordError.value && !confirmPasswordError.value
-    return hasPassword && hasConfirmPassword && passwordsMatch && isValid
-  }
-
-  return hasPassword && !passwordError.value
+const canUnlockSubmit = computed(() => {
+  return unlockForm.value.password.trim().length > 0
 })
 
 // Methods
-const resetForm = (): void => {
-  form.value = {
-    password: '',
-    confirmPassword: '',
-    settings: {
-      requirePasswordOnStart: true,
-      autoLockTimeout: 15
-    }
-  }
-
-  showPassword.value = false
-  showConfirmPassword.value = false
-
-  // Reset validation if fields are initialized
-  if (validation.fields.value && Object.keys(validation.fields.value).length > 0) {
-    validation.resetValidation()
-  }
-}
-
-const handleSubmit = async (): Promise<void> => {
-  if (!canSubmit.value) {
-    validation.validateAll()
-    return
-  }
-
+const handleLocalPasswordSubmit = async (
+  password: string,
+  settings: SecuritySettings
+): Promise<void> => {
+  isProcessing.value = true
   try {
-    isProcessing.value = true
-
-    if (props.mode === 'create') {
-      emit('created', form.value.password, form.value.settings)
-    } else {
-      // Try to unlock with the provided password
-      const unlocked = await window.electron.ipcRenderer.invoke(
-        'auth:unlock-with-password',
-        form.value.password
-      )
-      if (unlocked) {
-        emit('unlocked')
-      } else {
-        // Show error - password is incorrect
-        form.value.password = ''
-        // You could add an error message here
-        console.error('Incorrect password')
-        return
-      }
-    }
-  } catch (error) {
-    console.error('Form submission error:', error)
+    emit('localCreated', password, settings)
   } finally {
     isProcessing.value = false
   }
 }
 
-// Focus password input when modal opens
+const handleMongoPasswordSubmit = async (
+  config: MongoConnectionConfig,
+  hasExistingMasterPassword: boolean
+): Promise<void> => {
+  isProcessing.value = true
+  try {
+    let connected = false
+
+    if (hasExistingMasterPassword) {
+      // Import existing master password from MongoDB
+      connected = (await window.api.invoke('auth:connect-mongo-master-password', config)) as boolean
+    } else {
+      // Create new master password in MongoDB
+      connected = (await window.api.invoke('auth:create-mongo-master-password', config)) as boolean
+    }
+
+    if (connected) {
+      // Only emit when successful
+      emit('mongoConnected', config, hasExistingMasterPassword)
+    } else {
+      // Show error message for incorrect password
+      message.error(
+        hasExistingMasterPassword
+          ? 'Failed to connect to MongoDB. Please check your master password and try again.'
+          : 'Failed to create new master password in MongoDB. Please check your connection and try again.'
+      )
+    }
+  } catch (error) {
+    // Show error message for exceptions
+    message.error(
+      hasExistingMasterPassword
+        ? 'An error occurred while connecting to MongoDB. Please try again.'
+        : 'An error occurred while creating master password in MongoDB. Please try again.'
+    )
+    console.error('MongoDB connection error:', error)
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+const handleUnlockSubmit = async (): Promise<void> => {
+  if (!canUnlockSubmit.value) return
+
+  isProcessing.value = true
+  try {
+    const unlocked = await window.electron.ipcRenderer.invoke(
+      'auth:unlock-with-password',
+      unlockForm.value.password
+    )
+
+    if (unlocked) {
+      emit('unlocked')
+    } else {
+      // Reset password field on incorrect password
+      unlockForm.value.password = ''
+      console.error('Incorrect password')
+    }
+  } catch (error) {
+    console.error('Unlock error:', error)
+  } finally {
+    isProcessing.value = false
+  }
+}
+
+const resetForms = (): void => {
+  // Reset unlock form
+  unlockForm.value.password = ''
+  showUnlockPassword.value = false
+
+  // Reset child component forms
+  if (localFormRef.value) {
+    localFormRef.value.resetForm()
+  }
+  if (mongoFormRef.value) {
+    mongoFormRef.value.resetForm()
+  }
+
+  // Reset tab selection
+  activeCreateTab.value = 'local'
+  isProcessing.value = false
+}
+
 const focusPasswordInput = (): void => {
-  // Wait for next tick to ensure DOM is rendered
   setTimeout(() => {
     const passwordInput = document.querySelector('input[type="password"]') as HTMLInputElement
     if (passwordInput) {
@@ -285,10 +263,8 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible) {
-      resetForm()
+      resetForms()
       focusPasswordInput()
-    } else {
-      isProcessing.value = false
     }
   }
 )
@@ -297,7 +273,7 @@ watch(
 watch(
   () => props.mode,
   () => {
-    resetForm()
+    resetForms()
   }
 )
 
@@ -305,12 +281,6 @@ watch(
 onMounted(() => {
   const handleKeyDown = (event: KeyboardEvent): void => {
     if (!props.visible) return
-
-    // Enter key submits the form
-    if (event.key === 'Enter' && canSubmit.value && !isProcessing.value) {
-      event.preventDefault()
-      handleSubmit()
-    }
 
     // Prevent Escape key from closing modal (since it's persistent)
     if (event.key === 'Escape') {
@@ -321,7 +291,6 @@ onMounted(() => {
 
   document.addEventListener('keydown', handleKeyDown)
 
-  // Cleanup on unmount
   return () => {
     document.removeEventListener('keydown', handleKeyDown)
   }

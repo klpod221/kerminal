@@ -103,6 +103,16 @@ export class MongoDBService {
   }
 
   /**
+   * Get database instance
+   */
+  getDatabase(): Db {
+    if (!this.db) {
+      throw new Error('Not connected to MongoDB')
+    }
+    return this.db
+  }
+
+  /**
    * Get collection by name
    */
   getCollection(name: string): Collection<Document> {

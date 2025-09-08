@@ -4,46 +4,70 @@
   >
     <!-- Dashboard Icon -->
     <div
-      class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
-      :class="{ 'bg-gray-800': topBarState.isDashboardActive.value }"
-      @click="openDashboard"
+      class="flex items-center px-3 h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      :class="{
+        'bg-gray-800': topBarState.isDashboardActive.value && !isMasterPasswordModalOpen,
+        'hover:bg-gray-800 cursor-pointer': !isMasterPasswordModalOpen,
+        'cursor-not-allowed opacity-50': isMasterPasswordModalOpen
+      }"
+      @click="!isMasterPasswordModalOpen && openDashboard()"
     >
       <img
         src="../assets/images/logo_500.png"
         alt="Dashboard"
         class="w-4 h-4 transition-opacity duration-200"
         :class="
-          topBarState.isDashboardActive.value ? 'opacity-100' : 'opacity-60 hover:opacity-100'
+          isMasterPasswordModalOpen
+            ? 'opacity-30'
+            : topBarState.isDashboardActive.value
+              ? 'opacity-100'
+              : 'opacity-60 hover:opacity-100'
         "
       />
     </div>
 
     <!-- Workspace Icon -->
     <div
-      class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
-      :class="{ 'bg-gray-800': topBarState.isWorkspaceActive.value }"
-      @click="openWorkspace"
+      class="flex items-center px-3 h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      :class="{
+        'bg-gray-800': topBarState.isWorkspaceActive.value && !isMasterPasswordModalOpen,
+        'hover:bg-gray-800 cursor-pointer': !isMasterPasswordModalOpen,
+        'cursor-not-allowed opacity-50': isMasterPasswordModalOpen
+      }"
+      @click="!isMasterPasswordModalOpen && openWorkspace()"
     >
       <LayoutGrid
         :size="16"
         class="transition-colors duration-200"
         :class="
-          topBarState.isWorkspaceActive.value ? 'text-blue-400' : 'text-gray-400 hover:text-white'
+          isMasterPasswordModalOpen
+            ? 'text-gray-600'
+            : topBarState.isWorkspaceActive.value
+              ? 'text-blue-400'
+              : 'text-gray-400 hover:text-white'
         "
       />
     </div>
 
     <!-- SSH Profiles Icon -->
     <div
-      class="flex items-center px-3 hover:bg-gray-800 cursor-pointer h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
-      :class="{ 'bg-gray-800': topBarState.isSSHDrawerActive.value }"
-      @click="toggleSSHDrawer"
+      class="flex items-center px-3 h-full max-h-[30px] transition-colors duration-200 flex-shrink-0"
+      :class="{
+        'bg-gray-800': topBarState.isSSHDrawerActive.value && !isMasterPasswordModalOpen,
+        'hover:bg-gray-800 cursor-pointer': !isMasterPasswordModalOpen,
+        'cursor-not-allowed opacity-50': isMasterPasswordModalOpen
+      }"
+      @click="!isMasterPasswordModalOpen && toggleSSHDrawer()"
     >
       <Server
         :size="16"
         class="transition-colors duration-200"
         :class="
-          topBarState.isSSHDrawerActive.value ? 'text-orange-400' : 'text-gray-400 hover:text-white'
+          isMasterPasswordModalOpen
+            ? 'text-gray-600'
+            : topBarState.isSSHDrawerActive.value
+              ? 'text-orange-400'
+              : 'text-gray-400 hover:text-white'
         "
       />
     </div>
@@ -56,7 +80,12 @@
         variant="ghost"
         size="sm"
         :icon="ShieldIcon"
-        class="text-gray-400 hover:text-white"
+        :disabled="isMasterPasswordModalOpen"
+        :class="
+          isMasterPasswordModalOpen
+            ? 'text-gray-600 cursor-not-allowed'
+            : 'text-gray-400 hover:text-white'
+        "
         @click="openSecuritySettings"
       />
       <Button
@@ -64,12 +93,15 @@
         variant="ghost"
         size="sm"
         :icon="Network"
+        :disabled="isMasterPasswordModalOpen"
         :class="
-          topBarState.isSSHTunnelsActive.value
-            ? 'bg-gray-800 text-purple-400'
-            : hasActiveTunnels
-              ? 'text-green-400'
-              : 'text-gray-400'
+          isMasterPasswordModalOpen
+            ? 'text-gray-600 cursor-not-allowed'
+            : topBarState.isSSHTunnelsActive.value
+              ? 'bg-gray-800 text-purple-400'
+              : hasActiveTunnels
+                ? 'text-green-400'
+                : 'text-gray-400'
         "
         @click="() => emit('toggle-ssh-tunnels')"
       />
@@ -78,12 +110,15 @@
         variant="ghost"
         size="sm"
         :icon="CloudIcon"
+        :disabled="isMasterPasswordModalOpen"
         :class="
-          topBarState.isSyncSettingsActive.value
-            ? 'bg-gray-800 text-blue-400'
-            : syncStatus?.isConnected
-              ? 'text-green-400'
-              : 'text-gray-400'
+          isMasterPasswordModalOpen
+            ? 'text-gray-600 cursor-not-allowed'
+            : topBarState.isSyncSettingsActive.value
+              ? 'bg-gray-800 text-blue-400'
+              : syncStatus?.isConnected
+                ? 'text-green-400'
+                : 'text-gray-400'
         "
         @click="openSyncSettings"
       />
@@ -92,8 +127,13 @@
         variant="ghost"
         size="sm"
         :icon="CommandIcon"
+        :disabled="isMasterPasswordModalOpen"
         :class="
-          topBarState.isSavedCommandsActive.value ? 'bg-gray-800 text-blue-400' : 'text-gray-400'
+          isMasterPasswordModalOpen
+            ? 'text-gray-600 cursor-not-allowed'
+            : topBarState.isSavedCommandsActive.value
+              ? 'bg-gray-800 text-blue-400'
+              : 'text-gray-400'
         "
         @click="toggleSavedCommands"
       />
@@ -102,7 +142,12 @@
         variant="ghost"
         size="sm"
         :icon="KeyboardIcon"
-        class="text-gray-400 hover:text-white"
+        :disabled="isMasterPasswordModalOpen"
+        :class="
+          isMasterPasswordModalOpen
+            ? 'text-gray-600 cursor-not-allowed'
+            : 'text-gray-400 hover:text-white'
+        "
         @click="openKeyboardShortcuts"
       />
 
@@ -149,7 +194,11 @@ import type { SyncStatus } from '../types/sync'
 import type { SSHTunnelWithProfile } from '../types/ssh'
 import type { TopBarProps } from '../types/components'
 
-const { topBarState, syncStatusRefresh = 0 } = defineProps<TopBarProps>()
+const {
+  topBarState,
+  syncStatusRefresh = 0,
+  isMasterPasswordModalOpen = false
+} = defineProps<TopBarProps>()
 
 const emit = defineEmits<{
   'open-dashboard': []
