@@ -47,8 +47,13 @@
           <Button variant="ghost" :icon="X" @click="close" />
         </div>
 
+        <!-- Header Action -->
+        <div v-if="$slots.headerAction" class="border-b border-gray-700 p-4 flex-shrink-0">
+          <slot name="headerAction" />
+        </div>
+
         <!-- Content -->
-        <div class="flex-1 overflow-hidden">
+        <div class="flex-1 overflow-auto">
           <slot />
         </div>
 
@@ -74,7 +79,8 @@ const props = withDefaults(defineProps<DrawerProps>(), {
   width: 'md',
   iconBackground: 'bg-gray-700',
   iconColor: 'text-gray-300',
-  closeOnOverlay: true
+  closeOnOverlay: true,
+  headerAction: false
 })
 
 const emit = defineEmits<{

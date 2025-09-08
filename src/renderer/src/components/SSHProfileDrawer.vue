@@ -8,8 +8,7 @@
     icon-color="text-orange-400"
     @update:visible="$emit('update:visible', $event)"
   >
-    <!-- Header Actions -->
-    <div class="p-4 border-b border-gray-700">
+    <template #headerAction>
       <!-- Search -->
       <Input
         v-model="searchQuery"
@@ -32,7 +31,7 @@
           @click="refreshProfiles"
         />
       </div>
-    </div>
+    </template>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">

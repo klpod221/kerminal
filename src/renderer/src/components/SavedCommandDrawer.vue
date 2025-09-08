@@ -8,8 +8,8 @@
     icon-color="text-blue-400"
     @update:visible="handleDrawerVisibilityChange"
   >
-    <!-- Search Bar -->
-    <div class="p-4 border-b border-gray-700">
+    <template #headerAction>
+      <!-- Search Bar -->
       <Input
         v-model="searchQuery"
         type="text"
@@ -17,7 +17,7 @@
         :helper="false"
         :left-icon="Search"
       />
-    </div>
+    </template>
 
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
