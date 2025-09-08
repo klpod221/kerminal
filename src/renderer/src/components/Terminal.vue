@@ -246,7 +246,7 @@ onMounted(async () => {
         if (term.hasSelection()) {
           const selectedText = term.getSelection()
           if (selectedText.trim()) {
-            window.api.send('copy-to-clipboard', selectedText)
+            window.api.send('clipboard.write', selectedText)
           }
         }
         break
@@ -278,7 +278,7 @@ onMounted(async () => {
       isManualCopy = true
       const selectedText = term.getSelection()
       if (selectedText.trim()) {
-        window.api.send('copy-to-clipboard', selectedText)
+        window.api.send('clipboard.write', selectedText)
         return false // Prevent default terminal behavior
       }
     }
@@ -321,7 +321,7 @@ onMounted(async () => {
       if (now - lastCopyTime > COPY_DEBOUNCE_MS) {
         const selectedText = term.getSelection()
         if (selectedText.trim()) {
-          window.api.send('copy-to-clipboard', selectedText)
+          window.api.send('clipboard.write', selectedText)
           lastCopyTime = now
         }
       }
@@ -361,7 +361,7 @@ onMounted(async () => {
           if (hasSelection) {
             const selectedText = term.getSelection()
             if (selectedText.trim()) {
-              window.api.send('copy-to-clipboard', selectedText)
+              window.api.send('clipboard.write', selectedText)
             }
           }
         }

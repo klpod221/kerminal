@@ -215,7 +215,7 @@ onMounted(() => {
 
   // Listen for maximize state changes from main process
   if (window.api?.on) {
-    removeMaximizedListener = window.api.on('window-maximized', (...args: unknown[]) => {
+    removeMaximizedListener = window.api.on('window.maximized', (...args: unknown[]) => {
       const maximized = args[0] as boolean
       isMaximized.value = maximized
     })
@@ -270,19 +270,19 @@ const openKeyboardShortcuts = (): void => {
 
 const minimizeWindow = (): void => {
   if (window.api?.send) {
-    window.api.send('window-minimize', {})
+    window.api.send('window.minimize', {})
   }
 }
 
 const maximizeWindow = (): void => {
   if (window.api?.send) {
-    window.api.send('window-maximize', {})
+    window.api.send('window.maximize', {})
   }
 }
 
 const closeWindow = (): void => {
   if (window.api?.send) {
-    window.api.send('window-close', {})
+    window.api.send('window.close', {})
   }
 }
 </script>

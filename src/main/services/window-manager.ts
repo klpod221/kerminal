@@ -79,11 +79,11 @@ export class WindowManager implements IWindowManager {
     }
 
     this.mainWindow.on('maximize', () => {
-      safeSend('window-maximized', true)
+      safeSend('window.maximized', true)
     })
 
     this.mainWindow.on('unmaximize', () => {
-      safeSend('window-maximized', false)
+      safeSend('window.maximized', false)
     })
   }
 

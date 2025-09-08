@@ -25,7 +25,7 @@ export function validateClipboardContent(
   if (!text) return false
 
   const {
-    maxLength = 10000, // Default max 10k characters
+    maxLength = 100000, // Default max 100k characters
     allowedPatterns = [],
     blockedPatterns = [],
     multilineConfirm = false
@@ -60,7 +60,7 @@ export function validateClipboardContent(
 
   // Check for multiline content
   if (multilineConfirm && text.includes('\n')) {
-    // In a real implementation, you might want to show a confirmation dialog
+    // Show a confirmation dialog
   }
 
   return true

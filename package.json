@@ -2,7 +2,7 @@
   "name": "kerminal",
   "productName": "Kerminal",
   "description": "Modern Terminal with SSH, Tunneling & Cross-Device Sync",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "main": "./out/main/index.js",
   "author": "klpod221",
   "homepage": "https://github.com/klpod221/kerminal",

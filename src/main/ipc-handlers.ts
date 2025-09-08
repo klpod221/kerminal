@@ -60,9 +60,6 @@ export function setupIpcHandlers(
 
   // Utility IPC handlers
   setupUtilityHandlers()
-
-  // Toast IPC handlers
-  setupToastHandlers()
 }
 
 /**
@@ -207,15 +204,15 @@ function setupTerminalHandlers(
  * @param windowManager - The window manager instance.
  */
 function setupWindowHandlers(windowManager: WindowManager): void {
-  ipcMain.on('window-minimize', () => {
+  ipcMain.on('window.minimize', () => {
     windowManager.minimize()
   })
 
-  ipcMain.on('window-maximize', () => {
+  ipcMain.on('window.maximize', () => {
     windowManager.toggleMaximize()
   })
 
-  ipcMain.on('window-close', () => {
+  ipcMain.on('window.close', () => {
     windowManager.close()
   })
 }
@@ -225,17 +222,17 @@ function setupWindowHandlers(windowManager: WindowManager): void {
  */
 function setupSystemHandlers(): void {
   // Handle system info requests
-  ipcMain.handle('get-system-info', async () => {
+  ipcMain.handle('dashboard.get-system-info', async () => {
     return await SystemInfoService.getSystemInfo()
   })
 
   // Handle network info requests
-  ipcMain.handle('get-network-info', async () => {
+  ipcMain.handle('dashboard.get-network-info', async () => {
     return await SystemInfoService.getNetworkInfo()
   })
 
   // Handle network status requests (includes connectivity check)
-  ipcMain.handle('get-network-status', async () => {
+  ipcMain.handle('dashboard.get-network-status', async () => {
     return await SystemInfoService.getNetworkStatus()
   })
 }
@@ -250,7 +247,7 @@ function setupUtilityHandlers(): void {
   })
 
   // Handle copy to clipboard
-  ipcMain.on('copy-to-clipboard', (_event, text) => {
+  ipcMain.on('clipboard.write', (_event, text) => {
     try {
       if (text && typeof text === 'string') {
         clipboard.writeText(text)
@@ -261,7 +258,7 @@ function setupUtilityHandlers(): void {
   })
 
   // Handle get clipboard text
-  ipcMain.handle('get-clipboard-text', async () => {
+  ipcMain.handle('clipboard.read', async () => {
     try {
       return clipboard.readText()
     } catch (error) {
@@ -656,30 +653,5 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       logger.error('Delete sync config error:', error as Error)
       return false
     }
-  })
-}
-
-/**
- * Sets up toast notification IPC handlers.
- */
-function setupToastHandlers(): void {
-  ipcMain.handle('toast.success', async (_event, { title, message }) => {
-    logger.info(`✅ ${title}: ${message}`)
-    return true
-  })
-
-  ipcMain.handle('toast.error', async (_event, { title, message }) => {
-    logger.error(`❌ ${title}: ${message}`)
-    return true
-  })
-
-  ipcMain.handle('toast.info', async (_event, { title, message }) => {
-    logger.info(`ℹ️ ${title}: ${message}`)
-    return true
-  })
-
-  ipcMain.handle('toast.warning', async (_event, { title, message }) => {
-    logger.warn(`⚠️ ${title}: ${message}`)
-    return true
   })
 }

@@ -17,9 +17,9 @@ const api = {
     return ipcRenderer.invoke(channel, ...args)
   },
   // System information APIs
-  getSystemInfo: () => ipcRenderer.invoke('get-system-info'),
-  getNetworkInfo: () => ipcRenderer.invoke('get-network-info'),
-  getNetworkStatus: () => ipcRenderer.invoke('get-network-status'),
+  getSystemInfo: () => ipcRenderer.invoke('dashboard.get-system-info'),
+  getNetworkInfo: () => ipcRenderer.invoke('dashboard.get-network-info'),
+  getNetworkStatus: () => ipcRenderer.invoke('dashboard.get-network-status'),
 
   // SSH APIs - Groups
   sshGroups: {
