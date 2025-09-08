@@ -476,11 +476,6 @@ function setupSSHTunnelHandlers(sshTunnelService: SSHTunnelService): void {
     return tunnel?.status || 'stopped'
   })
 
-  // Get real tunnel status (check actual process)
-  ipcMain.handle('ssh-tunnels.getRealStatus', async (_event, id: string) => {
-    return sshTunnelService.getTunnelRealStatus(id)
-  })
-
   // Get all auto-start tunnels
   ipcMain.handle('ssh-tunnels.getAutoStart', async () => {
     const allTunnels = await sshTunnelService.getAllTunnels()
