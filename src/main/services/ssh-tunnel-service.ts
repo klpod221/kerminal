@@ -21,9 +21,9 @@ export class SSHTunnelService {
   private readonly manuallyStoppedTunnels = new Set<string>()
   private readonly logger = new ConsoleLogger('SSHTunnelService')
 
-  constructor() {
+  constructor(sshProfileService: SSHProfileService) {
     this.tunnelStorage = new SSHTunnelStorage()
-    this.profileService = new SSHProfileService()
+    this.profileService = sshProfileService
   }
 
   /**

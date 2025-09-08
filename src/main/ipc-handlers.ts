@@ -7,6 +7,7 @@ import { SSHConnectionService } from './services/ssh-connection-service'
 import { SavedCommandService } from './services/saved-command-service'
 import { SyncManager } from './services/sync-manager'
 import { SSHTunnelService } from './services/ssh-tunnel-service'
+import { AuthService } from './services/auth-service'
 import { ResolvedSSHConfig, SSHProxy } from './types/ssh'
 import { ConsoleLogger } from './utils/logger'
 
@@ -16,17 +17,20 @@ const logger = new ConsoleLogger('IpcHandlers')
  * Sets up all IPC (Inter-Process Communication) handlers for the application.
  * @param windowManager - The window manager instance.
  * @param terminalManager - The terminal manager instance.
+ * @param authService - The authentication service instance.
+ * @param sshProfileService - The SSH profile service instance.
  */
 export function setupIpcHandlers(
   windowManager: WindowManager,
-  terminalManager: TerminalManager
+  terminalManager: TerminalManager,
+  authService: AuthService,
+  sshProfileService: SSHProfileService
 ): void {
-  // Create service instances
-  const sshProfileService = new SSHProfileService()
+  // Create other service instances
   const sshConnectionService = new SSHConnectionService()
   const savedCommandService = new SavedCommandService()
   const syncManager = new SyncManager()
-  const sshTunnelService = new SSHTunnelService()
+  const sshTunnelService = new SSHTunnelService(sshProfileService)
 
   // Initialize sync manager
   ;(async () => {
@@ -36,6 +40,9 @@ export function setupIpcHandlers(
       logger.error('Failed to initialize sync manager:', error as Error)
     }
   })()
+
+  // Authentication IPC handlers
+  setupAuthHandlers(authService)
 
   // Terminal-related IPC handlers
   setupTerminalHandlers(terminalManager, sshConnectionService, sshProfileService)
@@ -651,6 +658,123 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       return true
     } catch (error) {
       logger.error('Delete sync config error:', error as Error)
+      return false
+    }
+  })
+}
+
+/**
+ * Setup authentication-related IPC handlers
+ */
+function setupAuthHandlers(authService: AuthService): void {
+  // Check if master password exists
+  ipcMain.handle('auth:has-master-password', async () => {
+    try {
+      return await authService.hasMasterPassword()
+    } catch (error) {
+      logger.error('Check master password error:', error as Error)
+      return false
+    }
+  })
+
+  // Create master password
+  ipcMain.handle('auth:create-master-password', async (_event, password: string, settings) => {
+    try {
+      await authService.createMasterPassword(password, settings)
+      return true
+    } catch (error) {
+      logger.error('Create master password error:', error as Error)
+      return false
+    }
+  })
+
+  // Unlock with master password
+  ipcMain.handle('auth:unlock-with-master-password', async (_event, password: string) => {
+    try {
+      return await authService.unlockWithMasterPassword(password)
+    } catch (error) {
+      logger.error('Unlock with password error:', error as Error)
+      return false
+    }
+  })
+
+  // Unlock with keychain
+  ipcMain.handle('auth:unlock-with-keychain', async () => {
+    try {
+      return await authService.unlockWithKeychain()
+    } catch (error) {
+      logger.error('Unlock with keychain error:', error as Error)
+      return false
+    }
+  })
+
+  // Lock application
+  ipcMain.handle('auth:lock', async () => {
+    try {
+      await authService.lock()
+      return true
+    } catch (error) {
+      logger.error('Lock application error:', error as Error)
+      return false
+    }
+  })
+
+  // Check if application is unlocked
+  ipcMain.handle('auth:is-unlocked', () => {
+    return authService.isUnlocked()
+  })
+
+  // Unlock with password
+  ipcMain.handle('auth:unlock-with-password', async (_event, password: string) => {
+    try {
+      return await authService.unlockWithMasterPassword(password)
+    } catch (error) {
+      logger.error('Unlock with password error:', error as Error)
+      return false
+    }
+  })
+
+  // Get security settings
+  ipcMain.handle('auth:get-security-settings', async () => {
+    try {
+      return await authService.getSecuritySettings()
+    } catch (error) {
+      logger.error('Get security settings error:', error as Error)
+      return null
+    }
+  })
+
+  // Update security settings
+  ipcMain.handle('auth:update-security-settings', async (_event, settings) => {
+    try {
+      await authService.updateSecuritySettings(settings)
+      return true
+    } catch (error) {
+      logger.error('Update security settings error:', error as Error)
+      return false
+    }
+  })
+
+  // Change master password
+  ipcMain.handle(
+    'auth.changeMasterPassword',
+    async (_event, currentPassword: string, newPassword: string) => {
+      try {
+        return await authService.changeMasterPassword(currentPassword, newPassword)
+      } catch (error) {
+        logger.error('Change master password error:', error as Error)
+        return false
+      }
+    }
+  )
+
+  // Reset auto-lock timer (called on user activity)
+  ipcMain.handle('auth.resetAutoLockTimer', () => {
+    try {
+      authService.resetAutoLockTimer()
+      return true
+    } catch (error) {
+      logger.error('Reset auto-lock timer error:', error as Error)
       return false
     }
   })

@@ -10,6 +10,7 @@
       @toggle-saved-commands="toggleSavedCommands"
       @toggle-ssh-tunnels="toggleSSHTunnels"
       @open-sync-settings="openSyncSettings"
+      @open-security-settings="openSecuritySettings"
       @open-keyboard-shortcuts="openKeyboardShortcuts"
     />
 
@@ -131,6 +132,24 @@
       :is-visible="showKeyboardShortcutsModal"
       @update:is-visible="showKeyboardShortcutsModal = $event"
     />
+
+    <!-- Master Password Modal (Persistent) -->
+    <MasterPasswordModal
+      :visible="showMasterPasswordModal"
+      :mode="masterPasswordMode"
+      :error="masterPasswordError"
+      @created="handleMasterPasswordCreated"
+      @unlocked="handleMasterPasswordUnlocked"
+    />
+
+    <!-- Security Settings Modal -->
+    <SecuritySettingsModal
+      :visible="showSecuritySettingsModal"
+      @update:visible="showSecuritySettingsModal = $event"
+      @close="handleSecuritySettingsClose"
+      @lock-now="handleLockNow"
+      @change-master-password="handleChangeMasterPassword"
+    />
   </div>
 </template>
 
@@ -146,6 +165,8 @@ import SSHGroupModal from './components/SSHGroupModal.vue'
 import SavedCommandDrawer from './components/SavedCommandDrawer.vue'
 import SyncSettingsModal from './components/SyncSettingsModal.vue'
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue'
+import MasterPasswordModal from './components/MasterPasswordModal.vue'
+import SecuritySettingsModal from './components/SecuritySettingsModal.vue'
 import Modal from './components/ui/Modal.vue'
 import SSHTunnelManager from './components/SSHTunnelManager.vue'
 import SSHTunnelModal from './components/SSHTunnelModal.vue'
@@ -159,6 +180,7 @@ import type {
   SSHTunnelWithProfile,
   SSHTunnel
 } from './types/ssh'
+import type { SecuritySettings } from './types/auth'
 import type { PanelLayout, Panel, Tab, TerminalInstance } from './types/panel'
 import { message } from './utils/message'
 import { debounce } from './utils/debounce'
@@ -169,6 +191,13 @@ const topBarState = useTopBarState()
 
 // Initialize keyboard shortcuts
 const { registerActionHandler, startListening, stopListening } = useKeyboardShortcuts()
+
+// Authentication state
+const isApplicationLocked = ref(true)
+const showMasterPasswordModal = ref(false)
+const masterPasswordMode = ref<'create' | 'unlock'>('unlock')
+const masterPasswordError = ref('')
+const showSecuritySettingsModal = ref(false)
 
 // Modal states - using topBarState for main navigation
 const showSSHProfileModal = ref(false)
@@ -965,6 +994,13 @@ const setupKeyboardShortcuts = (): void => {
 
 const loadSSHGroups = async (): Promise<void> => {
   try {
+    // Check if app is unlocked before loading groups
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      sshGroups.value = []
+      return
+    }
+
     const groups = (await window.api.invoke('ssh-groups.getAll')) as SSHGroup[]
     sshGroups.value = groups.map((group: SSHGroup) => ({
       ...group,
@@ -1217,6 +1253,13 @@ const onSyncConfigUpdated = (): void => {
 
 const loadSSHProfiles = async (): Promise<void> => {
   try {
+    // Check if app is unlocked before loading profiles
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      sshProfiles.value = []
+      return
+    }
+
     const result = await window.api.invoke('ssh-profiles.getAll')
     sshProfiles.value = result as SSHProfile[]
   } catch {
@@ -1241,13 +1284,119 @@ const findPanelForTerminal = (layout: PanelLayout, terminalId: string): string |
   return null
 }
 
+// Authentication handlers
+const openSecuritySettings = (): void => {
+  showSecuritySettingsModal.value = true
+}
+
+const handleMasterPasswordCreated = async (
+  password: string,
+  settings: SecuritySettings
+): Promise<void> => {
+  try {
+    // Create plain object to avoid Vue reactivity issues
+    const plainSettings = {
+      requirePasswordOnStart: settings.requirePasswordOnStart,
+      autoLockTimeout: settings.autoLockTimeout,
+      useBiometrics: settings.useBiometrics
+    }
+
+    await window.electron.ipcRenderer.invoke('auth:create-master-password', password, plainSettings)
+    showMasterPasswordModal.value = false
+    isApplicationLocked.value = false
+  } catch (error) {
+    console.error('Failed to create master password:', error)
+  }
+}
+
+const handleMasterPasswordUnlocked = async (): Promise<void> => {
+  try {
+    showMasterPasswordModal.value = false
+    isApplicationLocked.value = false
+  } catch (error) {
+    console.error('Failed to unlock with master password:', error)
+  }
+}
+
+const handleSecuritySettingsClose = (): void => {
+  showSecuritySettingsModal.value = false
+}
+
+const handleLockNow = async (): Promise<void> => {
+  try {
+    await window.electron.ipcRenderer.invoke('auth:lock')
+    isApplicationLocked.value = true
+    showMasterPasswordModal.value = true
+    showSecuritySettingsModal.value = false
+  } catch (error) {
+    console.error('Failed to lock application:', error)
+  }
+}
+
+const handleChangeMasterPassword = (): void => {
+  showSecuritySettingsModal.value = false
+  showMasterPasswordModal.value = true
+}
+
+// Cleanup function refs
+const cleanupFunctions = ref<Array<() => void>>([])
+
+// Register cleanup before any async operations
+onUnmounted(() => {
+  cleanupFunctions.value.forEach((cleanup) => cleanup())
+  // Cleanup terminal buffers
+  bufferManager.cleanup()
+  // Trigger cleanup in main process as well
+  ;(async () => {
+    try {
+      await bufferManager.triggerCleanup()
+    } catch {
+      // Silently ignore cleanup errors
+    }
+  })()
+})
+
 // Auto create first tab when app starts
-onMounted(() => {
+onMounted(async () => {
   // Initialize window width tracking
   const updateWindowWidth = (): void => {
     windowWidth.value = window.innerWidth
   }
   window.addEventListener('resize', updateWindowWidth)
+  cleanupFunctions.value.push(() => window.removeEventListener('resize', updateWindowWidth))
+
+  // Initialize authentication
+  try {
+    const hasMasterPassword = await window.electron.ipcRenderer.invoke('auth:has-master-password')
+
+    if (!hasMasterPassword) {
+      // No master password exists - show creation modal
+      isApplicationLocked.value = true
+      showMasterPasswordModal.value = true
+      masterPasswordMode.value = 'create'
+    } else {
+      // Try to unlock with keychain first
+      const unlockedWithKeychain = await window.electron.ipcRenderer.invoke(
+        'auth:unlock-with-keychain'
+      )
+
+      if (unlockedWithKeychain) {
+        // Successfully unlocked with keychain
+        isApplicationLocked.value = false
+      } else {
+        // Need master password unlock
+        isApplicationLocked.value = true
+        showMasterPasswordModal.value = true
+        masterPasswordMode.value = 'unlock'
+      }
+    }
+  } catch (error) {
+    console.error('Failed to initialize authentication:', error)
+    // Fallback to locked state
+    isApplicationLocked.value = true
+    showMasterPasswordModal.value = true
+    masterPasswordMode.value = 'unlock'
+  }
 
   // Create first tab in default panel
   addTab('panel-1')
@@ -1260,16 +1409,23 @@ onMounted(() => {
   startListening()
 
   // Add global error handler to prevent unhandled promise rejections
-  window.addEventListener('unhandledrejection', (event) => {
+  const unhandledRejectionHandler = (event: PromiseRejectionEvent): void => {
     // Silently handle unhandled promise rejections in production
     event.preventDefault() // Prevent the default behavior
-  })
+  }
+  window.addEventListener('unhandledrejection', unhandledRejectionHandler)
+  cleanupFunctions.value.push(() =>
+    window.removeEventListener('unhandledrejection', unhandledRejectionHandler)
+  )
 
   // Listen for terminal title changes
   const unsubscribeTitleChanged = window.api?.on('terminal.titleChanged', (...args: unknown[]) => {
     const data = args[0] as { terminalId: string; title: string }
     updateTabTitle(data.terminalId, data.title)
   })
+  if (unsubscribeTitleChanged) {
+    cleanupFunctions.value.push(unsubscribeTitleChanged)
+  }
 
   // Listen for SSH connecting state
   const unsubscribeSSHConnecting = window.api?.on(
@@ -1282,6 +1438,9 @@ onMounted(() => {
       }
     }
   )
+  if (unsubscribeSSHConnecting) {
+    cleanupFunctions.value.push(unsubscribeSSHConnecting)
+  }
 
   // Listen for SSH connected state
   const unsubscribeSSHConnected = window.api?.on('terminal.sshConnected', (...args: unknown[]) => {
@@ -1291,6 +1450,9 @@ onMounted(() => {
       terminal.isSSHConnecting = false
     }
   })
+  if (unsubscribeSSHConnected) {
+    cleanupFunctions.value.push(unsubscribeSSHConnected)
+  }
 
   // Listen for SSH connection errors
   const unsubscribeSSHError = window.api?.on('terminal.sshError', (...args: unknown[]) => {
@@ -1313,6 +1475,9 @@ onMounted(() => {
       }, 1000) // Give user time to see the error
     }
   })
+  if (unsubscribeSSHError) {
+    cleanupFunctions.value.push(unsubscribeSSHError)
+  }
 
   // Listen for terminal auto close events
   const unsubscribeAutoClose = window.api?.on('terminal.autoClose', (...args: unknown[]) => {
@@ -1338,30 +1503,13 @@ onMounted(() => {
       closeTab(panelId, data.terminalId)
     }
   })
+  if (unsubscribeAutoClose) {
+    cleanupFunctions.value.push(unsubscribeAutoClose)
+  }
 
-  // Store cleanup functions
-  onUnmounted(() => {
-    unsubscribeTitleChanged?.()
-    unsubscribeAutoClose?.()
-    unsubscribeSSHConnecting?.()
-    unsubscribeSSHConnected?.()
-    unsubscribeSSHError?.()
-    window.removeEventListener('resize', updateWindowWidth)
-    // Remove global error handler
-    window.removeEventListener('unhandledrejection', () => {})
-    // Cleanup keyboard shortcuts
-    stopListening()
-
-    // Cleanup terminal buffers
-    bufferManager.cleanup()
-    // Trigger cleanup in main process as well
-    ;(async () => {
-      try {
-        await bufferManager.triggerCleanup()
-      } catch {
-        // Silently handle cleanup errors
-      }
-    })()
-  })
+  // Initialize keyboard shortcuts
+  setupKeyboardShortcuts()
+  cleanupFunctions.value.push(() => stopListening())
+  startListening()
 })
 </script>

@@ -52,6 +52,14 @@
 
     <div class="flex items-center h-full max-h-[30px] flex-shrink-0">
       <Button
+        title="Security Settings"
+        variant="ghost"
+        size="sm"
+        :icon="ShieldIcon"
+        class="text-gray-400 hover:text-white"
+        @click="openSecuritySettings"
+      />
+      <Button
         title="SSH Tunnels"
         variant="ghost"
         size="sm"
@@ -133,7 +141,8 @@ import {
   Command,
   Cloud,
   Network,
-  Keyboard
+  Keyboard,
+  Shield
 } from 'lucide-vue-next'
 import Button from './ui/Button.vue'
 import type { SyncStatus } from '../types/sync'
@@ -149,6 +158,7 @@ const emit = defineEmits<{
   'toggle-saved-commands': []
   'toggle-ssh-tunnels': []
   'open-sync-settings': []
+  'open-security-settings': []
   'open-keyboard-shortcuts': []
 }>()
 
@@ -156,6 +166,7 @@ const emit = defineEmits<{
 const CommandIcon = Command
 const CloudIcon = Cloud
 const KeyboardIcon = Keyboard
+const ShieldIcon = Shield
 
 const isMaximized = ref(false)
 const syncStatus = ref<SyncStatus | null>(null)
@@ -192,6 +203,13 @@ async function refreshSyncStatus(): Promise<void> {
 // Load tunnel status
 async function loadTunnelStatus(): Promise<void> {
   try {
+    // Check if app is unlocked before loading tunnels
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      hasActiveTunnels.value = false
+      return
+    }
+
     const tunnels = (await window.api.invoke('ssh-tunnels.getAll')) as SSHTunnelWithProfile[]
     hasActiveTunnels.value = tunnels.some((tunnel) => tunnel.status === 'running')
   } catch {
@@ -258,6 +276,10 @@ const toggleSSHDrawer = (): void => {
 
 const toggleSavedCommands = (): void => {
   emit('toggle-saved-commands')
+}
+
+const openSecuritySettings = (): void => {
+  emit('open-security-settings')
 }
 
 const openSyncSettings = (): void => {

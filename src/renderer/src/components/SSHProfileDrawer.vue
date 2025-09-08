@@ -392,6 +392,14 @@ const loadProfiles = async (): Promise<void> => {
   try {
     isLoading.value = true
 
+    // Check if app is unlocked before loading profiles
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      groupsWithProfiles.value = []
+      ungroupedProfiles.value = []
+      return
+    }
+
     const [groups, ungrouped] = await Promise.all([
       window.api.invoke('ssh-profiles.getGroupsWithProfiles'),
       window.api.invoke('ssh-profiles.getUngrouped')

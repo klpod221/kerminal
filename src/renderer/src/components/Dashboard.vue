@@ -599,6 +599,14 @@ function parseDisplayInfo(resolution: string): { resolution: string; refreshRate
 async function loadRecentConnections(): Promise<void> {
   try {
     isLoadingConnections.value = true
+
+    // Check if app is unlocked before loading connections
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      recentConnections.value = []
+      return
+    }
+
     const connections = (await window.api.invoke('ssh-connections.getRecent', 6)) as SSHConnection[]
     recentConnections.value = connections.map((conn) => ({
       ...conn,
@@ -617,6 +625,12 @@ async function loadRecentConnections(): Promise<void> {
  */
 async function connectToProfile(connection: SSHConnection): Promise<void> {
   try {
+    // Check if app is unlocked before loading profile
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      return
+    }
+
     // Find the profile by ID and emit connect event
     const profile = await window.api.invoke('ssh-profiles.getById', connection.profileId)
     if (profile) {

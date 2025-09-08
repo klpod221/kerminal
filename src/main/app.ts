@@ -3,6 +3,9 @@ import { electronApp as electronAppUtils, optimizer } from '@electron-toolkit/ut
 import { WindowManager } from './services/window-manager'
 import { TerminalManager } from './services/terminal-manager'
 import { SSHTunnelService } from './services/ssh-tunnel-service'
+import { AuthService } from './services/auth-service'
+import { CryptoService } from './services/crypto-service'
+import { SSHProfileService } from './services/ssh-profile-service'
 import { setupIpcHandlers } from './ipc-handlers'
 import { ConsoleLogger } from './utils/logger'
 import { autoUpdater } from 'electron-updater'
@@ -16,8 +19,18 @@ class ElectronApp {
   private sshTunnelService: SSHTunnelService | null = null
   private readonly logger = new ConsoleLogger('ElectronApp')
 
+  // Core services
+  private readonly authService: AuthService
+  private readonly cryptoService: CryptoService
+  private readonly sshProfileService: SSHProfileService
+
   constructor() {
     this.windowManager = new WindowManager()
+
+    // Initialize core services
+    this.authService = new AuthService()
+    this.cryptoService = new CryptoService()
+    this.sshProfileService = new SSHProfileService(this.authService, this.cryptoService)
   }
 
   /**
@@ -49,18 +62,43 @@ class ElectronApp {
   private async createMainWindow(): Promise<void> {
     const mainWindow = this.windowManager.createWindow()
     this.terminalManager = new TerminalManager(mainWindow)
-    this.sshTunnelService = new SSHTunnelService()
+    this.sshTunnelService = new SSHTunnelService(this.sshProfileService)
 
-    setupIpcHandlers(this.windowManager, this.terminalManager)
+    setupIpcHandlers(
+      this.windowManager,
+      this.terminalManager,
+      this.authService,
+      this.sshProfileService
+    )
 
-    // Start auto-start tunnels after a short delay
-    setTimeout(async () => {
-      try {
-        await this.sshTunnelService?.startAutoStartTunnels()
-      } catch (error) {
-        this.logger.error('Failed to start auto-start SSH tunnels:', error as Error)
+    // Start auto-start tunnels only after app is unlocked
+    this.scheduleAutoStartTunnels()
+  }
+
+  /**
+   * Schedule auto-start tunnels to run when app is unlocked
+   */
+  private scheduleAutoStartTunnels(): void {
+    // Check periodically if app is unlocked
+    const checkInterval = setInterval(async () => {
+      if (this.authService.isUnlocked()) {
+        clearInterval(checkInterval)
+        try {
+          await this.sshTunnelService?.startAutoStartTunnels()
+          this.logger.info('Auto-start SSH tunnels initialized successfully')
+        } catch (error) {
+          this.logger.error('Failed to start auto-start SSH tunnels:', error as Error)
+        }
       }
-    }, 2000)
+    }, 1000) // Check every second
+
+    // Timeout after 5 minutes to prevent infinite checking
+    setTimeout(
+      () => {
+        clearInterval(checkInterval)
+      },
+      5 * 60 * 1000
+    )
   }
 
   /**

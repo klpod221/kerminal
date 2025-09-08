@@ -252,6 +252,13 @@ onUnmounted(() => {
 // Methods
 const loadTunnels = async (): Promise<void> => {
   try {
+    // Check if app is unlocked before loading tunnels
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      tunnels.value = []
+      return
+    }
+
     const result = await window.api.invoke('ssh-tunnels.getAll')
     tunnels.value = result as SSHTunnelWithProfile[]
   } catch {
@@ -261,6 +268,13 @@ const loadTunnels = async (): Promise<void> => {
 
 const loadProfiles = async (): Promise<void> => {
   try {
+    // Check if app is unlocked before loading profiles
+    const isUnlocked = await window.api.invoke('auth:is-unlocked')
+    if (!isUnlocked) {
+      profiles.value = []
+      return
+    }
+
     const result = await window.api.invoke('ssh-profiles.getAll')
     profiles.value = result as SSHProfile[]
   } catch {

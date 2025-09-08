@@ -5,21 +5,23 @@ import {
   ResolvedSSHConfig,
   SSHProxy
 } from '../types/ssh'
-import { SSHGroupStorage } from '../storage/ssh-group-storage'
-import { SSHProfileStorage } from '../storage/ssh-profile-storage'
+import { EncryptedSSHGroupStorage } from '../storage/encrypted-ssh-group-storage'
+import { EncryptedSSHProfileStorage } from '../storage/encrypted-ssh-profile-storage'
 import { SSHConnectionStorage } from '../storage/ssh-connection-storage'
+import { AuthService } from './auth-service'
+import { CryptoService } from './crypto-service'
 
 /**
  * Service for managing SSH profiles and groups
  */
 export class SSHProfileService {
-  private readonly groupStorage: SSHGroupStorage
-  private readonly profileStorage: SSHProfileStorage
+  private readonly groupStorage: EncryptedSSHGroupStorage
+  private readonly profileStorage: EncryptedSSHProfileStorage
   private readonly connectionStorage: SSHConnectionStorage
 
-  constructor() {
-    this.groupStorage = new SSHGroupStorage()
-    this.profileStorage = new SSHProfileStorage()
+  constructor(authService: AuthService, cryptoService: CryptoService) {
+    this.groupStorage = new EncryptedSSHGroupStorage(authService, cryptoService)
+    this.profileStorage = new EncryptedSSHProfileStorage(authService, cryptoService)
     this.connectionStorage = new SSHConnectionStorage()
   }
 
@@ -29,21 +31,21 @@ export class SSHProfileService {
    * Get all SSH groups
    */
   async getAllGroups(): Promise<SSHGroup[]> {
-    return this.groupStorage.getAll()
+    return this.groupStorage.getAllGroups()
   }
 
   /**
    * Get SSH group by ID
    */
   async getGroupById(id: string): Promise<SSHGroup | null> {
-    return this.groupStorage.getById(id)
+    return this.groupStorage.getGroupById(id)
   }
 
   /**
    * Create a new SSH group
    */
   async createGroup(groupData: Omit<SSHGroup, 'id' | 'created' | 'updated'>): Promise<SSHGroup> {
-    return this.groupStorage.create(groupData)
+    return this.groupStorage.createGroup(groupData)
   }
 
   /**
@@ -53,7 +55,8 @@ export class SSHProfileService {
     id: string,
     updates: Partial<Omit<SSHGroup, 'id' | 'created'>>
   ): Promise<SSHGroup | null> {
-    return this.groupStorage.update(id, updates)
+    await this.groupStorage.updateGroup(id, updates)
+    return this.groupStorage.getGroupById(id)
   }
 
   /**
@@ -65,11 +68,12 @@ export class SSHProfileService {
 
     // Update all profiles to remove group association (make them ungrouped)
     for (const profile of profiles) {
-      await this.profileStorage.update(profile.id, { groupId: undefined })
+      await this.profileStorage.updateProfile(profile.id, { groupId: undefined })
     }
 
     // Finally delete the group itself
-    return this.groupStorage.delete(id)
+    await this.groupStorage.deleteGroup(id)
+    return true
   }
 
   // Profile management methods
@@ -77,9 +81,11 @@ export class SSHProfileService {
   /**
    * Get all SSH profiles with resolved configurations
    */
-  async getAllProfiles(): Promise<SSHProfileWithConfig[]> {
+  async getAllProfiles(): Promise<SSHProfile[]> {
     const profiles = await this.profileStorage.getAll()
-    return Promise.all(profiles.map((profile) => this.resolveProfileConfig(profile)))
+    return Promise.all(
+      profiles.map((profile) => this.resolveProfileConfig(profile as unknown as SSHProfile))
+    )
   }
 
   /**
@@ -90,7 +96,7 @@ export class SSHProfileService {
     if (!profile) {
       return null
     }
-    return this.resolveProfileConfig(profile)
+    return this.resolveProfileConfig(profile as unknown as SSHProfile)
   }
 
   /**
@@ -98,7 +104,9 @@ export class SSHProfileService {
    */
   async getProfilesByGroupId(groupId: string): Promise<SSHProfileWithConfig[]> {
     const profiles = await this.profileStorage.getByGroupId(groupId)
-    return Promise.all(profiles.map((profile) => this.resolveProfileConfig(profile)))
+    return Promise.all(
+      profiles.map((profile) => this.resolveProfileConfig(profile as unknown as SSHProfile))
+    )
   }
 
   /**
@@ -106,7 +114,9 @@ export class SSHProfileService {
    */
   async getFavoriteProfiles(): Promise<SSHProfileWithConfig[]> {
     const profiles = await this.profileStorage.getFavorites()
-    return Promise.all(profiles.map((profile) => this.resolveProfileConfig(profile)))
+    return Promise.all(
+      profiles.map((profile) => this.resolveProfileConfig(profile as unknown as SSHProfile))
+    )
   }
 
   /**
@@ -114,7 +124,9 @@ export class SSHProfileService {
    */
   async getRecentlyConnectedProfiles(limit = 10): Promise<SSHProfileWithConfig[]> {
     const profiles = await this.profileStorage.getRecentlyConnected(limit)
-    return Promise.all(profiles.map((profile) => this.resolveProfileConfig(profile)))
+    return Promise.all(
+      profiles.map((profile) => this.resolveProfileConfig(profile as unknown as SSHProfile))
+    )
   }
 
   /**
@@ -123,7 +135,7 @@ export class SSHProfileService {
   async createProfile(
     profileData: Omit<SSHProfile, 'id' | 'created' | 'updated'>
   ): Promise<SSHProfile> {
-    return this.profileStorage.create(profileData)
+    return this.profileStorage.create(profileData) as unknown as Promise<SSHProfile>
   }
 
   /**
@@ -133,7 +145,7 @@ export class SSHProfileService {
     id: string,
     updates: Partial<Omit<SSHProfile, 'id' | 'created'>>
   ): Promise<SSHProfile | null> {
-    return this.profileStorage.update(id, updates)
+    return this.profileStorage.update(id, updates) as unknown as Promise<SSHProfile | null>
   }
 
   /**
@@ -172,12 +184,14 @@ export class SSHProfileService {
       throw new Error(`Profile with ID ${profileId} not found`)
     }
 
+    const typedProfile = profile as unknown as SSHProfile
+
     // Record or update the connection (addConnection now handles updating existing ones)
     await this.connectionStorage.addConnection({
       profileId,
-      profileName: profile.name,
-      host: profile.host,
-      user: profile.user,
+      profileName: typedProfile.name,
+      host: typedProfile.host,
+      user: typedProfile.user,
       connectedAt: new Date(),
       status
     })
@@ -232,7 +246,8 @@ export class SSHProfileService {
 
     // Get group if profile belongs to one
     if (profile.groupId) {
-      group = (await this.groupStorage.getById(profile.groupId)) || undefined
+      group =
+        ((await this.groupStorage.getById(profile.groupId)) as unknown as SSHGroup) || undefined
     }
 
     // Resolve configuration with group defaults
@@ -304,8 +319,14 @@ export class SSHProfileService {
    */
   async getUngroupedProfiles(): Promise<SSHProfileWithConfig[]> {
     const allProfiles = await this.profileStorage.getAll()
-    const ungroupedProfiles = allProfiles.filter((profile) => !profile.groupId)
-    return Promise.all(ungroupedProfiles.map((profile) => this.resolveProfileConfig(profile)))
+    const ungroupedProfiles = allProfiles.filter(
+      (profile) => !(profile as unknown as SSHProfile).groupId
+    )
+    return Promise.all(
+      ungroupedProfiles.map((profile) =>
+        this.resolveProfileConfig(profile as unknown as SSHProfile)
+      )
+    )
   }
 
   /**
