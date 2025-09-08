@@ -7,7 +7,8 @@ on:
 
 jobs:
   build:
-    name: Build for ${{ matrix.os }}
+    name: Build and Publish for ${{ matrix.os }}
+    # Quyền này cho phép job tạo release draft và upload file
     permissions:
       contents: write
     runs-on: ${{ matrix.os }}
@@ -40,28 +41,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build for macOS
-        if: matrix.os == 'macos-latest'
-        run: |
-          npm run build
-          npx --no-install electron-builder --mac
+      - name: Build application
+        run: npm run build
 
-      - name: Build for Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          npm run build
-          npx --no-install electron-builder --linux
-
-      - name: Build for Windows
-        if: matrix.os == 'windows-latest'
-        run: |
-          npm run build
-          npx --no-install electron-builder --win
-
-      - name: Build and Publish
-        run: |
-          npm run build
-          npx --no-install electron-builder --publish always
+      - name: Package and Publish
+        run: npx --no-install electron-builder --publish always
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
