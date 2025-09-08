@@ -132,18 +132,7 @@ export interface SSHProfileWithConfig extends SSHProfile {
  * Interface for SSH Tunnel with profile information
  */
 export interface SSHTunnelWithProfile extends SSHTunnel {
-  profile: SSHProfile
-}
-
-/**
- * Interface for SSH connection options
- */
-export interface SSHConnectionOptions {
-  profileId: string
-  terminalId: string
-  onConnect?: () => void
-  onDisconnect?: () => void
-  onError?: (error: Error) => void
+  profile: SSHProfileWithConfig
 }
 
 /**

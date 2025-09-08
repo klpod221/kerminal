@@ -1,8 +1,12 @@
-import { spawn, ChildProcess } from 'child_process'
+import { Client } from 'ssh2'
+import * as net from 'net'
+import * as s5 from 'socksv5'
 import { SSHTunnel, SSHTunnelOptions, SSHTunnelWithProfile } from '../types/ssh'
 import { SSHTunnelStorage } from '../storage/ssh-tunnel-storage'
 import { SSHProfileService } from './ssh-profile-service'
 import { ConsoleLogger } from '../utils/logger'
+
+type ActiveServer = net.Server | s5.Server
 
 /**
  * SSH Tunnel Manager Service
@@ -11,7 +15,8 @@ import { ConsoleLogger } from '../utils/logger'
 export class SSHTunnelService {
   private readonly tunnelStorage: SSHTunnelStorage
   private readonly profileService: SSHProfileService
-  private readonly activeTunnels = new Map<string, ChildProcess>()
+  private readonly activeTunnels = new Map<string, Client>()
+  private readonly activeServers = new Map<string, ActiveServer>()
   private readonly reconnectTimers = new Map<string, NodeJS.Timeout>()
   private readonly manuallyStoppedTunnels = new Set<string>()
   private readonly logger = new ConsoleLogger('SSHTunnelService')
@@ -66,25 +71,20 @@ export class SSHTunnelService {
       'id' | 'created' | 'updated' | 'status' | 'lastStarted' | 'lastError'
     >
   ): Promise<SSHTunnel> {
-    // Validate port availability
     const isPortInUse = await this.tunnelStorage.isPortInUse(tunnelData.localPort)
     if (isPortInUse) {
       throw new Error(`Port ${tunnelData.localPort} is already in use by another tunnel`)
     }
 
-    // Validate profile exists
     const profile = await this.profileService.getProfileById(tunnelData.profileId)
     if (!profile) {
       throw new Error(`SSH Profile with ID ${tunnelData.profileId} not found`)
     }
 
-    // Create tunnel with initial status
-    const tunnel = await this.tunnelStorage.create({
+    return this.tunnelStorage.create({
       ...tunnelData,
       status: 'stopped'
     })
-
-    return tunnel
   }
 
   /**
@@ -94,7 +94,6 @@ export class SSHTunnelService {
     id: string,
     updates: Partial<Omit<SSHTunnel, 'id' | 'created'>>
   ): Promise<SSHTunnel | null> {
-    // If updating localPort, check if it's available
     if (updates.localPort) {
       const isPortInUse = await this.tunnelStorage.isPortInUse(updates.localPort, id)
       if (isPortInUse) {
@@ -102,19 +101,15 @@ export class SSHTunnelService {
       }
     }
 
-    const tunnel = await this.tunnelStorage.update(id, updates)
-    return tunnel
+    return this.tunnelStorage.update(id, updates)
   }
 
   /**
    * Delete a tunnel
    */
   async deleteTunnel(id: string): Promise<boolean> {
-    // Stop tunnel if running
     await this.stopTunnel(id)
-
-    const success = await this.tunnelStorage.delete(id)
-    return success
+    return this.tunnelStorage.delete(id)
   }
 
   /**
@@ -125,82 +120,90 @@ export class SSHTunnelService {
     if (!tunnelWithProfile) {
       throw new Error(`Tunnel with ID ${id} not found`)
     }
-
-    const tunnel = tunnelWithProfile
-
-    // Check if already running
     if (this.activeTunnels.has(id)) {
-      throw new Error(`Tunnel ${tunnel.name} is already running`)
+      throw new Error(`Tunnel ${tunnelWithProfile.name} is already running`)
     }
-
-    // Remove from manually stopped list if starting manually
     this.manuallyStoppedTunnels.delete(id)
+    await this.tunnelStorage.updateStatus(id, 'starting')
 
-    try {
-      // Update status to starting
-      await this.tunnelStorage.updateStatus(id, 'starting')
-
-      // Build SSH command for tunnel
-      const sshCommand = await this.buildTunnelCommand(tunnel)
-
-      // Spawn SSH process
-      const sshProcess = spawn(sshCommand.command, sshCommand.args, {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        env: {
-          ...process.env,
-          TERM: 'xterm-256color'
-        }
-      })
-
-      // Store active tunnel
-      this.activeTunnels.set(id, sshProcess)
-
-      // Handle successful spawn
-      process.on('spawn', () => {
-        tunnel.status = 'running'
-        this.tunnelStorage.update(id, { status: 'running' })
-        options?.onConnect?.()
-      })
-
-      sshProcess.on('error', (error) => {
-        this.logger.error(`SSH tunnel error: ${tunnel.name} (${id})`, error)
-        this.tunnelStorage.updateStatus(id, 'error', error.message)
-        this.activeTunnels.delete(id)
-        options?.onError?.(error)
-      })
-
-      sshProcess.on('exit', (code, signal) => {
-        this.logger.warn(
-          `SSH tunnel exited: ${tunnel.name} (${id}) - Code: ${code}, Signal: ${signal}`
-        )
-        this.activeTunnels.delete(id)
-
-        // Only auto-reconnect if:
-        // 1. Tunnel has autoStart enabled
-        // 2. Exit code indicates an error (not manual termination)
-        // 3. Not manually stopped by user
-        // 4. Not terminated by SIGTERM (which is used for manual stop)
-        if (
-          tunnel.autoStart &&
-          code !== 0 &&
-          signal !== 'SIGTERM' &&
-          !this.manuallyStoppedTunnels.has(id)
-        ) {
-          // Auto-reconnect if enabled and not manually stopped
-          this.scheduleReconnect(id, options)
-        } else {
-          this.tunnelStorage.updateStatus(id, 'stopped')
-          options?.onDisconnect?.()
-        }
-      })
-
-      // Wait a bit to ensure tunnel is established
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-    } catch (error) {
-      this.activeTunnels.delete(id)
-      await this.tunnelStorage.updateStatus(id, 'error', (error as Error).message)
-      throw error
+    const client = new Client()
+    const {
+      profile: { resolvedConfig: config }
+    } = tunnelWithProfile
+    const connectConfig: Record<string, unknown> = {
+      host: config.host,
+      port: config.port || 22,
+      username: config.user,
+      readyTimeout: 10000,
+      keepaliveInterval: 60000,
+      keepaliveCountMax: 3
     }
+    if (config.keyPath) {
+      const fs = await import('fs')
+      try {
+        connectConfig.privateKey = fs.readFileSync(config.keyPath)
+      } catch (error) {
+        await this.tunnelStorage.updateStatus(id, 'error', `Failed to read SSH key: ${error}`)
+        throw new Error(`Failed to read SSH key: ${error}`)
+      }
+      if (config.password) connectConfig.passphrase = config.password
+    } else if (config.password) {
+      connectConfig.password = config.password
+    } else {
+      await this.tunnelStorage.updateStatus(id, 'error', 'No authentication method provided')
+      throw new Error('No authentication method provided')
+    }
+
+    client.on('ready', () => {
+      this.logger.info(`SSH connection established for tunnel: ${tunnelWithProfile.name}`)
+      try {
+        switch (tunnelWithProfile.type) {
+          case 'local':
+            this.setupLocalTunnel(client, tunnelWithProfile, id, options)
+            break
+          case 'remote':
+            this.setupRemoteTunnel(client, tunnelWithProfile, id, options)
+            break
+          case 'dynamic':
+            this.setupDynamicTunnel(client, tunnelWithProfile, id, options)
+            break
+          default:
+            throw new Error('Unsupported tunnel type')
+        }
+      } catch (err: unknown) {
+        const errorObj = err instanceof Error ? err : new Error(String(err))
+        this.logger.error(`Tunnel setup error:`, errorObj)
+        this.tunnelStorage.updateStatus(id, 'error', errorObj.message)
+        options?.onError?.(errorObj)
+        client.end()
+      }
+    })
+
+    client.on('error', (error) => {
+      this.logger.error(`SSH tunnel error: ${tunnelWithProfile.name} (${id})`, error)
+      this.activeTunnels.delete(id)
+      this.closeLocalServer(id)
+      this.tunnelStorage.updateStatus(id, 'error', error.message)
+      options?.onError?.(error)
+      if (tunnelWithProfile.autoStart && !this.manuallyStoppedTunnels.has(id)) {
+        this.scheduleReconnect(id, options)
+      }
+    })
+
+    client.on('close', () => {
+      this.logger.warn(`SSH tunnel closed: ${tunnelWithProfile.name} (${id})`)
+      this.activeTunnels.delete(id)
+      this.closeLocalServer(id)
+      if (tunnelWithProfile.autoStart && !this.manuallyStoppedTunnels.has(id)) {
+        this.scheduleReconnect(id, options)
+      } else {
+        this.tunnelStorage.updateStatus(id, 'stopped')
+        options?.onDisconnect?.()
+      }
+    })
+
+    client.connect(connectConfig)
+    this.activeTunnels.set(id, client)
   }
 
   /**
@@ -211,35 +214,20 @@ export class SSHTunnelService {
     if (!tunnel) {
       throw new Error(`Tunnel with ID ${id} not found`)
     }
-
-    // Mark as manually stopped to prevent auto-reconnect
     this.manuallyStoppedTunnels.add(id)
-
-    // Clear reconnect timer if exists
     const reconnectTimer = this.reconnectTimers.get(id)
     if (reconnectTimer) {
       clearTimeout(reconnectTimer)
       this.reconnectTimers.delete(id)
     }
 
-    // Stop SSH process
-    const sshProcess = this.activeTunnels.get(id)
-    if (sshProcess) {
-      // Use SIGTERM to properly terminate the SSH process
-      sshProcess.kill('SIGTERM')
+    this.closeLocalServer(id)
 
-      // Wait a bit for graceful termination
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // If still running, force kill
-      if (!sshProcess.killed) {
-        sshProcess.kill('SIGKILL')
-      }
-
+    const client = this.activeTunnels.get(id)
+    if (client) {
+      client.end()
       this.activeTunnels.delete(id)
     }
-
-    // Update status
     await this.tunnelStorage.updateStatus(id, 'stopped')
   }
 
@@ -248,7 +236,6 @@ export class SSHTunnelService {
    */
   async startAutoStartTunnels(): Promise<void> {
     const autoStartTunnels = await this.tunnelStorage.getAutoStart()
-
     for (const tunnel of autoStartTunnels) {
       try {
         await this.startTunnel(tunnel.id)
@@ -263,7 +250,6 @@ export class SSHTunnelService {
    */
   async stopAllTunnels(): Promise<void> {
     const runningTunnels = Array.from(this.activeTunnels.keys())
-
     for (const tunnelId of runningTunnels) {
       try {
         await this.stopTunnel(tunnelId)
@@ -271,8 +257,6 @@ export class SSHTunnelService {
         this.logger.error(`Failed to stop tunnel: ${tunnelId}`, error as Error)
       }
     }
-
-    // Clear manually stopped list when stopping all
     this.manuallyStoppedTunnels.clear()
   }
 
@@ -283,213 +267,147 @@ export class SSHTunnelService {
     return this.activeTunnels.has(id)
   }
 
-  /**
-   * Check if tunnel is actually running by verifying the process
-   */
-  async getTunnelRealStatus(id: string): Promise<string> {
-    const tunnel = await this.tunnelStorage.getById(id)
-    if (!tunnel) return 'stopped'
+  // --- PRIVATE HELPER METHODS ---
 
-    // Check if have the process in our map
-    const process = this.activeTunnels.get(id)
-    if (!process) {
-      // Update status to stopped if don't track it
-      if (tunnel.status !== 'stopped') {
-        await this.tunnelStorage.updateStatus(id, 'stopped')
-      }
-      return 'stopped'
+  /**
+   * Sets up a Local Port Forwarding tunnel (ssh -L)
+   */
+  private setupLocalTunnel(
+    client: Client,
+    tunnel: SSHTunnelWithProfile,
+    id: string,
+    options?: SSHTunnelOptions
+  ): void {
+    if (!tunnel.remoteHost || !tunnel.remotePort) {
+      throw new Error('Local tunnel requires remote host and port')
     }
-
-    // Check if process is still alive
-    try {
-      // Sending signal 0 checks if process exists without killing it
-      process.kill(0)
-      return tunnel.status
-    } catch {
-      // Process is dead, clean up
-      this.activeTunnels.delete(id)
-      await this.tunnelStorage.updateStatus(id, 'stopped')
-      return 'stopped'
-    }
-  }
-
-  /**
-   * Get count of running tunnels
-   */
-  getRunningTunnelCount(): number {
-    return this.activeTunnels.size
-  }
-
-  /**
-   * Kill any orphaned SSH tunnel processes
-   * This method should be called on app startup to clean up any leftover processes
-   */
-  async killOrphanedTunnelProcesses(): Promise<void> {
-    try {
-      const { spawn } = await import('child_process')
-      const os = await import('os')
-      let output = ''
-      const tunnelProcesses: string[] = []
-
-      if (os.platform() === 'win32') {
-        // Use 'tasklist' on Windows
-        const tasklist = spawn('tasklist', ['/v', '/fo', 'csv'], {
-          stdio: ['pipe', 'pipe', 'pipe']
-        })
-        tasklist.stdout.on('data', (data) => {
-          output += data.toString()
-        })
-        await new Promise((resolve, reject) => {
-          tasklist.on('close', (code) => {
-            if (code === 0) {
-              resolve(void 0)
-            } else {
-              reject(new Error(`tasklist command failed with code ${code}`))
-            }
-          })
-        })
-        // Parse CSV output, look for ssh.exe processes with tunnel flags
-        const lines = output.split('\n')
-        for (const line of lines) {
-          if (
-            line.toLowerCase().includes('ssh.exe') &&
-            (line.includes('-L') || line.includes('-R') || line.includes('-D')) &&
-            line.includes('-N')
-          ) {
-            // CSV: "Image Name","PID",...
-            const parts = line.split(',')
-            if (parts.length > 1) {
-              const pid = parts[1].replace(/"/g, '').trim()
-              if (pid && !isNaN(Number(pid))) {
-                tunnelProcesses.push(pid)
-              }
-            }
+    const server = net.createServer((socket) => {
+      this.logger.info(`Connection received on local port ${tunnel.localPort}`)
+      client.forwardOut(
+        socket.remoteAddress || '127.0.0.1',
+        socket.remotePort || 0,
+        tunnel.remoteHost!,
+        tunnel.remotePort!,
+        (err, stream) => {
+          if (err) {
+            this.logger.error('forwardOut error:', err)
+            socket.end()
+            return
           }
+          socket.pipe(stream)
+          stream.pipe(socket)
+          socket.on('close', () => stream.close())
+          stream.on('close', () => socket.end())
         }
-      } else {
-        // Use 'ps' on Unix
-        const psProcess = spawn('ps', ['aux'], { stdio: ['pipe', 'pipe', 'pipe'] })
-        psProcess.stdout.on('data', (data) => {
-          output += data.toString()
-        })
-        await new Promise((resolve, reject) => {
-          psProcess.on('close', (code) => {
-            if (code === 0) {
-              resolve(void 0)
-            } else {
-              reject(new Error(`ps command failed with code ${code}`))
-            }
-          })
-        })
-        const lines = output.split('\n')
-        for (const line of lines) {
-          if (
-            line.includes('ssh') &&
-            line.includes('-N') &&
-            (line.includes('-L') || line.includes('-R') || line.includes('-D'))
-          ) {
-            const parts = line.trim().split(/\s+/)
-            const pid = parts[1]
-            if (pid && !isNaN(Number(pid))) {
-              tunnelProcesses.push(pid)
-            }
-          }
-        }
-      }
+      )
+    })
 
-      // Kill orphaned processes
-      for (const pid of tunnelProcesses) {
-        try {
-          process.kill(Number(pid), 'SIGTERM')
-          this.logger.info(`Killed orphaned SSH tunnel process: ${pid}`)
-        } catch (error) {
-          this.logger.info(`Could not kill process ${pid}:`, error)
-        }
-      }
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      this.logger.error(`Local server error for tunnel ${id}:`, err)
+      this.tunnelStorage.updateStatus(id, 'error', err.message)
+      options?.onError?.(err)
+      client.end()
+    })
 
-      if (tunnelProcesses.length > 0) {
-        this.logger.info(`Cleaned up ${tunnelProcesses.length} orphaned SSH tunnel processes`)
-      }
-    } catch (error) {
-      this.logger.error('Failed to clean up orphaned processes:', error as Error)
-    }
+    server.listen(tunnel.localPort, '127.0.0.1', () => {
+      this.logger.info(`Local tunnel server listening on 127.0.0.1:${tunnel.localPort}`)
+      this.activeServers.set(id, server)
+      this.tunnelStorage.updateStatus(id, 'running')
+      options?.onConnect?.()
+    })
   }
 
   /**
-   * Build SSH command for tunnel
+   * Sets up a Remote Port Forwarding tunnel (ssh -R)
    */
-  private async buildTunnelCommand(
-    tunnel: SSHTunnel
-  ): Promise<{ command: string; args: string[] }> {
-    const args: string[] = []
+  private setupRemoteTunnel(
+    client: Client,
+    tunnel: SSHTunnelWithProfile,
+    id: string,
+    options?: SSHTunnelOptions
+  ): void {
+    if (!tunnel.remoteHost || !tunnel.remotePort) {
+      throw new Error('Remote tunnel requires a local destination host and port')
+    }
+    client.forwardIn('0.0.0.0', tunnel.localPort, (err) => {
+      if (err) {
+        this.logger.error(`forwardIn error:`, err)
+        this.tunnelStorage.updateStatus(id, 'error', err.message)
+        options?.onError?.(err)
+        client.end()
+        return
+      }
+      this.logger.info(`Remote forwarding enabled on remote port ${tunnel.localPort}`)
+      this.tunnelStorage.updateStatus(id, 'running')
+      options?.onConnect?.()
+    })
 
-    // Add tunnel-specific arguments
-    switch (tunnel.type) {
-      case 'local': {
-        if (!tunnel.remoteHost || !tunnel.remotePort) {
-          throw new Error('Local tunnel requires remote host and port')
+    client.on('tcp connection', (info, accept) => {
+      this.logger.info('Incoming remote connection:', info)
+      const stream = accept()
+      const localSocket = net.connect(tunnel.remotePort!, tunnel.remoteHost!, () => {
+        stream.pipe(localSocket)
+        localSocket.pipe(stream)
+        stream.on('close', () => localSocket.end())
+        localSocket.on('close', () => stream.end())
+      })
+      localSocket.on('error', (err) => {
+        this.logger.error('Local service connection error:', err)
+        stream.close()
+      })
+    })
+  }
+
+  /**
+   * Sets up a Dynamic Port Forwarding tunnel / SOCKS5 proxy (ssh -D)
+   */
+  private setupDynamicTunnel(
+    client: Client,
+    tunnel: SSHTunnelWithProfile,
+    id: string,
+    options?: SSHTunnelOptions
+  ): void {
+    const socksServer = s5.createServer((info, accept) => {
+      this.logger.info(`SOCKS request to: ${info.dstAddr}:${info.dstPort}`)
+      client.forwardOut(info.srcAddr, info.srcPort, info.dstAddr, info.dstPort, (err, stream) => {
+        if (err) {
+          this.logger.error('SOCKS forwarding error:', err)
+          return
         }
-        args.push('-L', `${tunnel.localPort}:${tunnel.remoteHost}:${tunnel.remotePort}`)
-        break
-      }
-
-      case 'remote': {
-        if (!tunnel.remoteHost || !tunnel.remotePort) {
-          throw new Error('Remote tunnel requires remote host and port')
+        const socket = accept(true)
+        if (socket) {
+          stream.pipe(socket)
+          socket.pipe(stream)
+          stream.on('close', () => socket.end())
+          socket.on('close', () => stream.end())
         }
-        args.push('-R', `${tunnel.remotePort}:${tunnel.remoteHost}:${tunnel.localPort}`)
-        break
-      }
+      })
+    })
 
-      case 'dynamic': {
-        args.push('-D', tunnel.localPort.toString())
-        break
-      }
+    socksServer.on('error', (err: Error) => {
+      this.logger.error(`SOCKS server error for tunnel ${id}:`, err)
+      this.tunnelStorage.updateStatus(id, 'error', err.message)
+      options?.onError?.(err)
+      client.end()
+    })
 
-      default:
-        throw new Error(`Unsupported tunnel type: ${tunnel.type}`)
-    }
+    socksServer.listen(tunnel.localPort, '127.0.0.1', () => {
+      this.logger.info(`SOCKS5 proxy server listening on 127.0.0.1:${tunnel.localPort}`)
+      this.activeServers.set(id, socksServer)
+      this.tunnelStorage.updateStatus(id, 'running')
+      options?.onConnect?.()
+    })
+  }
 
-    // Add SSH options
-    args.push(
-      '-N',
-      '-T',
-      '-o',
-      'StrictHostKeyChecking=no',
-      '-o',
-      'UserKnownHostsFile=/dev/null',
-      '-o',
-      'ServerAliveInterval=60',
-      '-o',
-      'ServerAliveCountMax=3',
-      '-o',
-      'ExitOnForwardFailure=yes'
-    )
-
-    // Get profile for connection details
-    const profileWithConfig = await this.profileService.getProfileById(tunnel.profileId)
-    if (!profileWithConfig) {
-      throw new Error(`Profile ${tunnel.profileId} not found`)
-    }
-
-    const config = profileWithConfig.resolvedConfig
-
-    // Add port if specified
-    if (config.port && config.port !== 22) {
-      args.push('-p', config.port.toString())
-    }
-
-    // Add SSH key if specified
-    if (config.keyPath) {
-      args.push('-i', config.keyPath)
-    }
-
-    // Add user and host
-    args.push(`${config.user}@${config.host}`)
-
-    return {
-      command: 'ssh',
-      args
+  /**
+   * Closes the local server associated with a tunnel
+   */
+  private closeLocalServer(id: string): void {
+    const server = this.activeServers.get(id)
+    if (server) {
+      server.close()
+      this.activeServers.delete(id)
+      this.logger.info(`Closed local server for tunnel ${id}`)
     }
   }
 
@@ -497,19 +415,15 @@ export class SSHTunnelService {
    * Schedule tunnel reconnection
    */
   private scheduleReconnect(id: string, options?: SSHTunnelOptions): void {
-    // Clear existing timer
     const existingTimer = this.reconnectTimers.get(id)
     if (existingTimer) {
       clearTimeout(existingTimer)
     }
 
-    // Set reconnecting status
     this.tunnelStorage.updateStatus(id, 'reconnecting')
 
-    // Schedule reconnection (5 seconds delay)
     const timer = setTimeout(async () => {
       this.reconnectTimers.delete(id)
-
       try {
         await this.startTunnel(id, options)
         options?.onReconnect?.()

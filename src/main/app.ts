@@ -5,6 +5,7 @@ import { TerminalManager } from './services/terminal-manager'
 import { SSHTunnelService } from './services/ssh-tunnel-service'
 import { setupIpcHandlers } from './ipc-handlers'
 import { ConsoleLogger } from './utils/logger'
+import { autoUpdater } from 'electron-updater'
 
 /**
  * Main application class that orchestrates the entire application.
@@ -27,13 +28,15 @@ class ElectronApp {
     this.setupApp()
     await this.createMainWindow()
     this.setupAppEvents()
+
+    this.setupUpdater()
   }
 
   /**
    * Sets up the basic application configuration.
    */
   private setupApp(): void {
-    electronAppUtils.setAppUserModelId('com.electron')
+    electronAppUtils.setAppUserModelId('com.klpod221.kerminal')
 
     app.on('browser-window-created', (_, window) => {
       optimizer.watchWindowShortcuts(window)
@@ -49,13 +52,6 @@ class ElectronApp {
     this.sshTunnelService = new SSHTunnelService()
 
     setupIpcHandlers(this.windowManager, this.terminalManager)
-
-    // Clean up any orphaned SSH tunnel processes first
-    try {
-      await this.sshTunnelService.killOrphanedTunnelProcesses()
-    } catch (error) {
-      this.logger.error('Failed to clean up orphaned SSH tunnel processes:', error as Error)
-    }
 
     // Start auto-start tunnels after a short delay
     setTimeout(async () => {
@@ -92,6 +88,45 @@ class ElectronApp {
   }
 
   /**
+   * Sets up the auto-updater logic.
+   */
+  private setupUpdater(): void {
+    this.logger.info('Updater setup complete. Checking for updates...')
+
+    // Listen to autoUpdater events
+    autoUpdater.on('checking-for-update', () => {
+      this.logger.info('Checking for update...')
+    })
+
+    autoUpdater.on('update-available', (info) => {
+      this.logger.info('Update available.', info)
+    })
+
+    autoUpdater.on('update-not-available', (info) => {
+      this.logger.info('Update not available.', info)
+    })
+
+    autoUpdater.on('error', (err) => {
+      this.logger.error('Error in auto-updater. ' + err)
+    })
+
+    autoUpdater.on('download-progress', (progressObj) => {
+      let log_message = 'Download speed: ' + progressObj.bytesPerSecond
+      log_message = log_message + ' - Downloaded ' + progressObj.percent + '%'
+      log_message = log_message + ' (' + progressObj.transferred + '/' + progressObj.total + ')'
+      this.logger.info(log_message)
+    })
+
+    autoUpdater.on('update-downloaded', (info) => {
+      this.logger.info('Update downloaded. Application will be quit for update.', info)
+      autoUpdater.quitAndInstall()
+    })
+
+    // Check for updates and notify
+    autoUpdater.checkForUpdatesAndNotify()
+  }
+
+  /**
    * Cleans up resources before application exit.
    */
   private async cleanup(): Promise<void> {
@@ -105,11 +140,11 @@ class ElectronApp {
 }
 
 // Initialize and start the application
-const klTermApp = new ElectronApp()
+const kerminalApp = new ElectronApp()
 const logger = new ConsoleLogger('Main')
 ;(async () => {
   try {
-    await klTermApp.initialize()
+    await kerminalApp.initialize()
   } catch (error) {
     logger.error('Failed to initialize application:', error as Error)
     app.quit()

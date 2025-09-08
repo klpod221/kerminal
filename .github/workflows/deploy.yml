@@ -56,32 +56,25 @@ jobs:
           npm run build
           npx --no-install electron-builder --win
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: built-app-${{ matrix.os }}
-          path: |
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.dmg
-            dist/*.tar.gz
-            dist/*.exe
+      - name: Build and Publish
+        run: |
+          npm run build
+          npx --no-install electron-builder --publish always
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release:
-    name: Create Release
+    name: Finalize Release
     runs-on: ubuntu-latest
     needs: build
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Create Release and Upload Assets
+      - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          draft: false
+          prerelease: false
 
   aur-publish:
     name: Publish to AUR

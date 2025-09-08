@@ -342,7 +342,7 @@ export class SyncService {
     const isFirstSync = !this.config?.lastSync
 
     this.logger.debug(
-      `Enhanced sync for ${name}: isFirstSync=${isFirstSync}, lastSyncTime=${lastSyncTime.toISOString()}`
+      `Sync ${name}: isFirstSync=${isFirstSync}, lastSyncTime=${lastSyncTime.toISOString()}`
     )
 
     // Get local changes since last sync

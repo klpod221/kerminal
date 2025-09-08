@@ -37,6 +37,7 @@
     "lucide-vue-next": "0.542.0",
     "mongodb": "6.19.0",
     "node-pty": "1.1.0-beta34",
+    "socksv5": "^0.0.6",
     "splitpanes": "4.0.4",
     "ssh2": "1.17.0",
     "uuid": "11.1.0"
