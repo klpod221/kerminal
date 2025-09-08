@@ -4,10 +4,11 @@
       <div class="mt-4 mb-12">
         <img :src="Logo" alt="Kerminal Logo" class="h-32 mx-auto mb-4" />
         <h1
-          class="text-center text-5xl md:text-6xl font-extrabold mb-4 bg-gradient-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent"
+          class="text-center text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent"
         >
           Kerminal
         </h1>
+        <p class="text-center text-sm text-gray-400 mb-2">v{{ appVersion }}</p>
         <p class="text-center text-xl mt-1">
           Modern Terminal with SSH, Tunneling & Cross-Device Sync
         </p>
@@ -418,6 +419,9 @@ import { formatRelativeTime } from '../utils/formatter'
 import type { SSHConnection } from '../types/ssh'
 import type { SystemInfo, NetworkStatus } from '../types/system'
 import Logo from '../assets/images/logo_250.png'
+
+declare const __APP_VERSION__: string
+const appVersion = __APP_VERSION__
 
 // Reactive state
 const isLoading = ref(true)
