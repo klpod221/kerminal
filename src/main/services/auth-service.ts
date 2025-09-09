@@ -7,6 +7,7 @@ import { ConsoleLogger } from '../utils/logger'
 import { MongoDBService } from './mongodb-service'
 import { SyncManager } from './sync-manager'
 import { SyncService } from './sync-service'
+import { SyncConfig } from '../interfaces/sync.interface'
 
 export interface SecuritySettings {
   requirePasswordOnStart: boolean
@@ -537,6 +538,58 @@ export class AuthService {
       const storedHash = masterPasswordDoc.verificationHash
 
       return this.cryptoService.verifyMasterPassword(password, storedHash, salt)
+    } catch (error) {
+      this.logger.error('Error verifying MongoDB master password:', error as Error)
+      return false
+    }
+  }
+
+  /**
+   * Verify master password against MongoDB database
+   * @param mongoUri - MongoDB URI
+   * @param databaseName - Database name
+   * @param password - Password to verify
+   * @returns True if password is valid
+   */
+  async verifyMongoPassword(
+    mongoUri: string,
+    databaseName: string,
+    password: string
+  ): Promise<boolean> {
+    try {
+      this.logger.info('Verifying master password against MongoDB')
+
+      // Create MongoDB service instance
+      const mongoService = new MongoDBService()
+
+      // Set temporary config
+      const tempConfig: SyncConfig = {
+        id: 'temp-mongo-verify',
+        provider: 'mongodb' as const,
+        mongoUri,
+        databaseName,
+        enabled: true,
+        autoSync: false,
+        syncInterval: 30,
+        created: new Date(),
+        updated: new Date()
+      }
+
+      // Set config and connect to MongoDB
+      mongoService.setConfig(tempConfig)
+      const connected = await mongoService.connect()
+
+      if (!connected) {
+        throw new Error('Failed to connect to MongoDB')
+      }
+
+      // Verify password using the private method
+      const isValid = await this.verifyMongoMasterPassword(mongoService, password)
+
+      // Clean up
+      await mongoService.disconnect()
+
+      return isValid
     } catch (error) {
       this.logger.error('Error verifying MongoDB master password:', error as Error)
       return false

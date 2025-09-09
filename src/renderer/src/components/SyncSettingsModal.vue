@@ -65,7 +65,7 @@
       <!-- MongoDB Configuration -->
       <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">MongoDB Configuration</h3>
-        <form @submit.prevent="handleSave">
+        <div>
           <Input
             v-model="formData.mongoUri"
             label="MongoDB URI"
@@ -96,57 +96,56 @@
           />
 
           <div class="flex justify-between space-x-3 mt-4">
+            <Button type="button" variant="secondary" @click="$emit('close')">Close</Button>
             <Button
               type="button"
-              variant="secondary"
-              :loading="isTestingConnection"
-              @click="testConnection"
+              variant="primary"
+              :loading="isTestingConnection || isLoading"
+              :icon="Save"
+              @click="handleRightButtonClick"
             >
-              Test Connection
-            </Button>
-            <Button type="submit" variant="primary" :loading="isLoading" :icon="Save">
-              {{ connectionTestPassed ? 'Setup Sync' : 'Save Configuration' }}
+              {{ getRightButtonLabel }}
             </Button>
           </div>
-        </form>
+        </div>
       </div>
 
       <!-- Master Password Verification -->
       <div v-if="showPasswordVerification && connectionTestPassed" class="space-y-1">
-        <h3 class="text-lg font-medium text-white">Master Password Verification</h3>
+        <h3 class="text-lg font-medium text-white">MongoDB Master Password</h3>
         <div class="bg-blue-900/20 border border-blue-500 rounded-lg p-4">
           <p class="text-sm text-blue-200 mb-4">
-            Both local and MongoDB database contain data. Please enter the master password from
-            MongoDB to verify and sync your data.
+            MongoDB database contains existing data. Please enter the master password to verify and
+            proceed with sync setup.
           </p>
 
           <div class="space-y-4">
+            <!-- Password verification success message -->
+            <div
+              v-if="passwordVerified"
+              class="bg-green-900/20 border border-green-500 rounded-lg p-3"
+            >
+              <p class="text-sm text-green-200">
+                ✅ MongoDB master password verified successfully! You can now setup sync.
+              </p>
+            </div>
+
             <Input
               v-model="masterPassword"
               label="MongoDB Master Password"
               :type="showMasterPassword ? 'text' : 'password'"
               placeholder="Enter existing MongoDB master password"
               :right-icon="showMasterPassword ? EyeOff : Eye"
+              :disabled="passwordVerified"
               @right-icon-click="showMasterPassword = !showMasterPassword"
             />
             <p class="text-xs text-gray-400">
-              This is the master password that was used to encrypt data in your MongoDB database.
+              {{
+                passwordVerified
+                  ? 'Password verified! Click "Setup Sync" to continue.'
+                  : 'This is the master password that was used to encrypt data in your MongoDB database.'
+              }}
             </p>
-
-            <div class="flex justify-end space-x-3">
-              <Button type="button" variant="secondary" @click="cancelPasswordVerification">
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                :loading="isLoading"
-                :disabled="!masterPassword.trim()"
-                @click="verifyMasterPassword"
-              >
-                Verify & Setup Sync
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -243,7 +242,33 @@ const statusLabel = computed(() => {
   return 'Disconnected'
 })
 
+const getRightButtonLabel = computed(() => {
+  if (!connectionTestPassed.value) {
+    return 'Test Connection'
+  }
+
+  if (showPasswordVerification.value && mongoHasMasterPassword.value && !passwordVerified.value) {
+    return 'Verify Password'
+  }
+
+  return 'Setup Sync'
+})
+
 // Methods
+async function handleRightButtonClick(): Promise<void> {
+  if (!connectionTestPassed.value) {
+    await testConnection()
+  } else if (
+    showPasswordVerification.value &&
+    mongoHasMasterPassword.value &&
+    !passwordVerified.value
+  ) {
+    await verifyMasterPassword()
+  } else {
+    await handleSave()
+  }
+}
+
 async function loadConfig(): Promise<void> {
   try {
     const config = (await window.api.invoke('sync.getConfig')) as SyncConfig | null
@@ -286,6 +311,11 @@ async function testConnection(): Promise<void> {
         formData.mongoUri,
         formData.databaseName
       )) as boolean
+
+      // If MongoDB has data, show password verification form immediately
+      if (mongoHasMasterPassword.value) {
+        showPasswordVerification.value = true
+      }
     } else {
       message.error('Failed to connect to MongoDB')
     }
@@ -302,9 +332,9 @@ async function handleSave(): Promise<void> {
     return
   }
 
-  // Check if password verification is needed
-  if (hasExistingData.value && mongoHasMasterPassword.value && !passwordVerified.value) {
-    showPasswordVerification.value = true
+  // If MongoDB has master password but not yet verified, don't proceed
+  if (mongoHasMasterPassword.value && !passwordVerified.value) {
+    message.error('Please verify the MongoDB master password first')
     return
   }
 
@@ -435,12 +465,6 @@ function resetForm(): void {
   passwordVerified.value = false
 }
 
-function cancelPasswordVerification(): void {
-  showPasswordVerification.value = false
-  masterPassword.value = ''
-  passwordVerified.value = false
-}
-
 async function verifyMasterPassword(): Promise<void> {
   if (!masterPassword.value.trim()) {
     message.error('Please enter the master password')
@@ -449,24 +473,27 @@ async function verifyMasterPassword(): Promise<void> {
 
   isLoading.value = true
   try {
-    // Verify the local master password first
+    // Verify the MongoDB master password
     const verified = (await window.api.invoke(
-      'auth:unlock-with-master-password',
+      'auth:verify-mongo-master-password',
+      formData.mongoUri,
+      formData.databaseName,
       masterPassword.value
     )) as boolean
 
     if (verified) {
       passwordVerified.value = true
-      message.success('Master password verified successfully')
+      message.success('MongoDB master password verified successfully')
 
-      // Now proceed with sync setup
-      await setupSync()
+      // Keep form visible to show success state
     } else {
-      message.error('Incorrect master password. Please try again.')
+      message.error('Incorrect MongoDB master password. Please try again.')
     }
   } catch (error) {
-    console.error('Master password verification failed:', error)
-    message.error('Failed to verify master password. Please check your connection and try again.')
+    console.error('MongoDB master password verification failed:', error)
+    message.error(
+      'Failed to verify MongoDB master password. Please check your connection and try again.'
+    )
   } finally {
     isLoading.value = false
   }

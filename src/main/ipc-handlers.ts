@@ -833,6 +833,19 @@ function setupAuthHandlers(authService: AuthService): void {
     }
   )
 
+  // Verify MongoDB master password
+  ipcMain.handle(
+    'auth:verify-mongo-master-password',
+    async (_event, mongoUri: string, databaseName: string, masterPassword: string) => {
+      try {
+        return await authService.verifyMongoPassword(mongoUri, databaseName, masterPassword)
+      } catch (error) {
+        logger.error('Verify MongoDB master password error:', error as Error)
+        return false
+      }
+    }
+  )
+
   // Check if MongoDB has master password data
   ipcMain.handle(
     'auth:check-mongo-master-password-exists',

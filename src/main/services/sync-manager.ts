@@ -134,11 +134,8 @@ export class SyncManager {
       // Create auth service instance
       const authService = new AuthService()
 
-      // First verify the provided master password
-      const isValidPassword = await authService.unlockWithMasterPassword(masterPassword)
-      if (!isValidPassword) {
-        throw new Error('Incorrect master password')
-      }
+      // The master password has already been verified in the frontend,
+      // so we can proceed directly with the sync setup
 
       // Test connection first
       const connectionTest = await this.syncService.testConnection(
