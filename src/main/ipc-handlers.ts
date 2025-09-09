@@ -552,6 +552,10 @@ function setupSyncHandlers(syncManager: SyncManager): void {
     }
   })
 
+  // ============================================================================
+  // SYNC SETUP HANDLERS
+  // ============================================================================
+
   // Setup sync (first time or reconfigure)
   ipcMain.handle('sync.setup', async (_event, config) => {
     try {
@@ -571,6 +575,10 @@ function setupSyncHandlers(syncManager: SyncManager): void {
       throw error
     }
   })
+
+  // ============================================================================
+  // SYNC CONTROL HANDLERS
+  // ============================================================================
 
   // Enable sync
   ipcMain.handle('sync.enable', async (_event, config) => {
@@ -832,6 +840,10 @@ function setupAuthHandlers(authService: AuthService): void {
       }
     }
   )
+
+  // ============================================================================
+  // MONGODB AUTHENTICATION HANDLERS
+  // ============================================================================
 
   // Verify MongoDB master password
   ipcMain.handle(

@@ -9,6 +9,10 @@ import { SyncManager } from './sync-manager'
 import { SyncService } from './sync-service'
 import { SyncConfig } from '../interfaces/sync.interface'
 
+// ============================================================================
+// INTERFACES
+// ============================================================================
+
 export interface SecuritySettings {
   requirePasswordOnStart: boolean
   autoLockTimeout: number // in minutes (0 = never)
@@ -20,6 +24,10 @@ export interface MasterPasswordData {
   verificationHash: string // hash for password verification
   settings: SecuritySettings
 }
+
+// ============================================================================
+// AUTH SERVICE CLASS
+// ============================================================================
 
 /**
  * Service for managing authentication state and master password
@@ -41,6 +49,10 @@ export class AuthService {
     this.cryptoService = new CryptoService()
     this.configFile = path.join(app.getPath('userData'), 'master-password.json')
   }
+
+  // ============================================================================
+  // MASTER PASSWORD MANAGEMENT
+  // ============================================================================
 
   /**
    * Check if a master password has been set
@@ -544,6 +556,10 @@ export class AuthService {
     }
   }
 
+  // ============================================================================
+  // MONGODB PASSWORD VERIFICATION
+  // ============================================================================
+
   /**
    * Verify master password against MongoDB database
    * @param mongoUri - MongoDB URI
@@ -562,7 +578,7 @@ export class AuthService {
       // Create MongoDB service instance
       const mongoService = new MongoDBService()
 
-      // Set temporary config
+      // Set temporary config for verification
       const tempConfig: SyncConfig = {
         id: 'temp-mongo-verify',
         provider: 'mongodb' as const,
@@ -575,7 +591,7 @@ export class AuthService {
         updated: new Date()
       }
 
-      // Set config and connect to MongoDB
+      // Connect to MongoDB
       mongoService.setConfig(tempConfig)
       const connected = await mongoService.connect()
 
@@ -583,7 +599,7 @@ export class AuthService {
         throw new Error('Failed to connect to MongoDB')
       }
 
-      // Verify password using the private method
+      // Verify password
       const isValid = await this.verifyMongoMasterPassword(mongoService, password)
 
       // Clean up

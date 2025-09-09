@@ -126,16 +126,18 @@ export class SyncManager {
     }
   }
 
+  // ============================================================================
+  // SYNC SETUP WITH PASSWORD VERIFICATION
+  // ============================================================================
+
   /**
    * Setup sync with master password verification (for existing data scenario)
+   * The password has already been verified in the frontend
    */
   async setupSyncWithPassword(config: SyncConfig, masterPassword: string): Promise<boolean> {
     try {
       // Create auth service instance
       const authService = new AuthService()
-
-      // The master password has already been verified in the frontend,
-      // so we can proceed directly with the sync setup
 
       // Test connection first
       const connectionTest = await this.syncService.testConnection(
@@ -147,7 +149,7 @@ export class SyncManager {
         throw new Error('Failed to connect to MongoDB')
       }
 
-      // Check if have existing local data to migrate
+      // Check if we have existing local data to migrate
       const hasLocalData = await this.hasExistingLocalData()
 
       // Initialize sync service
@@ -158,7 +160,7 @@ export class SyncManager {
         throw new Error('Failed to initialize sync service')
       }
 
-      // Verify that the connection is actually established
+      // Verify connection is established
       const status = this.syncService.getStatus()
       if (!status.isConnected) {
         throw new Error('Sync service initialized but not connected')

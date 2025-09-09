@@ -120,7 +120,6 @@
           </p>
 
           <div class="space-y-4">
-            <!-- Password verification success message -->
             <div
               v-if="passwordVerified"
               class="bg-green-900/20 border border-green-500 rounded-lg p-3"
@@ -191,6 +190,7 @@ import Button from './ui/Button.vue'
 import { message } from '../utils/message'
 import type { SyncConfig, SyncStatus } from '../types/sync'
 
+// Props & Emits
 interface Props {
   visible?: boolean
   refreshTrigger?: number
@@ -206,7 +206,7 @@ const emit = defineEmits<{
   configUpdated: [config: SyncConfig | null]
 }>()
 
-// State
+// State Management
 const currentConfig = ref<SyncConfig | null>(null)
 const syncStatus = ref<SyncStatus>({ isConnected: false, isLoading: false })
 const hasExistingData = ref(false)
@@ -214,7 +214,7 @@ const mongoHasMasterPassword = ref(false)
 const connectionTestPassed = ref(false)
 const statusRefreshInterval = ref<number | null>(null)
 
-// Master password verification state
+// Password verification state
 const showPasswordVerification = ref(false)
 const masterPassword = ref('')
 const showMasterPassword = ref(false)
@@ -234,7 +234,7 @@ const formData = reactive({
   syncInterval: 30
 })
 
-// Computed
+// Computed Properties
 const statusLabel = computed(() => {
   if (syncStatus.value.isLoading) return 'Syncing...'
   if (syncStatus.value.isConnected) return 'Connected'
@@ -243,18 +243,21 @@ const statusLabel = computed(() => {
 })
 
 const getRightButtonLabel = computed(() => {
-  if (!connectionTestPassed.value) {
-    return 'Test Connection'
-  }
-
+  if (!connectionTestPassed.value) return 'Test Connection'
   if (showPasswordVerification.value && mongoHasMasterPassword.value && !passwordVerified.value) {
     return 'Verify Password'
   }
-
   return 'Setup Sync'
 })
 
-// Methods
+// Helper Functions
+function resetPasswordState(): void {
+  showPasswordVerification.value = false
+  masterPassword.value = ''
+  passwordVerified.value = false
+}
+
+// Main Methods
 async function handleRightButtonClick(): Promise<void> {
   if (!connectionTestPassed.value) {
     await testConnection()
@@ -305,14 +308,12 @@ async function testConnection(): Promise<void> {
       message.success('Connection test successful!')
       connectionTestPassed.value = true
 
-      // Check if MongoDB has master password data
       mongoHasMasterPassword.value = (await window.api.invoke(
         'auth:check-mongo-master-password-exists',
         formData.mongoUri,
         formData.databaseName
       )) as boolean
 
-      // If MongoDB has data, show password verification form immediately
       if (mongoHasMasterPassword.value) {
         showPasswordVerification.value = true
       }
@@ -332,7 +333,6 @@ async function handleSave(): Promise<void> {
     return
   }
 
-  // If MongoDB has master password but not yet verified, don't proceed
   if (mongoHasMasterPassword.value && !passwordVerified.value) {
     message.error('Please verify the MongoDB master password first')
     return
@@ -353,7 +353,6 @@ async function setupSync(): Promise<void> {
       syncInterval: formData.syncInterval
     }
 
-    // If password verification was required and completed, use the verified password
     if (showPasswordVerification.value && passwordVerified.value) {
       const success = await window.api.invoke(
         'sync.setupWithPassword',
@@ -366,12 +365,8 @@ async function setupSync(): Promise<void> {
         return
       }
 
-      // Reset password verification state
-      showPasswordVerification.value = false
-      masterPassword.value = ''
-      passwordVerified.value = false
+      resetPasswordState()
     } else {
-      // Normal setup flow
       const success = await window.api.invoke('sync.setup', configData)
 
       if (!success) {
@@ -473,7 +468,6 @@ async function verifyMasterPassword(): Promise<void> {
 
   isLoading.value = true
   try {
-    // Verify the MongoDB master password
     const verified = (await window.api.invoke(
       'auth:verify-mongo-master-password',
       formData.mongoUri,
@@ -484,8 +478,6 @@ async function verifyMasterPassword(): Promise<void> {
     if (verified) {
       passwordVerified.value = true
       message.success('MongoDB master password verified successfully')
-
-      // Keep form visible to show success state
     } else {
       message.error('Incorrect MongoDB master password. Please try again.')
     }
@@ -507,9 +499,9 @@ async function loadSyncStatus(): Promise<void> {
   }
 }
 
+// Status Management
 function startStatusRefresh(): void {
   if (statusRefreshInterval.value) return
-
   statusRefreshInterval.value = setInterval(async () => {
     await loadSyncStatus()
   }, 5000) as unknown as number
@@ -535,17 +527,14 @@ watch(
   }
 )
 
-// Watch for refresh trigger (when sync config changes externally)
 watch(
   () => props.refreshTrigger,
   () => {
-    if (props.visible) {
-      loadConfig()
-    }
+    if (props.visible) loadConfig()
   }
 )
 
-// Lifecycle
+// Lifecycle Hooks
 onMounted(() => {
   if (props.visible) {
     loadConfig()
