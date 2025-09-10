@@ -11,22 +11,7 @@
   >
     <!-- Tab Navigation for Create Mode -->
     <div v-if="mode === 'create'" class="mb-6">
-      <nav class="flex space-x-1 bg-gray-800/50 rounded-lg p-1">
-        <button
-          v-for="tab in createTabs"
-          :key="tab.id"
-          type="button"
-          class="flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors"
-          :class="{
-            'bg-blue-600 text-white': activeCreateTab === tab.id,
-            'text-gray-300 hover:text-white hover:bg-gray-700': activeCreateTab !== tab.id
-          }"
-          @click="activeCreateTab = tab.id as 'local' | 'mongodb'"
-        >
-          <component :is="tab.icon" class="w-4 h-4 inline-block mr-2" />
-          {{ tab.label }}
-        </button>
-      </nav>
+      <NavigationTabs v-model="activeCreateTab" :tabs="createTabs" />
     </div>
 
     <!-- Local Password Creation Tab -->
@@ -111,6 +96,7 @@ import Message from './ui/Message.vue'
 import LocalPasswordForm from './auth/LocalPasswordForm.vue'
 import MongoPasswordForm from './auth/MongoPasswordForm.vue'
 import { message } from '../utils/message'
+import NavigationTabs from './ui/NavigationTabs.vue'
 import type {
   MasterPasswordModalProps,
   SecuritySettings,

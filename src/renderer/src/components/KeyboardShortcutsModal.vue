@@ -10,23 +10,7 @@
   >
     <!-- Category Tabs -->
     <div class="space-y-4">
-      <div
-        class="flex gap-1 bg-gray-800/50 p-1.5 rounded-lg backdrop-blur-sm border border-gray-700/50"
-      >
-        <button
-          v-for="category in categories"
-          :key="category.key"
-          :class="[
-            'px-4 py-2.5 rounded-md text-sm font-medium transition-all duration-200 ease-in-out flex-1 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900',
-            activeCategory === category.key
-              ? 'bg-blue-600 text-white shadow-lg transform scale-[0.98]'
-              : 'text-gray-300 hover:text-white hover:bg-gray-700/70 hover:scale-[0.99] active:scale-[0.97]'
-          ]"
-          @click="activeCategory = category.key"
-        >
-          {{ category.label }}
-        </button>
-      </div>
+      <NavigationTabs v-model="activeCategory" :tabs="categoryTabs" />
 
       <!-- Shortcuts List -->
       <div class="space-y-3 h-full overflow-y-auto max-h-[500px]">
@@ -123,6 +107,7 @@ import { useKeyboardShortcuts } from '../services/keyboard-shortcut-service'
 import { KEYBOARD_SHORTCUT_CATEGORY_LABELS } from '../types/keyboard'
 import type { KeyboardShortcutCategory } from '../types/keyboard'
 import type { KeyboardShortcutsModalProps } from '../types/modals'
+import NavigationTabs from './ui/NavigationTabs.vue'
 
 const { isVisible } = defineProps<KeyboardShortcutsModalProps>()
 
@@ -139,11 +124,12 @@ const {
 
 const activeCategory = ref<KeyboardShortcutCategory>('general')
 
-// Available categories
-const categories = computed(() => {
+// Tabs for NavigationTabs component
+const categoryTabs = computed(() => {
   return Object.keys(shortcutsByCategory.value).map((key) => ({
-    key: key as KeyboardShortcutCategory,
-    label: KEYBOARD_SHORTCUT_CATEGORY_LABELS[key as KeyboardShortcutCategory]
+    id: key,
+    label: KEYBOARD_SHORTCUT_CATEGORY_LABELS[key as KeyboardShortcutCategory],
+    icon: Keyboard
   }))
 })
 
@@ -175,8 +161,8 @@ const handleResetConfirm = (): void => {
 watch(
   () => isVisible,
   (newValue) => {
-    if (newValue && categories.value.length > 0) {
-      activeCategory.value = categories.value[0].key
+    if (newValue && categoryTabs.value.length > 0) {
+      activeCategory.value = categoryTabs.value[0].id as KeyboardShortcutCategory
     }
   }
 )
