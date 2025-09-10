@@ -1,8 +1,8 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-2">
     <!-- Description -->
     <div class="text-sm text-gray-300 leading-relaxed">
-      <p class="mb-3">
+      <p class="mb-2">
         Create a master password to secure your data locally. This password will encrypt your SSH
         profiles, saved commands, and tunnel configurations on this device only.
       </p>
@@ -12,7 +12,7 @@
     </div>
 
     <!-- Form -->
-    <form class="space-y-4" @submit.prevent="handleSubmit">
+    <form @submit.prevent="handleSubmit">
       <!-- Master Password -->
       <Input
         v-model="form.password"

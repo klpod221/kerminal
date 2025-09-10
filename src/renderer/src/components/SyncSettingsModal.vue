@@ -173,9 +173,14 @@
       <!-- Existing Configuration Management -->
       <div v-if="currentConfig" class="space-y-1">
         <h3 class="text-lg font-medium text-white">Manage Configuration</h3>
-        <Button variant="secondary" :loading="isDeleting" @click="deleteSyncConfig">
-          Delete Configuration
-        </Button>
+        <PopConfirm
+          title="Delete sync configuration?"
+          content="Are you sure you want to delete the sync configuration? This action cannot be undone."
+          placement="top"
+          @confirm="deleteSyncConfig"
+        >
+          <Button variant="secondary" :loading="isDeleting"> Delete Configuration </Button>
+        </PopConfirm>
       </div>
     </div>
   </Modal>
@@ -187,6 +192,7 @@ import { Database, Save, Eye, EyeOff } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
 import Input from './ui/Input.vue'
 import Button from './ui/Button.vue'
+import PopConfirm from './ui/PopConfirm.vue'
 import { message } from '../utils/message'
 import type { SyncConfig, SyncStatus } from '../types/sync'
 
@@ -412,11 +418,6 @@ async function performSync(): Promise<void> {
 }
 
 async function deleteSyncConfig(): Promise<void> {
-  const confirmed = confirm(
-    'Are you sure you want to delete the sync configuration? This action cannot be undone.'
-  )
-  if (!confirmed) return
-
   isDeleting.value = true
   try {
     const success = await window.api.invoke('sync.deleteConfig')

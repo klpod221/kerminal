@@ -376,8 +376,9 @@ export class SyncService {
     collectionName: string,
     result: SyncOperationResult
   ): Promise<void> {
-    const lastSyncTime = this.config?.lastSync || new Date(0)
-    const isFirstSync = !this.config?.lastSync
+    const rawLastSync = this.config?.lastSync
+    const lastSyncTime = rawLastSync ? new Date(rawLastSync) : new Date(0)
+    const isFirstSync = !rawLastSync
 
     this.logger.debug(
       `Sync ${name}: isFirstSync=${isFirstSync}, lastSyncTime=${lastSyncTime.toISOString()}`
@@ -410,7 +411,8 @@ export class SyncService {
     // Process tombstones first
     const tombstones = await storage.getTombstones!()
     for (const tombstone of tombstones) {
-      if (tombstone.deletedAt > lastSyncTime) {
+      const tombstoneDate = new Date(tombstone.deletedAt)
+      if (tombstoneDate > lastSyncTime) {
         await this.processTombstone(tombstone, collectionName)
         result.tombstonesProcessed++
       }
@@ -502,7 +504,7 @@ export class SyncService {
   private async getRemoteChangesSince(collectionName: string, since: Date): Promise<Document[]> {
     try {
       return await this.mongoService.find(collectionName, {
-        '_syncMeta.version.timestamp': { $gt: since }
+        '_syncMeta.version.timestamp': { $gt: since.getTime() }
       })
     } catch {
       return []
