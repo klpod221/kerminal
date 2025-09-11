@@ -1,0 +1,27 @@
+{
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributors": [
+    {
+      "login": "Abhishekrajpurohit",
+      "name": "Abhishek Rajpurohit",
+      "avatar_url": "https://avatars.githubusercontent.com/u/71376117?v=4",
+      "profile": "https://github.com/Abhishekrajpurohit",
+      "contributions": [
+        "code",
+        "bug"
+      ]
+    }
+  ],
+  "contributorsPerLine": 7,
+  "skipCi": true,
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "projectName": "kerminal",
+  "projectOwner": "klpod221"
+}

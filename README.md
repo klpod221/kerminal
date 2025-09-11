@@ -1,4 +1,7 @@
 <div align="center">
+<!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
+[![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
+<!-- ALL-CONTRIBUTORS-BADGE:END -->
     <h1>Kerminal: Modern Terminal with SSH, Tunneling & Cross-Device Sync</h1>
     <p>A powerful, cross-platform terminal application with advanced SSH management, comprehensive tunneling capabilities, and seamless data synchronization across all your devices.</p>
     <img src="https://img.shields.io/github/last-commit/klpod221/kerminal?style=for-the-badge&color=74c7ec&labelColor=111827" alt="Last Commit">
@@ -374,12 +377,14 @@ A huge thank you to all the wonderful people who have contributed to this projec
 <table>
   <tbody>
     <tr>
-      <td align="center" valign="top" width="14.28%"><a href="https://github.com/klpod221"><img src="https://avatars.githubusercontent.com/u/62713126?v=4?s=100" width="100px;" alt="klpod221"/><br /><sub><b>klpod221</b></sub></a><br /><a href="https://github.com/klpod221/kerminal/commits?author=klpod221" title="Code">💻</a> <a href="#maintenance-klpod221" title="Maintenance">🚧</a></td>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/Abhishekrajpurohit"><img src="https://avatars.githubusercontent.com/u/71376117?v=4?s=100" width="100px;" alt="Abhishek Rajpurohit"/><br /><sub><b>Abhishek Rajpurohit</b></sub></a><br /><a href="https://github.com/klpod221/kerminal/commits?author=Abhishekrajpurohit" title="Code">💻</a> <a href="https://github.com/klpod221/kerminal/issues?q=author%3AAbhishekrajpurohit" title="Bug reports">🐛</a></td>
     </tr>
   </tbody>
 </table>
+
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
+
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## 📄 License
@@ -412,3 +417,16 @@ Check the [Releases page](https://github.com/klpod221/kerminal/releases) for the
 ---
 
 _This README was crafted with assistance from an AI model._
+
+## Contributors ✨
+
+Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
