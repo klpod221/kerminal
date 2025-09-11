@@ -20,6 +20,45 @@
 
 Perfect for managing cloud infrastructure, remote development, and multi-server environments.
 
+## Table of Contents
+
+- [📝 Description](#-description)
+- [Table of Contents](#table-of-contents)
+- [📸 Screenshots](#-screenshots)
+  - [Main Interface](#main-interface)
+  - [Dashboard](#dashboard)
+  - [SSH Profiles](#ssh-profiles)
+  - [Saved Commands](#saved-commands)
+  - [SSH Tunneling](#ssh-tunneling)
+  - [Sync Settings](#sync-settings)
+- [✨ Features](#-features)
+  - [🖥️ **Modern Terminal**](#️-modern-terminal)
+  - [🔐 **SSH Management**](#-ssh-management)
+  - [🌐 **Port Tunneling**](#-port-tunneling)
+  - [☁️ **Cross-Device Sync**](#️-cross-device-sync)
+  - [⚡ **Automation \& Tools**](#-automation--tools)
+- [🚀 Installation Guide](#-installation-guide)
+  - [System Requirements](#system-requirements)
+  - [Option 1: Download Pre-built Packages (Recommended)](#option-1-download-pre-built-packages-recommended)
+    - [Windows](#windows)
+    - [macOS](#macos)
+    - [Linux](#linux)
+  - [Installation Instructions](#installation-instructions)
+    - [Windows Installation](#windows-installation)
+    - [macOS Installation](#macos-installation)
+    - [Linux Installation](#linux-installation)
+  - [Option 2: Build from Source](#option-2-build-from-source)
+    - [Prerequisites](#prerequisites)
+    - [Build Instructions](#build-instructions)
+- [🐞 Known Issues](#-known-issues)
+- [🗺️ Roadmap \& Checklist](#️-roadmap--checklist)
+- [🤝 Contributing](#-contributing)
+  - [How to Contribute](#how-to-contribute)
+  - [🙏 Our Valued Contributors](#-our-valued-contributors)
+- [📄 License](#-license)
+- [👨‍💻 Author](#-author)
+- [📊 Project Status](#-project-status)
+
 ## 📸 Screenshots
 
 ### Main Interface
@@ -257,196 +296,91 @@ npm run build:mac    # macOS
 npm run build:linux  # Linux
 ```
 
-## 🔧 Development
+## 🐞 Known Issues
 
-### Project Structure
+- Error with password authentication when update to lastest from older version (1.0.6 and below)
+- Cannot launch on MacOS because MacOS blocks apps from unidentified developers (code signing in progress). You can bypass this by right-clicking the app and selecting "Open", then confirming or launch it from terminal using `xattr -d com.apple.quarantine /path/to/Kerminal.app`. (More info: [Issue #2](https://github.com/klpod221/kerminal/issues/2))
+- Not have auto-update feature.
+- Not save the ssh key (only save the path to the key)
 
-```text
-kerminal/
-├── build/                          # Build resources and assets
-│   ├── entitlements.mac.plist     # macOS entitlements for code signing
-│   ├── icon.icns                  # macOS application icon
-│   ├── icon.ico                   # Windows application icon
-│   └── icon.png                   # Application icon (PNG format)
-│
-├── resources/                      # Static application resources
-│   └── icon.png                   # Application icon resource
-│
-├── src/                           # Main source code directory
-│   ├── main/                      # Electron main process (Backend)
-│   │   ├── app.ts                 # Main application entry point
-│   │   ├── index.ts               # Electron main process initialization
-│   │   ├── ipc-handlers.ts        # IPC communication handlers
-│   │   │
-│   │   ├── base/                  # Base classes and abstractions
-│   │   │   └── base-service.ts    # Base service class for all services
-│   │   │
-│   │   ├── interfaces/            # TypeScript interfaces and contracts
-│   │   │   ├── application.interface.ts    # Application-wide interfaces
-│   │   │   ├── ssh.interface.ts           # SSH-related interfaces
-│   │   │   ├── sync.interface.ts          # Synchronization interfaces
-│   │   │   ├── syncable-storage.interface.ts  # Storage sync interfaces
-│   │   │   └── terminal.interface.ts      # Terminal-related interfaces
-│   │   │
-│   │   ├── services/              # Core business logic services
-│   │   │   ├── mongodb-service.ts         # MongoDB connection service
-│   │   │   ├── saved-command-service.ts   # Saved commands management
-│   │   │   ├── ssh-connection-service.ts  # SSH connection handling
-│   │   │   ├── ssh-connection.ts          # SSH connection implementation
-│   │   │   ├── ssh-profile-service.ts     # SSH profile management
-│   │   │   ├── ssh-tunnel-service.ts      # SSH tunneling service
-│   │   │   ├── sync-manager.ts            # Data synchronization manager
-│   │   │   ├── sync-service.ts            # Synchronization service
-│   │   │   ├── system-info.ts             # System information service
-│   │   │   ├── terminal-buffer-manager.ts # Terminal buffer management
-│   │   │   ├── terminal-manager.ts        # Terminal session management
-│   │   │   └── window-manager.ts          # Application window management
-│   │   │
-│   │   ├── storage/               # Data persistence layer
-│   │   │   ├── base-storage.ts            # Base storage class
-│   │   │   ├── saved-command-storage.ts   # Saved commands storage
-│   │   │   ├── ssh-connection-storage.ts  # SSH connections storage
-│   │   │   ├── ssh-group-storage.ts       # SSH groups storage
-│   │   │   ├── ssh-profile-storage.ts     # SSH profiles storage
-│   │   │   ├── ssh-tunnel-storage.ts      # SSH tunnels storage
-│   │   │   └── sync-config-storage.ts     # Sync configuration storage
-│   │   │
-│   │   ├── types/                 # TypeScript type definitions
-│   │   │   ├── main.ts            # Main process type definitions
-│   │   │   └── ssh.ts             # SSH-related type definitions
-│   │   │
-│   │   ├── utils/                 # Main process utilities
-│   │   │   └── logger.ts          # Logging utility
-│   │   │
-│   │   └── validators/            # Data validation modules
-│   │       └── ssh-config-validator.ts    # SSH configuration validator
-│   │
-│   ├── preload/                   # Electron preload scripts (Security layer)
-│   │   ├── index.d.ts             # Preload type definitions
-│   │   └── index.ts               # Main preload script for IPC bridge
-│   │
-│   ├── renderer/                  # Frontend application (Vue.js)
-│   │   ├── index.html             # Main HTML template
-│   │   └── src/
-│   │       ├── App.vue            # Root Vue component
-│   │       ├── main.ts            # Vue application entry point
-│   │       ├── env.d.ts           # Environment type definitions
-│   │       │
-│   │       ├── assets/            # Static frontend assets
-│   │       │   ├── fonts/         # Custom fonts
-│   │       │   ├── images/        # Images and icons
-│   │       │   └── styles/        # CSS/SCSS stylesheets
-│   │       │
-│   │       ├── components/        # Vue components
-│   │       │   ├── Dashboard.vue              # Main dashboard component
-│   │       │   ├── KeyboardShortcutsModal.vue # Keyboard shortcuts modal
-│   │       │   ├── Panel.vue                  # Split panel component
-│   │       │   ├── PanelManager.vue           # Panel management component
-│   │       │   ├── SavedCommandDrawer.vue     # Saved commands drawer
-│   │       │   ├── SavedCommandModal.vue      # Saved command modal
-│   │       │   ├── SSHGroupModal.vue          # SSH group modal
-│   │       │   ├── SSHProfileDrawer.vue       # SSH profile drawer
-│   │       │   ├── SSHProfileModal.vue        # SSH profile modal
-│   │       │   ├── SSHTunnelManager.vue       # SSH tunnel manager
-│   │       │   ├── SSHTunnelModal.vue         # SSH tunnel modal
-│   │       │   ├── SyncSettingsModal.vue      # Sync settings modal
-│   │       │   ├── Terminal.vue               # Terminal component
-│   │       │   ├── TerminalManager.vue        # Terminal manager component
-│   │       │   ├── TopBar.vue                 # Top navigation bar
-│   │       │   └── ui/                        # Reusable UI components
-│   │       │
-│   │       ├── composables/       # Vue composition functions
-│   │       │   ├── useTopBarState.ts  # Top bar state management
-│   │       │   └── useValidation.ts   # Form validation composable
-│   │       │
-│   │       ├── services/          # Frontend services
-│   │       │   ├── keyboard-shortcut-service.ts   # Keyboard shortcuts
-│   │       │   └── terminal-buffer-manager.ts     # Terminal buffer management
-│   │       │
-│   │       ├── types/             # Frontend type definitions
-│   │       │   ├── components.ts      # Component-related types
-│   │       │   ├── keyboard.ts        # Keyboard-related types
-│   │       │   ├── modals.ts          # Modal-related types
-│   │       │   ├── panel.ts           # Panel-related types
-│   │       │   ├── splitpanes.d.ts    # Split panes type definitions
-│   │       │   ├── ssh.ts             # SSH-related types
-│   │       │   ├── sync.ts            # Synchronization types
-│   │       │   ├── system.ts          # System-related types
-│   │       │   └── ui.ts              # UI-related types
-│   │       │
-│   │       └── utils/             # Frontend utilities
-│   │           ├── clipboard.ts       # Clipboard operations
-│   │           ├── debounce.ts        # Debounce utility
-│   │           ├── formatter.ts       # Data formatting utilities
-│   │           ├── message.ts         # Message handling utility
-│   │           └── ...                # Additional utility files
-│   │
-│   └── shared/                    # Shared code between main and renderer
-│       ├── index.ts               # Shared exports
-│       └── types/                 # Shared type definitions
-│           ├── application.ts         # Application-wide types
-│           ├── index.ts               # Type exports
-│           ├── ssh.ts                 # SSH-related shared types
-│           ├── sync.ts                # Synchronization shared types
-│           └── terminal.ts            # Terminal-related shared types
-│
-├── dev-app-update.yml             # Auto-updater configuration for development
-├── electron-builder.yml           # Electron builder configuration
-├── electron.vite.config.ts        # Vite configuration for Electron
-├── eslint.config.mjs              # ESLint configuration
-├── package.json                   # Project dependencies and scripts
-├── tsconfig.json                  # TypeScript configuration (main)
-├── tsconfig.node.json             # TypeScript configuration (Node.js)
-├── tsconfig.web.json              # TypeScript configuration (Web/Renderer)
-├── LICENSE                        # MIT License
-└── README.md                      # Project documentation
-```
+If you encounter a bug, please create a new issue on [GitHub Issues](https://github.com/klpod221/kerminal/issues).
 
-#### Architecture Overview
+## 🗺️ Roadmap & Checklist
 
-**Electron Multi-Process Architecture:**
+- [ ] **Electron based with Vue.js front-end**
+  - [x] Initial setup with Electron and Vue.js
+  - [x] Basic terminal functionality with xterm.js
+  - [x] SSH connection support using ssh2
+  - [x] Profile management with local storage (JSON file)
+  - [x] Basic UI with tabs and split panels
+  - [x] Dashboard with recent connections and machine info
+  - [x] SSH proxy support (HTTP, SOCKS, Jump Host)
+  - [x] SSH command saved commands
+  - [x] SSH tunneling (Local, Remote, Dynamic/SOCKS)
+  - [x] Cross-device sync using MongoDB
+  - [x] Encrypt sensitive data with AES-256
+  - [x] Add keyboard shortcuts support
+  - [ ] Add syntax highlighting for bash
+  - [ ] Add auto-update feature for all platforms
+  - [ ] Encrypt and securely store SSH keys instead of just paths
+  - [ ] Add more keyboard shortcuts and allow custom mappings
+  - [ ] Add more themes and customization options
+  - [ ] Support 2FA/MFA for SSH connections
+  - [ ] Implement session recording and playback
+  - [ ] Add support for SFTP file transfers
+  - [ ] Implement advanced search across profiles and commands
+  - [ ] Fix password authentication issue when updating from versions 1.0.6 and below
+  - [ ] Implement code signing for macOS to avoid unidentified developer issues
 
-- **Main Process**: Manages application lifecycle, system integration, and core services
-- **Renderer Process**: Handles the user interface using Vue.js
-- **Preload Scripts**: Secure bridge between main and renderer processes
+- [ ] **Rewrite backend in Rust**
+  - [ ] Rewrite backend logic in Rust for performance and security
+  - [ ] Create Node.js bindings to interface with Rust backend
+  - [ ] Ensure all existing features work seamlessly with Rust backend
+  - [ ] Optimize SSH and tunneling performance using Rust libraries
+  - [ ] Test cross-platform compatibility with Rust backend
+  - [ ] Update build and deployment processes for Rust integration
 
-**Key Design Patterns:**
-
-- **Service-Oriented Architecture**: Modular services for different functionalities
-- **Storage Abstraction**: Base storage class with specific implementations
-- **Interface-Driven Development**: Clear contracts between modules
-- **Composable Architecture**: Vue 3 composition API for reactive state management
-
-### Tech Stack
-
-- **Frontend**: Vue.js 3, Tailwind CSS, Lucide Icons
-- **Backend**: Electron, Node.js, TypeScript
-- **Terminal**: xterm.js with various addons
-- **SSH**: ssh2 library for secure connections with proxy support
-- **SSH Tunneling**: Comprehensive port forwarding (Local, Remote, Dynamic/SOCKS)
-- **Proxy Support**: HTTP, SOCKS4, SOCKS5, and SSH Jump Host proxies
-- **Storage**: Secure local file-based storage with optional MongoDB synchronization
-- **Database**: MongoDB for cross-device data synchronization
+- [ ] **Allow front-end to run in browser (self-hosted)**
+  - [ ] Choose a suitable framework for browser compatibility
+  - [ ] Implement WebAssembly (WASM) for performance-critical parts
+  - [ ] Ensure secure handling of SSH connections in the browser
+  - [ ] Test browser compatibility across major browsers
+  - [ ] Optimize UI/UX for web usage
+  - [ ] Implement cloud sync and storage options for web users
+  - [ ] Ensure seamless integration with Rust backend via WebAssembly
 
 ## 🤝 Contributing
 
-I appreciate your interest in contributing to Kerminal!
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-### Development Workflow
+Please read our [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Make your changes and test thoroughly
-4. Commit your changes: `git commit -m 'Add amazing feature'`
-5. Push to the branch: `git push origin feature/amazing-feature`
-6. Open a Pull Request
+### How to Contribute
 
-### Code Style
+1. **Find an Issue:** Ensure the bug or feature you want to work on is not already being addressed at [issues](https://github.com/klpod221/kerminal/issues).
+2. **Fork the Project:** Create your own copy of the repository.
+3. **Create a Feature Branch:** `git checkout -b feature/AmazingFeature`
+4. **Commit your Changes:** `git commit -m 'Add some AmazingFeature'`
+5. **Push to the Branch:** `git push origin feature/AmazingFeature`
+6. **Open a Pull Request:** Submit your changes for review.
 
-- Follow the existing code style
-- Use TypeScript for type safety
-- Add tests for new features
-- Update documentation as needed
+### 🙏 Our Valued Contributors
+
+A huge thank you to all the wonderful people who have contributed to this project:
+
+<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
+<!-- prettier-ignore-start -->
+<!-- markdownlint-disable -->
+<table>
+  <tbody>
+    <tr>
+      <td align="center" valign="top" width="14.28%"><a href="https://github.com/klpod221"><img src="https://avatars.githubusercontent.com/u/62713126?v=4?s=100" width="100px;" alt="klpod221"/><br /><sub><b>klpod221</b></sub></a><br /><a href="https://github.com/klpod221/kerminal/commits?author=klpod221" title="Code">💻</a> <a href="#maintenance-klpod221" title="Maintenance">🚧</a></td>
+    </tr>
+  </tbody>
+</table>
+<!-- markdownlint-restore -->
+<!-- prettier-ignore-end -->
+<!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## 📄 License
 
@@ -460,17 +394,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - GitHub: [@klpod221](https://github.com/klpod221)
 - Email: [klpod221@gmail.com](mailto:klpod221@gmail.com)
 
-## 🙏 Acknowledgments
-
-- [xterm.js](https://xtermjs.org/) - For the excellent terminal emulation
-- [ssh2](https://github.com/mscdex/ssh2) - For SSH connectivity
-- [Electron](https://electronjs.org/) - For cross-platform desktop apps
-- [Vue.js](https://vuejs.org/) - For the reactive frontend framework
-- [MongoDB](https://www.mongodb.com/) - For reliable data synchronization across devices
-
 ## 📊 Project Status
 
-Kerminal is actively maintained and under continuous development. We regularly add new features and improvements based on user feedback.
+Kerminal is actively maintained and under continuous development.
+
+> **Please Note:** Currently, this is a side project maintained solely by me. Therefore, progress may be inconsistent and is highly dependent on my personal schedule.
 
 Check the [Releases page](https://github.com/klpod221/kerminal/releases) for the latest version.
 

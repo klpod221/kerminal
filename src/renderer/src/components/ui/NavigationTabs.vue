@@ -19,7 +19,7 @@
 
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { defineProps, defineEmits } from 'vue'
+import { defineEmits } from 'vue'
 
 interface TabItem {
   id: string
