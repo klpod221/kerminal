@@ -49,24 +49,28 @@
         class="absolute inset-y-0 right-0 pr-3 flex items-center"
       >
         <!-- Password toggle -->
-        <button
+        <Button
           v-if="showPasswordToggle"
           type="button"
+          variant="ghost"
           class="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
+          tabindex="-1"
           @click="togglePasswordVisibility"
         >
           <component :is="isPasswordVisible ? EyeOff : Eye" :size="iconSize" />
-        </button>
+        </Button>
 
         <!-- Right icon -->
-        <button
+        <Button
           v-else-if="rightIcon"
           type="button"
+          variant="ghost"
+          tabindex="-1"
           class="text-gray-400 hover:text-gray-300 transition-colors cursor-pointer"
           @click="emit('right-icon-click')"
         >
           <component :is="rightIcon" :size="iconSize" />
-        </button>
+        </Button>
       </div>
     </div>
 
@@ -86,6 +90,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
+import Button from './Button.vue'
 import type { InputProps } from '../../types/ui'
 
 const props = withDefaults(defineProps<InputProps>(), {
