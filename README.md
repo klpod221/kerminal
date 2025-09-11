@@ -349,7 +349,7 @@ If you encounter a bug, please create a new issue on [GitHub Issues](https://git
   - [ ] Implement cloud sync and storage options for web users
   - [ ] Ensure seamless integration with Rust backend via WebAssembly
 
-## 🤝 Contributing
+## Contributors ✨
 
 Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
@@ -378,10 +378,8 @@ A huge thank you to all the wonderful people who have contributed to this projec
     </tr>
   </tbody>
 </table>
-
 <!-- markdownlint-restore -->
 <!-- prettier-ignore-end -->
-
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 ## 📄 License
@@ -414,16 +412,3 @@ Check the [Releases page](https://github.com/klpod221/kerminal/releases) for the
 ---
 
 _This README was crafted with assistance from an AI model._
-
-## Contributors ✨
-
-Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/docs/en/emoji-key)):
-
-<!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-<!-- prettier-ignore-start -->
-<!-- markdownlint-disable -->
-<!-- markdownlint-restore -->
-<!-- prettier-ignore-end -->
-<!-- ALL-CONTRIBUTORS-LIST:END -->
-
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
