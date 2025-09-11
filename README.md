@@ -52,7 +52,7 @@ Perfect for managing cloud infrastructure, remote development, and multi-server 
     - [Build Instructions](#build-instructions)
 - [🐞 Known Issues](#-known-issues)
 - [🗺️ Roadmap \& Checklist](#️-roadmap--checklist)
-- [🤝 Contributing](#-contributing)
+- [Contributors ✨](#contributors-)
   - [How to Contribute](#how-to-contribute)
   - [🙏 Our Valued Contributors](#-our-valued-contributors)
 - [📄 License](#-license)
@@ -298,7 +298,7 @@ npm run build:linux  # Linux
 
 ## 🐞 Known Issues
 
-- Error with password authentication when update to lastest from older version (1.0.6 and below)
+- Error with password authentication when update to lastest from older version (1.0.6 and below). You may need to re-enter your password or recreate your profile.
 - Cannot launch on MacOS because MacOS blocks apps from unidentified developers (code signing in progress). You can bypass this by right-clicking the app and selecting "Open", then confirming or launch it from terminal using `xattr -d com.apple.quarantine /path/to/Kerminal.app`. (More info: [Issue #2](https://github.com/klpod221/kerminal/issues/2))
 - Not have auto-update feature.
 - Not save the ssh key (only save the path to the key)

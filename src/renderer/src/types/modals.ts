@@ -105,3 +105,17 @@ export interface CommandFormErrors {
 export interface KeyboardShortcutsModalProps {
   isVisible: boolean
 }
+
+/**
+ * Change Master Password Modal Props
+ */
+export interface ChangePasswordModalProps {
+  visible: boolean
+}
+
+/**
+ * Unlock Modal Props
+ */
+export interface UnlockModalProps {
+  visible: boolean
+}

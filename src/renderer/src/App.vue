@@ -138,12 +138,13 @@
     <!-- Master Password Modal (Persistent) -->
     <MasterPasswordModal
       :visible="showMasterPasswordModal"
-      :mode="masterPasswordMode"
       :error="masterPasswordError"
       @local-created="handleLocalPasswordCreated"
       @mongo-connected="handleMongoPasswordConnected"
-      @unlocked="handleMasterPasswordUnlocked"
+      @unlocked="handleUnlock"
     />
+
+    <UnlockModal v-model:visible="showUnlockModal" @unlocked="handleUnlock" />
 
     <!-- Security Settings Modal -->
     <SecuritySettingsModal
@@ -169,6 +170,7 @@ import SavedCommandDrawer from './components/SavedCommandDrawer.vue'
 import SyncSettingsModal from './components/SyncSettingsModal.vue'
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal.vue'
 import MasterPasswordModal from './components/MasterPasswordModal.vue'
+import UnlockModal from './components/UnlockModal.vue'
 import SecuritySettingsModal from './components/SecuritySettingsModal.vue'
 import Modal from './components/ui/Modal.vue'
 import SSHTunnelManager from './components/SSHTunnelManager.vue'
@@ -198,7 +200,7 @@ const { registerActionHandler, startListening, stopListening } = useKeyboardShor
 // Authentication state
 const isApplicationLocked = ref(true)
 const showMasterPasswordModal = ref(false)
-const masterPasswordMode = ref<'create' | 'unlock'>('unlock')
+const showUnlockModal = ref(false)
 const masterPasswordError = ref('')
 const showSecuritySettingsModal = ref(false)
 
@@ -1337,9 +1339,9 @@ const handleMongoPasswordConnected = async (
   )
 }
 
-const handleMasterPasswordUnlocked = async (): Promise<void> => {
+const handleUnlock = async (): Promise<void> => {
   try {
-    showMasterPasswordModal.value = false
+    showUnlockModal.value = false
     isApplicationLocked.value = false
   } catch (error) {
     console.error('Failed to unlock with master password:', error)
@@ -1354,7 +1356,7 @@ const handleLockNow = async (): Promise<void> => {
   try {
     await window.electron.ipcRenderer.invoke('auth:lock')
     isApplicationLocked.value = true
-    showMasterPasswordModal.value = true
+    showUnlockModal.value = true
     showSecuritySettingsModal.value = false
   } catch (error) {
     console.error('Failed to lock application:', error)
@@ -1401,7 +1403,6 @@ onMounted(async () => {
       // No master password exists - show creation modal
       isApplicationLocked.value = true
       showMasterPasswordModal.value = true
-      masterPasswordMode.value = 'create'
     } else {
       // Try to unlock with keychain first
       const unlockedWithKeychain = await window.electron.ipcRenderer.invoke(
@@ -1414,16 +1415,13 @@ onMounted(async () => {
       } else {
         // Need master password unlock
         isApplicationLocked.value = true
-        showMasterPasswordModal.value = true
-        masterPasswordMode.value = 'unlock'
+        showUnlockModal.value = true
       }
     }
   } catch (error) {
     console.error('Failed to initialize authentication:', error)
-    // Fallback to locked state
     isApplicationLocked.value = true
-    showMasterPasswordModal.value = true
-    masterPasswordMode.value = 'unlock'
+    showUnlockModal.value = true
   }
 
   // Create first tab in default panel

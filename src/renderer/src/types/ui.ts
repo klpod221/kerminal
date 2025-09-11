@@ -48,11 +48,6 @@ export type ButtonVariant =
   | 'outline'
 
 /**
- * Input types
- */
-export type InputType = 'text' | 'password' | 'email' | 'number' | 'tel' | 'url' | 'search'
-
-/**
  * Modal size variants
  */
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | '2xl'
@@ -171,27 +166,6 @@ export interface CardEmits {
 }
 
 /**
- * Props interface for Input component
- */
-export interface InputProps {
-  modelValue?: string | number
-  type?: InputType
-  label?: string
-  placeholder?: string
-  rules?: Array<string | ((value: string) => boolean)>
-  helperText?: string
-  errorMessage?: string
-  size?: UISize
-  leftIcon?: Component
-  rightIcon?: Component
-  disabled?: boolean
-  readonly?: boolean
-  autocomplete?: string
-  helper?: boolean
-  id?: string
-}
-
-/**
  * Props interface for Modal component
  */
 export interface ModalProps {
@@ -217,72 +191,6 @@ export interface DrawerProps {
   position?: DrawerPosition
   width?: DrawerWidth
   closeOnOverlay?: boolean
-}
-
-/**
- * Props interface for Select component
- */
-export interface SelectProps {
-  modelValue?: string | number
-  label?: string
-  placeholder?: string
-  rules?: Array<string | ((value: string) => boolean)>
-  helperText?: string
-  errorMessage?: string
-  size?: UISize
-  disabled?: boolean
-  helper?: boolean
-  id?: string
-}
-
-/**
- * Props interface for Textarea component
- */
-export interface TextareaProps {
-  modelValue?: string
-  label?: string
-  placeholder?: string
-  rules?: Array<string | ((value: string) => boolean)>
-  helperText?: string
-  errorMessage?: string
-  size?: UISize
-  disabled?: boolean
-  readonly?: boolean
-  helper?: boolean
-  rows?: number
-  id?: string
-}
-
-/**
- * Props interface for ColorPicker component
- */
-export interface ColorPickerProps {
-  modelValue?: string
-  label?: string
-  rules?: Array<string | ((value: string) => boolean)>
-  helperText?: string
-  errorMessage?: string
-  size?: UISize
-  disabled?: boolean
-  readonly?: boolean
-  helper?: boolean
-  id?: string
-}
-
-/**
- * Props interface for Checkbox component
- */
-export interface CheckboxProps {
-  modelValue?: boolean
-  label?: string
-  rules?: Array<string | ((value: boolean) => boolean)>
-  helperText?: string
-  errorMessage?: string
-  size?: UISize
-  disabled?: boolean
-  helper?: boolean
-  labelPosition?: 'top' | 'right'
-  id?: string
 }
 
 /**

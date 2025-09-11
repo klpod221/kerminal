@@ -13,12 +13,11 @@
       <div class="space-y-1">
         <!-- Command Name -->
         <Input
+          id="command-name"
           v-model="commandForm.name"
+          type="text"
           label="Command Name"
           placeholder="My Command"
-          :rules="['required']"
-          :error-message="nameError"
-          @blur="validation.validateField('name')"
         />
 
         <!-- Description -->
@@ -27,8 +26,6 @@
           label="Description"
           placeholder="Optional description for this command"
           :rows="2"
-          :error-message="descriptionError"
-          @blur="validation.validateField('description')"
         />
 
         <!-- Command -->
@@ -38,8 +35,6 @@
           placeholder="Enter your command here"
           :rows="4"
           :rules="['required']"
-          :error-message="commandError"
-          @blur="validation.validateField('command')"
         />
       </div>
     </form>
@@ -52,7 +47,7 @@
           <Button
             variant="primary"
             size="sm"
-            :disabled="!canSubmit || isSaving"
+            :disabled="isSaving"
             :loading="isSaving"
             :icon="Save"
             @click="handleSubmit"
@@ -68,13 +63,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { BookOpen, Save } from 'lucide-vue-next'
 import Modal from './ui/Modal.vue'
 import Input from './ui/Input.vue'
 import Textarea from './ui/Textarea.vue'
 import Button from './ui/Button.vue'
-import { useValidation, validationRules } from '../composables/useValidation'
 import { message } from '../utils/message'
 import type { SavedCommandModalProps, CommandForm, CommandFormErrors } from '../types/modals'
 
@@ -100,60 +94,6 @@ const commandForm = ref<CommandForm>({
 
 const commandFormErrors = ref<CommandFormErrors>({})
 
-// Validation setup
-const validation = useValidation()
-
-// Create reactive refs for validation
-const nameRef = computed({
-  get: () => commandForm.value.name,
-  set: (value) => {
-    commandForm.value.name = value
-  }
-})
-
-const descriptionRef = computed({
-  get: () => commandForm.value.description,
-  set: (value) => {
-    commandForm.value.description = value
-  }
-})
-
-const commandRef = computed({
-  get: () => commandForm.value.command,
-  set: (value) => {
-    commandForm.value.command = value
-  }
-})
-
-// Register validation fields
-validation.registerField('name', nameRef, [
-  validationRules.required('Command name is required'),
-  validationRules.maxLength(50, 'Command name must be less than 50 characters')
-])
-
-validation.registerField('description', descriptionRef, [
-  validationRules.maxLength(200, 'Description must be less than 200 characters')
-])
-
-validation.registerField('command', commandRef, [
-  validationRules.required('Command is required'),
-  validationRules.maxLength(1000, 'Command must be less than 1000 characters')
-])
-
-// Computed
-// Error message computed properties for safe access
-const nameError = computed(() => validation.fields.value?.name?.error?.value || undefined)
-const descriptionError = computed(
-  () => validation.fields.value?.description?.error?.value || undefined
-)
-const commandError = computed(() => validation.fields.value?.command?.error?.value || undefined)
-
-const canSubmit = computed(() => {
-  return (
-    commandForm.value.name && commandForm.value.command && !nameError.value && !commandError.value
-  )
-})
-
 // Methods
 const resetForm = (): void => {
   commandForm.value = {
@@ -162,11 +102,6 @@ const resetForm = (): void => {
     description: ''
   }
   commandFormErrors.value = {}
-
-  // Only reset validation if fields are properly initialized
-  if (validation.fields.value && Object.keys(validation.fields.value).length > 0) {
-    validation.resetValidation()
-  }
 }
 
 const handleClose = (): void => {
@@ -175,13 +110,6 @@ const handleClose = (): void => {
 }
 
 const handleSubmit = async (): Promise<void> => {
-  if (!canSubmit.value || isSaving.value) return
-
-  // Validate all fields before submitting
-  if (!validation.validateAll()) {
-    return
-  }
-
   try {
     isSaving.value = true
 

@@ -14,7 +14,6 @@ export type MasterPasswordCreateMode = 'local' | 'mongodb'
 
 export interface MasterPasswordModalProps {
   visible: boolean
-  mode: 'create' | 'unlock'
   error?: string
 }
 

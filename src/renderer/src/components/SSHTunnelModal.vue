@@ -14,14 +14,7 @@
         <h3 class="text-lg font-medium text-white">Basic Information</h3>
 
         <!-- Tunnel Name -->
-        <Input
-          v-model="form.name"
-          label="Tunnel Name"
-          placeholder="My Web App Tunnel"
-          :rules="['required']"
-          :error-message="nameError"
-          @blur="validation.validateField('name')"
-        />
+        <Input v-model="form.name" label="Tunnel Name" placeholder="My Web App Tunnel" />
 
         <!-- Description -->
         <Textarea
@@ -29,8 +22,6 @@
           label="Description"
           placeholder="Optional description for this tunnel"
           :rows="2"
-          :error-message="descriptionError"
-          @blur="validation.validateField('description')"
         />
 
         <!-- SSH Profile -->
@@ -39,8 +30,6 @@
           label="SSH Profile"
           placeholder="Select SSH Profile"
           :rules="['required']"
-          :error-message="profileError"
-          @blur="validation.validateField('profileId')"
         >
           <option value="">Select SSH Profile</option>
           <option v-for="profile in profiles" :key="profile.id" :value="profile.id">
@@ -68,9 +57,6 @@
           placeholder="8080"
           min="1"
           max="65535"
-          :rules="['required']"
-          :error-message="localPortError"
-          @blur="validation.validateField('localPort')"
         />
 
         <!-- Remote Configuration (for local/remote tunnels) -->
@@ -80,9 +66,6 @@
               v-model="form.remoteHost"
               label="Remote Host"
               placeholder="localhost or internal.example.com"
-              :rules="form.type === 'local' || form.type === 'remote' ? ['required'] : []"
-              :error-message="remoteHostError"
-              @blur="validation.validateField('remoteHost')"
             />
             <Input
               v-model.number="form.remotePort"
@@ -91,9 +74,6 @@
               placeholder="8080"
               min="1"
               max="65535"
-              :rules="form.type === 'local' || form.type === 'remote' ? ['required'] : []"
-              :error-message="remotePortError"
-              @blur="validation.validateField('remotePort')"
             />
           </div>
 
@@ -171,7 +151,6 @@ import Select from './ui/Select.vue'
 import Textarea from './ui/Textarea.vue'
 import Checkbox from './ui/Checkbox.vue'
 import Button from './ui/Button.vue'
-import { useValidation, validationRules } from '../composables/useValidation'
 import type { ValidationValue } from '../types/ui'
 import type { SSHTunnel, SSHTunnelWithProfile } from '../types/ssh'
 import type { SSHTunnelModalProps } from '../types/modals'
@@ -200,126 +179,17 @@ const form = ref({
   autoStart: false
 })
 
-// Validation setup
-const validation = useValidation()
-
-// Create reactive refs for validation
-const nameRef = computed({
-  get: () => form.value.name,
-  set: (value) => {
-    form.value.name = value
-  }
-})
-
-const descriptionRef = computed({
-  get: () => form.value.description,
-  set: (value) => {
-    form.value.description = value
-  }
-})
-
-const profileIdRef = computed({
-  get: () => form.value.profileId,
-  set: (value) => {
-    form.value.profileId = value
-  }
-})
-
-const localPortRef = computed({
-  get: () => form.value.localPort,
-  set: (value) => {
-    form.value.localPort = value
-  }
-})
-
-const remoteHostRef = computed({
-  get: () => form.value.remoteHost,
-  set: (value) => {
-    form.value.remoteHost = value
-  }
-})
-
-const remotePortRef = computed({
-  get: () => form.value.remotePort,
-  set: (value) => {
-    form.value.remotePort = value
-  }
-})
-
-// Register validation fields
-validation.registerField('name', nameRef, [
-  validationRules.required('Tunnel name is required'),
-  validationRules.maxLength(100, 'Tunnel name must be less than 100 characters')
-])
-
-validation.registerField('description', descriptionRef, [
-  validationRules.maxLength(200, 'Description must be less than 200 characters')
-])
-
-validation.registerField('profileId', profileIdRef, [
-  validationRules.required('SSH Profile is required')
-])
-
-validation.registerField('localPort', localPortRef, [validationRules.port()])
-
-validation.registerField('remoteHost', remoteHostRef, [
-  validationRules.custom((value: ValidationValue) => {
-    if (form.value.type !== 'dynamic' && !value?.toString()?.trim()) {
-      return false
-    }
-    return true
-  }, 'Remote host is required for local/remote tunnels')
-])
-
-validation.registerField('remotePort', remotePortRef, [
-  validationRules.custom((value: ValidationValue) => {
-    if (form.value.type !== 'dynamic') {
-      const num = Number(value)
-      if (!num || num < 1 || num > 65535) {
-        return false
-      }
-    }
-    return true
-  }, 'Remote port is required and must be between 1 and 65535')
-])
-
 // Computed
 const isEditing = computed(() => !!props.tunnel)
 
-// Error message computed properties
-const nameError = computed(() => validation.fields.value?.name?.error?.value || undefined)
-const descriptionError = computed(
-  () => validation.fields.value?.description?.error?.value || undefined
-)
-const profileError = computed(() => validation.fields.value?.profileId?.error?.value || undefined)
-const localPortError = computed(() => validation.fields.value?.localPort?.error?.value || undefined)
-const remoteHostError = computed(
-  () => validation.fields.value?.remoteHost?.error?.value || undefined
-)
-const remotePortError = computed(
-  () => validation.fields.value?.remotePort?.error?.value || undefined
-)
-
 const canSubmit = computed(() => {
-  const baseValidation =
-    form.value.name &&
-    form.value.profileId &&
-    form.value.localPort &&
-    !nameError.value &&
-    !profileError.value &&
-    !localPortError.value
+  const baseValidation = form.value.name && form.value.profileId && form.value.localPort
 
   if (form.value.type === 'dynamic') {
     return baseValidation
   }
 
-  return (
-    baseValidation &&
-    form.value.remoteHost &&
-    form.value.remotePort &&
-    !remoteHostError.value &&
-    !remotePortError.value
-  )
+  return baseValidation && form.value.remoteHost && form.value.remotePort
 })
 
 // Methods
@@ -333,10 +203,6 @@ const resetForm = (): void => {
     remoteHost: 'localhost',
     remotePort: 8080,
     autoStart: false
-  }
-
-  if (validation.fields.value && Object.keys(validation.fields.value).length > 0) {
-    validation.resetValidation()
   }
 }
 
@@ -366,11 +232,6 @@ const handleTypeChange = (): void => {
 
 const handleSubmit = async (): Promise<void> => {
   if (!canSubmit.value || isSaving.value) return
-
-  // Validate all fields before submitting
-  if (!validation.validateAll()) {
-    return
-  }
 
   try {
     isSaving.value = true

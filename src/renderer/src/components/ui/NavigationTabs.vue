@@ -4,7 +4,7 @@
       v-for="tab in tabs"
       :key="tab.id"
       type="button"
-      class="flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors"
+      class="flex-1 px-4 py-2 text-sm font-medium rounded-md transition-colors cursor-pointer"
       :class="{
         'bg-blue-600 text-white': modelValue === tab.id,
         'text-gray-300 hover:text-white hover:bg-gray-700': modelValue !== tab.id
@@ -19,7 +19,6 @@
 
 <script setup lang="ts">
 import type { Component } from 'vue'
-import { defineEmits } from 'vue'
 
 interface TabItem {
   id: string

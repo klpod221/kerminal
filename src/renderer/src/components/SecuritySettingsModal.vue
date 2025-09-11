@@ -8,14 +8,7 @@
     size="lg"
     @close="handleClose"
   >
-    <form class="space-y-6" @submit.prevent="handleSave">
-      <!-- Description -->
-      <div class="text-sm text-gray-300 leading-relaxed">
-        <p>
-          Configure when and how the application should lock itself to protect your encrypted data.
-        </p>
-      </div>
-
+    <form class="space-y-4" @submit.prevent="handleSave">
       <!-- Error/Success Messages -->
       <Message
         v-if="errorMessage"
@@ -39,7 +32,7 @@
       <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">Security Options</h3>
 
-        <div class="space-y-4 bg-gray-800/50 rounded-lg p-4">
+        <div class="space-y-2 bg-gray-800/50 rounded-lg p-4">
           <!-- Require Password on Start -->
           <div class="flex items-start space-x-3">
             <Checkbox
@@ -55,9 +48,8 @@
                 Require Master Password on application start
               </label>
               <p class="text-xs text-gray-400 mt-1">
-                When enabled, the application will always ask for your master password on startup.
-                When disabled, your encrypted key will be stored securely in the system keychain for
-                automatic unlock.
+                Enable to require your master password at startup. Disable to use system keychain
+                for auto-unlock.
               </p>
             </div>
           </div>
@@ -70,6 +62,7 @@
             <Select
               v-model="settings.autoLockTimeout"
               placeholder="Select timeout"
+              :helper="false"
               @change="handleAutoLockTimeoutChange"
             >
               <option :value="0">Never</option>
@@ -90,11 +83,9 @@
               <Checkbox v-model="settings.useBiometrics" :disabled="true" :helper="false" />
               <div class="flex-1">
                 <label class="block text-sm font-medium text-gray-500">
-                  Use Biometrics to unlock (Touch ID / Windows Hello)
+                  Use Biometrics to unlock
                 </label>
-                <p class="text-xs text-gray-500 mt-1">
-                  Coming soon - Use biometric authentication for quick unlock
-                </p>
+                <p class="text-xs text-gray-500 mt-1">Coming soon</p>
               </div>
             </div>
           </div>
@@ -145,7 +136,7 @@
       <div class="space-y-1">
         <h3 class="text-lg font-medium text-white">Advanced Actions</h3>
 
-        <div class="bg-gray-800/50 rounded-lg p-4 space-y-3">
+        <div class="bg-gray-800/50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-2">
           <Button
             variant="secondary"
             size="sm"
@@ -185,9 +176,6 @@
         </Button>
 
         <div class="flex space-x-3">
-          <Button variant="ghost" size="sm" :disabled="isSaving" @click="handleReset">
-            Reset to Defaults
-          </Button>
           <Button
             variant="primary"
             size="sm"
@@ -301,14 +289,6 @@ const handleSave = async (): Promise<void> => {
     errorMessage.value = 'Failed to save security settings'
   } finally {
     isSaving.value = false
-  }
-}
-
-const handleReset = (): void => {
-  settings.value = {
-    requirePasswordOnStart: true,
-    autoLockTimeout: 15,
-    useBiometrics: false
   }
 }
 

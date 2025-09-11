@@ -63,7 +63,7 @@
       </div>
 
       <!-- MongoDB Configuration -->
-      <div class="space-y-1">
+      <form class="space-y-1">
         <h3 class="text-lg font-medium text-white">MongoDB Configuration</h3>
         <div>
           <Input
@@ -94,21 +94,8 @@
             required
             helper-text="Minimum 5 seconds, maximum 1 hour (3600 seconds)"
           />
-
-          <div class="flex justify-between space-x-3 mt-4">
-            <Button type="button" variant="secondary" @click="$emit('close')">Close</Button>
-            <Button
-              type="button"
-              variant="primary"
-              :loading="isTestingConnection || isLoading"
-              :icon="Save"
-              @click="handleRightButtonClick"
-            >
-              {{ getRightButtonLabel }}
-            </Button>
-          </div>
         </div>
-      </div>
+      </form>
 
       <!-- Master Password Verification -->
       <div v-if="showPasswordVerification && connectionTestPassed" class="space-y-1">
@@ -179,8 +166,21 @@
           placement="top"
           @confirm="deleteSyncConfig"
         >
-          <Button variant="secondary" :loading="isDeleting"> Delete Configuration </Button>
+          <Button variant="danger" :loading="isDeleting"> Delete Configuration </Button>
         </PopConfirm>
+      </div>
+
+      <div class="flex justify-between space-x-3 mt-4">
+        <Button type="button" variant="secondary" @click="$emit('close')">Close</Button>
+        <Button
+          type="button"
+          variant="primary"
+          :loading="isTestingConnection || isLoading"
+          :icon="Save"
+          @click="handleRightButtonClick"
+        >
+          {{ getRightButtonLabel }}
+        </Button>
       </div>
     </div>
   </Modal>

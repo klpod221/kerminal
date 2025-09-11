@@ -1,35 +1,35 @@
-<!-- Textarea component with consistent styling -->
 <template>
   <div class="space-y-0.5">
     <!-- Label -->
-    <label v-if="label" :for="textareaId" class="block text-sm font-medium text-gray-300">
+    <label v-if="label" :for="inputId" class="block text-sm font-medium text-gray-300">
       {{ label }}
-      <span v-if="rules?.some((rule) => rule === 'required')" class="text-red-400">*</span>
+      <span v-if="props.rules && props.rules.includes('required')" class="text-red-400">*</span>
     </label>
 
-    <!-- Textarea element -->
-    <textarea
-      :id="textareaId"
-      ref="textareaRef"
-      v-model="textareaValue"
-      :placeholder="placeholder"
-      :disabled="disabled"
-      :readonly="readonly"
-      :rows="rows"
-      :class="[
-        'block w-full rounded-lg border transition-all duration-200',
-        'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
-        'disabled:opacity-50 disabled:cursor-not-allowed',
-        'readonly:bg-gray-700 readonly:cursor-default',
-        'resize-vertical',
-        sizeClasses,
-        stateClasses
-      ]"
-      @blur="handleBlur"
-      @focus="handleFocus"
-      @input="handleInput"
-      @keydown="handleKeydown"
-    />
+    <div class="relative">
+      <textarea
+        :id="inputId"
+        ref="inputRef"
+        v-model="inputValue"
+        :rows="rows"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :readonly="readonly"
+        :autocomplete="autocomplete"
+        :class="[
+          'block w-full rounded-lg border transition-all duration-200',
+          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
+          'disabled:opacity-50 disabled:cursor-not-allowed',
+          'readonly:bg-gray-700 readonly:cursor-default',
+          sizeClasses,
+          stateClasses
+        ]"
+        @blur="handleBlur"
+        @focus="handleFocus"
+        @input="handleInput"
+        @keydown="handleKeydown"
+      />
+    </div>
 
     <div v-if="helper" class="min-h-[1.25rem]">
       <!-- Helper text (only show if no error) -->
@@ -45,26 +45,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { TextareaProps } from '../../types/ui'
+import { ref, computed, inject, onMounted, onUnmounted, toRef } from 'vue'
+import { validate as validateFn } from '../../utils/validators'
+import type { TextareaProps, FormContext } from '../../types/form'
 
 const props = withDefaults(defineProps<TextareaProps>(), {
+  rows: 4,
   size: 'md',
   disabled: false,
   readonly: false,
-  helper: true,
-  rows: 3
+  helper: true
 })
 
 const emit = defineEmits(['update:modelValue', 'blur', 'focus', 'keydown'])
 
 // Refs
-const textareaRef = ref<HTMLTextAreaElement>()
+const errorMessage = ref(props.errorMessage || '')
+const touched = ref(false)
+const inputRef = ref<HTMLInputElement>()
+
+// Injected from parent Form
+const formContext = inject<FormContext>('form-context')
 
 // Computed
-const textareaId = computed(() => props.id || `textarea-${Math.random().toString(36).substr(2, 9)}`)
+const inputId = computed(() => props.id || `input-${Math.random().toString(36).substr(2, 9)}`)
 
-const textareaValue = computed({
+const inputValue = computed({
   get: () => props.modelValue?.toString() ?? '',
   set: (value: string) => emit('update:modelValue', value)
 })
@@ -72,11 +78,11 @@ const textareaValue = computed({
 const sizeClasses = computed(() => {
   switch (props.size) {
     case 'sm':
-      return 'text-sm px-2 py-1.5'
+      return 'text-sm py-1.5'
     case 'lg':
-      return 'text-lg px-4 py-3'
+      return 'text-lg py-3'
     default:
-      return 'text-base px-3 py-2'
+      return 'text-base py-2'
   }
 })
 
@@ -97,8 +103,26 @@ const stateClasses = computed(() => {
 })
 
 // Methods
+const validate = (): string => {
+  if (!props.rules || props.rules.length === 0) {
+    return ''
+  }
+
+  const allFormValues = formContext
+    ? Object.fromEntries(
+        Array.from((formContext as FormContext).getFieldValue ? new Map() : new Map())
+      )
+    : {}
+
+  const error = validateFn(props.modelValue, props.rules, allFormValues)
+  errorMessage.value = error
+  return error
+}
+
 const handleBlur = (event: FocusEvent): void => {
   emit('blur', event)
+  touched.value = true
+  validate()
 }
 
 const handleFocus = (event: FocusEvent): void => {
@@ -106,18 +130,39 @@ const handleFocus = (event: FocusEvent): void => {
 }
 
 const handleInput = (event: Event): void => {
-  const target = event.target as HTMLTextAreaElement
+  const target = event.target as HTMLInputElement
   emit('update:modelValue', target.value)
+
+  if (touched.value) {
+    validate()
+  }
 }
 
 const handleKeydown = (event: KeyboardEvent): void => {
   emit('keydown', event)
 }
 
+// Lifecycle hooks
+onMounted(() => {
+  if (formContext) {
+    formContext.register({
+      id: inputId.value,
+      value: toRef(props, 'modelValue'),
+      validate
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (formContext) {
+    formContext.unregister(inputId.value)
+  }
+})
+
 // Expose methods for parent components
 defineExpose({
-  focus: () => textareaRef.value?.focus(),
-  blur: () => textareaRef.value?.blur(),
-  select: () => textareaRef.value?.select()
+  focus: () => inputRef.value?.focus(),
+  blur: () => inputRef.value?.blur(),
+  select: () => inputRef.value?.select()
 })
 </script>

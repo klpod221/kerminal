@@ -4,7 +4,7 @@
     <!-- Label -->
     <label v-if="label" :for="pickerId" class="block text-sm font-medium text-gray-300">
       {{ label }}
-      <span v-if="rules?.some((rule) => rule === 'required')" class="text-red-400">*</span>
+      <span v-if="props.rules && props.rules.includes('required')" class="text-red-400">*</span>
     </label>
 
     <!-- Color input wrapper -->
@@ -22,6 +22,7 @@
           'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'readonly:bg-gray-700 readonly:cursor-default',
+          sizeClasses,
           stateClasses
         ]"
         @blur="handleBlur"
@@ -65,8 +66,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import type { ColorPickerProps } from '../../types/ui'
+import { ref, computed, watch, inject, onMounted, onUnmounted, toRef } from 'vue'
+import { validate as validateFn } from '../../utils/validators'
+import type { ColorPickerProps, FormContext } from '../../types/form'
 
 const props = withDefaults(defineProps<ColorPickerProps>(), {
   modelValue: '#000000',
@@ -80,8 +82,13 @@ const emit = defineEmits(['update:modelValue', 'blur', 'focus'])
 
 // Refs
 const pickerRef = ref<HTMLInputElement>()
+const errorMessage = ref(props.errorMessage || '')
+const touched = ref(false)
 const hexInput = ref('')
 const localError = ref('')
+
+// Injected from parent Form
+const formContext = inject<FormContext>('form-context')
 
 // Computed
 const pickerId = computed(
@@ -134,8 +141,26 @@ const hexStateClasses = computed(() => {
 })
 
 // Methods
+const validate = (): string => {
+  if (!props.rules || props.rules.length === 0) {
+    return ''
+  }
+
+  const allFormValues = formContext
+    ? Object.fromEntries(
+        Array.from((formContext as FormContext).getFieldValue ? new Map() : new Map())
+      )
+    : {}
+
+  const error = validateFn(props.modelValue, props.rules, allFormValues)
+  errorMessage.value = error
+  return error
+}
+
 const handleBlur = (event: FocusEvent): void => {
   emit('blur', event)
+  touched.value = true
+  validate()
 }
 
 const handleFocus = (event: FocusEvent): void => {
@@ -165,6 +190,23 @@ const handleHexInput = (event: Event): void => {
 function isValidHex(hex: string): boolean {
   return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex)
 }
+
+// Lifecycle hooks
+onMounted(() => {
+  if (formContext) {
+    formContext.register({
+      id: pickerId.value,
+      value: toRef(props, 'modelValue'),
+      validate
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (formContext) {
+    formContext.unregister(pickerId.value)
+  }
+})
 
 // Sync hex input when modelValue changes externally
 watch(

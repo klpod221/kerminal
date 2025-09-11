@@ -8,9 +8,9 @@
     size="lg"
     @close="handleClose"
   >
-    <form class="space-y-6" @submit.prevent="handleSubmit">
+    <form class="space-y-2" @submit.prevent="handleSubmit">
       <!-- Basic Information -->
-      <div class="space-y-1">
+      <div>
         <h3 class="text-lg font-medium text-white">Basic Information</h3>
 
         <!-- Profile Name -->
@@ -18,9 +18,6 @@
           v-model="form.name"
           label="Profile Name"
           placeholder="My Server"
-          :rules="['required']"
-          :error-message="nameError"
-          @blur="validation.validateField('name')"
         />
 
         <!-- Description -->
@@ -29,8 +26,6 @@
           label="Description"
           placeholder="Optional description for this SSH profile"
           :rows="2"
-          :error-message="descriptionError"
-          @blur="validation.validateField('description')"
         />
 
         <!-- Group -->
@@ -51,7 +46,7 @@
       </div>
 
       <!-- Connection Settings -->
-      <div class="space-y-1">
+      <div>
         <h3 class="text-lg font-medium text-white">Connection Settings</h3>
 
         <!-- Host -->
@@ -59,9 +54,6 @@
           v-model="form.host"
           label="Host"
           placeholder="example.com or 192.168.1.100"
-          :rules="['required']"
-          :error-message="hostError"
-          @blur="validation.validateField('host')"
         />
 
         <!-- Port and User -->
@@ -73,22 +65,17 @@
             placeholder="22"
             min="1"
             max="65535"
-            :error-message="portError"
-            @blur="validation.validateField('port')"
           />
           <Input
             v-model="form.user"
             label="Username"
             placeholder="root or your username"
-            :rules="['required']"
-            :error-message="userError"
-            @blur="validation.validateField('user')"
           />
         </div>
       </div>
 
       <!-- Authentication -->
-      <div class="space-y-1">
+      <div>
         <h3 class="text-lg font-medium text-white">Authentication</h3>
 
         <!-- Auth Type -->
@@ -118,9 +105,7 @@
               label="Private Key Path"
               placeholder="~/.ssh/id_rsa"
               :right-icon="Folder"
-              :error-message="privateKeyPathError"
               @right-icon-click="selectKeyFile"
-              @blur="validation.validateField('privateKeyPath')"
             />
           </div>
 
@@ -138,7 +123,7 @@
       </div>
 
       <!-- Options -->
-      <div class="space-y-1">
+      <div>
         <h3 class="text-lg font-medium text-white">Options</h3>
 
         <div class="flex flex-col space-y-2">
@@ -146,36 +131,14 @@
           <Checkbox v-model="form.favorite" label="Mark as favorite" :helper="false" />
 
           <!-- Keep Alive -->
-          <Checkbox v-model="form.keepAlive" label="Keep connection alive" :helper="false" />
+          <Checkbox v-model="form.keepAlive" label="Keep connection alive" />
         </div>
       </div>
 
       <!-- Proxy Settings -->
-      <div class="space-y-1">
+      <div>
         <h3 class="text-lg font-medium text-white">Proxy Settings</h3>
         <ProxySettings v-model:proxy="form.proxy" />
-      </div>
-
-      <!-- Test Connection Result -->
-      <div v-if="testConnectionResult || isTestingConnection">
-        <Message
-          v-if="isTestingConnection"
-          key="loading"
-          type="loading"
-          title="Testing Connection"
-          content="Connecting to the SSH server..."
-          :closable="false"
-        />
-        <Message
-          v-else-if="testConnectionResult"
-          :key="testConnectionMessageKey"
-          :type="testConnectionResult.success ? 'success' : 'error'"
-          :title="testConnectionResult.success ? 'Connection Successful' : 'Connection Failed'"
-          :content="getTestConnectionMessage(testConnectionResult)"
-          :duration="testConnectionResult.success ? 5000 : 0"
-          :closable="true"
-          @close="clearTestResult"
-        />
       </div>
     </form>
 
@@ -187,7 +150,7 @@
           <Button
             variant="secondary"
             size="sm"
-            :disabled="!canTestConnection || isTestingConnection"
+            :disabled="isTestingConnection"
             :loading="isTestingConnection"
             @click="handleTestConnection"
           >
@@ -196,7 +159,7 @@
           <Button
             variant="primary"
             size="sm"
-            :disabled="!canSubmit || isSaving"
+            :disabled="isSaving"
             :loading="isSaving"
             :icon="Save"
             @click="handleSubmit"
@@ -222,8 +185,6 @@ import Textarea from './ui/Textarea.vue'
 import Checkbox from './ui/Checkbox.vue'
 import Button from './ui/Button.vue'
 import ProxySettings from './ui/ProxySettings.vue'
-import Message from './ui/Message.vue'
-import { useValidation, validationRules } from '../composables/useValidation'
 import type { SSHProfileModalProps } from '../types/modals'
 import type { SSHGroup, SSHProfile, SSHProfileWithConfig, SSHProxy } from '../types/ssh'
 
@@ -266,114 +227,9 @@ const form = ref({
   proxy: null as SSHProxy | null
 })
 
-// Validation setup
-const validation = useValidation()
-
-// Create reactive refs for validation
-const nameRef = computed({
-  get: () => form.value.name,
-  set: (value) => {
-    form.value.name = value
-  }
-})
-
-const descriptionRef = computed({
-  get: () => form.value.description,
-  set: (value) => {
-    form.value.description = value
-  }
-})
-
-const hostRef = computed({
-  get: () => form.value.host,
-  set: (value) => {
-    form.value.host = value
-  }
-})
-
-const portRef = computed({
-  get: () => form.value.port,
-  set: (value) => {
-    form.value.port = value
-  }
-})
-
-const userRef = computed({
-  get: () => form.value.user,
-  set: (value) => {
-    form.value.user = value
-  }
-})
-
-const privateKeyPathRef = computed({
-  get: () => form.value.privateKeyPath,
-  set: (value) => {
-    form.value.privateKeyPath = value
-  }
-})
-
-// Register validation fields
-validation.registerField('name', nameRef, [
-  validationRules.required('Profile name is required'),
-  validationRules.profileName()
-])
-
-validation.registerField('description', descriptionRef, [
-  validationRules.maxLength(200, 'Description must be less than 200 characters')
-])
-
-validation.registerField('host', hostRef, [
-  validationRules.required('Host is required'),
-  validationRules.hostname()
-])
-
-validation.registerField('port', portRef, [validationRules.port()])
-
-validation.registerField('user', userRef, [
-  validationRules.required('Username is required'),
-  validationRules.username()
-])
-
-validation.registerField('privateKeyPath', privateKeyPathRef, [validationRules.sshKeyPath()])
 
 // Computed
 const isEditing = computed(() => !!props.profile)
-
-// Error message computed properties for safe access
-const nameError = computed(() => validation.fields.value?.name?.error?.value || undefined)
-const descriptionError = computed(
-  () => validation.fields.value?.description?.error?.value || undefined
-)
-const hostError = computed(() => validation.fields.value?.host?.error?.value || undefined)
-const portError = computed(() => validation.fields.value?.port?.error?.value || undefined)
-const userError = computed(() => validation.fields.value?.user?.error?.value || undefined)
-const privateKeyPathError = computed(
-  () => validation.fields.value?.privateKeyPath?.error?.value || undefined
-)
-
-const canSubmit = computed(() => {
-  return (
-    form.value.name &&
-    form.value.host &&
-    form.value.user &&
-    !nameError.value &&
-    !hostError.value &&
-    !userError.value &&
-    !portError.value &&
-    !privateKeyPathError.value
-  )
-})
-
-const canTestConnection = computed(() => {
-  return (
-    form.value.host &&
-    form.value.user &&
-    !hostError.value &&
-    !userError.value &&
-    !portError.value &&
-    !privateKeyPathError.value
-  )
-})
 
 // Methods
 const resetForm = (): void => {
@@ -396,11 +252,6 @@ const resetForm = (): void => {
 
   // Clear test results
   clearTestResult()
-
-  // Only reset validation if fields are properly initialized
-  if (validation.fields.value && Object.keys(validation.fields.value).length > 0) {
-    validation.resetValidation()
-  }
 }
 
 const loadProfile = (profile: SSHProfileWithConfig): void => {
@@ -469,11 +320,6 @@ const applyGroupDefaults = (group: SSHGroup): void => {
 }
 
 const handleSubmit = async (): Promise<void> => {
-  if (!canSubmit.value) {
-    validation.validateAll()
-    return
-  }
-
   try {
     isSaving.value = true
 
@@ -526,11 +372,6 @@ const handleSubmit = async (): Promise<void> => {
 }
 
 const handleTestConnection = async (): Promise<void> => {
-  if (!canTestConnection.value) {
-    validation.validateAll()
-    return
-  }
-
   try {
     isTestingConnection.value = true
     testConnectionResult.value = null

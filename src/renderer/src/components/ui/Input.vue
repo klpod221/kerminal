@@ -1,10 +1,9 @@
-<!-- Input component with consistent styling -->
 <template>
   <div class="space-y-0.5">
     <!-- Label -->
     <label v-if="label" :for="inputId" class="block text-sm font-medium text-gray-300">
       {{ label }}
-      <span v-if="rules?.some((rule) => rule === 'required')" class="text-red-400">*</span>
+      <span v-if="props.rules && props.rules.includes('required')" class="text-red-400">*</span>
     </label>
 
     <!-- Input wrapper -->
@@ -88,10 +87,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, inject, onMounted, onUnmounted, toRef } from 'vue'
 import { Eye, EyeOff } from 'lucide-vue-next'
+import { validate as validateFn } from '../../utils/validators'
 import Button from './Button.vue'
-import type { InputProps } from '../../types/ui'
+import type { InputProps, FormContext } from '../../types/form'
 
 const props = withDefaults(defineProps<InputProps>(), {
   type: 'text',
@@ -104,8 +104,13 @@ const props = withDefaults(defineProps<InputProps>(), {
 const emit = defineEmits(['update:modelValue', 'blur', 'focus', 'keydown', 'right-icon-click'])
 
 // Refs
+const errorMessage = ref(props.errorMessage || '')
+const touched = ref(false)
 const inputRef = ref<HTMLInputElement>()
 const isPasswordVisible = ref(false)
+
+// Injected from parent Form
+const formContext = inject<FormContext>('form-context')
 
 // Computed
 const inputId = computed(() => props.id || `input-${Math.random().toString(36).substr(2, 9)}`)
@@ -163,6 +168,22 @@ const stateClasses = computed(() => {
 })
 
 // Methods
+const validate = (): string => {
+  if (!props.rules || props.rules.length === 0) {
+    return ''
+  }
+
+  const allFormValues = formContext
+    ? Object.fromEntries(
+        Array.from((formContext as FormContext).getFieldValue ? new Map() : new Map())
+      )
+    : {}
+
+  const error = validateFn(props.modelValue, props.rules, allFormValues)
+  errorMessage.value = error
+  return error
+}
+
 const togglePasswordVisibility = (): void => {
   isPasswordVisible.value = !isPasswordVisible.value
   // Keep focus on input after toggling
@@ -173,6 +194,8 @@ const togglePasswordVisibility = (): void => {
 
 const handleBlur = (event: FocusEvent): void => {
   emit('blur', event)
+  touched.value = true
+  validate()
 }
 
 const handleFocus = (event: FocusEvent): void => {
@@ -182,11 +205,32 @@ const handleFocus = (event: FocusEvent): void => {
 const handleInput = (event: Event): void => {
   const target = event.target as HTMLInputElement
   emit('update:modelValue', target.value)
+
+  if (touched.value) {
+    validate()
+  }
 }
 
 const handleKeydown = (event: KeyboardEvent): void => {
   emit('keydown', event)
 }
+
+// Lifecycle hooks
+onMounted(() => {
+  if (formContext) {
+    formContext.register({
+      id: inputId.value,
+      value: toRef(props, 'modelValue'),
+      validate
+    })
+  }
+})
+
+onUnmounted(() => {
+  if (formContext) {
+    formContext.unregister(inputId.value)
+  }
+})
 
 // Expose methods for parent components
 defineExpose({
