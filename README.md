@@ -5,9 +5,6 @@
     <img src="https://img.shields.io/github/stars/klpod221/kerminal?style=for-the-badge&color=facc15&labelColor=111827" alt="GitHub Stars">
     <img src="https://img.shields.io/github/repo-size/klpod221/kerminal?style=for-the-badge&color=a78bfa&labelColor=111827" alt="Repo Size">
     <img src="https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge&color=34d399&labelColor=111827" alt="License">
-    <!-- ALL-CONTRIBUTORS-BADGE:START - Do not remove or modify this section -->
-    [![All Contributors](https://img.shields.io/badge/all_contributors-1-orange.svg?style=flat-square)](#contributors-)
-    <!-- ALL-CONTRIBUTORS-BADGE:END -->
 </div>
 
 ## 📝 Description
