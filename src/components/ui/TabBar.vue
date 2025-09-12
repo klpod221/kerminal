@@ -10,8 +10,9 @@
     <div
       class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
       :class="{
-        'opacity-100 bg-gradient-to-r from-blue-900/20 to-transparent': isActive,
-        'opacity-0': !isActive
+        'opacity-100 bg-gradient-to-r from-blue-900/20 to-transparent':
+          isActive,
+        'opacity-0': !isActive,
       }"
     ></div>
 
@@ -19,13 +20,16 @@
     <div
       class="absolute inset-0 transition-all duration-200 pointer-events-none z-20"
       :class="{
-        'opacity-100 bg-blue-500/20 border-2 border-blue-500 border-dashed': isDragOver,
-        'opacity-0': !isDragOver
+        'opacity-100 bg-blue-500/20 border-2 border-blue-500 border-dashed':
+          isDragOver,
+        'opacity-0': !isDragOver,
       }"
     ></div>
 
     <!-- Tabs Container -->
-    <div class="flex items-center flex-1 h-full max-h-[30px] min-w-0 relative z-10">
+    <div
+      class="flex items-center flex-1 h-full max-h-[30px] min-w-0 relative z-10"
+    >
       <!-- Left scroll button -->
       <Button
         v-show="showScrollButtons && canScrollLeft"
@@ -116,7 +120,9 @@
     </div>
 
     <!-- Panel Controls -->
-    <div class="flex items-center h-full max-h-[30px] flex-shrink-0 relative z-10">
+    <div
+      class="flex items-center h-full max-h-[30px] flex-shrink-0 relative z-10"
+    >
       <!-- Split Horizontal Button -->
       <Button
         title="Split horizontal"
@@ -149,41 +155,84 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick, watch, onMounted, onBeforeUnmount } from 'vue'
+import {
+  computed,
+  ref,
+  nextTick,
+  watch,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
 import {
   Plus,
   SplitSquareHorizontal,
   SplitSquareVertical,
   X,
   ChevronLeft,
-  ChevronRight
-} from 'lucide-vue-next'
-import Tab from './Tab.vue'
-import Button from './Button.vue'
-import type { TabBarProps, TabBarEmits } from '../../types/components'
-import type { Tab as TabType } from '../../types/panel'
+  ChevronRight,
+} from "lucide-vue-next";
+import Tab from "./Tab.vue";
+import Button from "./Button.vue";
+import type {
+  Tab as TabType,
+  Panel,
+  TerminalInstance,
+} from "../../types/panel";
+
+interface TabBarProps {
+  panel: Panel;
+  windowWidth: number;
+  isActive: boolean;
+  terminals?: TerminalInstance[];
+}
+
+interface TabBarEmits {
+  selectTab: [panelId: string, tabId: string];
+  closeTab: [panelId: string, tabId: string];
+  addTab: [panelId: string];
+  splitHorizontal: [panelId: string];
+  splitVertical: [panelId: string];
+  closePanel: [panelId: string];
+  moveTab: [
+    fromPanelId: string,
+    toPanelId: string,
+    tabId: string,
+    targetTabId?: string
+  ];
+  duplicateTab: [panelId: string, tabId: string];
+  moveTabToNewPanel: [panelId: string, tabId: string];
+}
+
+interface TabBarProps {
+  panel: Panel;
+  windowWidth: number;
+  isActive: boolean;
+  terminals?: TerminalInstance[];
+}
 
 const props = withDefaults(defineProps<TabBarProps>(), {
-  terminals: () => []
-})
+  terminals: () => [],
+});
 
-const emit = defineEmits<TabBarEmits>()
+const emit = defineEmits<TabBarEmits>();
 
 // Refs for scrolling functionality
-const tabsContainer = ref<HTMLElement | null>(null)
-const tabsContent = ref<HTMLElement | null>(null)
-const tabRefs = ref<Record<string, HTMLElement>>({})
-const scrollOffset = ref(0)
-const maxScrollOffset = ref(0)
+const tabsContainer = ref<HTMLElement | null>(null);
+const tabsContent = ref<HTMLElement | null>(null);
+const tabRefs = ref<Record<string, HTMLElement>>({});
+const scrollOffset = ref(0);
+const maxScrollOffset = ref(0);
 
 // Drag and drop state
-const isDragOver = ref(false)
-const dragEnterCounter = ref(0)
+const isDragOver = ref(false);
+const dragEnterCounter = ref(0);
 
 // Scroll state
-const canScrollLeft = computed(() => scrollOffset.value < 0)
-const canScrollRight = computed(() => scrollOffset.value > -maxScrollOffset.value)
-const showScrollButtons = computed(() => maxScrollOffset.value > 0)
+const canScrollLeft = computed(() => scrollOffset.value < 0);
+const canScrollRight = computed(
+  () => scrollOffset.value > -maxScrollOffset.value
+);
+const showScrollButtons = computed(() => maxScrollOffset.value > 0);
 
 /**
  * Set the ref for a tab element.
@@ -191,322 +240,332 @@ const showScrollButtons = computed(() => maxScrollOffset.value > 0)
  * @param {unknown} el - The ref value.
  */
 const setTabRef = (tabId: string, el: unknown): void => {
-  if (el && typeof el === 'object' && '$el' in el) {
-    tabRefs.value[tabId] = (el as { $el: HTMLElement }).$el
+  if (el && typeof el === "object" && "$el" in el) {
+    tabRefs.value[tabId] = (el as { $el: HTMLElement }).$el;
   } else if (el && el instanceof HTMLElement) {
-    tabRefs.value[tabId] = el
+    tabRefs.value[tabId] = el;
   } else {
-    delete tabRefs.value[tabId]
+    delete tabRefs.value[tabId];
   }
-}
+};
 
 /**
  * Calculate the maximum scroll offset based on content width.
  */
 const updateScrollLimits = (): void => {
-  if (!tabsContainer.value || !tabsContent.value) return
+  if (!tabsContainer.value || !tabsContent.value) return;
 
-  const containerWidth = tabsContainer.value.offsetWidth
-  const contentWidth = tabsContent.value.scrollWidth
+  const containerWidth = tabsContainer.value.offsetWidth;
+  const contentWidth = tabsContent.value.scrollWidth;
 
-  const newMaxScrollOffset = Math.max(0, contentWidth - containerWidth)
+  const newMaxScrollOffset = Math.max(0, contentWidth - containerWidth);
 
   // Only update if there's a significant change to avoid flickering
   if (Math.abs(maxScrollOffset.value - newMaxScrollOffset) > 1) {
-    maxScrollOffset.value = newMaxScrollOffset
+    maxScrollOffset.value = newMaxScrollOffset;
 
     // Ensure scroll offset doesn't exceed new limits
     if (scrollOffset.value < -maxScrollOffset.value) {
-      scrollOffset.value = -maxScrollOffset.value
+      scrollOffset.value = -maxScrollOffset.value;
     }
   }
-}
+};
 
 /**
  * Scroll tabs to the left.
  */
 const scrollLeft = (): void => {
-  const scrollAmount = Math.min(200, Math.abs(scrollOffset.value))
-  scrollOffset.value = Math.min(0, scrollOffset.value + scrollAmount)
-}
+  const scrollAmount = Math.min(200, Math.abs(scrollOffset.value));
+  scrollOffset.value = Math.min(0, scrollOffset.value + scrollAmount);
+};
 
 /**
  * Scroll tabs to the right.
  */
 const scrollRight = (): void => {
-  const remainingScroll = maxScrollOffset.value + scrollOffset.value
-  const scrollAmount = Math.min(200, remainingScroll)
-  scrollOffset.value = Math.max(-maxScrollOffset.value, scrollOffset.value - scrollAmount)
-}
+  const remainingScroll = maxScrollOffset.value + scrollOffset.value;
+  const scrollAmount = Math.min(200, remainingScroll);
+  scrollOffset.value = Math.max(
+    -maxScrollOffset.value,
+    scrollOffset.value - scrollAmount
+  );
+};
 
 /**
  * Handle mouse wheel scrolling on tabs.
  * @param {WheelEvent} event - The wheel event.
  */
 const onWheel = (event: WheelEvent): void => {
-  if (maxScrollOffset.value === 0) return
+  if (maxScrollOffset.value === 0) return;
 
   // Use deltaX if available (horizontal scroll), otherwise use deltaY
-  const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY
-  const scrollAmount = delta > 0 ? -120 : 120
-  const newOffset = scrollOffset.value + scrollAmount
+  const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
+  const scrollAmount = delta > 0 ? -120 : 120;
+  const newOffset = scrollOffset.value + scrollAmount;
 
-  scrollOffset.value = Math.max(-maxScrollOffset.value, Math.min(0, newOffset))
-}
+  scrollOffset.value = Math.max(-maxScrollOffset.value, Math.min(0, newOffset));
+};
 
 /**
  * Scroll active tab into view if it's not visible.
  */
 const scrollActiveTabIntoView = (): void => {
-  const activeTab = tabRefs.value[props.panel.activeTabId]
-  if (!activeTab || !tabsContainer.value || !tabsContent.value) return
+  const activeTab = tabRefs.value[props.panel.activeTabId];
+  if (!activeTab || !tabsContainer.value || !tabsContent.value) return;
 
-  const containerRect = tabsContainer.value.getBoundingClientRect()
-  const tabRect = activeTab.getBoundingClientRect()
-  const contentRect = tabsContent.value.getBoundingClientRect()
+  const containerRect = tabsContainer.value.getBoundingClientRect();
+  const tabRect = activeTab.getBoundingClientRect();
+  const contentRect = tabsContent.value.getBoundingClientRect();
 
   // Calculate tab position relative to the scrollable content
-  const tabRelativeLeft = tabRect.left - contentRect.left
-  const tabRelativeRight = tabRelativeLeft + tabRect.width
+  const tabRelativeLeft = tabRect.left - contentRect.left;
+  const tabRelativeRight = tabRelativeLeft + tabRect.width;
 
   // Calculate visible area bounds
-  const visibleLeft = -scrollOffset.value
-  const visibleRight = visibleLeft + containerRect.width
+  const visibleLeft = -scrollOffset.value;
+  const visibleRight = visibleLeft + containerRect.width;
 
-  const padding = 20 // Add some padding for better UX
+  const padding = 20; // Add some padding for better UX
 
   // If tab is completely to the left of visible area
   if (tabRelativeLeft < visibleLeft) {
-    scrollOffset.value = -(tabRelativeLeft - padding)
+    scrollOffset.value = -(tabRelativeLeft - padding);
   }
   // If tab is completely to the right of visible area
   else if (tabRelativeRight > visibleRight) {
-    scrollOffset.value = -(tabRelativeRight - containerRect.width + padding)
+    scrollOffset.value = -(tabRelativeRight - containerRect.width + padding);
   }
 
   // Ensure scroll offset stays within bounds
-  scrollOffset.value = Math.max(-maxScrollOffset.value, Math.min(0, scrollOffset.value))
-}
+  scrollOffset.value = Math.max(
+    -maxScrollOffset.value,
+    Math.min(0, scrollOffset.value)
+  );
+};
 
 // Watch for active tab changes to scroll into view (with debounce)
 const debouncedScrollIntoView = (() => {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
   return () => {
-    if (timeoutId) clearTimeout(timeoutId)
+    if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
-      updateScrollLimits()
-      scrollActiveTabIntoView()
-    }, 100)
-  }
-})()
+      updateScrollLimits();
+      scrollActiveTabIntoView();
+    }, 100);
+  };
+})();
 
 watch(
   () => props.panel.activeTabId,
   () => {
     nextTick(() => {
-      debouncedScrollIntoView()
-    })
+      debouncedScrollIntoView();
+    });
   }
-)
+);
 
 // Watch for tab count changes to update scroll limits (with debounce)
 const debouncedUpdateLimits = (() => {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
   return () => {
-    if (timeoutId) clearTimeout(timeoutId)
+    if (timeoutId) clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
-      updateScrollLimits()
-    }, 150)
-  }
-})()
+      updateScrollLimits();
+    }, 150);
+  };
+})();
 
 watch(
   () => props.panel.tabs.length,
   () => {
     nextTick(() => {
-      debouncedUpdateLimits()
-    })
+      debouncedUpdateLimits();
+    });
   }
-)
+);
 
 // Update scroll limits when window resizes
-let resizeObserver: ResizeObserver | null = null
+let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
   if (tabsContainer.value) {
     resizeObserver = new ResizeObserver(() => {
-      updateScrollLimits()
-    })
-    resizeObserver.observe(tabsContainer.value)
+      updateScrollLimits();
+    });
+    resizeObserver.observe(tabsContainer.value);
   }
 
   // Initial update
   nextTick(() => {
-    updateScrollLimits()
-  })
-})
+    updateScrollLimits();
+  });
+});
 
 onBeforeUnmount(() => {
   if (resizeObserver) {
-    resizeObserver.disconnect()
+    resizeObserver.disconnect();
   }
-})
+});
 
 // Computed properties for responsive tab sizing
 const tabMinWidth = computed(() => {
-  const tabCount = props.panel.tabs.length
-  const addButtonWidth = showScrollButtons.value ? 32 : 36 // Add button width (larger when inside scrollable area)
-  const scrollButtonsWidth = showScrollButtons.value ? 64 : 0 // Scroll buttons
-  const panelControlsWidth = 128 // Split + close buttons
-  const padding = 16
+  const tabCount = props.panel.tabs.length;
+  const addButtonWidth = showScrollButtons.value ? 32 : 36; // Add button width (larger when inside scrollable area)
+  const scrollButtonsWidth = showScrollButtons.value ? 64 : 0; // Scroll buttons
+  const panelControlsWidth = 128; // Split + close buttons
+  const padding = 16;
   const availableWidth =
-    props.windowWidth - addButtonWidth - scrollButtonsWidth - panelControlsWidth - padding
+    props.windowWidth -
+    addButtonWidth -
+    scrollButtonsWidth -
+    panelControlsWidth -
+    padding;
 
   // Calculate ideal width per tab
-  const idealTabWidth = Math.floor(availableWidth / Math.max(tabCount, 1))
+  const idealTabWidth = Math.floor(availableWidth / Math.max(tabCount, 1));
 
   // Apply breakpoints based on available space and tab count
-  if (tabCount <= 4 && idealTabWidth >= 180) return 180
-  if (tabCount <= 6 && idealTabWidth >= 150) return 150
-  if (tabCount <= 8 && idealTabWidth >= 120) return 120
-  if (tabCount <= 10 && idealTabWidth >= 100) return 100
+  if (tabCount <= 4 && idealTabWidth >= 180) return 180;
+  if (tabCount <= 6 && idealTabWidth >= 150) return 150;
+  if (tabCount <= 8 && idealTabWidth >= 120) return 120;
+  if (tabCount <= 10 && idealTabWidth >= 100) return 100;
 
-  return Math.max(idealTabWidth, 80) // Minimum readable space for scrollable tabs
-})
+  return Math.max(idealTabWidth, 80); // Minimum readable space for scrollable tabs
+});
 
 const tabMaxWidth = computed(() => {
-  const tabCount = props.panel.tabs.length
-  if (tabCount <= 4) return 180
-  return 200
-})
+  const tabCount = props.panel.tabs.length;
+  if (tabCount <= 4) return 180;
+  return 200;
+});
 
 const getTerminalConnectingState = (tabId: string): boolean => {
-  const terminal = props.terminals.find((t) => t.id === tabId)
-  return terminal?.isSSHConnecting || false
-}
+  const terminal = props.terminals.find((t) => t.id === tabId);
+  return terminal?.isSSHConnecting || false;
+};
 
 const selectTab = (tabId: string): void => {
-  emit('selectTab', props.panel.id, tabId)
-}
+  emit("selectTab", props.panel.id, tabId);
+};
 
 const closeTab = (tabId: string): void => {
-  emit('closeTab', props.panel.id, tabId)
-}
+  emit("closeTab", props.panel.id, tabId);
+};
 
 const addTab = (): void => {
-  emit('addTab', props.panel.id)
-}
+  emit("addTab", props.panel.id);
+};
 
 const splitHorizontal = (): void => {
-  emit('splitHorizontal', props.panel.id)
-}
+  emit("splitHorizontal", props.panel.id);
+};
 
 const splitVertical = (): void => {
-  emit('splitVertical', props.panel.id)
-}
+  emit("splitVertical", props.panel.id);
+};
 
 const closePanel = (): void => {
-  emit('closePanel', props.panel.id)
-}
+  emit("closePanel", props.panel.id);
+};
 
 /**
  * Handle tab duplication from context menu
  */
 const handleTabDuplicate = (tab: TabType): void => {
   // Emit custom event for tab duplication - this should be handled by parent component
-  emit('duplicateTab', props.panel.id, tab.id)
-}
+  emit("duplicateTab", props.panel.id, tab.id);
+};
 
 /**
  * Handle close other tabs from context menu
  */
 const handleCloseOthers = (tab: TabType): void => {
   // Close all tabs except the selected one
-  const otherTabs = props.panel.tabs.filter((t) => t.id !== tab.id)
+  const otherTabs = props.panel.tabs.filter((t) => t.id !== tab.id);
   otherTabs.forEach((otherTab) => {
-    emit('closeTab', props.panel.id, otherTab.id)
-  })
-}
+    emit("closeTab", props.panel.id, otherTab.id);
+  });
+};
 
 /**
  * Handle close tabs to the right from context menu
  */
 const handleCloseToRight = (tab: TabType): void => {
-  const tabIndex = props.panel.tabs.findIndex((t) => t.id === tab.id)
+  const tabIndex = props.panel.tabs.findIndex((t) => t.id === tab.id);
   if (tabIndex !== -1) {
-    const tabsToClose = props.panel.tabs.slice(tabIndex + 1)
+    const tabsToClose = props.panel.tabs.slice(tabIndex + 1);
     tabsToClose.forEach((tabToClose) => {
-      emit('closeTab', props.panel.id, tabToClose.id)
-    })
+      emit("closeTab", props.panel.id, tabToClose.id);
+    });
   }
-}
+};
 
 /**
  * Handle move tab to new panel from context menu
  */
 const handleMoveToNewPanel = (tab: TabType): void => {
   // Emit custom event for moving tab to new panel
-  emit('moveTabToNewPanel', props.panel.id, tab.id)
-}
+  emit("moveTabToNewPanel", props.panel.id, tab.id);
+};
 
 const onTabDragStart = (tab: TabType): void => {
   // Store the source panel info for drag operations
-  console.log('Tab drag started:', tab, 'from panel:', props.panel.id)
-}
+  console.log("Tab drag started:", tab, "from panel:", props.panel.id);
+};
 
 const onTabDrop = (draggedTab: TabType, targetTab: TabType): void => {
   // Handle tab reordering within the same panel or moving between panels
-  emit('moveTab', props.panel.id, props.panel.id, draggedTab.id, targetTab.id)
-}
+  emit("moveTab", props.panel.id, props.panel.id, draggedTab.id, targetTab.id);
+};
 
 // Panel-level drag and drop handlers for cross-panel operations
 const onPanelDragOver = (event: DragEvent): void => {
-  event.preventDefault()
+  event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
-}
+};
 
 const onPanelDragEnter = (event: DragEvent): void => {
-  event.preventDefault()
-  dragEnterCounter.value++
+  event.preventDefault();
+  dragEnterCounter.value++;
   if (dragEnterCounter.value === 1) {
-    isDragOver.value = true
+    isDragOver.value = true;
   }
-}
+};
 
 const onPanelDragLeave = (event: DragEvent): void => {
-  event.preventDefault()
-  dragEnterCounter.value--
+  event.preventDefault();
+  dragEnterCounter.value--;
   if (dragEnterCounter.value === 0) {
-    isDragOver.value = false
+    isDragOver.value = false;
   }
-}
+};
 
 const onPanelDrop = (event: DragEvent): void => {
-  event.preventDefault()
-  dragEnterCounter.value = 0
-  isDragOver.value = false
+  event.preventDefault();
+  dragEnterCounter.value = 0;
+  isDragOver.value = false;
 
   if (event.dataTransfer) {
-    const draggedTabData = event.dataTransfer.getData('application/json')
+    const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
       try {
-        const dragData = JSON.parse(draggedTabData)
-        const draggedTab = dragData.tab as TabType
-        const sourcePanelId = dragData.sourcePanelId as string
+        const dragData = JSON.parse(draggedTabData);
+        const draggedTab = dragData.tab as TabType;
+        const sourcePanelId = dragData.sourcePanelId as string;
 
         // Only handle cross-panel drops here (same panel drops are handled by tab-level drop)
         if (sourcePanelId && sourcePanelId !== props.panel.id) {
           // Move tab to this panel (at the end)
-          emit('moveTab', sourcePanelId, props.panel.id, draggedTab.id, '')
+          emit("moveTab", sourcePanelId, props.panel.id, draggedTab.id, "");
         }
       } catch (error) {
-        console.error('Error parsing dragged tab data:', error)
+        console.error("Error parsing dragged tab data:", error);
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -514,7 +573,11 @@ const onPanelDrop = (event: DragEvent): void => {
 .drag-over-indicator {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.1) 0%,
+    rgba(99, 102, 241, 0.1) 100%
+  );
   border: 2px dashed rgba(59, 130, 246, 0.5);
   border-radius: 4px;
   z-index: 20;
@@ -523,7 +586,7 @@ const onPanelDrop = (event: DragEvent): void => {
 }
 
 .drag-over-indicator::before {
-  content: 'Drop tab here';
+  content: "Drop tab here";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -560,7 +623,7 @@ const onPanelDrop = (event: DragEvent): void => {
 
 .scrollable-tabs::before,
 .scrollable-tabs::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   bottom: 0;
@@ -662,13 +725,17 @@ const onPanelDrop = (event: DragEvent): void => {
 }
 
 :deep(.add-tab-btn):hover::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   width: 0;
   height: 0;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.3) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.3) 0%,
+    transparent 70%
+  );
   border-radius: 50%;
   transform: translate(-50%, -50%);
   animation: ripple 0.6s ease-out;

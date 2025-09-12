@@ -1,12 +1,4 @@
 /**
- * Date and time formatting utilities
- */
-
-/**
- * Format a date to a human-readable relative time string
- */
-
-/**
  * Get the largest time unit and its value from the difference in milliseconds
  * @param {number} diff - Difference in milliseconds
  * @returns {{value: number, unit: string} | null}

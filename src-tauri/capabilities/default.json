@@ -3,5 +3,8 @@
   "identifier": "default",
   "description": "Capability for the main window",
   "windows": ["main"],
-  "permissions": ["core:window:default", "core:window:allow-start-dragging"]
+  "permissions": [
+    "core:default",
+    "opener:default"
+  ]
 }

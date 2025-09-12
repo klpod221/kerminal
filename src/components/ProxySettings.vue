@@ -122,8 +122,12 @@ import { Eye, EyeOff, Folder } from 'lucide-vue-next'
 import Input from './Input.vue'
 import Select from './Select.vue'
 import Checkbox from './Checkbox.vue'
-import type { SSHProxy } from '../../types/ssh'
-import type { ProxySettingsProps } from '../../types/ui'
+import type { SSHProxy } from '../types/ssh'
+
+interface ProxySettingsProps {
+  proxy: SSHProxy | null
+  disabled?: boolean
+}
 
 const props = withDefaults(defineProps<ProxySettingsProps>(), {
   proxy: null,

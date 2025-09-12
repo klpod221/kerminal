@@ -9,9 +9,9 @@
         'card-ripple': hover,
         'p-4': !noPadding,
         'p-6': size === 'sm' && !noPadding,
-        'p-8': size === 'lg' && !noPadding
+        'p-8': size === 'lg' && !noPadding,
       },
-      customClass
+      customClass,
     ]"
     @click="handleClick"
   >
@@ -20,7 +20,7 @@
       v-if="$slots.header || title || icon"
       :class="[
         'mb-6 relative z-[2]',
-        center ? 'flex flex-col items-center text-center' : 'flex items-center'
+        center ? 'flex flex-col items-center text-center' : 'flex items-center',
       ]"
     >
       <!-- Icon -->
@@ -30,11 +30,14 @@
           'rounded-lg p-3 transition-all duration-300',
           center ? 'w-fit mx-auto mb-3' : 'mr-4',
           'hover:scale-105',
-          iconBackground || 'bg-blue-500/20'
+          iconBackground || 'bg-blue-500/20',
         ]"
       >
         <slot name="icon">
-          <component :is="icon" :class="['w-8 h-8', iconColor || 'text-blue-400']" />
+          <component
+            :is="icon"
+            :class="['w-8 h-8', iconColor || 'text-blue-400']"
+          />
         </slot>
       </div>
 
@@ -45,7 +48,11 @@
             v-if="title"
             :class="[
               'font-semibold',
-              size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-2xl' : 'text-xl'
+              size === 'sm'
+                ? 'text-lg'
+                : size === 'lg'
+                ? 'text-2xl'
+                : 'text-xl',
             ]"
           >
             {{ title }}
@@ -72,44 +79,62 @@
 </template>
 
 <script setup lang="ts">
-import type { CardProps, CardEmits } from '../../types/ui'
+import type { Component } from "vue";
+
+interface CardProps {
+  title?: string;
+  icon?: Component;
+  iconBackground?: string;
+  iconColor?: string;
+  size?: "sm" | "md" | "lg";
+  hover?: boolean;
+  scale?: boolean;
+  noPadding?: boolean;
+  spacing?: boolean;
+  center?: boolean;
+  customClass?: string;
+}
 
 // Define props with defaults
 withDefaults(defineProps<CardProps>(), {
-  size: 'md',
+  size: "md",
   hover: false,
   scale: false,
   noPadding: false,
   spacing: true,
-  center: false
-})
+  center: false,
+});
 
 // Define emits
-const emit = defineEmits<CardEmits>()
+const emit = defineEmits<{
+  (e: "click", event: MouseEvent): void;
+}>();
 
 /**
  * Handle click event
  */
 const handleClick = (event: MouseEvent): void => {
-  emit('click', event)
-}
+  emit("click", event);
+};
 </script>
 
 <style scoped>
 /* Ripple effect on click - cannot be achieved with Tailwind alone */
 .card-ripple::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(59, 130, 246, 0.2) 0%,
+    transparent 70%
+  );
   transform: translate(-50%, -50%);
-  transition:
-    width 0.3s,
-    height 0.3s;
+  transition: width 0.3s, height 0.3s;
   pointer-events: none;
   z-index: 1;
 }

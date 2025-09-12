@@ -14,16 +14,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue'
-import type { ComponentPublicInstance } from 'vue'
-import Terminal from './Terminal.vue'
-import type { TerminalManagerProps, TerminalComponent } from '../types/components'
+import { ref, watch, nextTick } from "vue";
+import Terminal from "./Terminal.vue";
+import type { ComponentPublicInstance } from "vue";
+import type { TerminalInstance } from "../../types/panel";
 
-const props = defineProps<TerminalManagerProps>()
+interface TerminalManagerProps {
+  terminals: TerminalInstance[];
+  activeTerminalId?: string;
+}
 
-const terminalRefs = ref<Record<string, ComponentPublicInstance | null>>({})
+interface TerminalComponent extends ComponentPublicInstance {
+  focus: () => void;
+  fitAndFocus: () => void;
+}
 
-const emit = defineEmits(['terminal-ready'])
+const props = defineProps<TerminalManagerProps>();
+
+const terminalRefs = ref<Record<string, ComponentPublicInstance | null>>({});
+
+const emit = defineEmits(["terminal-ready"]);
 
 /**
  * Set the ref for a terminal instance.
@@ -31,32 +41,35 @@ const emit = defineEmits(['terminal-ready'])
  * @param {string} terminalId - The terminal id.
  * @param {any} el - The ref value (component instance or DOM element).
  */
-const setTerminalRef = (terminalId: string, el: ComponentPublicInstance | Element | null): void => {
+const setTerminalRef = (
+  terminalId: string,
+  el: ComponentPublicInstance | Element | null
+): void => {
   // Check if el is a Vue component instance (has $el property)
-  if (el && typeof el === 'object' && '$el' in el) {
-    terminalRefs.value[terminalId] = el as ComponentPublicInstance
+  if (el && typeof el === "object" && "$el" in el) {
+    terminalRefs.value[terminalId] = el as ComponentPublicInstance;
   } else {
-    delete terminalRefs.value[terminalId]
+    delete terminalRefs.value[terminalId];
   }
-}
+};
 
 const onTerminalReady = (terminalId: string): void => {
-  emit('terminal-ready', terminalId)
-}
+  emit("terminal-ready", terminalId);
+};
 
 // Watch for active terminal changes to ensure proper focus
 watch(
   () => props.activeTerminalId,
   async (newActiveId) => {
     if (newActiveId && terminalRefs.value[newActiveId]) {
-      await nextTick()
+      await nextTick();
       // Focus the active terminal with proper sizing
-      const terminalInstance = terminalRefs.value[newActiveId]
-      if (terminalInstance && 'fitAndFocus' in terminalInstance) {
-        ;(terminalInstance as TerminalComponent).fitAndFocus()
+      const terminalInstance = terminalRefs.value[newActiveId];
+      if (terminalInstance && "fitAndFocus" in terminalInstance) {
+        (terminalInstance as TerminalComponent).fitAndFocus();
       }
     }
   },
   { immediate: true }
-)
+);
 </script>

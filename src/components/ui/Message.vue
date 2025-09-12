@@ -1,6 +1,9 @@
 <template>
   <Teleport to="body">
-    <div v-if="visible" class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50">
+    <div
+      v-if="visible"
+      class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50"
+    >
       <Transition
         enter-active-class="transition-all duration-300 ease-out"
         enter-from-class="opacity-0 transform -translate-y-4 scale-95"
@@ -14,19 +17,25 @@
           :class="[
             'flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border backdrop-blur-sm',
             'min-w-[300px] max-w-[500px]',
-            messageClasses
+            messageClasses,
           ]"
         >
           <!-- Icon -->
           <div class="flex-shrink-0">
             <div class="rounded-lg p-2" :class="iconBackgroundClass">
-              <component :is="iconComponent" :class="iconClass" class="w-4 h-4" />
+              <component
+                :is="iconComponent"
+                :class="iconClass"
+                class="w-4 h-4"
+              />
             </div>
           </div>
 
           <!-- Content -->
           <div class="flex-1 min-w-0">
-            <div v-if="title" class="font-semibold text-sm text-white mb-1">{{ title }}</div>
+            <div v-if="title" class="font-semibold text-sm text-white mb-1">
+              {{ title }}
+            </div>
             <div class="text-sm text-gray-300 leading-5">{{ content }}</div>
           </div>
 
@@ -46,107 +55,122 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { CheckCircle, XCircle, AlertTriangle, Info, Loader2, X } from 'lucide-vue-next'
-import Button from './Button.vue'
-import type { MessageProps } from '../../types/ui'
+import { computed, onMounted, ref } from "vue";
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Info,
+  Loader2,
+  X,
+} from "lucide-vue-next";
+import Button from "./Button.vue";
+
+interface MessageProps {
+  type?: "success" | "error" | "warning" | "info" | "loading";
+  title?: string;
+  content: string;
+  duration?: number;
+  closable?: boolean;
+  onClose?: () => void;
+}
 
 const props = withDefaults(defineProps<MessageProps>(), {
-  type: 'info',
+  type: "info",
   duration: 3000,
-  closable: true
-})
+  closable: true,
+});
 
-const visible = ref(false)
-let timer: number | null = null
+const visible = ref(false);
+let timer: number | null = null;
 
 const messageClasses = computed(() => {
   switch (props.type) {
-    case 'success':
-      return 'bg-[#1a1a1a] border-green-700/50'
-    case 'error':
-      return 'bg-[#1a1a1a] border-red-700/50'
-    case 'warning':
-      return 'bg-[#1a1a1a] border-yellow-700/50'
-    case 'loading':
-      return 'bg-[#1a1a1a] border-blue-700/50'
+    case "success":
+      return "bg-[#1a1a1a] border-green-700/50";
+    case "error":
+      return "bg-[#1a1a1a] border-red-700/50";
+    case "warning":
+      return "bg-[#1a1a1a] border-yellow-700/50";
+    case "loading":
+      return "bg-[#1a1a1a] border-blue-700/50";
     default:
-      return 'bg-[#1a1a1a] border-blue-700/50'
+      return "bg-[#1a1a1a] border-blue-700/50";
   }
-})
+});
 
 const iconBackgroundClass = computed(() => {
   switch (props.type) {
-    case 'success':
-      return 'bg-green-500/20'
-    case 'error':
-      return 'bg-red-500/20'
-    case 'warning':
-      return 'bg-yellow-500/20'
-    case 'loading':
-      return 'bg-blue-500/20'
+    case "success":
+      return "bg-green-500/20";
+    case "error":
+      return "bg-red-500/20";
+    case "warning":
+      return "bg-yellow-500/20";
+    case "loading":
+      return "bg-blue-500/20";
     default:
-      return 'bg-blue-500/20'
+      return "bg-blue-500/20";
   }
-})
+});
 
 const iconClass = computed(() => {
   switch (props.type) {
-    case 'success':
-      return 'text-green-400'
-    case 'error':
-      return 'text-red-400'
-    case 'warning':
-      return 'text-yellow-400'
-    case 'loading':
-      return 'text-blue-400 animate-spin'
+    case "success":
+      return "text-green-400";
+    case "error":
+      return "text-red-400";
+    case "warning":
+      return "text-yellow-400";
+    case "loading":
+      return "text-blue-400 animate-spin";
     default:
-      return 'text-blue-400'
+      return "text-blue-400";
   }
-})
+});
 
 const iconComponent = computed(() => {
   switch (props.type) {
-    case 'success':
-      return CheckCircle
-    case 'error':
-      return XCircle
-    case 'warning':
-      return AlertTriangle
-    case 'loading':
-      return Loader2
+    case "success":
+      return CheckCircle;
+    case "error":
+      return XCircle;
+    case "warning":
+      return AlertTriangle;
+    case "loading":
+      return Loader2;
     default:
-      return Info
+      return Info;
   }
-})
+});
 
 /**
  * Close the message
  */
 const close = (): void => {
-  visible.value = false
+  visible.value = false;
   if (timer) {
-    window.clearTimeout(timer)
-    timer = null
+    window.clearTimeout(timer);
+    timer = null;
   }
   setTimeout(() => {
-    props.onClose?.()
-  }, 200)
-}
+    props.onClose?.();
+  }, 200);
+};
 
 onMounted(() => {
-  visible.value = true
+  visible.value = true;
 
   // Auto close after duration (except for loading messages)
-  if (props.duration > 0 && props.type !== 'loading') {
+  if (props.duration > 0 && props.type !== "loading") {
     timer = window.setTimeout(() => {
-      close()
-    }, props.duration)
+      close();
+    }, props.duration);
   }
-})
+});
 
 // Expose methods for programmatic control
 defineExpose({
-  close
-})
+  close,
+});
 </script>

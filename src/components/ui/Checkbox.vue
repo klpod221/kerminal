@@ -1,49 +1,46 @@
-<!-- Checkbox component with consistent styling -->
 <template>
   <div class="space-y-0.5">
-    <!-- Label (optional top label) -->
-    <label
-      v-if="label && labelPosition === 'top'"
-      :for="checkboxId"
-      class="block text-sm font-medium text-gray-300"
-    >
-      {{ label }}
-      <span v-if="rules?.some((rule) => rule === 'required')" class="text-red-400">*</span>
-    </label>
-
-    <!-- Checkbox wrapper -->
-    <label :for="checkboxId" class="flex items-center cursor-pointer">
+    <div class="relative flex items-center">
       <input
-        :id="checkboxId"
-        ref="checkboxRef"
-        v-model="checkboxValue"
+        :id="inputId"
+        ref="inputRef"
+        :checked="modelValue"
         type="checkbox"
         :disabled="disabled"
+        :readonly="readonly"
         :class="[
-          'rounded border transition-all duration-200',
+          'mr-2 block rounded-lg border transition-all duration-200',
           'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
           'disabled:opacity-50 disabled:cursor-not-allowed',
+          'readonly:bg-gray-700 readonly:cursor-default',
           sizeClasses,
-          stateClasses
+          stateClasses,
         ]"
         @blur="handleBlur"
         @focus="handleFocus"
         @change="handleChange"
+        @keydown="handleKeydown"
       />
 
-      <!-- Inline label -->
-      <span
-        v-if="label && labelPosition === 'right'"
-        :class="['select-none transition-colors ml-2', labelSizeClasses, labelStateClasses]"
+      <label
+        v-if="label"
+        :for="inputId"
+        class="block text-sm font-medium text-gray-300 cursor-pointer"
       >
         {{ label }}
-        <span v-if="rules?.some((rule) => rule === 'required')" class="text-red-400 ml-1">*</span>
-      </span>
-    </label>
+        <span
+          v-if="props.rules && props.rules.includes('required')"
+          class="text-red-400"
+          >*</span
+        >
+      </label>
+    </div>
 
     <div v-if="helper" class="min-h-[1.25rem]">
       <!-- Helper text (only show if no error) -->
-      <p v-if="helperText && !errorMessage" class="text-xs text-gray-400">{{ helperText }}</p>
+      <p v-if="helperText && !errorMessage" class="text-xs text-gray-400">
+        {{ helperText }}
+      </p>
 
       <!-- Error message -->
       <p v-if="errorMessage" class="text-xs text-red-400 flex items-center">
@@ -55,89 +52,135 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { CheckboxProps } from '../../types/ui'
+import { ref, computed, inject, onMounted, onUnmounted, toRef } from "vue";
+import { validate as validateFn } from "../../utils/validators";
+import type { FormContext } from "../../types/form";
+
+interface CheckboxProps {
+  id: string;
+  modelValue?: boolean;
+  label?: string;
+  rules?: string;
+  helperText?: string;
+  errorMessage?: string;
+  size?: "sm" | "md" | "lg";
+  disabled?: boolean;
+  readonly?: boolean;
+  helper?: boolean;
+}
 
 const props = withDefaults(defineProps<CheckboxProps>(), {
-  modelValue: false,
-  size: 'md',
+  size: "md",
   disabled: false,
+  readonly: false,
   helper: true,
-  labelPosition: 'right'
-})
+});
 
-const emit = defineEmits(['update:modelValue', 'blur', 'focus', 'change'])
+const emit = defineEmits(["update:modelValue", "blur", "focus", "keydown"]);
 
 // Refs
-const checkboxRef = ref<HTMLInputElement>()
+const errorMessage = ref(props.errorMessage || "");
+const touched = ref(false);
+const inputRef = ref<HTMLInputElement>();
+
+// Injected from parent Form
+const formContext = inject<FormContext>("form-context");
 
 // Computed
-const checkboxId = computed(() => props.id || `checkbox-${Math.random().toString(36).substr(2, 9)}`)
-
-const checkboxValue = computed({
-  get: () => props.modelValue ?? false,
-  set: (value: boolean) => emit('update:modelValue', value)
-})
+const inputId = computed(
+  () => props.id || `input-${Math.random().toString(36).substr(2, 9)}`
+);
 
 const sizeClasses = computed(() => {
   switch (props.size) {
-    case 'sm':
-      return 'w-3 h-3'
-    case 'lg':
-      return 'w-5 h-5'
+    case "sm":
+      return "text-sm py-1.5";
+    case "lg":
+      return "text-lg py-3";
     default:
-      return 'w-4 h-4'
+      return "text-base py-2";
   }
-})
-
-const labelSizeClasses = computed(() => {
-  switch (props.size) {
-    case 'sm':
-      return 'text-xs'
-    case 'lg':
-      return 'text-base'
-    default:
-      return 'text-sm'
-  }
-})
+});
 
 const stateClasses = computed(() => {
   if (props.errorMessage) {
-    return 'border-red-500 text-red-500 focus:border-red-400 focus:ring-red-500'
+    return "border-red-500 bg-red-500/5 text-white focus:border-red-400 focus:ring-red-500";
   }
 
   if (props.disabled) {
-    return 'border-gray-600 bg-gray-800 text-gray-400'
+    return "border-gray-600 bg-gray-800 text-gray-400";
   }
 
-  return 'border-gray-600 bg-gray-800 text-orange-500 hover:border-gray-500 focus:border-orange-500 focus:ring-orange-500'
-})
-
-const labelStateClasses = computed(() => {
-  if (props.disabled) {
-    return 'text-gray-500'
+  if (props.readonly) {
+    return "border-gray-600 bg-gray-700 text-gray-300";
   }
-  return 'text-gray-300'
-})
+
+  return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500";
+});
 
 // Methods
+const validate = (): string => {
+  if (!props.rules || props.rules.length === 0) {
+    return "";
+  }
+
+  const allFormValues = formContext
+    ? Object.fromEntries(
+        Array.from(
+          (formContext as FormContext).getFieldValue ? new Map() : new Map()
+        )
+      )
+    : {};
+
+  const error = validateFn(props.modelValue, props.rules, allFormValues);
+  errorMessage.value = error;
+  return error;
+};
+
 const handleBlur = (event: FocusEvent): void => {
-  emit('blur', event)
-}
+  emit("blur", event);
+  touched.value = true;
+  validate();
+};
 
 const handleFocus = (event: FocusEvent): void => {
-  emit('focus', event)
-}
+  emit("focus", event);
+};
 
 const handleChange = (event: Event): void => {
-  const target = event.target as HTMLInputElement
-  emit('update:modelValue', target.checked)
-  emit('change', event)
-}
+  const target = event.target as HTMLInputElement;
+  emit("update:modelValue", target.checked);
+
+  if (touched.value) {
+    validate();
+  }
+};
+
+const handleKeydown = (event: KeyboardEvent): void => {
+  emit("keydown", event);
+};
+
+// Lifecycle hooks
+onMounted(() => {
+  if (formContext) {
+    formContext.register({
+      id: inputId.value,
+      value: toRef(props, "modelValue"),
+      validate,
+    });
+  }
+});
+
+onUnmounted(() => {
+  if (formContext) {
+    formContext.unregister(inputId.value);
+  }
+});
 
 // Expose methods for parent components
 defineExpose({
-  focus: () => checkboxRef.value?.focus(),
-  blur: () => checkboxRef.value?.blur()
-})
+  focus: () => inputRef.value?.focus(),
+  blur: () => inputRef.value?.blur(),
+  select: () => inputRef.value?.select(),
+});
 </script>

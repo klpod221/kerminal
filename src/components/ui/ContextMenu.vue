@@ -14,12 +14,17 @@
           class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer transition-colors duration-150"
           :class="{
             'text-red-400 hover:text-red-300': item.danger,
-            'opacity-50 cursor-not-allowed': item.disabled
+            'opacity-50 cursor-not-allowed': item.disabled,
           }"
           @click="handleItemClick(item)"
         >
-          <component :is="item.icon" v-if="item.icon" :size="16" class="mr-2 flex-shrink-0" />
-          <span class="flex-1">{{ item.label || '' }}</span>
+          <component
+            :is="item.icon"
+            v-if="item.icon"
+            :size="16"
+            class="mr-2 flex-shrink-0"
+          />
+          <span class="flex-1">{{ item.label || "" }}</span>
           <span v-if="item.shortcut" class="text-xs text-gray-500 ml-2">
             {{ item.shortcut }}
           </span>
@@ -30,95 +35,117 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import type { ContextMenuProps, ContextMenuEmits, ContextMenuItem } from '../../types/ui'
+import { ref, nextTick, onMounted, onUnmounted } from "vue";
+import type { Component } from "vue";
 
-defineProps<ContextMenuProps>()
-const emit = defineEmits<ContextMenuEmits>()
+export interface ContextMenuItem {
+  id: string;
+  label?: string;
+  icon?: Component;
+  shortcut?: string;
+  danger?: boolean;
+  disabled?: boolean;
+  type?: "item" | "divider";
+  action?: string;
+}
 
-const contextMenuRef = ref<HTMLElement | null>(null)
-const visible = ref(false)
-const position = ref({ x: 0, y: 0 })
+interface ContextMenuProps {
+  items: ContextMenuItem[];
+}
+
+interface ContextMenuEmits {
+  itemClick: [item: ContextMenuItem];
+}
+
+defineProps<ContextMenuProps>();
+const emit = defineEmits<ContextMenuEmits>();
+
+const contextMenuRef = ref<HTMLElement | null>(null);
+const visible = ref(false);
+const position = ref({ x: 0, y: 0 });
 
 /**
  * Shows the context menu at the specified position
  */
 const show = async (x: number, y: number): Promise<void> => {
-  position.value = { x, y }
-  visible.value = true
+  position.value = { x, y };
+  visible.value = true;
 
-  await nextTick()
+  await nextTick();
 
   // Adjust position if menu goes outside viewport
   if (contextMenuRef.value) {
-    const rect = contextMenuRef.value.getBoundingClientRect()
-    const viewportWidth = window.innerWidth
-    const viewportHeight = window.innerHeight
+    const rect = contextMenuRef.value.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
 
     // Adjust horizontal position
     if (rect.right > viewportWidth) {
-      position.value.x = Math.max(0, x - rect.width)
+      position.value.x = Math.max(0, x - rect.width);
     }
 
     // Adjust vertical position
     if (rect.bottom > viewportHeight) {
-      position.value.y = Math.max(0, y - rect.height)
+      position.value.y = Math.max(0, y - rect.height);
     }
   }
-}
+};
 
 /**
  * Hides the context menu
  */
 const hide = (): void => {
-  visible.value = false
-}
+  visible.value = false;
+};
 
 /**
  * Handles clicking on a context menu item
  */
 const handleItemClick = (item: ContextMenuItem): void => {
-  if (item.disabled) return
+  if (item.disabled) return;
 
-  hide()
-  emit('itemClick', item)
-}
+  hide();
+  emit("itemClick", item);
+};
 
 /**
  * Handles clicks outside the context menu
  */
 const handleClickOutside = (event: MouseEvent): void => {
-  if (contextMenuRef.value && !contextMenuRef.value.contains(event.target as Node)) {
-    hide()
+  if (
+    contextMenuRef.value &&
+    !contextMenuRef.value.contains(event.target as Node)
+  ) {
+    hide();
   }
-}
+};
 
 /**
  * Handles escape key press
  */
 const handleKeyDown = (event: KeyboardEvent): void => {
-  if (event.key === 'Escape') {
-    hide()
+  if (event.key === "Escape") {
+    hide();
   }
-}
+};
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
-  document.addEventListener('contextmenu', hide)
-  document.addEventListener('keydown', handleKeyDown)
-})
+  document.addEventListener("click", handleClickOutside);
+  document.addEventListener("contextmenu", hide);
+  document.addEventListener("keydown", handleKeyDown);
+});
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
-  document.removeEventListener('contextmenu', hide)
-  document.removeEventListener('keydown', handleKeyDown)
-})
+  document.removeEventListener("click", handleClickOutside);
+  document.removeEventListener("contextmenu", hide);
+  document.removeEventListener("keydown", handleKeyDown);
+});
 
 defineExpose({
   show,
   hide,
-  visible
-})
+  visible,
+});
 </script>
 
 <style scoped>

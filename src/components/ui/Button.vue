@@ -6,7 +6,7 @@
       'active:scale-95 active:transform',
       sizeClasses,
       variantClasses,
-      loading && 'cursor-not-allowed'
+      loading && 'cursor-not-allowed',
     ]"
     :title="title"
     :disabled="disabled || loading"
@@ -45,66 +45,84 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { ButtonProps } from '../../types/ui'
+import { computed } from "vue";
+import type { Component } from "vue";
+
+interface ButtonProps {
+  variant?:
+    | "primary"
+    | "secondary"
+    | "success"
+    | "warning"
+    | "danger"
+    | "ghost"
+    | "outline";
+  size?: "sm" | "md" | "lg";
+  icon?: Component;
+  iconRight?: boolean;
+  text?: string;
+  loading?: boolean;
+  title?: string;
+  disabled?: boolean;
+}
 
 const props = withDefaults(defineProps<ButtonProps>(), {
-  variant: 'primary',
-  size: 'md',
+  variant: "primary",
+  size: "md",
   iconRight: false,
   loading: false,
-  disabled: false
-})
+  disabled: false,
+});
 
-const emit = defineEmits(['click'])
+const emit = defineEmits(["click"]);
 
 const sizeClasses = computed(() => {
-  const hasOnlyIcon = props.icon && !props.text
+  const hasOnlyIcon = props.icon && !props.text;
   switch (props.size) {
-    case 'sm':
-      return hasOnlyIcon ? 'p-1.5 text-sm' : 'px-1.5 py-0.75 text-sm'
-    case 'lg':
-      return hasOnlyIcon ? 'p-3 text-lg' : 'px-3 py-1.5 text-lg'
+    case "sm":
+      return hasOnlyIcon ? "p-1.5 text-sm" : "px-1.5 py-0.75 text-sm";
+    case "lg":
+      return hasOnlyIcon ? "p-3 text-lg" : "px-3 py-1.5 text-lg";
     default:
-      return hasOnlyIcon ? 'p-2 text-base' : 'px-2 py-1 text-base'
+      return hasOnlyIcon ? "p-2 text-base" : "px-2 py-1 text-base";
   }
-})
+});
 
 const iconSize = computed(() => {
   switch (props.size) {
-    case 'sm':
-      return 14
-    case 'lg':
-      return 20
+    case "sm":
+      return 14;
+    case "lg":
+      return 20;
     default:
-      return 16
+      return 16;
   }
-})
+});
 
 const variantClasses = computed(() => {
   switch (props.variant) {
-    case 'primary':
-      return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white shadow-sm'
-    case 'secondary':
-      return 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500 text-white shadow-sm'
-    case 'success':
-      return 'bg-green-600 hover:bg-green-700 focus:ring-green-500 text-white shadow-sm'
-    case 'warning':
-      return 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 text-white shadow-sm'
-    case 'danger':
-      return 'bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white shadow-sm'
-    case 'ghost':
-      return 'text-gray-400 hover:text-white hover:bg-gray-700/50 focus:ring-gray-500'
-    case 'outline':
-      return 'border border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white focus:ring-gray-500'
+    case "primary":
+      return "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white shadow-sm";
+    case "secondary":
+      return "bg-gray-600 hover:bg-gray-700 focus:ring-gray-500 text-white shadow-sm";
+    case "success":
+      return "bg-green-600 hover:bg-green-700 focus:ring-green-500 text-white shadow-sm";
+    case "warning":
+      return "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 text-white shadow-sm";
+    case "danger":
+      return "bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white shadow-sm";
+    case "ghost":
+      return "text-gray-400 hover:text-white hover:bg-gray-700/50 focus:ring-gray-500";
+    case "outline":
+      return "border border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white focus:ring-gray-500";
     default:
-      return 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white shadow-sm'
+      return "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white shadow-sm";
   }
-})
+});
 
 const handleClick = (event: MouseEvent): void => {
   if (!props.loading && !props.disabled) {
-    emit('click', event)
+    emit("click", event);
   }
-}
+};
 </script>

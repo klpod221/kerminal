@@ -40,11 +40,21 @@
             class="flex items-center justify-between p-4 border-b border-gray-700"
           >
             <div class="flex items-center space-x-3">
-              <div v-if="icon" class="rounded-lg p-2" :class="iconBackground || 'bg-blue-500/20'">
-                <component :is="icon" class="w-6 h-6" :class="iconColor || 'text-blue-400'" />
+              <div
+                v-if="icon"
+                class="rounded-lg p-2"
+                :class="iconBackground || 'bg-blue-500/20'"
+              >
+                <component
+                  :is="icon"
+                  class="w-6 h-6"
+                  :class="iconColor || 'text-blue-400'"
+                />
               </div>
               <div>
-                <h3 v-if="title" class="text-lg font-semibold text-white">{{ title }}</h3>
+                <h3 v-if="title" class="text-lg font-semibold text-white">
+                  {{ title }}
+                </h3>
                 <slot name="header" />
               </div>
             </div>
@@ -77,40 +87,51 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onUnmounted } from 'vue'
-import { X } from 'lucide-vue-next'
-import Button from './Button.vue'
-import type { ModalProps } from '../../types/ui'
+import { computed, watch, onUnmounted } from "vue";
+import { X } from "lucide-vue-next";
+import Button from "./Button.vue";
+import type { Component } from "vue";
+
+interface ModalProps {
+  visible?: boolean;
+  title?: string;
+  icon?: Component;
+  iconBackground?: string;
+  iconColor?: string;
+  showCloseButton?: boolean;
+  closeOnBackdrop?: boolean;
+  size?: "sm" | "md" | "lg" | "xl" | "2xl";
+}
 
 const props = withDefaults(defineProps<ModalProps>(), {
   visible: false,
   showCloseButton: true,
   closeOnBackdrop: true,
-  size: 'md'
-})
+  size: "md",
+});
 
-const emit = defineEmits(['close', 'update:visible'])
+const emit = defineEmits(["close", "update:visible"]);
 
 /**
  * Compute size class based on size prop
  */
 const sizeClass = computed(() => {
   const sizeClasses = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl'
-  }
-  return sizeClasses[props.size]
-})
+    sm: "max-w-sm",
+    md: "max-w-md",
+    lg: "max-w-lg",
+    xl: "max-w-xl",
+    "2xl": "max-w-2xl",
+  };
+  return sizeClasses[props.size];
+});
 
 /**
  * Handle close button click
  */
 function handleClose(): void {
-  emit('close')
-  emit('update:visible', false)
+  emit("close");
+  emit("update:visible", false);
 }
 
 /**
@@ -118,7 +139,7 @@ function handleClose(): void {
  */
 function handleBackdropClick(): void {
   if (props.closeOnBackdrop) {
-    handleClose()
+    handleClose();
   }
 }
 
@@ -128,26 +149,26 @@ watch(
   (isVisible) => {
     if (isVisible) {
       // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden'
-      document.addEventListener('keydown', handleKeydown)
+      document.body.style.overflow = "hidden";
+      document.addEventListener("keydown", handleKeydown);
     } else {
       // Restore body scroll when modal is closed
-      document.body.style.overflow = ''
-      document.removeEventListener('keydown', handleKeydown)
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", handleKeydown);
     }
   }
-)
+);
 
 const handleKeydown = (event: KeyboardEvent): void => {
-  if (event.key === 'Escape') {
-    handleClose()
+  if (event.key === "Escape") {
+    handleClose();
   }
-}
+};
 
 // Cleanup on unmount
 onUnmounted(() => {
-  document.body.style.overflow = ''
-})
+  document.body.style.overflow = "";
+});
 </script>
 
 <style scoped>

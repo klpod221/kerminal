@@ -4,7 +4,7 @@
     :class="{
       'bg-[#171717] border-b-2 border-b-blue-500': isActive,
       'hover:bg-gray-800': !isActive,
-      'opacity-50': isDragging
+      'opacity-50': isDragging,
     }"
     :style="{ minWidth: minWidth + 'px', maxWidth: maxWidth + 'px' }"
     draggable="true"
@@ -38,7 +38,7 @@
       class="text-sm truncate flex-1 transition-colors duration-200"
       :class="isActive ? 'text-white' : 'text-gray-300'"
     >
-      {{ isConnecting ? 'Connecting...' : tab.title }}
+      {{ isConnecting ? "Connecting..." : tab.title }}
     </span>
     <X
       v-if="minWidth >= 100"
@@ -57,145 +57,173 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Terminal, X, Copy, ExternalLink, Trash2, ArrowRight, Minus } from 'lucide-vue-next'
-import ContextMenu from './ContextMenu.vue'
-import type { TabProps, TabEmits, ContextMenuItem } from '../../types/ui'
-import type { Tab } from '../../types/panel'
+import { ref } from "vue";
+import {
+  Terminal,
+  X,
+  Copy,
+  ExternalLink,
+  Trash2,
+  ArrowRight,
+  Minus,
+} from "lucide-vue-next";
+import ContextMenu from "./ContextMenu.vue";
+import type { ContextMenuItem } from "./ContextMenu.vue";
+import type { Tab } from "../../types/panel";
+
+interface TabProps {
+  tab: Tab;
+  isActive: boolean;
+  isConnecting?: boolean;
+  minWidth: number;
+  maxWidth: number;
+  panelId: string;
+}
+
+interface TabEmits {
+  select: [];
+  close: [];
+  duplicate: [tab: Tab];
+  moveToNewPanel: [tab: Tab];
+  closeOthers: [tab: Tab];
+  closeToRight: [tab: Tab];
+  dragStart: [tab: Tab];
+  drop: [draggedTab: Tab, targetTab: Tab];
+}
 
 const props = withDefaults(defineProps<TabProps>(), {
-  isConnecting: false
-})
+  isConnecting: false,
+});
 
-const emit = defineEmits<TabEmits>()
+const emit = defineEmits<TabEmits>();
 
 // Refs
-const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null)
+const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null);
 
 // Drag state
-const isDragging = ref(false)
+const isDragging = ref(false);
 
 /**
  * Context menu items configuration
  */
 const contextMenuItems: ContextMenuItem[] = [
   {
-    id: 'duplicate',
-    label: 'Duplicate Tab',
+    id: "duplicate",
+    label: "Duplicate Tab",
     icon: Copy,
-    action: 'duplicate'
+    action: "duplicate",
   },
   {
-    id: 'move-new-panel',
-    label: 'Move to New Panel',
+    id: "move-new-panel",
+    label: "Move to New Panel",
     icon: ExternalLink,
-    action: 'moveToNewPanel'
+    action: "moveToNewPanel",
   },
   {
-    id: 'divider-1',
-    type: 'divider'
+    id: "divider-1",
+    type: "divider",
   },
   {
-    id: 'close-others',
-    label: 'Close Other Tabs',
+    id: "close-others",
+    label: "Close Other Tabs",
     icon: Minus,
-    action: 'closeOthers'
+    action: "closeOthers",
   },
   {
-    id: 'close-to-right',
-    label: 'Close Tabs to the Right',
+    id: "close-to-right",
+    label: "Close Tabs to the Right",
     icon: ArrowRight,
-    action: 'closeToRight'
+    action: "closeToRight",
   },
   {
-    id: 'divider-2',
-    type: 'divider'
+    id: "divider-2",
+    type: "divider",
   },
   {
-    id: 'close',
-    label: 'Close Tab',
+    id: "close",
+    label: "Close Tab",
     icon: Trash2,
     danger: true,
-    action: 'close',
-    shortcut: 'Ctrl+W'
-  }
-]
+    action: "close",
+    shortcut: "Ctrl+W",
+  },
+];
 
 /**
  * Handle context menu event
  */
 const onContextMenu = (event: MouseEvent): void => {
-  event.preventDefault()
-  event.stopPropagation()
+  event.preventDefault();
+  event.stopPropagation();
 
   if (contextMenuRef.value) {
-    contextMenuRef.value.show(event.clientX, event.clientY)
+    contextMenuRef.value.show(event.clientX, event.clientY);
   }
-}
+};
 
 /**
  * Handle context menu action selection
  */
 const handleContextMenuAction = (item: ContextMenuItem): void => {
   switch (item.action) {
-    case 'duplicate':
-      emit('duplicate', props.tab)
-      break
-    case 'moveToNewPanel':
-      emit('moveToNewPanel', props.tab)
-      break
-    case 'closeOthers':
-      emit('closeOthers', props.tab)
-      break
-    case 'closeToRight':
-      emit('closeToRight', props.tab)
-      break
-    case 'close':
-      emit('close')
-      break
+    case "duplicate":
+      emit("duplicate", props.tab);
+      break;
+    case "moveToNewPanel":
+      emit("moveToNewPanel", props.tab);
+      break;
+    case "closeOthers":
+      emit("closeOthers", props.tab);
+      break;
+    case "closeToRight":
+      emit("closeToRight", props.tab);
+      break;
+    case "close":
+      emit("close");
+      break;
   }
-}
+};
 
 const onDragStart = (event: DragEvent): void => {
-  isDragging.value = true
+  isDragging.value = true;
   if (event.dataTransfer) {
     // Store both tab data and source panel info
     const dragData = {
       tab: props.tab,
-      sourcePanelId: props.panelId
-    }
-    event.dataTransfer.setData('application/json', JSON.stringify(dragData))
-    event.dataTransfer.effectAllowed = 'move'
+      sourcePanelId: props.panelId,
+    };
+    event.dataTransfer.setData("application/json", JSON.stringify(dragData));
+    event.dataTransfer.effectAllowed = "move";
   }
-  emit('dragStart', props.tab)
-}
+  emit("dragStart", props.tab);
+};
 
 const onDragEnd = (): void => {
-  isDragging.value = false
-}
+  isDragging.value = false;
+};
 
 const onDragOver = (event: DragEvent): void => {
-  event.preventDefault()
+  event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
-}
+};
 
 const onDrop = (event: DragEvent): void => {
-  event.preventDefault()
+  event.preventDefault();
   if (event.dataTransfer) {
-    const draggedTabData = event.dataTransfer.getData('application/json')
+    const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
       try {
-        const dragData = JSON.parse(draggedTabData)
-        const draggedTab = dragData.tab as Tab
-        emit('drop', draggedTab, props.tab)
+        const dragData = JSON.parse(draggedTabData);
+        const draggedTab = dragData.tab as Tab;
+        emit("drop", draggedTab, props.tab);
       } catch (error) {
-        console.error('Error parsing dragged tab data:', error)
+        console.error("Error parsing dragged tab data:", error);
       }
     }
   }
-}
+};
 </script>
 
 <style scoped>
@@ -216,13 +244,18 @@ const onDrop = (event: DragEvent): void => {
 }
 
 .group::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
   transition: left 0.5s;
 }
 
@@ -232,7 +265,7 @@ const onDrop = (event: DragEvent): void => {
 
 /* Enhanced active tab indicator */
 .group.bg-\[#171717\]::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: 0;
   left: 0;

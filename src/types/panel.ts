@@ -3,8 +3,8 @@ export interface Tab {
   title: string
   color?: string
   lastConnected?: Date
-  profileId?: string // SSH Profile ID if this is an SSH connection
-  groupId?: string // SSH Group ID if this SSH connection belongs to a group
+  profileId?: string
+  groupId?: string
 }
 
 export interface Panel {
