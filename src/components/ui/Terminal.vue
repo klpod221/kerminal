@@ -34,13 +34,10 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, nextTick, watch } from "vue";
-// import { processClipboardText } from "../../utils/clipboard";
+import { onMounted, ref, nextTick } from "vue";
 import { debounce } from "../../utils/helpers";
-// import { TerminalBufferManager } from "../services/terminal-buffer-manager";
 
 import { Terminal } from "@xterm/xterm";
-import "@xterm/xterm/css/xterm.css";
 
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
@@ -67,108 +64,12 @@ const emit = defineEmits<{
 const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
-// let removeListener: (() => void) | null = null;
-// let contextMenuListener: (() => void) | null = null;
-// const bufferManager = TerminalBufferManager.getInstance()
 
-/**
- * Handles paste operation by reading from clipboard and writing to terminal.
- * Includes proper sanitization and error handling.
- * @returns {Promise<void>}
- */
-// async function handlePaste(): Promise<void> {
-//   try {
-//     const text = await window.api.invoke("clipboard.read");
-//     if (!text || typeof text !== "string") return;
-
-//     const processedText = processClipboardText(text);
-
-//     if (!processedText) {
-//       // Invalid content - silently ignore
-//       return;
-//     }
-
-//     // Write to terminal
-//     term.paste(processedText);
-//   } catch {
-//     // Silently handle paste errors - not critical for terminal operation
-//   }
-// }
-
-/**
- * Restores terminal buffer from main process if available
- * @returns {Promise<void>}
- */
-async function restoreTerminalBuffer(): Promise<void> {
-  try {
-    // await bufferManager.restoreBuffer(props.terminalId, term)
-  } catch {
-    // Silently handle - buffer restore failure is not critical
-  }
-}
-
-/**
- * Sends the current terminal size to the main process (debounced).
- * @returns {void}
- */
-const sendTerminalSize = debounce((): void => {
-  if (term) {
-    // const { cols, rows } = term;
-    // window.api.send('terminal.resize', { terminalId: props.terminalId, cols, rows })
-  }
-}, 100); // Debounce for 100ms to prevent excessive IPC calls
-
-/**
- * Handles window resize event and fits the terminal to the container (debounced).
- * @returns {void}
- */
-const handleResize = debounce((): void => {
+const handleResize = debounce(() => {
   if (fitAddon && props.isVisible) {
     fitAddon.fit();
   }
-}, 100); // Debounce for 100ms to prevent excessive resize calls
-
-/**
- * Force terminal to fit and focus (debounced)
- * @returns {void}
- */
-const fitAndFocus = debounce((): void => {
-  if (fitAddon && term && props.isVisible) {
-    nextTick(() => {
-      fitAddon.fit();
-      term.focus();
-    });
-  }
-}, 50); // Shorter debounce for immediate user actions
-
-/**
- * Focus the terminal
- * @returns {void}
- */
-function focus(): void {
-  if (term) {
-    term.focus();
-  }
-}
-
-// Watch for visibility changes to trigger resize
-watch(
-  () => props.isVisible,
-  (newVisible) => {
-    if (newVisible && term && fitAddon) {
-      nextTick(() => {
-        fitAndFocus();
-      });
-    }
-  },
-  { immediate: false }
-);
-
-// Expose focus method to parent
-defineExpose({
-  focus,
-  fitAndFocus,
-});
+}, 100);
 
 onMounted(async () => {
   if (!terminalRef.value) return;
@@ -216,225 +117,23 @@ onMounted(async () => {
   // Open terminal in DOM
   term.open(terminalRef.value);
 
-  // Wait for DOM to be ready then fit
+  // Wait for DOM to be ready
   await nextTick();
 
-  // Add a small delay for all terminals to ensure proper sizing
-  setTimeout(() => {
-    fitAddon.fit();
-    sendTerminalSize();
-    term.focus();
+  // Notify parent that terminal is ready
+  emit("terminal-ready", props.terminalId || "default");
 
-    // Try to restore buffer from main process after terminal is ready
-    restoreTerminalBuffer();
-  }, 150);
-
-  // Register window resize event listener
+  // Handle window resize
   window.addEventListener("resize", handleResize);
 
-  // Handle terminal resize events (debounced to prevent excessive IPC calls)
-  term.onResize(() => {
-    sendTerminalSize();
-  });
-
-  // Receive data from main process and display in terminal
-  // removeListener = window.api.on(
-  //   "terminal.incomingData",
-  //   (...args: unknown[]) => {
-  //     const data = args[0] as string;
-  //     const terminalId = args[1] as string;
-  //     // Only process data for this terminal instance
-  //     if (terminalId === props.terminalId) {
-  //       // Save to local buffer for quick access
-  //       // bufferManager.saveToLocalBuffer(terminalId, data)
-  //       // Write to terminal display
-  //       term.write(data);
-  //     }
-  //   }
-  // );
-
-  // Handle context menu clicks
-  // contextMenuListener = window.api.on(
-  //   "context-menu-click",
-  //   (...args: unknown[]) => {
-  //     const action = args[0] as string;
-  //     switch (action) {
-  //       case "Copy":
-  //         if (term.hasSelection()) {
-  //           const selectedText = term.getSelection();
-  //           if (selectedText.trim()) {
-  //             // window.api.send('clipboard.write', selectedText)
-  //           }
-  //         }
-  //         break;
-  //       case "Paste":
-  //         handlePaste();
-  //         break;
-  //       case "Select All":
-  //         term.selectAll();
-  //         break;
-  //     }
-  //   }
-  // );
-
-  // Send user input from terminal to main process
-  term.onData((_key) => {
-    // window.api.send("terminal.keystroke", {
-    //   terminalId: props.terminalId,
-    //   data: key,
-    // });
-  });
-
-  // Handle keyboard shortcuts and selection
-  let isManualCopy = false;
-  let lastCopyTime = 0;
-  const COPY_DEBOUNCE_MS = 100; // Prevent excessive copying
-
-  /**
-   * Handles copy operation when text is selected
-   * @returns {boolean} - Whether to prevent default behavior
-   */
-  function handleCopyKeyboard(): boolean {
-    if (term.hasSelection()) {
-      isManualCopy = true;
-      const selectedText = term.getSelection();
-      if (selectedText.trim()) {
-        // window.api.send('clipboard.write', selectedText)
-        return false; // Prevent default terminal behavior
-      }
-    }
-    // If no selection, let terminal handle Ctrl+C (interrupt)
-    return true;
-  }
-
-  /**
-   * Handles paste operation
-   * @param event - Keyboard event
-   * @returns {boolean} - Whether to prevent default behavior
-   */
-  function handlePasteKeyboard(event: KeyboardEvent): boolean {
-    if (event.type === "keydown") {
-      event.preventDefault();
-      // handlePaste();
-      return false; // Prevent default terminal behavior
-    }
-    return true;
-  }
-
-  /**
-   * Handles select all operation
-   * @param event - Keyboard event
-   * @returns {boolean} - Whether to prevent default behavior
-   */
-  function handleSelectAllKeyboard(event: KeyboardEvent): boolean {
-    if (event.type === "keydown") {
-      event.preventDefault();
-      term.selectAll();
-      return false;
-    }
-    return true;
-  }
-
-  term.onSelectionChange(() => {
-    // Only auto-copy if it's a manual copy operation (like Ctrl+C)
-    if (term.hasSelection() && isManualCopy) {
-      const now = Date.now();
-      if (now - lastCopyTime > COPY_DEBOUNCE_MS) {
-        const selectedText = term.getSelection();
-        if (selectedText.trim()) {
-          // window.api.send('clipboard.write', selectedText)
-          lastCopyTime = now;
-        }
-      }
-      isManualCopy = false;
-    }
-  });
-
-  // Handle keyboard shortcuts
-  term.attachCustomKeyEventHandler((event) => {
-    if (event.ctrlKey || event.metaKey) {
-      switch (event.key) {
-        case "c":
-        case "C":
-          return handleCopyKeyboard();
-        case "v":
-        case "V":
-          return handlePasteKeyboard(event);
-        case "a":
-        case "A":
-          return handleSelectAllKeyboard(event);
-      }
-    }
-    return true; // Allow other keys to be processed normally
-  });
-
-  // Handle right-click context menu
-  terminalRef.value.addEventListener("contextmenu", (event) => {
-    event.preventDefault();
-
-    // Create simple context menu
-    // const hasSelection = term.hasSelection();
-    // const menu = [
-    //   {
-    //     label: "Copy",
-    //     enabled: hasSelection,
-    //     action: () => {
-    //       if (hasSelection) {
-    //         const selectedText = term.getSelection();
-    //         if (selectedText.trim()) {
-    //           // window.api.send('clipboard.write', selectedText)
-    //         }
-    //       }
-    //     },
-    //   },
-    //   {
-    //     label: "Paste",
-    //     enabled: true,
-    //     // action: () => handlePaste(),
-    //   },
-    //   {
-    //     label: "Select All",
-    //     enabled: true,
-    //     action: () => term.selectAll(),
-    //   },
-    // ];
-
-    // Show native context menu via main process
-    // window.api.send('show-context-menu', {
-    //   items: menu,
-    //   x: event.clientX,
-    //   y: event.clientY
-    // })
-  });
-
-  // window.api.send('terminal.ready', { terminalId: props.terminalId })
-
-  // Emit ready event to parent
-  emit("terminal-ready", props.terminalId);
-});
-
-onBeforeUnmount(() => {
-  // Cleanup IPC listeners
-  // if (removeListener) {
-  //   removeListener();
-  // }
-  // if (contextMenuListener) {
-  //   contextMenuListener();
-  // }
-
-  // Cleanup event listeners
-  window.removeEventListener("resize", handleResize);
-
-  // Note: We intentionally do NOT clear the buffer here
-  // The buffer should persist even when component unmounts
-  // to allow for restoration when component mounts again
-
-  // Dispose terminal
-  term?.dispose();
+  // Initial fit
+  handleResize();
 });
 </script>
 
 <style scoped>
+@import "@xterm/xterm/css/xterm.css";
+
 .terminal-container {
   animation: terminalFadeIn 0.5s ease-out;
 }

@@ -4,18 +4,21 @@
 
     <div class="flex-grow overflow-hidden">
       <Dashboard v-if="viewState.activeView === 'dashboard'" />
+
+      <Workspace v-show="viewState.activeView === 'workspace'" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 // Import components
-import TopBar from './components/TopBar.vue'
-import Dashboard from './components/Dashboard.vue'
+import TopBar from "./components/TopBar.vue";
+import Dashboard from "./components/Dashboard.vue";
+import Workspace from "./components/Workspace.vue";
 
 // Import store
-import { useViewStateStore } from './stores/viewState'
+import { useViewStateStore } from "./stores/viewState";
 
 // Initialize store
-const viewState = useViewStateStore()
+const viewState = useViewStateStore();
 </script>

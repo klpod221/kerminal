@@ -8,7 +8,7 @@ import { ref } from "vue";
 export const useViewStateStore = defineStore("viewState", () => {
   const isTopBarActive = ref(true);
 
-  const activeView = ref<"dashboard" | "workspace" | "fileManager">("dashboard");
+  const activeView = ref<"dashboard" | "workspace" | "fileManager">("workspace");
 
   function setActiveView(view: "dashboard" | "workspace" | "fileManager") {
     activeView.value = view;

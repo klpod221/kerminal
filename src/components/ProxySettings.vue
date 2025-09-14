@@ -184,11 +184,11 @@ const handleTypeChange = (): void => {
 
 const selectJumpKeyFile = async (): Promise<void> => {
   try {
-    const selectedPath = (await window.api.invoke('dialog.selectFile')) as string | null
-    if (selectedPath) {
-      proxyData.value.jumpKeyPath = selectedPath
-      emitProxy()
-    }
+    // const selectedPath = (await window.api.invoke('dialog.selectFile')) as string | null
+    // if (selectedPath) {
+    //   proxyData.value.jumpKeyPath = selectedPath
+    //   emitProxy()
+    // }
   } catch (error) {
     console.error('Failed to select jump key file:', error)
   }
