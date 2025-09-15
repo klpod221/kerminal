@@ -43,7 +43,7 @@
     <X
       v-if="minWidth >= 100"
       :size="14"
-      class="text-gray-500 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out flex-shrink-0 transform hover:scale-110"
+      class="text-gray-500 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out flex-shrink-0 transform hover:scale-110 cursor-pointer"
       @click.stop="$emit('close')"
     />
 
@@ -230,7 +230,11 @@ const onDrop = (event: DragEvent): void => {
 /* Drag state styles */
 .group.opacity-50 {
   transform: rotate(2deg) scale(0.98);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  position: relative;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 /* Add a subtle shimmer effect for new tabs */
@@ -284,5 +288,14 @@ const onDrop = (event: DragEvent): void => {
   50% {
     background-position: 100% 50%;
   }
+}
+
+/* Drag preview enhancement */
+.group[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.group[draggable="true"]:hover {
+  cursor: grab;
 }
 </style>

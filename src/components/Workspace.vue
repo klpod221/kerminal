@@ -15,6 +15,8 @@
     @terminal-ready="workspaceStore.terminalReady"
     @set-active-panel="workspaceStore.setActivePanel"
     @layout-updated="workspaceStore.updateLayout"
+    @split-panel-by-drop="workspaceStore.splitPanelByDrop"
+    @clone-tab-and-split="workspaceStore.cloneTabAndSplit"
   />
 </template>
 

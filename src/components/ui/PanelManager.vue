@@ -16,6 +16,8 @@
         @move-tab-to-new-panel="moveTabToNewPanel"
         @terminal-ready="terminalReady"
         @panel-click="setActivePanel"
+        @split-panel-by-drop="splitPanelByDrop"
+        @clone-tab-and-split="cloneTabAndSplit"
       />
     </div>
 
@@ -47,6 +49,8 @@
             @terminal-ready="terminalReady"
             @set-active-panel="setActivePanel"
             @layout-updated="layoutUpdated"
+            @split-panel-by-drop="splitPanelByDrop"
+            @clone-tab-and-split="cloneTabAndSplit"
           />
         </Pane>
       </Splitpanes>
@@ -58,7 +62,7 @@
 import { Splitpanes, Pane } from 'splitpanes'
 import Panel from './Panel.vue';
 import { debounce } from '../../utils/helpers';
-import type { PanelLayout, TerminalInstance } from "../../types/panel";
+import type { PanelLayout, TerminalInstance, Tab } from "../../types/panel";
 
 interface PanelManagerProps {
   layout: PanelLayout;
@@ -84,6 +88,17 @@ interface PanelManagerEmits {
   layoutUpdated: [layout: PanelLayout];
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
+  splitPanelByDrop: [
+    direction: 'top' | 'bottom' | 'left' | 'right',
+    draggedTab: Tab,
+    sourcePanelId: string,
+    targetPanelId: string
+  ];
+  cloneTabAndSplit: [
+    direction: 'top' | 'bottom' | 'left' | 'right',
+    tabId: string,
+    panelId: string
+  ];
 }
 
 // Define props and emits
@@ -147,6 +162,23 @@ const moveTabToNewPanel = (panelId: string, tabId: string): void => {
 
 const layoutUpdated = (layout: PanelLayout): void => {
   emit('layoutUpdated', layout)
+}
+
+const splitPanelByDrop = (
+  direction: 'top' | 'bottom' | 'left' | 'right',
+  draggedTab: Tab,
+  sourcePanelId: string,
+  targetPanelId: string
+): void => {
+  emit('splitPanelByDrop', direction, draggedTab, sourcePanelId, targetPanelId)
+}
+
+const cloneTabAndSplit = (
+  direction: 'top' | 'bottom' | 'left' | 'right',
+  tabId: string,
+  panelId: string
+): void => {
+  emit('cloneTabAndSplit', direction, tabId, panelId)
 }
 
 // Handle splitpanes resize with debounce

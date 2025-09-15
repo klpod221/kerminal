@@ -685,6 +685,199 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   };
 
   /**
+   * Split a panel by dropping a tab
+   * @param direction - The split direction
+   * @param draggedTab - The dragged tab
+   * @param sourcePanelId - The source panel ID
+   * @param targetPanelId - The target panel ID
+   */
+  const splitPanelByDrop = (
+    direction: 'top' | 'bottom' | 'left' | 'right',
+    draggedTab: Tab,
+    sourcePanelId: string,
+    targetPanelId: string
+  ): void => {
+    const sourcePanel = findPanelInLayout(panelLayout.value, sourcePanelId);
+    const targetPanel = findPanelInLayout(panelLayout.value, targetPanelId);
+
+    if (!sourcePanel || !targetPanel) return;
+
+    // Remove tab from source panel
+    const tabIndex = sourcePanel.tabs.findIndex((tab) => tab.id === draggedTab.id);
+    if (tabIndex === -1) return;
+
+    const [tab] = sourcePanel.tabs.splice(tabIndex, 1);
+
+    // Update source panel's active tab if needed
+    if (sourcePanel.activeTabId === draggedTab.id) {
+      if (sourcePanel.tabs.length > 0) {
+        sourcePanel.activeTabId =
+          sourcePanel.tabs[Math.min(tabIndex, sourcePanel.tabs.length - 1)].id;
+      } else {
+        sourcePanel.activeTabId = "";
+      }
+    }
+
+    // Create new panel with the moved tab
+    const newPanelId = `panel-${panelCounter++}`;
+    const newPanel: Panel = {
+      id: newPanelId,
+      activeTabId: tab.id,
+      tabs: [tab],
+    };
+
+    // Determine split direction based on drop zone
+    let splitDirection: "horizontal" | "vertical";
+    if (direction === 'top' || direction === 'bottom') {
+      splitDirection = 'vertical';
+    } else {
+      splitDirection = 'horizontal';
+    }
+
+    // Split the target panel
+    const success = splitPanelInLayout(panelLayout.value, targetPanelId, newPanel, splitDirection);
+
+    if (success) {
+      // If direction is 'top' or 'left', we need to swap the order of panels
+      if (direction === 'top' || direction === 'left') {
+        // Find the newly created split layout and swap its children
+        const swapChildrenInLayout = (layout: PanelLayout): boolean => {
+          if (layout.type === 'split' && layout.children && layout.children.length === 2) {
+            // Check if one of the children is our new panel
+            const hasNewPanel = layout.children.some(child =>
+              child.type === 'panel' && child.panel?.id === newPanelId
+            );
+            const hasTargetPanel = layout.children.some(child => {
+              if (child.type === 'panel') {
+                return child.panel?.id === targetPanelId;
+              } else if (child.type === 'split') {
+                return findPanelInLayout(child, targetPanelId) !== null;
+              }
+              return false;
+            });
+
+            if (hasNewPanel && hasTargetPanel) {
+              // Swap the children
+              [layout.children[0], layout.children[1]] = [layout.children[1], layout.children[0]];
+              return true;
+            }
+          }
+
+          if (layout.type === 'split' && layout.children) {
+            return layout.children.some(child => swapChildrenInLayout(child));
+          }
+
+          return false;
+        };
+
+        swapChildrenInLayout(panelLayout.value);
+      }
+
+      setActivePanel(newPanelId);
+
+      // Auto-close source panel if it has no tabs left
+      if (sourcePanel.tabs.length === 0) {
+        autoClosePanel(sourcePanelId);
+      }
+    }
+  };
+
+  /**
+   * Clone a tab and split panel (used when dropping tab to same panel edges)
+   * @param direction - The split direction
+   * @param tabId - The tab ID to clone
+   * @param panelId - The panel ID
+   */
+  const cloneTabAndSplit = (
+    direction: 'top' | 'bottom' | 'left' | 'right',
+    tabId: string,
+    panelId: string
+  ): void => {
+    const panel = findPanelInLayout(panelLayout.value, panelId);
+    if (!panel) return;
+
+    const sourceTab = panel.tabs.find((tab) => tab.id === tabId);
+    if (!sourceTab) return;
+
+    // Create new tab (clone of the dragged tab)
+    const newTabId = tabCounter.toString();
+    const newTab: Tab = {
+      id: newTabId,
+      title: sourceTab.title,
+      color: sourceTab.color,
+      profileId: sourceTab.profileId,
+      groupId: sourceTab.groupId,
+    };
+
+    // Create terminal for cloned tab
+    const newTerminal: TerminalInstance = {
+      id: newTabId,
+      ready: false,
+      shouldFocusOnReady: true,
+    };
+    terminals.value.push(newTerminal);
+
+    // Create new panel with the cloned tab
+    const newPanelId = `panel-${panelCounter++}`;
+    const newPanel: Panel = {
+      id: newPanelId,
+      activeTabId: newTab.id,
+      tabs: [newTab],
+    };
+
+    // Determine split direction based on drop zone
+    let splitDirection: "horizontal" | "vertical";
+    if (direction === 'top' || direction === 'bottom') {
+      splitDirection = 'vertical';
+    } else {
+      splitDirection = 'horizontal';
+    }
+
+    // Split the panel
+    const success = splitPanelInLayout(panelLayout.value, panelId, newPanel, splitDirection);
+
+    if (success) {
+      // If direction is 'top' or 'left', we need to swap the order of panels
+      if (direction === 'top' || direction === 'left') {
+        // Find the newly created split layout and swap its children
+        const swapChildrenInLayout = (layout: PanelLayout): boolean => {
+          if (layout.type === 'split' && layout.children && layout.children.length === 2) {
+            // Check if one of the children is our new panel
+            const hasNewPanel = layout.children.some(child =>
+              child.type === 'panel' && child.panel?.id === newPanelId
+            );
+            const hasTargetPanel = layout.children.some(child => {
+              if (child.type === 'panel') {
+                return child.panel?.id === panelId;
+              } else if (child.type === 'split') {
+                return findPanelInLayout(child, panelId) !== null;
+              }
+              return false;
+            });
+
+            if (hasNewPanel && hasTargetPanel) {
+              // Swap the children
+              [layout.children[0], layout.children[1]] = [layout.children[1], layout.children[0]];
+              return true;
+            }
+          }
+
+          if (layout.type === 'split' && layout.children) {
+            return layout.children.some(child => swapChildrenInLayout(child));
+          }
+
+          return false;
+        };
+
+        swapChildrenInLayout(panelLayout.value);
+      }
+
+      setActivePanel(newPanelId);
+      tabCounter++;
+    }
+  };
+
+  /**
    * Move a tab to a new panel
    * @param panelId - The panel ID
    * @param tabId - The tab ID to move
@@ -907,6 +1100,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     moveTab,
     duplicateTab,
     moveTabToNewPanel,
+    splitPanelByDrop,
+    cloneTabAndSplit,
     terminalReady,
     updateLayout,
     initialize,
