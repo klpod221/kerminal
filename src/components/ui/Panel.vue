@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col h-full cursor-pointer relative bg-[#0D0D0D]"
+    class="flex flex-col h-full cursor-pointer relative bg-[#0D0D0D] panel"
     @click="handlePanelClick"
   >
     <!-- Active panel background overlay -->
@@ -24,7 +24,6 @@
       class="relative z-10"
       :panel="panel"
       :terminals="terminals"
-      :window-width="windowWidth"
       :is-active="isActive"
       @select-tab="selectTab"
       @close-tab="closeTab"
@@ -41,6 +40,7 @@
     <div class="flex-1 overflow-hidden relative z-10">
       <!-- Terminal Manager -->
       <TerminalManager
+        ref="terminalManagerRef"
         :terminals="activeTerminals"
         :active-terminal-id="panel.activeTabId"
         @terminal-ready="onTerminalReady"
@@ -50,15 +50,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
 import TabBar from "./TabBar.vue";
 import TerminalManager from "./TerminalManager.vue";
 import type { Panel, TerminalInstance } from "../../types/panel";
+import type { ComponentPublicInstance } from "vue";
+
+interface TerminalManagerComponent extends ComponentPublicInstance {
+  focusActiveTerminal: () => void;
+}
 
 interface PanelProps {
   panel: Panel;
   terminals: TerminalInstance[];
-  windowWidth: number;
   isActive: boolean;
 }
 
@@ -76,7 +80,7 @@ interface PanelEmits {
     targetTabId?: string
   ];
   terminalReady: [terminalId: string];
-  panelClick: [panelId: string];
+  setActivePanel: [panelId: string];
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
 }
@@ -85,15 +89,33 @@ const props = defineProps<PanelProps>();
 
 const emit = defineEmits<PanelEmits>();
 
+// Refs
+const terminalManagerRef = ref<TerminalManagerComponent | null>(null);
+
 // Filter terminals that belong to this panel's tabs
 const activeTerminals = computed(() => {
   const tabIds = props.panel.tabs.map((tab) => tab.id);
   return props.terminals.filter((terminal) => tabIds.includes(terminal.id));
 });
 
+// Watch for panel becoming active and auto-focus terminal
+watch(
+  () => props.isActive,
+  async (isActive) => {
+    if (isActive && terminalManagerRef.value) {
+      await nextTick();
+      // Add a small delay to ensure proper rendering
+      setTimeout(() => {
+        terminalManagerRef.value?.focusActiveTerminal();
+      }, 50);
+    }
+  },
+  { immediate: true }
+);
+
 const selectTab = (panelId: string, tabId: string): void => {
   emit("selectTab", panelId, tabId);
-  emit("panelClick", panelId); // Also make this panel active
+  emit("setActivePanel", panelId); // Also make this panel active
 };
 
 const closeTab = (panelId: string, tabId: string): void => {
@@ -102,7 +124,7 @@ const closeTab = (panelId: string, tabId: string): void => {
 
 const addTab = (panelId: string): void => {
   emit("addTab", panelId);
-  emit("panelClick", panelId); // Make this panel active when adding tab
+  emit("setActivePanel", panelId); // Make this panel active when adding tab
 };
 
 const splitHorizontal = (panelId: string): void => {
@@ -142,7 +164,7 @@ const handlePanelClick = (): void => {
   // Only activate panel, don't prevent event propagation
   // This allows clicks on panel background to activate the panel
   // while still allowing normal interactions with child elements
-  emit("panelClick", props.panel.id);
+  emit("setActivePanel", props.panel.id);
 };
 </script>
 
@@ -167,7 +189,7 @@ const handlePanelClick = (): void => {
 }
 
 /* Active panel glow effect */
-.bg-\[#0D0D0D\]:has(.opacity-100) {
+.panel:has(.opacity-100) {
   box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
   transition: box-shadow 0.3s ease;
 }

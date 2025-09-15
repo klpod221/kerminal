@@ -173,6 +173,7 @@ import {
 } from "lucide-vue-next";
 import Tab from "./Tab.vue";
 import Button from "./Button.vue";
+import { useWindowSize } from "../../composables/useWindowSize";
 import type {
   Tab as TabType,
   Panel,
@@ -181,7 +182,6 @@ import type {
 
 interface TabBarProps {
   panel: Panel;
-  windowWidth: number;
   isActive: boolean;
   terminals?: TerminalInstance[];
 }
@@ -203,18 +203,12 @@ interface TabBarEmits {
   moveTabToNewPanel: [panelId: string, tabId: string];
 }
 
-interface TabBarProps {
-  panel: Panel;
-  windowWidth: number;
-  isActive: boolean;
-  terminals?: TerminalInstance[];
-}
-
 const props = withDefaults(defineProps<TabBarProps>(), {
   terminals: () => [],
 });
 
 const emit = defineEmits<TabBarEmits>();
+const { width: windowWidth } = useWindowSize();
 
 // Refs for scrolling functionality
 const tabsContainer = ref<HTMLElement | null>(null);
@@ -415,7 +409,7 @@ const tabMinWidth = computed(() => {
   const panelControlsWidth = 128; // Split + close buttons
   const padding = 16;
   const availableWidth =
-    props.windowWidth -
+    windowWidth.value -
     addButtonWidth -
     scrollButtonsWidth -
     panelControlsWidth -

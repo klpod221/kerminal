@@ -34,10 +34,13 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, nextTick } from "vue";
+import { onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
 import { debounce } from "../../utils/helpers";
+import { writeToTerminal, resizeTerminal } from "../../services/terminal";
+import { TerminalBufferManager } from "../../services/terminalBufferManager";
 
 import { Terminal } from "@xterm/xterm";
+import "@xterm/xterm/css/xterm.css";
 
 import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
@@ -47,29 +50,139 @@ import { WebglAddon } from "@xterm/addon-webgl";
 
 interface TerminalProps {
   terminalId?: string;
+  backendTerminalId?: string;
   isVisible?: boolean;
   isConnecting?: boolean;
 }
 
 const props = withDefaults(defineProps<TerminalProps>(), {
   terminalId: "default",
+  backendTerminalId: "",
   isVisible: true,
   isConnecting: false,
 });
 
 const emit = defineEmits<{
   "terminal-ready": [terminalId: string];
+  "terminal-output": [terminalId: string, data: string];
 }>();
 
 const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
 
-const handleResize = debounce(() => {
+// Get buffer manager instance
+const bufferManager = TerminalBufferManager.getInstance();
+
+// Handle terminal input and send to backend
+const handleTerminalInput = async (data: string): Promise<void> => {
+  if (!props.backendTerminalId) return;
+
+  try {
+    await writeToTerminal({
+      terminal_id: props.backendTerminalId,
+      data,
+    });
+  } catch (error) {
+    console.error("Failed to send input to terminal:", error);
+  }
+};
+
+// Handle terminal resize and notify backend
+const handleTerminalResize = async (): Promise<void> => {
+  if (!fitAddon || !props.backendTerminalId) return;
+
+  try {
+    const dimensions = fitAddon.proposeDimensions();
+    if (dimensions) {
+      await resizeTerminal({
+        terminal_id: props.backendTerminalId,
+        cols: dimensions.cols,
+        rows: dimensions.rows,
+      });
+    }
+  } catch (error) {
+    console.error("Failed to resize terminal:", error);
+  }
+};
+
+const handleResize = debounce(async () => {
   if (fitAddon && props.isVisible) {
     fitAddon.fit();
+    await handleTerminalResize();
   }
 }, 100);
+
+// Expose methods for parent components
+const focus = (): void => {
+  if (term) {
+    term.focus();
+  }
+};
+
+const fitAndFocus = (): void => {
+  if (fitAddon && term) {
+    fitAddon.fit();
+    term.focus();
+    handleTerminalResize();
+  }
+};
+
+// Method to write output to terminal (called from parent)
+const writeOutput = (data: string): void => {
+  if (term) {
+    term.write(data);
+
+    // Save output to local buffer for immediate access
+    if (props.backendTerminalId) {
+      bufferManager.saveToLocalBuffer(props.backendTerminalId, data);
+    }
+  }
+};
+
+// Method to restore buffer from backend
+const restoreBuffer = async (): Promise<boolean> => {
+  if (!term || !props.backendTerminalId) return false;
+
+  try {
+    return await bufferManager.restoreBuffer(props.backendTerminalId, {
+      clear: () => term.clear(),
+      write: (data: string) => term.write(data)
+    });
+  } catch (error) {
+    console.error('Failed to restore buffer:', error);
+    return false;
+  }
+};
+
+// Method to clear terminal and buffer
+const clearTerminal = async (): Promise<void> => {
+  if (term) {
+    term.clear();
+  }
+
+  if (props.backendTerminalId) {
+    bufferManager.clearLocalBuffer(props.backendTerminalId);
+  }
+};
+
+// Watch for visibility changes
+watch(() => props.isVisible, (newVisible) => {
+  if (newVisible && term) {
+    nextTick(() => {
+      fitAndFocus();
+    });
+  }
+});
+
+// Expose methods to parent component
+defineExpose({
+  focus,
+  fitAndFocus,
+  writeOutput,
+  restoreBuffer,
+  clearTerminal,
+});
 
 onMounted(async () => {
   if (!terminalRef.value) return;
@@ -117,6 +230,11 @@ onMounted(async () => {
   // Open terminal in DOM
   term.open(terminalRef.value);
 
+  // Handle user input and send to backend
+  term.onData((data) => {
+    handleTerminalInput(data);
+  });
+
   // Wait for DOM to be ready
   await nextTick();
 
@@ -129,11 +247,17 @@ onMounted(async () => {
   // Initial fit
   handleResize();
 });
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", handleResize);
+  if (term) {
+    term.dispose();
+  }
+});
 </script>
 
 <style scoped>
-@import "@xterm/xterm/css/xterm.css";
-
 .terminal-container {
   animation: terminalFadeIn 0.5s ease-out;
 }

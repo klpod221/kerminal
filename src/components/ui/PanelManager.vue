@@ -4,7 +4,6 @@
       <Panel
         :panel="layout.panel!"
         :terminals="terminals"
-        :window-width="windowWidth"
         :is-active="layout.panel!.id === activePanelId"
         @select-tab="selectTab"
         @close-tab="closeTab"
@@ -35,7 +34,6 @@
           <PanelManager
             :layout="child"
             :terminals="terminals"
-            :window-width="windowWidth"
             :active-panel-id="activePanelId"
             @select-tab="selectTab"
             @close-tab="closeTab"
@@ -65,7 +63,6 @@ import type { PanelLayout, TerminalInstance } from "../../types/panel";
 interface PanelManagerProps {
   layout: PanelLayout;
   terminals: TerminalInstance[];
-  windowWidth: number;
   activePanelId: string;
 }
 

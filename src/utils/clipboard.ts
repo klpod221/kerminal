@@ -124,7 +124,7 @@ export function sanitizeForTerminal(text: string): string {
   // Remove control characters
   for (const code of controlCharsToRemove) {
     const char = String.fromCharCode(code)
-    sanitized = sanitized.replaceAll(char, '')
+    sanitized = sanitized.split(char).join('')
   }
 
   return sanitized

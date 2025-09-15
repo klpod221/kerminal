@@ -2,7 +2,7 @@
   <div
     class="no-drag flex items-center px-2 h-full max-h-[30px] border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden"
     :class="{
-      'bg-[#171717] border-b-2 border-b-blue-500': isActive,
+      'active-tab bg-[#171717] border-b-2 border-b-blue-500': isActive,
       'hover:bg-gray-800': !isActive,
       'opacity-50': isDragging,
     }"
@@ -264,7 +264,7 @@ const onDrop = (event: DragEvent): void => {
 }
 
 /* Enhanced active tab indicator */
-.group.bg-\[#171717\]::after {
+.active-tab::after {
   content: "";
   position: absolute;
   bottom: 0;
