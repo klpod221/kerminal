@@ -11,6 +11,12 @@ body {
   font-family: 'Fira Code', 'JetBrains Mono', monospace;
 }
 
+/* Custom backdrop blur for overlay */
+.backdrop-blur {
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
 /* css for scroll bar */
 ::-webkit-scrollbar {
   width: 6px;

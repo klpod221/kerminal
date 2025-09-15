@@ -1,5 +1,5 @@
 import { onMounted, onUnmounted } from 'vue'
-import { useOverlayStore } from '../stores/overlayManager'
+import { useOverlayStore } from '../stores/overlay'
 import type { OverlayConfig } from '../types/overlay'
 
 export function useOverlay() {

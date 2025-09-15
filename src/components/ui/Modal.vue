@@ -11,7 +11,7 @@
     >
       <div
         v-if="isVisible"
-        class="fixed top-[30px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-xs"
+        class="fixed top-[30px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur"
         @click="handleBackdropClick"
       ></div>
     </Transition>

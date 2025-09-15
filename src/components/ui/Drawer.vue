@@ -11,7 +11,7 @@
     >
       <div
         v-if="isVisible"
-        class="fixed inset-0 bg-black/50 z-40 top-[30px] backdrop-blur-xs"
+        class="fixed inset-0 bg-black/50 z-40 top-[30px] backdrop-blur"
         @click="handleOverlayClick"
       ></div>
     </Transition>

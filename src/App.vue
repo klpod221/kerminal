@@ -6,6 +6,8 @@
       <Dashboard v-if="viewState.activeView === 'dashboard'" />
 
       <Workspace v-show="viewState.activeView === 'workspace'" />
+
+      <SSHProfileManager />
     </div>
   </div>
 </template>
@@ -15,6 +17,8 @@
 import TopBar from "./components/TopBar.vue";
 import Dashboard from "./components/Dashboard.vue";
 import Workspace from "./components/Workspace.vue";
+
+import SSHProfileManager from "./components/SSHProfileManager.vue";
 
 // Import store
 import { useViewStateStore } from "./stores/viewState";

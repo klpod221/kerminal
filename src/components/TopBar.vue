@@ -39,14 +39,30 @@
         "
       />
     </div>
+
+    <!-- SSH Profiles Icon -->
+     <Button
+      title="SSH Profiles"
+      variant="ghost"
+      size="sm"
+      :icon="Server"
+      :class="isOverlayVisible('ssh-profile-drawer') ? 'text-gray-400 hover:text-white' : ''"
+      @click="openOverlay('ssh-profile-drawer')"
+    />
+
     <div class="flex-1 h-full"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { LayoutGrid } from "lucide-vue-next";
+import { LayoutGrid, Server } from "lucide-vue-next";
+import Button from "./ui/Button.vue";
+
 import { useViewStateStore } from "../stores/viewState";
+import { useOverlay } from '../composables/useOverlay'
+
 const viewState = useViewStateStore();
+const { openOverlay, isOverlayVisible } = useOverlay();
 
 const setActiveView = (view: "dashboard" | "workspace" | "fileManager") => {
   if (!viewState.isTopBarActive || viewState.activeView === view) return;
