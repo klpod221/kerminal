@@ -1,5 +1,5 @@
 import { terminalManager } from "./terminalManager";
-import { bytesToString } from "../utils/terminalUtils";
+import { bytesToString } from "../utils/terminal";
 import type {
   CreateTerminalRequest,
   WriteTerminalRequest,

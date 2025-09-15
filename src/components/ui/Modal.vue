@@ -10,7 +10,7 @@
       leave-to-class="opacity-0"
     >
       <div
-        v-if="visible"
+        v-if="isVisible"
         class="fixed top-[30px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur-xs"
         @click="handleBackdropClick"
       ></div>
@@ -26,7 +26,7 @@
       leave-to-class="opacity-0 scale-95 translate-y-4"
     >
       <div
-        v-if="visible"
+        v-if="isVisible"
         class="fixed top-[30px] left-0 right-0 bottom-0 z-50 flex items-center justify-center pointer-events-none"
       >
         <div
@@ -87,12 +87,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onUnmounted } from "vue";
+import { computed, watch, onMounted, onUnmounted } from "vue";
 import { X } from "lucide-vue-next";
 import Button from "./Button.vue";
 import type { Component } from "vue";
+import { useOverlay } from "../../composables/useOverlay";
 
 interface ModalProps {
+  id: string;
   visible?: boolean;
   title?: string;
   icon?: Component;
@@ -101,6 +103,7 @@ interface ModalProps {
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
+  parentId?: string;
 }
 
 const props = withDefaults(defineProps<ModalProps>(), {
@@ -111,6 +114,8 @@ const props = withDefaults(defineProps<ModalProps>(), {
 });
 
 const emit = defineEmits(["close", "update:visible"]);
+
+const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } = useOverlay();
 
 /**
  * Compute size class based on size prop
@@ -126,10 +131,14 @@ const sizeClass = computed(() => {
   return sizeClasses[props.size];
 });
 
+// Use overlay system visibility instead of props.visible
+const isVisible = computed(() => overlayStore.isVisible(props.id));
+
 /**
  * Handle close button click
  */
 function handleClose(): void {
+  closeOverlay(props.id);
   emit("close");
   emit("update:visible", false);
 }
@@ -143,27 +152,49 @@ function handleBackdropClick(): void {
   }
 }
 
-// Watch for visible prop changes
+// Register overlay on mount
+onMounted(() => {
+  registerOverlay({
+    id: props.id,
+    type: 'modal',
+    parentId: props.parentId || null,
+    title: props.title,
+    icon: props.icon,
+    props: {
+      size: props.size,
+      iconBackground: props.iconBackground,
+      iconColor: props.iconColor,
+      showCloseButton: props.showCloseButton,
+      closeOnBackdrop: props.closeOnBackdrop
+    }
+  });
+});
+
+// Unregister on unmount
+onUnmounted(() => {
+  unregisterOverlay(props.id);
+});
+
+// Watch for visibility changes from parent component
 watch(
   () => props.visible,
-  (isVisible) => {
-    if (isVisible) {
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = "hidden";
-      document.addEventListener("keydown", handleKeydown);
-    } else {
-      // Restore body scroll when modal is closed
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", handleKeydown);
+  (newVisible) => {
+    if (newVisible && !isVisible.value) {
+      overlayStore.open(props.id);
+    } else if (!newVisible && isVisible.value) {
+      closeOverlay(props.id);
     }
   }
 );
 
-const handleKeydown = (event: KeyboardEvent): void => {
-  if (event.key === "Escape") {
-    handleClose();
+// Watch for modal visibility to control body scroll
+watch(isVisible, (visible) => {
+  if (visible) {
+    document.body.style.overflow = "hidden";
+  } else {
+    document.body.style.overflow = "";
   }
-};
+});
 
 // Cleanup on unmount
 onUnmounted(() => {

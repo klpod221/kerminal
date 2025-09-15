@@ -1,5 +1,5 @@
 import type { TerminalTitleChanged, TerminalExited } from "../types/panel";
-import { invokeWithErrorHandling, listenWithErrorHandling } from "../utils/terminalUtils";
+import { invokeWithErrorHandling, listenWithErrorHandling } from "../utils/terminal";
 import type {
   CreateTerminalRequest,
   CreateTerminalResponse,

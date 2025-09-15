@@ -10,7 +10,7 @@
       leave-to-class="opacity-0"
     >
       <div
-        v-if="visible"
+        v-if="isVisible"
         class="fixed inset-0 bg-black/50 z-40 top-[30px] backdrop-blur-xs"
         @click="handleOverlayClick"
       ></div>
@@ -30,7 +30,7 @@
       "
     >
       <div
-        v-if="visible"
+        v-if="isVisible"
         class="no-drag fixed top-[30px] bottom-0 z-50 bg-[#1a1a1a] border-gray-700 flex flex-col"
         :class="[
           position === 'left' ? 'left-0 border-r' : 'right-0 border-l',
@@ -80,12 +80,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from "vue";
+import { computed, watch, onMounted, onUnmounted } from "vue";
 import { X } from "lucide-vue-next";
 import Button from "./Button.vue";
 import type { Component } from "vue";
+import { useOverlay } from "../../composables/useOverlay";
 
 interface DrawerProps {
+  id: string;
   visible?: boolean;
   title?: string;
   icon?: Component;
@@ -94,6 +96,7 @@ interface DrawerProps {
   position?: "left" | "right";
   width?: "sm" | "md" | "lg" | "xl" | "2xl";
   closeOnOverlay?: boolean;
+  parentId?: string;
 }
 
 const props = withDefaults(defineProps<DrawerProps>(), {
@@ -104,13 +107,14 @@ const props = withDefaults(defineProps<DrawerProps>(), {
   iconBackground: "bg-gray-700",
   iconColor: "text-gray-300",
   closeOnOverlay: true,
-  headerAction: false,
 });
 
 const emit = defineEmits<{
   "update:visible": [visible: boolean];
   close: [];
 }>();
+
+const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } = useOverlay();
 
 const widthClass = computed(() => {
   const widthMap = {
@@ -123,7 +127,11 @@ const widthClass = computed(() => {
   return widthMap[props.width];
 });
 
+// Use overlay system visibility instead of props.visible
+const isVisible = computed(() => overlayStore.isVisible(props.id));
+
 const close = (): void => {
+  closeOverlay(props.id);
   emit("update:visible", false);
   emit("close");
 };
@@ -134,21 +142,38 @@ const handleOverlayClick = (): void => {
   }
 };
 
-// Handle ESC key
+// Register overlay on mount
+onMounted(() => {
+  registerOverlay({
+    id: props.id,
+    type: 'drawer',
+    parentId: props.parentId || null,
+    title: props.title,
+    icon: props.icon,
+    props: {
+      position: props.position,
+      width: props.width,
+      iconBackground: props.iconBackground,
+      iconColor: props.iconColor,
+      closeOnOverlay: props.closeOnOverlay
+    }
+  });
+});
+
+// Unregister on unmount
+onUnmounted(() => {
+  unregisterOverlay(props.id);
+});
+
+// Watch for visibility changes from parent component
 watch(
   () => props.visible,
-  (isVisible) => {
-    if (isVisible) {
-      document.addEventListener("keydown", handleKeydown);
-    } else {
-      document.removeEventListener("keydown", handleKeydown);
+  (newVisible) => {
+    if (newVisible && !isVisible.value) {
+      overlayStore.open(props.id);
+    } else if (!newVisible && isVisible.value) {
+      closeOverlay(props.id);
     }
   }
 );
-
-const handleKeydown = (event: KeyboardEvent): void => {
-  if (event.key === "Escape") {
-    close();
-  }
-};
 </script>
