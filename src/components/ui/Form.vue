@@ -6,7 +6,6 @@
 
 <script setup lang="ts">
 import { provide, computed, reactive } from "vue";
-import type { Ref } from "vue";
 import type { FormField, FormContext } from "../../types/form";
 
 const emit = defineEmits(["submit"]);
@@ -47,29 +46,13 @@ const unregister = (id: string): void => {
 
 const getFieldValue = (id: string): unknown => {
   const field = fields.get(id);
-  if (
-    field &&
-    field.value &&
-    typeof field.value === "object" &&
-    "value" in field.value
-  ) {
-    return (field.value as Ref<unknown>).value;
-  }
-  return undefined;
+  return field ? field.value : undefined;
 };
 
 const getAllFieldValues = (): Record<string, unknown> => {
   const allValues: Record<string, unknown> = {};
-  fields.forEach((field, id) => {
-    if (
-      field.value &&
-      typeof field.value === "object" &&
-      "value" in field.value
-    ) {
-      allValues[id] = (field.value as Ref<unknown>).value;
-    } else {
-      allValues[id] = undefined;
-    }
+  fields.forEach((_field, id) => {
+    allValues[id] = getFieldValue(id);
   });
   return allValues;
 };
@@ -84,19 +67,7 @@ provide<FormContext>("form-context", {
 
 const handleSubmit = (): void => {
   if (validate()) {
-    // Thu thập tất cả dữ liệu từ các child
-    const formData: Record<string, unknown> = {};
-    fields.forEach((field, id) => {
-      if (
-        field.value &&
-        typeof field.value === "object" &&
-        "value" in field.value
-      ) {
-        formData[id] = (field.value as Ref<unknown>).value;
-      } else {
-        formData[id] = undefined;
-      }
-    });
+    const formData = getAllFieldValues();
     emit("submit", formData);
   }
 };

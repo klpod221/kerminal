@@ -1,14 +1,13 @@
+use crate::database::encryption::master_password::SetupMasterPasswordRequest;
 use crate::database::error::DatabaseError;
 use crate::database::models::{
-    ssh_profile::{SSHProfile, CreateSSHProfileRequest, UpdateSSHProfileRequest},
-    ssh_group::{SSHGroup, CreateSSHGroupRequest, UpdateSSHGroupRequest, DeleteGroupAction},
-    device::DeviceInfo,
+    ssh_group::{CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest},
+    ssh_profile::{CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest},
 };
-use crate::database::encryption::master_password::SetupMasterPasswordRequest;
 use crate::database::service::DatabaseStats;
 use crate::state::AppState;
-use tauri::State;
 use serde::Deserialize;
+use tauri::State;
 
 // === Error handling ===
 
@@ -45,13 +44,6 @@ macro_rules! db_result {
 }
 
 // === Master Password Commands ===
-
-#[tauri::command]
-pub async fn is_master_password_setup(state: State<'_, AppState>) -> Result<bool, String> {
-    let db_service = state.database_service.lock().await;
-    db_result!(db_service.is_master_password_setup().await)
-}
-
 #[tauri::command]
 pub async fn setup_master_password(
     state: State<'_, AppState>,
@@ -77,7 +69,10 @@ pub async fn verify_master_password(
     password: String,
 ) -> Result<bool, String> {
     let db_service = state.database_service.lock().await;
-    db_result!(db_service.verify_master_password(password).await)
+    match db_service.verify_master_password(password).await {
+        Ok(()) => Ok(true),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[tauri::command]
@@ -94,18 +89,22 @@ pub async fn lock_session(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn get_master_password_status(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+pub async fn get_master_password_status(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
     let db_service = state.database_service.lock().await;
 
-    // For now, return a mock status. This should be implemented in the backend
+    let is_setup = db_result!(db_service.is_master_password_setup().await)?;
+    let actual_status = db_result!(db_service.get_master_password_status().await)?;
+
     let status = serde_json::json!({
-        "isSetup": db_result!(db_service.is_master_password_setup().await)?,
-        "isUnlocked": true, // This should come from actual session state
-        "autoUnlockEnabled": false,
-        "keychainAvailable": true,
-        "sessionActive": true,
-        "sessionExpiresAt": null,
-        "loadedDeviceCount": 1
+        "isSetup": is_setup,
+        "isUnlocked": actual_status.is_unlocked,
+        "autoUnlockEnabled": actual_status.auto_unlock_enabled,
+        "keychainAvailable": actual_status.keychain_available,
+        "sessionActive": actual_status.session_active,
+        "sessionExpiresAt": actual_status.session_expires_at,
+        "loadedDeviceCount": actual_status.loaded_device_count
     });
 
     Ok(status)
@@ -126,14 +125,6 @@ pub async fn change_master_password(
     }
 
     // TODO: Implement actual password change logic
-    Ok(())
-}
-
-#[tauri::command]
-pub async fn disable_auto_unlock(state: State<'_, AppState>) -> Result<(), String> {
-    let _db_service = state.database_service.lock().await;
-
-    // TODO: Implement disable auto-unlock logic
     Ok(())
 }
 
@@ -178,7 +169,7 @@ pub async fn get_ssh_groups(state: State<'_, AppState>) -> Result<Vec<SSHGroup>,
 pub async fn get_ssh_group(
     state: State<'_, AppState>,
     id: String,
-) -> Result<Option<SSHGroup>, String> {
+) -> Result<SSHGroup, String> {
     let db_service = state.database_service.lock().await;
     db_result!(db_service.get_ssh_group(&id).await)
 }
@@ -227,9 +218,9 @@ pub struct DeleteGroupActionDto {
 impl From<DeleteGroupActionDto> for DeleteGroupAction {
     fn from(dto: DeleteGroupActionDto) -> Self {
         match dto.action_type.as_str() {
-            "move_to_group" => DeleteGroupAction::MoveToGroup(
-                dto.target_group_id.unwrap_or_default()
-            ),
+            "move_to_group" => {
+                DeleteGroupAction::MoveToGroup(dto.target_group_id.unwrap_or_default())
+            }
             "move_to_ungrouped" => DeleteGroupAction::MoveToUngrouped,
             "delete_profiles" => DeleteGroupAction::DeleteProfiles,
             _ => DeleteGroupAction::MoveToUngrouped,
@@ -255,15 +246,9 @@ pub async fn get_ssh_profiles(state: State<'_, AppState>) -> Result<Vec<SSHProfi
 }
 
 #[tauri::command]
-pub async fn get_ssh_profile(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<SSHProfile, String> {
+pub async fn get_ssh_profile(state: State<'_, AppState>, id: String) -> Result<SSHProfile, String> {
     let db_service = state.database_service.lock().await;
-    let profile = db_service.get_ssh_profile(&id).await
-        .map_err(|e| e.to_string())?;
-
-    profile.ok_or_else(|| "SSH profile not found".to_string())
+    db_result!(db_service.get_ssh_profile(&id).await)
 }
 
 #[tauri::command]
@@ -277,10 +262,7 @@ pub async fn update_ssh_profile(
 }
 
 #[tauri::command]
-pub async fn delete_ssh_profile(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_ssh_profile(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let db_service = state.database_service.lock().await;
     db_result!(db_service.delete_ssh_profile(&id).await)
 }
@@ -292,7 +274,11 @@ pub async fn move_profile_to_group(
     group_id: Option<String>,
 ) -> Result<(), String> {
     let db_service = state.database_service.lock().await;
-    db_result!(db_service.move_profile_to_group(&profile_id, group_id.as_deref()).await)
+    db_result!(
+        db_service
+            .move_profile_to_group(&profile_id, group_id.as_deref())
+            .await
+    )
 }
 
 #[tauri::command]
@@ -311,13 +297,6 @@ pub async fn duplicate_ssh_profile(
 pub async fn get_database_stats(state: State<'_, AppState>) -> Result<DatabaseStats, String> {
     let db_service = state.database_service.lock().await;
     db_result!(db_service.get_database_stats().await)
-}
-
-#[tauri::command]
-pub async fn get_current_device(state: State<'_, AppState>) -> Result<DeviceInfo, String> {
-    let db_service = state.database_service.lock().await;
-    let device = db_service.get_current_device();
-    Ok(device)
 }
 
 // === DTOs ===

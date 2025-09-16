@@ -49,14 +49,12 @@ async fn main() {
             // System commands
             commands::system::get_user_hostname,
             // Database commands - Master Password
-            commands::database::is_master_password_setup,
             commands::database::setup_master_password,
             commands::database::verify_master_password,
             commands::database::try_auto_unlock,
             commands::database::lock_session,
             commands::database::get_master_password_status,
             commands::database::change_master_password,
-            commands::database::disable_auto_unlock,
             commands::database::reset_master_password,
             // Database commands - SSH Groups
             commands::database::create_ssh_group,
@@ -73,8 +71,7 @@ async fn main() {
             commands::database::move_profile_to_group,
             commands::database::duplicate_ssh_profile,
             // Database commands - Utilities
-            commands::database::get_database_stats,
-            commands::database::get_current_device
+            commands::database::get_database_stats
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

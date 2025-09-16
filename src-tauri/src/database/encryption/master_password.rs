@@ -1,11 +1,11 @@
 use base64::{engine::general_purpose, Engine as _};
+use chrono::{DateTime, Utc};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::{DateTime, Utc};
 
 use crate::database::{
-    encryption::{DeviceKeyManager, KeychainManager, device_keys::MasterPasswordEntry},
     config::MasterPasswordConfig,
+    encryption::{device_keys::MasterPasswordEntry, DeviceKeyManager, KeychainManager},
     error::{EncryptionError, EncryptionResult},
     traits::EncryptionService,
 };
@@ -53,9 +53,9 @@ pub struct MasterPasswordStatus {
 impl MasterPasswordManager {
     /// Create new master password manager
     pub fn new(current_device_id: String, config: MasterPasswordConfig) -> Self {
-        let device_key_manager = Arc::new(RwLock::new(
-            DeviceKeyManager::new(current_device_id.clone())
-        ));
+        let device_key_manager = Arc::new(RwLock::new(DeviceKeyManager::new(
+            current_device_id.clone(),
+        )));
 
         Self {
             device_key_manager,
@@ -80,11 +80,8 @@ impl MasterPasswordManager {
 
         // Create master password entry
         let mut manager = self.device_key_manager.write().await;
-        let entry = manager.create_master_password(
-            request.device_name,
-            &request.password,
-            &self.config,
-        )?;
+        let entry =
+            manager.create_master_password(request.device_name, &request.password, &self.config)?;
 
         // Start session
         self.session_start = Some(Utc::now());
@@ -98,11 +95,16 @@ impl MasterPasswordManager {
         request: VerifyMasterPasswordRequest,
         stored_entry: &MasterPasswordEntry,
     ) -> EncryptionResult<bool> {
-        let device_id = request.device_id.as_ref().unwrap_or(&self.current_device_id);
+        let device_id = request
+            .device_id
+            .as_ref()
+            .unwrap_or(&self.current_device_id);
 
         // If verifying for different device, need the stored entry for that device
         if device_id != &self.current_device_id {
-            return self.verify_device_password(&request.password, stored_entry).await;
+            return self
+                .verify_device_password(&request.password, stored_entry)
+                .await;
         }
 
         // Verify password
@@ -188,13 +190,13 @@ impl MasterPasswordManager {
 
     /// Get master password status
     pub async fn get_status(&self) -> MasterPasswordStatus {
-    let manager = self.device_key_manager.read().await;
+        let manager = self.device_key_manager.read().await;
         let loaded_devices = manager.get_loaded_device_ids();
 
         let session_expires_at = if let Some(start_time) = self.session_start {
-            self.config.session_timeout_minutes.map(|timeout| {
-                start_time + chrono::Duration::minutes(timeout as i64)
-            })
+            self.config
+                .session_timeout_minutes
+                .map(|timeout| start_time + chrono::Duration::minutes(timeout as i64))
         } else {
             None
         };
@@ -210,17 +212,26 @@ impl MasterPasswordManager {
         }
     }
 
-    /// Disable auto-unlock
-    pub async fn disable_auto_unlock(&mut self) -> EncryptionResult<()> {
-        self.config.auto_unlock = false;
+    /// Update auto-unlock setting
+    pub async fn update_auto_unlock_setting(&mut self, auto_unlock: bool) -> EncryptionResult<()> {
+        self.config.auto_unlock = auto_unlock;
+        self.config.require_on_startup = !auto_unlock;
 
-        // Remove từ keychain
-        if let Err(e) = self.keychain_manager.delete_master_password(&self.current_device_id) {
-            eprintln!("Warning: Failed to remove password from keychain: {}", e);
-        }
+        if !auto_unlock {
+            // Remove từ keychain nếu tắt auto-unlock
+            if let Err(e) = self
+                .keychain_manager
+                .delete_master_password(&self.current_device_id)
+            {
+                eprintln!("Warning: Failed to remove password from keychain: {}", e);
+            }
 
-        if let Err(e) = self.keychain_manager.delete_device_key(&self.current_device_id) {
-            eprintln!("Warning: Failed to remove device key from keychain: {}", e);
+            if let Err(e) = self
+                .keychain_manager
+                .delete_device_key(&self.current_device_id)
+            {
+                eprintln!("Warning: Failed to remove device key from keychain: {}", e);
+            }
         }
 
         Ok(())
@@ -258,14 +269,18 @@ impl MasterPasswordManager {
             .map_err(|_| EncryptionError::MasterPasswordVerificationFailed)?;
 
         let argon2 = Argon2::default();
-        Ok(argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok())
+        Ok(argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok())
     }
 
     /// Validate setup request
     fn validate_setup_request(&self, request: &SetupMasterPasswordRequest) -> EncryptionResult<()> {
         // Check password confirmation
         if request.password != request.confirm_password {
-            return Err(EncryptionError::InvalidKey("Passwords do not match".to_string()));
+            return Err(EncryptionError::InvalidKey(
+                "Passwords do not match".to_string(),
+            ));
         }
 
         // Validate password strength
@@ -273,12 +288,16 @@ impl MasterPasswordManager {
 
         // Check device name
         if request.device_name.trim().is_empty() {
-            return Err(EncryptionError::InvalidKey("Device name cannot be empty".to_string()));
+            return Err(EncryptionError::InvalidKey(
+                "Device name cannot be empty".to_string(),
+            ));
         }
 
         // Check keychain availability if auto_unlock requested
         if request.auto_unlock && request.use_keychain && !self.keychain_manager.is_available() {
-            return Err(EncryptionError::KeychainError("Keychain not available".to_string()));
+            return Err(EncryptionError::KeychainError(
+                "Keychain not available".to_string(),
+            ));
         }
 
         Ok(())
@@ -287,11 +306,15 @@ impl MasterPasswordManager {
     /// Validate password strength
     fn validate_password(&self, password: &str) -> EncryptionResult<()> {
         if password.len() < 8 {
-            return Err(EncryptionError::InvalidKey("Password must be at least 8 characters".to_string()));
+            return Err(EncryptionError::InvalidKey(
+                "Password must be at least 8 characters".to_string(),
+            ));
         }
 
         if password.len() > 128 {
-            return Err(EncryptionError::InvalidKey("Password must be less than 128 characters".to_string()));
+            return Err(EncryptionError::InvalidKey(
+                "Password must be less than 128 characters".to_string(),
+            ));
         }
 
         // Check for at least one uppercase, lowercase, number
@@ -301,14 +324,19 @@ impl MasterPasswordManager {
 
         if !has_upper || !has_lower || !has_digit {
             return Err(EncryptionError::InvalidKey(
-                "Password must contain uppercase, lowercase, and numbers".to_string()
+                "Password must contain uppercase, lowercase, and numbers".to_string(),
             ));
         }
 
         // Check for common passwords (basic check)
         let common_passwords = ["password", "12345678", "qwerty", "admin", "letmein"];
-        if common_passwords.iter().any(|&common| password.to_lowercase().contains(common)) {
-            return Err(EncryptionError::InvalidKey("Password is too common".to_string()));
+        if common_passwords
+            .iter()
+            .any(|&common| password.to_lowercase().contains(common))
+        {
+            return Err(EncryptionError::InvalidKey(
+                "Password is too common".to_string(),
+            ));
         }
 
         Ok(())
@@ -318,13 +346,22 @@ impl MasterPasswordManager {
 /// Implement EncryptionService trait
 #[async_trait::async_trait]
 impl EncryptionService for MasterPasswordManager {
-    async fn encrypt(&self, data: &[u8], device_id: Option<&str>) -> crate::database::error::DatabaseResult<Vec<u8>> {
+    async fn encrypt(
+        &self,
+        data: &[u8],
+        device_id: Option<&str>,
+    ) -> crate::database::error::DatabaseResult<Vec<u8>> {
         let mut manager = self.device_key_manager.write().await;
-        manager.encrypt_with_device(data, device_id)
+        manager
+            .encrypt_with_device(data, device_id)
             .map_err(|e| e.into())
     }
 
-    async fn decrypt(&self, encrypted_data: &[u8], device_id: Option<&str>) -> crate::database::error::DatabaseResult<Vec<u8>> {
+    async fn decrypt(
+        &self,
+        encrypted_data: &[u8],
+        device_id: Option<&str>,
+    ) -> crate::database::error::DatabaseResult<Vec<u8>> {
         let mut manager = self.device_key_manager.write().await;
 
         // Try specific device first
@@ -335,18 +372,28 @@ impl EncryptionService for MasterPasswordManager {
         }
 
         // Fallback: try any device key
-        manager.try_decrypt_with_any_device(encrypted_data)
+        manager
+            .try_decrypt_with_any_device(encrypted_data)
             .map(|(data, _device_id)| data)
             .map_err(|e| e.into())
     }
 
-    async fn encrypt_string(&self, data: &str, device_id: Option<&str>) -> crate::database::error::DatabaseResult<String> {
+    async fn encrypt_string(
+        &self,
+        data: &str,
+        device_id: Option<&str>,
+    ) -> crate::database::error::DatabaseResult<String> {
         let encrypted = self.encrypt(data.as_bytes(), device_id).await?;
-    Ok(general_purpose::STANDARD.encode(encrypted))
+        Ok(general_purpose::STANDARD.encode(encrypted))
     }
 
-    async fn decrypt_string(&self, encrypted_data: &str, device_id: Option<&str>) -> crate::database::error::DatabaseResult<String> {
-    let encrypted_bytes = general_purpose::STANDARD.decode(encrypted_data)
+    async fn decrypt_string(
+        &self,
+        encrypted_data: &str,
+        device_id: Option<&str>,
+    ) -> crate::database::error::DatabaseResult<String> {
+        let encrypted_bytes = general_purpose::STANDARD
+            .decode(encrypted_data)
             .map_err(|_e| EncryptionError::InvalidFormat)?;
 
         let decrypted = self.decrypt(&encrypted_bytes, device_id).await?;

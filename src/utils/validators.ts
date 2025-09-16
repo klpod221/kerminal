@@ -32,15 +32,16 @@ export function validate(value: unknown, rules: string, allValues: FormValues): 
       }
 
       case 'password': {
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[\w\W]{8,}$/
         if (!passwordRegex.test(String(value)))
           return 'Password must be at least 8 characters long and include uppercase, lowercase letters, and numbers.'
         break
       }
 
-      case 'sameAs': {
+      case 'same': {
         const otherValue = allValues[params[0]]
-        if (value !== otherValue) return `Value does not match field ${params[0]}.`
+        
+        if (value !== otherValue) return 'Values do not match.'
         break
       }
     }

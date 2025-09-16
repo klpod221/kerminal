@@ -119,7 +119,6 @@ impl TerminalFactory {
                         .get_ssh_profile(&ssh_profile_id)
                         .await
                         .map_err(|e| AppError::Database(format!("Failed to get SSH profile: {}", e)))?
-                        .ok_or_else(|| AppError::TerminalNotFound(format!("SSH profile with ID {} not found", ssh_profile_id)))?
                 };
 
                 Ok(TerminalWrapper::SSH(ssh::SSHTerminal::new(id, config, ssh_profile)?))

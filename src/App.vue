@@ -5,17 +5,19 @@
     <div class="flex-grow overflow-hidden">
       <MasterPasswordManager />
 
-      <Dashboard v-if="viewState.activeView === 'dashboard'" />
+      <template v-if="authStore.isAuthenticated">
+        <Dashboard v-if="viewState.activeView === 'dashboard'" />
 
-      <Workspace v-show="viewState.activeView === 'workspace'" />
+        <Workspace v-show="viewState.activeView === 'workspace'" />
 
-      <SSHProfileManager />
+        <SSHProfileManager />
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted } from "vue";
 
 // Import components
 import TopBar from "./components/TopBar.vue";
@@ -24,7 +26,7 @@ import Dashboard from "./components/Dashboard.vue";
 import Workspace from "./components/Workspace.vue";
 import SSHProfileManager from "./components/SSHProfileManager.vue";
 
-import { useOverlay } from './composables/useOverlay';
+import { useOverlay } from "./composables/useOverlay";
 
 // Import stores
 import { useViewStateStore } from "./stores/viewState";
@@ -41,29 +43,32 @@ onMounted(async () => {
   try {
     await authStore.initialize();
 
+    // current status
+    console.log("Auth status:", authStore.isAuthenticated, authStore.status);
+
     // Try auto-unlock if setup is completed and auto-unlock is enabled
-    if (authStore.status.isSetup && !authStore.status.isUnlocked && authStore.status.autoUnlockEnabled) {
+    if (
+      !authStore.requiresSetup &&
+      !authStore.status.isUnlocked &&
+      authStore.status.autoUnlockEnabled
+    ) {
+      console.log("Attempting auto-unlock...");
       await authStore.tryAutoUnlock();
     }
 
     // if setup is not completed, ensure the setup view is shown
-    if (!authStore.status.isSetup) {
-      console.log("Showing master password setup overlay");
-      openOverlay('master-password-setup');
+    if (authStore.requiresSetup) {
+      openOverlay("master-password-setup");
       viewState.toggleTopBar(false);
       return;
     }
 
     // If app is locked, show the unlock overlay
-    if (!authStore.status.isUnlocked) {
-      console.log("Showing unlock overlay");
-      openOverlay('unlock');
+    if (authStore.requiresUnlock) {
+      openOverlay("master-password-unlock");
       viewState.toggleTopBar(false);
       return;
     }
-
-    // current status
-    console.log("Auth status:", authStore.status);
   } catch (error) {
     console.error("Failed to initialize auth:", error);
   }

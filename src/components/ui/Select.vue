@@ -188,13 +188,7 @@ const validate = (): string => {
     return "";
   }
 
-  const allFormValues = formContext
-    ? Object.fromEntries(
-        Array.from(
-          (formContext as FormContext).getFieldValue ? new Map() : new Map()
-        )
-      )
-    : {};
+  const allFormValues = formContext?.getAllFieldValues() || {};
 
   const error = validateFn(props.modelValue, props.rules, allFormValues);
   errorMessage.value = error;

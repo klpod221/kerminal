@@ -1,19 +1,24 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::collections::HashMap;
 
 use crate::database::{
-    traits::{Database, Syncable, Encryptable},
-    providers::{SQLiteProvider},
-    encryption::{MasterPasswordManager, master_password::{SetupMasterPasswordRequest, VerifyMasterPasswordRequest}},
-    config::{MasterPasswordConfig},
+    config::MasterPasswordConfig,
+    encryption::{
+        master_password::{
+            MasterPasswordStatus, SetupMasterPasswordRequest, VerifyMasterPasswordRequest,
+        },
+        MasterPasswordManager,
+    },
     error::{DatabaseError, DatabaseResult},
     models::{
-        ssh_profile::{SSHProfile, CreateSSHProfileRequest, UpdateSSHProfileRequest},
-        ssh_group::{SSHGroup, CreateSSHGroupRequest, UpdateSSHGroupRequest, DeleteGroupAction},
         device::{Device, DeviceInfo},
-        sync_metadata::{SyncStats},
+        ssh_group::{CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest},
+        ssh_profile::{CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest},
+        sync_metadata::SyncStats,
     },
+    providers::SQLiteProvider,
+    traits::{Database, Encryptable, Syncable},
 };
 
 // Đã import ở trên, không cần lặp lại
@@ -47,18 +52,42 @@ pub struct DatabaseServiceConfig {
 impl DatabaseService {
     /// Create new database service
     pub async fn new(config: DatabaseServiceConfig) -> DatabaseResult<Self> {
-        // Initialize current device
-        let current_device = Device::new_current("Current Device".to_string());
-
         // Create local SQLite database
         let mut local_db = SQLiteProvider::new(config.local_db_path.clone());
         local_db.connect().await?;
 
+        // Try to get existing current device, or create new one
+        let current_device = if let Some(device) = local_db.get_current_device().await? {
+            // Update last seen timestamp
+            let mut updated_device = device;
+            updated_device.update_last_seen();
+            local_db.save_device(&updated_device).await?;
+            updated_device
+        } else {
+            // Create new device and save to database
+            let new_device = Device::new_current("Current Device".to_string());
+            local_db.save_device(&new_device).await?;
+            new_device
+        };
+
+        // Load master password config from database
+        let master_password_config = if let Some(entry) = local_db
+            .get_master_password_entry(&current_device.device_id)
+            .await?
+        {
+            MasterPasswordConfig {
+                auto_unlock: entry.auto_unlock,
+                session_timeout_minutes: config.master_password_config.session_timeout_minutes,
+                require_on_startup: !entry.auto_unlock,
+                use_keychain: config.master_password_config.use_keychain,
+            }
+        } else {
+            config.master_password_config.clone()
+        };
+
         // Create master password manager
-        let master_password_manager = MasterPasswordManager::new(
-            current_device.device_id.clone(),
-            config.master_password_config.clone(),
-        );
+        let master_password_manager =
+            MasterPasswordManager::new(current_device.device_id.clone(), master_password_config);
 
         Ok(Self {
             local_db: Arc::new(RwLock::new(local_db)),
@@ -72,7 +101,9 @@ impl DatabaseService {
     /// Check if master password is setup
     pub async fn is_master_password_setup(&self) -> DatabaseResult<bool> {
         let local_db = self.local_db.read().await;
-        let entry = local_db.get_master_password_entry(&self.current_device.device_id).await?;
+        let entry = local_db
+            .get_master_password_entry(&self.current_device.device_id)
+            .await?;
         Ok(entry.is_some())
     }
 
@@ -92,9 +123,14 @@ impl DatabaseService {
     }
 
     /// Verify master password
-    pub async fn verify_master_password(&self, password: String) -> DatabaseResult<bool> {
+    pub async fn verify_master_password(
+        &self,
+        password: String
+    ) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
-        let entry = local_db.get_master_password_entry(&self.current_device.device_id).await?
+        let entry = local_db
+            .get_master_password_entry(&self.current_device.device_id)
+            .await?
             .ok_or_else(|| DatabaseError::MasterPasswordRequired)?;
 
         let mut mp_manager = self.master_password_manager.write().await;
@@ -103,14 +139,24 @@ impl DatabaseService {
             device_id: None,
         };
 
-        mp_manager.verify_master_password(request, &entry).await
-            .map_err(DatabaseError::from)
+        let is_valid = mp_manager
+            .verify_master_password(request, &entry)
+            .await
+            .map_err(DatabaseError::from)?;
+
+        if !is_valid {
+            return Err(DatabaseError::AuthenticationFailed("Invalid master password".to_string()));
+        }
+
+        Ok(())
     }
 
     /// Try auto-unlock
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
         let mut mp_manager = self.master_password_manager.write().await;
-        mp_manager.try_auto_unlock().await
+        mp_manager
+            .try_auto_unlock()
+            .await
             .map_err(DatabaseError::from)
     }
 
@@ -120,10 +166,38 @@ impl DatabaseService {
         mp_manager.lock_session().await;
     }
 
+    /// Get master password status
+    pub async fn get_master_password_status(&self) -> DatabaseResult<MasterPasswordStatus> {
+        let mp_manager = self.master_password_manager.read().await;
+        Ok(mp_manager.get_status().await)
+    }
+
+    /// Update master password config (for changing auto-unlock settings)
+    pub async fn update_master_password_config(&self, auto_unlock: bool) -> DatabaseResult<()> {
+        // Update the config in the manager
+        let mut mp_manager = self.master_password_manager.write().await;
+        mp_manager.update_auto_unlock_setting(auto_unlock).await?;
+
+        // Update the database entry
+        let local_db = self.local_db.read().await;
+        if let Some(mut entry) = local_db
+            .get_master_password_entry(&self.current_device.device_id)
+            .await?
+        {
+            entry.auto_unlock = auto_unlock;
+            local_db.save_master_password_entry(&entry).await?;
+        }
+
+        Ok(())
+    }
+
     // === SSH Group Operations ===
 
     /// Create SSH group
-    pub async fn create_ssh_group(&self, request: CreateSSHGroupRequest) -> DatabaseResult<SSHGroup> {
+    pub async fn create_ssh_group(
+        &self,
+        request: CreateSSHGroupRequest,
+    ) -> DatabaseResult<SSHGroup> {
         let group = request.to_group(self.current_device.device_id.clone());
 
         let local_db = self.local_db.read().await;
@@ -139,15 +213,24 @@ impl DatabaseService {
     }
 
     /// Get SSH group by ID
-    pub async fn get_ssh_group(&self, id: &str) -> DatabaseResult<Option<SSHGroup>> {
+    pub async fn get_ssh_group(&self, id: &str) -> DatabaseResult<SSHGroup> {
         let local_db = self.local_db.read().await;
-        local_db.find_ssh_group_by_id(id).await
+        local_db
+            .find_ssh_group_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("SSH group {} not found", id)))
     }
 
     /// Update SSH group
-    pub async fn update_ssh_group(&self, id: &str, request: UpdateSSHGroupRequest) -> DatabaseResult<SSHGroup> {
+    pub async fn update_ssh_group(
+        &self,
+        id: &str,
+        request: UpdateSSHGroupRequest,
+    ) -> DatabaseResult<SSHGroup> {
         let local_db = self.local_db.read().await;
-        let mut group = local_db.find_ssh_group_by_id(id).await?
+        let mut group = local_db
+            .find_ssh_group_by_id(id)
+            .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH group {} not found", id)))?;
 
         request.apply_to_group(&mut group);
@@ -157,23 +240,28 @@ impl DatabaseService {
     }
 
     /// Delete SSH group
-    pub async fn delete_ssh_group(&self, id: &str, action: DeleteGroupAction) -> DatabaseResult<()> {
+    pub async fn delete_ssh_group(
+        &self,
+        id: &str,
+        action: DeleteGroupAction,
+    ) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
 
         // Handle profiles in the group
         match action {
             DeleteGroupAction::MoveToGroup(target_group_id) => {
                 // Move profiles to target group
-                self.move_profiles_to_group(Some(id), Some(target_group_id.as_str())).await?;
-            },
+                self.move_profiles_to_group(Some(id), Some(target_group_id.as_str()))
+                    .await?;
+            }
             DeleteGroupAction::MoveToUngrouped => {
                 // Move profiles to ungrouped
                 self.move_profiles_to_group(Some(id), None).await?;
-            },
+            }
             DeleteGroupAction::DeleteProfiles => {
                 // Delete all profiles in group
                 self.delete_profiles_in_group(id).await?;
-            },
+            }
         }
 
         // Delete the group
@@ -185,7 +273,10 @@ impl DatabaseService {
     // === SSH Profile Operations ===
 
     /// Create SSH profile
-    pub async fn create_ssh_profile(&self, request: CreateSSHProfileRequest) -> DatabaseResult<SSHProfile> {
+    pub async fn create_ssh_profile(
+        &self,
+        request: CreateSSHProfileRequest,
+    ) -> DatabaseResult<SSHProfile> {
         let mut profile = request.to_profile(self.current_device.device_id.clone());
 
         // Encrypt sensitive fields
@@ -201,14 +292,20 @@ impl DatabaseService {
     }
 
     /// Get all SSH profiles
-    pub async fn get_ssh_profiles(&self, group_id: Option<&str>) -> DatabaseResult<Vec<SSHProfile>> {
+    pub async fn get_ssh_profiles(
+        &self,
+        group_id: Option<&str>,
+    ) -> DatabaseResult<Vec<SSHProfile>> {
         let local_db = self.local_db.read().await;
 
         let all_profiles = local_db.find_all_ssh_profiles().await?;
 
         if let Some(group_id) = group_id {
             // Filter profiles by group_id
-            Ok(all_profiles.into_iter().filter(|p| p.group_id.as_ref() == Some(&group_id.to_string())).collect())
+            Ok(all_profiles
+                .into_iter()
+                .filter(|p| p.group_id.as_ref() == Some(&group_id.to_string()))
+                .collect())
         } else {
             // Return all profiles
             Ok(all_profiles)
@@ -216,24 +313,31 @@ impl DatabaseService {
     }
 
     /// Get SSH profile by ID
-    pub async fn get_ssh_profile(&self, id: &str) -> DatabaseResult<Option<SSHProfile>> {
+    pub async fn get_ssh_profile(&self, id: &str) -> DatabaseResult<SSHProfile> {
         let local_db = self.local_db.read().await;
-        let mut profile = local_db.find_ssh_profile_by_id(id).await?;
+        let mut profile = local_db
+            .find_ssh_profile_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("SSH profile {} not found", id)))?;
 
-        if let Some(ref mut profile) = profile {
-            if profile.has_encrypted_data() {
-                let mp_manager = self.master_password_manager.read().await;
-                profile.decrypt_fields(&*mp_manager)?;
-            }
+        if profile.has_encrypted_data() {
+            let mp_manager = self.master_password_manager.read().await;
+            profile.decrypt_fields(&*mp_manager)?;
         }
 
         Ok(profile)
     }
 
     /// Update SSH profile
-    pub async fn update_ssh_profile(&self, id: &str, request: UpdateSSHProfileRequest) -> DatabaseResult<SSHProfile> {
+    pub async fn update_ssh_profile(
+        &self,
+        id: &str,
+        request: UpdateSSHProfileRequest,
+    ) -> DatabaseResult<SSHProfile> {
         let local_db = self.local_db.read().await;
-        let mut profile = local_db.find_ssh_profile_by_id(id).await?
+        let mut profile = local_db
+            .find_ssh_profile_by_id(id)
+            .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH profile {} not found", id)))?;
 
         // Apply updates
@@ -257,10 +361,18 @@ impl DatabaseService {
     }
 
     /// Move profile to group
-    pub async fn move_profile_to_group(&self, profile_id: &str, group_id: Option<&str>) -> DatabaseResult<()> {
+    pub async fn move_profile_to_group(
+        &self,
+        profile_id: &str,
+        group_id: Option<&str>,
+    ) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
-        let mut profile = local_db.find_ssh_profile_by_id(profile_id).await?
-            .ok_or_else(|| DatabaseError::NotFound(format!("SSH profile {} not found", profile_id)))?;
+        let mut profile = local_db
+            .find_ssh_profile_by_id(profile_id)
+            .await?
+            .ok_or_else(|| {
+                DatabaseError::NotFound(format!("SSH profile {} not found", profile_id))
+            })?;
 
         profile.set_group(group_id.map(|s| s.to_string()));
         local_db.save_ssh_profile(&profile).await?;
@@ -269,14 +381,21 @@ impl DatabaseService {
     }
 
     /// Duplicate SSH profile
-    pub async fn duplicate_ssh_profile(&self, id: &str, new_name: String) -> DatabaseResult<SSHProfile> {
+    pub async fn duplicate_ssh_profile(
+        &self,
+        id: &str,
+        new_name: String,
+    ) -> DatabaseResult<SSHProfile> {
         let local_db = self.local_db.read().await;
-        let original = local_db.find_ssh_profile_by_id(id).await?
+        let original = local_db
+            .find_ssh_profile_by_id(id)
+            .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH profile {} not found", id)))?;
 
         // Create new profile with new ID
         let mut duplicate = original.clone();
-        duplicate.base = crate::database::models::base::BaseModel::new(self.current_device.device_id.clone());
+        duplicate.base =
+            crate::database::models::base::BaseModel::new(self.current_device.device_id.clone());
         duplicate.name = new_name;
 
         // Re-encrypt
@@ -293,7 +412,11 @@ impl DatabaseService {
     // === Utility Operations ===
 
     /// Move all profiles from one group to another
-    async fn move_profiles_to_group(&self, from_group_id: Option<&str>, to_group_id: Option<&str>) -> DatabaseResult<()> {
+    async fn move_profiles_to_group(
+        &self,
+        from_group_id: Option<&str>,
+        to_group_id: Option<&str>,
+    ) -> DatabaseResult<()> {
         let profiles = self.get_ssh_profiles(from_group_id).await?;
 
         for mut profile in profiles {
@@ -337,7 +460,7 @@ impl DatabaseService {
             conflicts: 0,
             last_sync,
             sync_enabled: false, // For now, sync is not enabled
-            databases: vec![], // No external databases for now
+            databases: vec![],   // No external databases for now
         })
     }
 
@@ -347,9 +470,7 @@ impl DatabaseService {
         let ssh_profiles = provider.find_all_ssh_profiles().await?;
         let ssh_groups = provider.find_all_ssh_groups().await?;
 
-        let ungrouped_count = ssh_profiles.iter()
-            .filter(|p| p.group_id.is_none())
-            .count() as u32;
+        let ungrouped_count = ssh_profiles.iter().filter(|p| p.group_id.is_none()).count() as u32;
 
         Ok(DatabaseStats {
             groups_count: ssh_groups.len() as u32,
@@ -359,11 +480,6 @@ impl DatabaseService {
             external_databases_count: self.external_dbs.read().await.len() as u32,
             last_sync: None, // No sync tracking for now
         })
-    }
-
-    /// Get current device info
-    pub fn get_current_device(&self) -> DeviceInfo {
-        self.current_device.clone().into()
     }
 }
 

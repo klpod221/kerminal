@@ -15,9 +15,8 @@
           <h3 class="text-lg font-semibold text-gray-100 mb-1">
             Secure Your SSH Profiles
           </h3>
-          <p class="text-sm text-gray-400">
-            Create a master password to encrypt and protect your SSH connection
-            data.
+          <p class="text-red-400">
+            This password cannot be recovered.
           </p>
         </div>
       </div>
@@ -59,7 +58,7 @@
           label="Confirm Password"
           type="password"
           placeholder="Confirm your password"
-          rules="required|password"
+          rules="required|password|same:master-password"
           :disabled="isLoading"
         />
 
@@ -91,6 +90,7 @@
         type="submit"
         variant="primary"
         :loading="isLoading"
+        :icon="Save"
         @click="handleSubmit"
       >
         Setup Master Password
@@ -101,10 +101,10 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { Lock } from "lucide-vue-next";
+import { Lock, Save } from "lucide-vue-next";
 import { message } from "../utils/message";
 import { useOverlay } from "../composables/useOverlay";
-import { setup } from "../services/auth";
+import { useAuthStore } from "../stores/auth";
 import Modal from "./ui/Modal.vue";
 import Form from "./ui/Form.vue";
 import Input from "./ui/Input.vue";
@@ -112,6 +112,7 @@ import Button from "./ui/Button.vue";
 import Checkbox from "./ui/Checkbox.vue";
 
 const { closeOverlay } = useOverlay();
+const { setupMasterPassword } = useAuthStore();
 
 // Form state
 const masterPasswordSetupForm = ref();
@@ -124,25 +125,15 @@ const setupForm = ref({
 });
 const isLoading = ref(false);
 
+// Handle form submission
 const handleSubmit = async () => {
   const isValid = await masterPasswordSetupForm.value.validate();
   if (!isValid) return;
 
-  if (setupForm.value.password !== setupForm.value.confirmPassword) {
-    message.error("Passwords do not match");
-    return;
-  }
-
   try {
     isLoading.value = true;
 
-    await setup({
-      deviceName: setupForm.value.deviceName,
-      password: setupForm.value.password,
-      confirmPassword: setupForm.value.confirmPassword,
-      autoUnlock: setupForm.value.autoUnlock,
-      useKeychain: setupForm.value.useKeychain,
-    });
+    await setupMasterPassword(setupForm.value);
 
     message.success("Master password setup successfully!");
     closeOverlay("master-password-setup");

@@ -621,4 +621,76 @@ impl SQLiteProvider {
 
         Ok(())
     }
+
+    /// Get current device from database
+    pub async fn get_current_device(&self) -> DatabaseResult<Option<super::super::models::device::Device>> {
+        let pool_arc = self.get_pool()?;
+        let pool = pool_arc.read().await;
+
+        let row = sqlx::query("SELECT * FROM devices WHERE is_current = true LIMIT 1")
+            .fetch_optional(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        if let Some(row) = row {
+            let device = super::super::models::device::Device {
+                device_id: row.get("device_id"),
+                device_name: row.get("device_name"),
+                device_type: serde_json::from_str(&row.get::<String, _>("device_type"))
+                    .unwrap_or(super::super::models::device::DeviceType::Unknown),
+                os_info: super::super::models::device::OsInfo {
+                    os_type: row.get("os_name"),
+                    os_version: row.get("os_version"),
+                    arch: "".to_string(), // Will be updated when we enhance schema
+                    hostname: "".to_string(), // Will be updated when we enhance schema
+                },
+                app_version: env!("CARGO_PKG_VERSION").to_string(),
+                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                last_seen: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("last_seen_at"))
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                is_current: row.get("is_current"),
+            };
+            Ok(Some(device))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Save device to database
+    pub async fn save_device(&self, device: &super::super::models::device::Device) -> DatabaseResult<()> {
+        let pool_arc = self.get_pool()?;
+        let pool = pool_arc.read().await;
+
+        // First set all devices as not current
+        sqlx::query("UPDATE devices SET is_current = false")
+            .execute(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        // Insert or replace the new current device
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO devices (
+                device_id, device_name, device_type, os_name, os_version,
+                created_at, last_seen_at, is_current
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            "#
+        )
+        .bind(&device.device_id)
+        .bind(&device.device_name)
+        .bind(serde_json::to_string(&device.device_type).unwrap_or_else(|_| "\"Unknown\"".to_string()))
+        .bind(&device.os_info.os_type)
+        .bind(&device.os_info.os_version)
+        .bind(device.created_at.to_rfc3339())
+        .bind(device.last_seen.to_rfc3339())
+        .bind(device.is_current)
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
 }

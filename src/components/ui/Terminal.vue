@@ -120,13 +120,13 @@ const focus = (): void => {
   }
 };
 
-const fitAndFocus = (): void => {
-  if (fitAddon && term) {
+const fitAndFocus = debounce((): void => {
+  if (fitAddon && term && props.isVisible) {
     fitAddon.fit();
     term.focus();
     handleTerminalResize();
   }
-};
+}, 50);
 
 // Method to write output to terminal (called from parent)
 const writeOutput = (data: string): void => {
@@ -147,10 +147,10 @@ const restoreBuffer = async (): Promise<boolean> => {
   try {
     return await bufferManager.restoreBuffer(props.backendTerminalId, {
       clear: () => term.clear(),
-      write: (data: string) => term.write(data)
+      write: (data: string) => term.write(data),
     });
   } catch (error) {
-    console.error('Failed to restore buffer:', error);
+    console.error("Failed to restore buffer:", error);
     return false;
   }
 };
@@ -167,13 +167,16 @@ const clearTerminal = async (): Promise<void> => {
 };
 
 // Watch for visibility changes
-watch(() => props.isVisible, (newVisible) => {
-  if (newVisible && term) {
-    nextTick(() => {
-      fitAndFocus();
-    });
+watch(
+  () => props.isVisible,
+  (newVisible) => {
+    if (newVisible && term && fitAddon) {
+      nextTick(() => {
+        fitAndFocus();
+      });
+    }
   }
-});
+);
 
 // Expose methods to parent component
 defineExpose({

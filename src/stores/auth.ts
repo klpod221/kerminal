@@ -5,9 +5,8 @@ import type {
   MasterPasswordSetup,
   MasterPasswordVerification,
   MasterPasswordChange,
-  SecuritySettings
+  SecuritySettings,
 } from "../types/auth";
-import { MasterPasswordFormState } from "../types/auth";
 import * as masterPasswordService from "../services/auth";
 
 /**
@@ -26,8 +25,6 @@ export const useAuthStore = defineStore("auth", () => {
     loadedDeviceCount: 0,
   });
 
-  const formState = ref<MasterPasswordFormState>(MasterPasswordFormState.IDLE);
-  const lastError = ref<string>("");
   const securitySettings = ref<SecuritySettings>({
     requirePasswordOnStart: true,
     autoLockTimeout: 15,
@@ -41,83 +38,54 @@ export const useAuthStore = defineStore("auth", () => {
   // Computed properties
   const isAuthenticated = computed(() => status.value.isUnlocked);
   const requiresSetup = computed(() => !status.value.isSetup);
-  const requiresUnlock = computed(() => status.value.isSetup && !status.value.isUnlocked);
-  const isLoading = computed(() => formState.value === MasterPasswordFormState.LOADING);
+  const requiresUnlock = computed(
+    () => status.value.isSetup && !status.value.isUnlocked
+  );
 
   /**
    * Check master password status from backend
    */
   const checkStatus = async (): Promise<void> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
-
-      const result = await masterPasswordService.getStatus();
-      status.value = result;
-
-      formState.value = MasterPasswordFormState.IDLE;
-    } catch (error) {
-      console.error("Failed to check master password status:", error);
-      lastError.value = "Failed to check authentication status";
-      formState.value = MasterPasswordFormState.ERROR;
-    }
+    const result = await masterPasswordService.getStatus();
+    console.log("Master password status:", result);
+    status.value = result;
   };
 
   /**
    * Setup master password for the first time
    * @param setup - Master password setup configuration
    */
-  const setupMasterPassword = async (setup: MasterPasswordSetup): Promise<boolean> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
-      lastError.value = "";
+  const setupMasterPassword = async (
+    setup: MasterPasswordSetup
+  ): Promise<boolean> => {
+    await masterPasswordService.setup(setup);
 
-      await masterPasswordService.setup(setup);
+    // Refresh status after setup
+    await checkStatus();
 
-      // Refresh status after setup
-      await checkStatus();
-
-      // Setup auto-lock timer if enabled
-      setupAutoLockTimer();
-
-      formState.value = MasterPasswordFormState.SUCCESS;
-      return true;
-    } catch (error) {
-      console.error("Failed to setup master password:", error);
-      lastError.value = "Failed to setup master password";
-      formState.value = MasterPasswordFormState.ERROR;
-      return false;
-    }
+    // Setup auto-lock timer if enabled
+    setupAutoLockTimer();
+    return true;
   };
 
   /**
    * Unlock with master password
    * @param verification - Master password verification data
    */
-  const unlock = async (verification: MasterPasswordVerification): Promise<boolean> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
-      lastError.value = "";
+  const unlock = async (
+    verification: MasterPasswordVerification
+  ): Promise<boolean> => {
+    const isValid = await masterPasswordService.verify(verification);
 
-      const isValid = await masterPasswordService.verify(verification);
+    if (isValid) {
+      // Refresh status after successful unlock
+      await checkStatus();
 
-      if (isValid) {
-        // Refresh status after successful unlock
-        await checkStatus();
+      // Setup auto-lock timer
+      setupAutoLockTimer();
 
-        // Setup auto-lock timer
-        setupAutoLockTimer();
-
-        formState.value = MasterPasswordFormState.SUCCESS;
-        return true;
-      } else {
-        lastError.value = "Invalid password";
-        formState.value = MasterPasswordFormState.ERROR;
-        return false;
-      }
-    } catch (error) {
-      console.error("Failed to unlock:", error);
-      lastError.value = "Invalid password or verification failed";
-      formState.value = MasterPasswordFormState.ERROR;
+      return true;
+    } else {
       return false;
     }
   };
@@ -126,82 +94,36 @@ export const useAuthStore = defineStore("auth", () => {
    * Lock the application
    */
   const lock = async (): Promise<void> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
+    // Clear auto-lock timer
+    clearAutoLockTimer();
 
-      // Clear auto-lock timer
-      clearAutoLockTimer();
+    await masterPasswordService.lock();
 
-      await masterPasswordService.lock();
-
-      // Refresh status after lock
-      await checkStatus();
-
-      formState.value = MasterPasswordFormState.IDLE;
-    } catch (error) {
-      console.error("Failed to lock application:", error);
-      lastError.value = "Failed to lock application";
-      formState.value = MasterPasswordFormState.ERROR;
-    }
+    // Refresh status after lock
+    await checkStatus();
   };
 
   /**
    * Change master password
    * @param changeData - Password change data
    */
-  const changeMasterPassword = async (changeData: MasterPasswordChange): Promise<boolean> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
-      lastError.value = "";
-
-      await masterPasswordService.change(changeData);
-
-      formState.value = MasterPasswordFormState.SUCCESS;
-      return true;
-    } catch (error) {
-      console.error("Failed to change master password:", error);
-      lastError.value = "Failed to change password";
-      formState.value = MasterPasswordFormState.ERROR;
-      return false;
-    }
+  const changeMasterPassword = async (
+    changeData: MasterPasswordChange
+  ): Promise<boolean> => {
+    await masterPasswordService.change(changeData);
+    return true;
   };
 
   /**
    * Try auto-unlock using keychain
    */
   const tryAutoUnlock = async (): Promise<boolean> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
+    const success = await masterPasswordService.tryAutoUnlock();
 
-      const success = await masterPasswordService.tryAutoUnlock();
+    await checkStatus();
+    setupAutoLockTimer();
 
-      if (success) {
-        // Refresh status after successful auto-unlock
-        await checkStatus();
-        setupAutoLockTimer();
-        formState.value = MasterPasswordFormState.SUCCESS;
-      } else {
-        formState.value = MasterPasswordFormState.IDLE;
-      }
-
-      return success;
-    } catch (error) {
-      console.error("Failed to auto-unlock:", error);
-      formState.value = MasterPasswordFormState.IDLE;
-      return false;
-    }
-  };
-
-  /**
-   * Check if master password is setup
-   */
-  const checkSetup = async (): Promise<boolean> => {
-    try {
-      return await masterPasswordService.isSetup();
-    } catch (error) {
-      console.error("Failed to check setup status:", error);
-      return false;
-    }
+    return success;
   };
 
   /**
@@ -239,93 +161,24 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   /**
-   * Get current security settings
-   */
-  const getSecuritySettings = async (): Promise<SecuritySettings | null> => {
-    try {
-      // Note: Backend command not yet implemented
-      // const settings = await masterPasswordService.getSecuritySettings();
-      // return settings;
-
-      return securitySettings.value;
-    } catch (error) {
-      console.error("Failed to get security settings:", error);
-      return null;
-    }
-  };
-
-  /**
    * Reset master password (removes all encrypted data)
    */
   const resetMasterPassword = async (): Promise<boolean> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
-      lastError.value = "";
+    await masterPasswordService.reset();
 
-      await masterPasswordService.reset();
+    // Clear all state after reset
+    status.value = {
+      isSetup: false,
+      isUnlocked: false,
+      autoUnlockEnabled: false,
+      keychainAvailable: false,
+      sessionActive: false,
+      sessionExpiresAt: undefined,
+      loadedDeviceCount: 0,
+    };
 
-      // Clear all state after reset
-      status.value = {
-        isSetup: false,
-        isUnlocked: false,
-        autoUnlockEnabled: false,
-        keychainAvailable: false,
-        sessionActive: false,
-        sessionExpiresAt: undefined,
-        loadedDeviceCount: 0,
-      };
-
-      clearAutoLockTimer();
-
-      formState.value = MasterPasswordFormState.SUCCESS;
-      return true;
-    } catch (error) {
-      console.error("Failed to reset master password:", error);
-      lastError.value = "Failed to reset master password";
-      formState.value = MasterPasswordFormState.ERROR;
-      return false;
-    }
-  };
-
-  /**
-   * Disable auto-unlock feature
-   */
-  const disableAutoUnlock = async (): Promise<boolean> => {
-    try {
-      formState.value = MasterPasswordFormState.LOADING;
-      lastError.value = "";
-
-      await masterPasswordService.disableAutoUnlock();
-
-      // Update status
-      status.value.autoUnlockEnabled = false;
-
-      formState.value = MasterPasswordFormState.SUCCESS;
-      return true;
-    } catch (error) {
-      console.error("Failed to disable auto-unlock:", error);
-      lastError.value = "Failed to disable auto-unlock";
-      formState.value = MasterPasswordFormState.ERROR;
-      return false;
-    }
-  };
-
-  /**
-   * Get current device information
-   */
-  const getCurrentDevice = async () => {
-    try {
-      return await masterPasswordService.getCurrentDevice();
-    } catch (error) {
-      console.error("Failed to get current device:", error);
-      return null;
-    }
-  };
-  const clearError = (): void => {
-    lastError.value = "";
-    if (formState.value === MasterPasswordFormState.ERROR) {
-      formState.value = MasterPasswordFormState.IDLE;
-    }
+    clearAutoLockTimer();
+    return true;
   };
 
   /**
@@ -350,30 +203,22 @@ export const useAuthStore = defineStore("auth", () => {
   return {
     // State
     status,
-    formState,
-    lastError,
     securitySettings,
 
     // Computed
     isAuthenticated,
     requiresSetup,
     requiresUnlock,
-    isLoading,
 
     // Actions
     checkStatus,
-    checkSetup,
     setupMasterPassword,
     unlock,
     lock,
     tryAutoUnlock,
     changeMasterPassword,
     resetMasterPassword,
-    disableAutoUnlock,
     resetAutoLockTimer,
-    getSecuritySettings,
-    getCurrentDevice,
-    clearError,
     initialize,
     cleanup,
   };

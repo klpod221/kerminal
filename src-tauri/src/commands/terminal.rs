@@ -42,8 +42,7 @@ pub async fn create_ssh_terminal(
     let ssh_profile = database_service
         .get_ssh_profile(&profile_id)
         .await
-        .map_err(|e| AppError::Database(format!("Failed to get SSH profile: {}", e)))?
-        .ok_or_else(|| AppError::TerminalNotFound(format!("SSH profile with ID {} not found", profile_id)))?;
+        .map_err(|e| AppError::Database(format!("Failed to get SSH profile: {}", e)))?;
 
     // Create terminal config with SSH profile ID
     let config = TerminalConfig {

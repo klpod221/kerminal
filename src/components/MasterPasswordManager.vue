@@ -3,9 +3,10 @@
     <!-- Setup Modal -->
     <MasterPasswordSetup />
 
-    <!-- <MasterPasswordUnlock />
+    <!-- Unlock Modal -->
+    <MasterPasswordUnlock />
 
-    <MasterPasswordChange /> -->
+    <!-- <MasterPasswordChange /> -->
 
     <!-- <MasterPasswordSettings /> -->
   </div>
@@ -13,4 +14,5 @@
 
 <script setup lang="ts">
 import MasterPasswordSetup from './MasterPasswordSetup.vue'
+import MasterPasswordUnlock from './MasterPasswordUnlock.vue'
 </script>
