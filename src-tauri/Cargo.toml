@@ -27,3 +27,24 @@ async-trait = "0.1"
 anyhow = "1.0"
 regex = "1.5"
 gethostname = "0.4"
+dirs = "5.0"
+
+# Database dependencies
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "mysql", "postgres", "chrono", "uuid"] }
+mongodb = "2.8"
+
+# Encryption dependencies
+aes-gcm = "0.10"
+argon2 = "0.5"
+rand = "0.8"
+base64 = "0.22"
+pbkdf2 = "0.12"
+hmac = "0.12"
+sha2 = "0.10"
+
+# Keychain integration
+keyring = "2.3"
+
+# Additional utilities
+futures = "0.3"
+dashmap = "5.5"

@@ -3,6 +3,7 @@
 
 mod commands;
 mod core;
+mod database;
 mod error;
 mod models;
 mod services;
@@ -10,13 +11,20 @@ mod setup;
 mod state;
 
 use crate::services::terminal::TerminalManager;
+use crate::state::AppState;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let terminal_manager = TerminalManager::new();
+
+    // Initialize app state with database service
+    let app_state = AppState::new().await
+        .expect("Failed to initialize application state");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(terminal_manager)
+        .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Dashboard commands
             commands::dashboard::get_system_info,
@@ -34,9 +42,31 @@ fn main() {
             commands::buffer::get_buffer_stats,
             commands::buffer::cleanup_terminal_buffers,
             // System commands
-            commands::system::get_user_hostname
+            commands::system::get_user_hostname,
+            // Database commands - Master Password
+            commands::database::is_master_password_setup,
+            commands::database::setup_master_password,
+            commands::database::verify_master_password,
+            commands::database::try_auto_unlock,
+            commands::database::lock_session,
+            // Database commands - SSH Groups
+            commands::database::create_ssh_group,
+            commands::database::get_ssh_groups,
+            commands::database::get_ssh_group,
+            commands::database::update_ssh_group,
+            commands::database::delete_ssh_group,
+            // Database commands - SSH Profiles
+            commands::database::create_ssh_profile,
+            commands::database::get_ssh_profiles,
+            commands::database::get_ssh_profile,
+            commands::database::update_ssh_profile,
+            commands::database::delete_ssh_profile,
+            commands::database::move_profile_to_group,
+            commands::database::duplicate_ssh_profile,
+            // Database commands - Utilities
+            commands::database::get_database_stats,
+            commands::database::get_current_device
         ])
-        .manage(state::AppState::default())
         .setup(setup::init)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
