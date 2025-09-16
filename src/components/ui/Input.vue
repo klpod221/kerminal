@@ -34,6 +34,7 @@
         :disabled="disabled"
         :readonly="readonly"
         :autocomplete="autocomplete"
+        :autofocus="autofocus"
         :class="[
           'block w-full rounded-lg border transition-all duration-200',
           'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
@@ -128,6 +129,7 @@ interface InputProps {
   readonly?: boolean;
   autocomplete?: string;
   helper?: boolean;
+  autofocus?: boolean;
 }
 
 const props = withDefaults(defineProps<InputProps>(), {

@@ -1065,8 +1065,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       });
     });
 
-    // Automatically create the first terminal when app starts
-    await addTab("panel-1");
+    // Automatically create the first terminal when app starts if no terminals exist
+    if (terminals.value.length === 0) {
+      const firstPanel = findFirstPanel(panelLayout.value);
+      if (firstPanel) {
+        await addTab(firstPanel.id);
+      }
+    }
   };
 
   /**

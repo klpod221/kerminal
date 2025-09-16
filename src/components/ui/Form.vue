@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-import { provide, computed, reactive, defineEmits, defineExpose } from "vue";
+import { provide, computed, reactive } from "vue";
 import type { Ref } from "vue";
 import type { FormField, FormContext } from "../../types/form";
 

@@ -1,48 +1,52 @@
-import { onMounted, onUnmounted } from 'vue'
-import { useOverlayStore } from '../stores/overlay'
-import type { OverlayConfig } from '../types/overlay'
+import { onMounted, onUnmounted } from "vue";
+import { useOverlayStore } from "../stores/overlay";
+import type { OverlayConfig } from "../types/overlay";
 
 export function useOverlay() {
-  const overlayStore = useOverlayStore()
+  const overlayStore = useOverlayStore();
 
   // Register global ESC key handler
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      overlayStore.handleEscapeKey()
+    if (event.key === "Escape") {
+      overlayStore.handleEscapeKey();
     }
-  }
+  };
 
   onMounted(() => {
-    document.addEventListener('keydown', handleKeyDown)
-  })
+    document.addEventListener("keydown", handleKeyDown);
+  });
 
   onUnmounted(() => {
-    document.removeEventListener('keydown', handleKeyDown)
-  })
+    document.removeEventListener("keydown", handleKeyDown);
+  });
 
   const registerOverlay = (config: OverlayConfig) => {
-    overlayStore.register(config)
-  }
+    overlayStore.register(config);
+  };
 
   const unregisterOverlay = (id: string) => {
-    overlayStore.unregister(id)
-  }
+    overlayStore.unregister(id);
+  };
 
   const openOverlay = (id: string, props?: Record<string, any>) => {
-    overlayStore.open(id, props)
-  }
+    if (typeof overlayStore.open === "function") {
+      overlayStore.open(id, props);
+    } else {
+      console.error("overlayStore.open is not a function");
+    }
+  };
 
   const closeOverlay = (id?: string) => {
-    overlayStore.close(id)
-  }
+    overlayStore.close(id);
+  };
 
   const closeAllOverlays = () => {
-    overlayStore.closeAll()
-  }
+    overlayStore.closeAll();
+  };
 
   const isOverlayVisible = (id: string) => {
-    return overlayStore.isVisible(id)
-  }
+    return overlayStore.isVisible(id);
+  };
 
   return {
     // Store access
@@ -58,14 +62,14 @@ export function useOverlay() {
 
     // Computed
     activeOverlay: overlayStore.activeOverlay,
-    hasActiveOverlay: overlayStore.hasActiveOverlay
-  }
+    hasActiveOverlay: overlayStore.hasActiveOverlay,
+  };
 }
 
 // Helper function to create overlay configs
 export function createOverlayConfig(
   id: string,
-  type: 'drawer' | 'modal',
+  type: "drawer" | "modal",
   options: Partial<OverlayConfig> = {}
 ): OverlayConfig {
   return {
@@ -76,6 +80,6 @@ export function createOverlayConfig(
     parentId: options.parentId,
     title: options.title,
     icon: options.icon,
-    metadata: options.metadata || {}
-  }
+    metadata: options.metadata || {},
+  };
 }

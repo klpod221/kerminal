@@ -35,6 +35,7 @@
           placeholder="My Arch Linux"
           rules="required"
           :disabled="isLoading"
+          :autofocus="true"
         />
 
         <h4

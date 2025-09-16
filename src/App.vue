@@ -34,17 +34,32 @@ import { useAuthStore } from "./stores/auth";
 const viewState = useViewStateStore();
 const authStore = useAuthStore();
 
-// Note: useOverlay is imported but not used here, available for future use
-useOverlay();
+const { openOverlay } = useOverlay();
 
 // Initialize auth store when app starts
 onMounted(async () => {
   try {
     await authStore.initialize();
 
-    // Try auto-unlock if setup is completed
+    // Try auto-unlock if setup is completed and auto-unlock is enabled
     if (authStore.status.isSetup && !authStore.status.isUnlocked && authStore.status.autoUnlockEnabled) {
       await authStore.tryAutoUnlock();
+    }
+
+    // if setup is not completed, ensure the setup view is shown
+    if (!authStore.status.isSetup) {
+      console.log("Showing master password setup overlay");
+      openOverlay('master-password-setup');
+      viewState.toggleTopBar(false);
+      return;
+    }
+
+    // If app is locked, show the unlock overlay
+    if (!authStore.status.isUnlocked) {
+      console.log("Showing unlock overlay");
+      openOverlay('unlock');
+      viewState.toggleTopBar(false);
+      return;
     }
 
     // current status
