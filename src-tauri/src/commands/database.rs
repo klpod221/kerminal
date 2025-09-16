@@ -40,7 +40,7 @@ impl From<DatabaseError> for String {
 /// Helper macro to convert DatabaseResult to Result<T, String>
 macro_rules! db_result {
     ($expr:expr) => {
-        $expr.map_err(|e| e.into())
+        $expr.map_err(|e: crate::database::error::DatabaseError| e.to_string())
     };
 }
 
@@ -90,6 +90,59 @@ pub async fn try_auto_unlock(state: State<'_, AppState>) -> Result<bool, String>
 pub async fn lock_session(state: State<'_, AppState>) -> Result<(), String> {
     let db_service = state.database_service.lock().await;
     db_service.lock_session().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_master_password_status(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+    let db_service = state.database_service.lock().await;
+
+    // For now, return a mock status. This should be implemented in the backend
+    let status = serde_json::json!({
+        "isSetup": db_result!(db_service.is_master_password_setup().await)?,
+        "isUnlocked": true, // This should come from actual session state
+        "autoUnlockEnabled": false,
+        "keychainAvailable": true,
+        "sessionActive": true,
+        "sessionExpiresAt": null,
+        "loadedDeviceCount": 1
+    });
+
+    Ok(status)
+}
+
+#[tauri::command]
+pub async fn change_master_password(
+    state: State<'_, AppState>,
+    old_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    let _db_service = state.database_service.lock().await;
+
+    // This should be implemented in the backend
+    // For now, just validate that passwords are provided
+    if old_password.is_empty() || new_password.is_empty() {
+        return Err("Both old and new passwords are required".to_string());
+    }
+
+    // TODO: Implement actual password change logic
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn disable_auto_unlock(state: State<'_, AppState>) -> Result<(), String> {
+    let _db_service = state.database_service.lock().await;
+
+    // TODO: Implement disable auto-unlock logic
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn reset_master_password(state: State<'_, AppState>) -> Result<(), String> {
+    let _db_service = state.database_service.lock().await;
+
+    // TODO: Implement reset master password logic
+    // This should remove all encrypted data and reset the master password
     Ok(())
 }
 

@@ -2,6 +2,12 @@
   <div
     class="flex items-center h-[30px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-50 topbar-container"
   >
+    <!-- Overlay when top bar is not active -->
+    <div
+      v-if="!viewState.isTopBarActive"
+      class="absolute inset-0 bg-black opacity-50 z-50 cursor-not-allowed"
+    ></div>
+
     <!-- Dashboard button -->
     <div
       class="flex items-center px-3 h-full max-h-[30px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer"

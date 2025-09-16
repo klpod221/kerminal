@@ -118,6 +118,56 @@ impl Database for SQLiteProvider {
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
+        // Create master passwords table
+        sqlx::query(r#"
+            CREATE TABLE IF NOT EXISTS master_passwords (
+                device_id TEXT PRIMARY KEY,
+                device_name TEXT NOT NULL,
+                password_salt BLOB NOT NULL,
+                verification_hash TEXT NOT NULL,
+                auto_unlock BOOLEAN NOT NULL DEFAULT false,
+                created_at TEXT NOT NULL,
+                last_verified_at TEXT
+            )
+        "#)
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        // Create devices table
+        sqlx::query(r#"
+            CREATE TABLE IF NOT EXISTS devices (
+                device_id TEXT PRIMARY KEY,
+                device_name TEXT NOT NULL,
+                device_type TEXT NOT NULL,
+                os_name TEXT NOT NULL,
+                os_version TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                last_seen_at TEXT NOT NULL,
+                is_current BOOLEAN NOT NULL DEFAULT false
+            )
+        "#)
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        // Create sync metadata table
+        sqlx::query(r#"
+            CREATE TABLE IF NOT EXISTS sync_metadata (
+                id TEXT PRIMARY KEY,
+                table_name TEXT NOT NULL,
+                record_id TEXT NOT NULL,
+                last_sync_at TEXT NOT NULL,
+                sync_hash TEXT NOT NULL,
+                conflict_resolution TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        "#)
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
         Ok(())
     }
 

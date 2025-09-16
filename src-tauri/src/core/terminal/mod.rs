@@ -4,7 +4,7 @@ pub mod ssh;
 use crate::models::terminal::{TerminalState, TerminalConfig, TerminalType, TerminalExited};
 use crate::database::service::DatabaseService;
 use crate::error::AppError;
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Mutex};
 use std::sync::Arc;
 
 /// Unified terminal wrapper that can handle both local and SSH terminals
@@ -98,7 +98,7 @@ impl TerminalFactory {
     pub async fn create_terminal(
         id: String,
         config: TerminalConfig,
-        database_service: Option<Arc<DatabaseService>>,
+        database_service: Option<Arc<Mutex<DatabaseService>>>,
     ) -> Result<TerminalWrapper, AppError> {
         match config.terminal_type {
             TerminalType::Local => {
@@ -113,11 +113,14 @@ impl TerminalFactory {
                 let database_service = database_service
                     .ok_or_else(|| AppError::InvalidConfig("Database service is required for SSH terminal".to_string()))?;
 
-                let ssh_profile = database_service
-                    .get_ssh_profile(&ssh_profile_id)
-                    .await
-                    .map_err(|e| AppError::Database(format!("Failed to get SSH profile: {}", e)))?
-                    .ok_or_else(|| AppError::TerminalNotFound(format!("SSH profile with ID {} not found", ssh_profile_id)))?;
+                let ssh_profile = {
+                    let db_service = database_service.lock().await;
+                    db_service
+                        .get_ssh_profile(&ssh_profile_id)
+                        .await
+                        .map_err(|e| AppError::Database(format!("Failed to get SSH profile: {}", e)))?
+                        .ok_or_else(|| AppError::TerminalNotFound(format!("SSH profile with ID {} not found", ssh_profile_id)))?
+                };
 
                 Ok(TerminalWrapper::SSH(ssh::SSHTerminal::new(id, config, ssh_profile)?))
             },

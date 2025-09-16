@@ -21,21 +21,13 @@ async fn main() {
     let app_state = AppState::new().await
         .expect("Failed to initialize application state");
 
-    // Extract the database service for terminal manager
-    let database_service = {
-        let db_lock = app_state.database_service.lock().await;
-        // We need to create a new Arc<DatabaseService> here
-        // For now, let's work around this by managing DatabaseService separately
-        Arc::new(DatabaseService::new(DatabaseServiceConfig::default()).await
-            .expect("Failed to create database service for terminal manager"))
-    };
-
-    let terminal_manager = TerminalManager::new(database_service.clone());
+    // Extract a clone of the database service for terminal manager
+    let database_service = app_state.database_service.clone();
+    let terminal_manager = TerminalManager::new(database_service);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(terminal_manager)
-        .manage(database_service.clone())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Dashboard commands
@@ -62,6 +54,10 @@ async fn main() {
             commands::database::verify_master_password,
             commands::database::try_auto_unlock,
             commands::database::lock_session,
+            commands::database::get_master_password_status,
+            commands::database::change_master_password,
+            commands::database::disable_auto_unlock,
+            commands::database::reset_master_password,
             // Database commands - SSH Groups
             commands::database::create_ssh_group,
             commands::database::get_ssh_groups,

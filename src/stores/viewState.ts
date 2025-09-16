@@ -14,9 +14,14 @@ export const useViewStateStore = defineStore("viewState", () => {
     activeView.value = view;
   }
 
+  function toggleTopBar() {
+    isTopBarActive.value = !isTopBarActive.value;
+  }
+
   return {
     isTopBarActive,
     activeView,
     setActiveView,
+    toggleTopBar,
   };
 });

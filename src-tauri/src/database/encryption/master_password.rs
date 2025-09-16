@@ -412,7 +412,7 @@ mod tests {
             use_keychain: false,
         };
 
-        let _entry = manager.setup_master_password(request).await.unwrap();
+        let _password_entry = manager.setup_master_password(request).await.unwrap();
 
         // Session should be active
         assert!(!manager.is_session_expired());

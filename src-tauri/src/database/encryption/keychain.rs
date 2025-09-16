@@ -110,10 +110,21 @@ impl KeychainManager {
 
     /// Clear all keychain entries for this app
     pub fn clear_all(&self, device_ids: &[String]) -> EncryptionResult<()> {
+        let mut errors = Vec::new();
+
         for device_id in device_ids {
-            let _ = self.delete_master_password(device_id);
-            let _ = self.delete_device_key(device_id);
+            if let Err(e) = self.delete_master_password(device_id) {
+                errors.push(format!("Failed to delete master password for {}: {}", device_id, e));
+            }
+            if let Err(e) = self.delete_device_key(device_id) {
+                errors.push(format!("Failed to delete device key for {}: {}", device_id, e));
+            }
         }
+
+        if !errors.is_empty() {
+            eprintln!("Keychain cleanup warnings: {}", errors.join(", "));
+        }
+
         Ok(())
     }
 }

@@ -360,7 +360,7 @@ mod tests {
         let data = b"Hello, World!";
 
         // Create master password
-        let _entry = manager.create_master_password(
+        let _master_password_entry = manager.create_master_password(
             "Test Device".to_string(),
             password,
             &config,

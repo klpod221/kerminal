@@ -19,12 +19,12 @@ pub struct TerminalManager {
     output_receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<TerminalData>>>>,
     output_sender: mpsc::UnboundedSender<TerminalData>,
     buffer_manager: Arc<TerminalBufferManager>,
-    database_service: Arc<DatabaseService>,
+    database_service: Arc<Mutex<DatabaseService>>,
 }
 
 impl TerminalManager {
     /// Create a new terminal manager
-    pub fn new(database_service: Arc<DatabaseService>) -> Self {
+    pub fn new(database_service: Arc<Mutex<DatabaseService>>) -> Self {
         let (output_sender, output_receiver) = mpsc::unbounded_channel();
 
         Self {

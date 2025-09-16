@@ -165,14 +165,20 @@ impl SSHTerminal {
     pub async fn disconnect(&mut self) -> Result<(), AppError> {
         if let Some(channel) = self.channel.take() {
             if let Ok(mut channel_guard) = channel.try_lock() {
-                let _ = channel_guard.close();
-                let _ = channel_guard.wait_close();
+                if let Err(e) = channel_guard.close() {
+                    eprintln!("Failed to close SSH channel: {}", e);
+                }
+                if let Err(e) = channel_guard.wait_close() {
+                    eprintln!("Failed to wait for SSH channel close: {}", e);
+                }
             }
         }
 
         if let Some(session) = self.session.take() {
             if let Ok(session_guard) = session.try_lock() {
-                let _ = session_guard.disconnect(None, "User requested disconnection", None);
+                if let Err(e) = session_guard.disconnect(None, "User requested disconnection", None) {
+                    eprintln!("Failed to disconnect SSH session: {}", e);
+                }
             }
         }
 
@@ -258,7 +264,10 @@ impl SSHTerminal {
                                 eprintln!("Failed to read from SSH channel: {}", e);
                                 // Send error through channel if possible
                                 let error_msg = format!("SSH read error: {}", e).into_bytes();
-                                let _ = sender.send(error_msg);
+                                if let Err(_) = sender.send(error_msg) {
+                                    // Channel closed, receiver has been dropped
+                                    eprintln!("Data channel closed for SSH terminal");
+                                }
                                 break;
                             }
                         }

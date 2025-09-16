@@ -93,7 +93,14 @@ impl LocalTerminal {
             }
 
             // Wait for the process to exit
-            let _ = child.wait();
+            match child.wait() {
+                Ok(exit_status) => {
+                    println!("Terminal process exited with status: {:?}", exit_status);
+                }
+                Err(e) => {
+                    eprintln!("Failed to wait for child process: {}", e);
+                }
+            }
         }
 
         self.writer = None;
@@ -170,7 +177,10 @@ impl LocalTerminal {
                                     terminal_id: terminal_id.clone(),
                                     exit_code: None, // We don't have access to exit code here
                                 };
-                                let _ = exit_sender.send(exit_event);
+                                if let Err(_) = exit_sender.send(exit_event) {
+                                    // Channel closed, receiver has been dropped
+                                    eprintln!("Exit event channel closed for terminal {}", terminal_id);
+                                }
                             }
                             break;
                         }
@@ -180,7 +190,10 @@ impl LocalTerminal {
                             // Process output for title detection
                             if let Some(ref title_sender) = title_sender {
                                 if let Some(new_title) = title_detector.process_output(&data) {
-                                    let _ = title_sender.send(new_title);
+                                    if let Err(_) = title_sender.send(new_title) {
+                                        // Channel closed, receiver has been dropped
+                                        // This is normal during terminal shutdown
+                                    }
                                 }
                             }
 
@@ -193,7 +206,10 @@ impl LocalTerminal {
                             eprintln!("Failed to read from PTY: {}", e);
                             // Send error through channel if possible
                             let error_msg = format!("PTY read error: {}", e).into_bytes();
-                            let _ = sender.send(error_msg);
+                            if let Err(_) = sender.send(error_msg) {
+                                // Channel closed, receiver has been dropped
+                                eprintln!("Data channel closed for terminal {}", terminal_id);
+                            }
                             break;
                         }
                     }
