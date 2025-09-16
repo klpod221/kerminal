@@ -7,19 +7,19 @@
     size="md"
   >
     <div class="flex flex-col gap-6">
-      <div
-        class="flex items-start gap-4 p-4 bg-blue-100/5 rounded-lg border border-blue-400"
-      >
-        <Lock class="text-blue-500 w-12 h-12" />
-        <div>
-          <h3 class="text-lg font-semibold text-gray-100 mb-1">
-            Secure Your SSH Profiles
-          </h3>
-          <p class="text-red-400">
-            This password cannot be recovered.
-          </p>
+      <Card class="!p-4 !border-blue-400">
+        <div class="flex items-start gap-4">
+          <Lock class="text-blue-500 w-12 h-12" />
+          <div>
+            <h3 class="text-lg font-semibold text-gray-100 mb-1">
+              Secure Your SSH Profiles
+            </h3>
+            <p class="text-red-400">
+              This password cannot be recovered.
+            </p>
+          </div>
         </div>
-      </div>
+      </Card>
 
       <Form ref="masterPasswordSetupForm" @submit="handleSubmit">
         <h4
@@ -110,6 +110,7 @@ import Form from "./ui/Form.vue";
 import Input from "./ui/Input.vue";
 import Button from "./ui/Button.vue";
 import Checkbox from "./ui/Checkbox.vue";
+import Card from "./ui/Card.vue";
 
 const { closeOverlay } = useOverlay();
 const { setupMasterPassword } = useAuthStore();

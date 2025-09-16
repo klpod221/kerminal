@@ -4,22 +4,21 @@
     :show-close-button="true"
     title="Change Master Password"
     size="md"
-    @close="$emit('close')"
   >
     <div class="flex flex-col gap-6">
-      <div
-        class="flex items-start gap-4 p-4 bg-yellow-100 rounded-lg border border-yellow-400"
-      >
-        <Key :size="32" class="text-yellow-500" />
-        <div>
-          <h3 class="text-lg font-semibold text-gray-100 mb-1">
-            Update Security
-          </h3>
-          <p class="text-sm text-gray-400">
-            Change your master password to keep your SSH profiles secure.
-          </p>
+      <Card class="!p-4 !border-yellow-400">
+        <div class="flex items-start gap-4">
+          <Key :size="32" class="text-yellow-500" />
+          <div>
+            <h3 class="text-lg font-semibold text-gray-100 mb-1">
+              Update Security
+            </h3>
+            <p class="text-sm text-gray-400">
+              Change your master password to keep your SSH profiles secure.
+            </p>
+          </div>
         </div>
-      </div>
+      </Card>
 
       <Form @submit="" class="flex flex-col gap-6">
         <div class="flex flex-col gap-2">
@@ -66,30 +65,29 @@
           />
         </div>
 
-        <div
-          class="flex items-start gap-3 p-4 bg-yellow-100 border border-yellow-400 rounded-lg"
-        >
-          <AlertTriangle :size="20" class="text-yellow-500 mt-0.5" />
-          <div>
-            <h5 class="text-sm font-semibold text-yellow-700 mb-1">
-              Important Security Notice
-            </h5>
-            <p class="text-sm text-gray-700 mb-2">
-              Changing your master password will:
-            </p>
-            <ul class="text-sm text-gray-600 list-disc pl-4 space-y-1">
-              <li>Re-encrypt all your stored SSH credentials</li>
-              <li>Invalidate auto-unlock on other devices</li>
-              <li>Require you to re-enter the new password on all devices</li>
-            </ul>
+        <Card class="!p-4 !border-yellow-400">
+          <div class="flex items-start gap-3">
+            <AlertTriangle :size="20" class="text-yellow-500 mt-0.5" />
+            <div>
+              <h5 class="text-sm font-semibold text-yellow-400 mb-1">
+                Important Security Notice
+              </h5>
+              <p class="text-sm text-gray-300 mb-2">
+                Changing your master password will:
+              </p>
+              <ul class="text-sm text-gray-400 list-disc pl-4 space-y-1">
+                <li>Re-encrypt all your stored SSH credentials</li>
+                <li>Invalidate auto-unlock on other devices</li>
+                <li>Require you to re-enter the new password on all devices</li>
+              </ul>
+            </div>
           </div>
-        </div>
+        </Card>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-gray-700">
           <Button
             type="button"
             variant="secondary"
-            @click="$emit('close')"
             :disabled="isLoading"
           >
             Cancel
@@ -110,6 +108,7 @@ import Modal from "./ui/Modal.vue";
 import Form from "./ui/Form.vue";
 import Input from "./ui/Input.vue";
 import Button from "./ui/Button.vue";
+import Card from "./ui/Card.vue";
 
 // State
 const isLoading = ref(false);

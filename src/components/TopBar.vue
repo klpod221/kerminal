@@ -46,26 +46,45 @@
       />
     </div>
 
-    <!-- SSH Profiles Icon -->
-     <Button
+    <!-- SSH Profiles Button -->
+    <Button
       title="SSH Profiles"
       variant="ghost"
       size="sm"
       :icon="Server"
-      :class="isOverlayVisible('ssh-profile-drawer') ? 'text-gray-400 hover:text-white' : ''"
+      :class="
+        isOverlayVisible('ssh-profile-drawer')
+          ? 'text-gray-400 hover:text-white'
+          : ''
+      "
       @click="openOverlay('ssh-profile-drawer')"
     />
 
     <div class="flex-1 h-full"></div>
+
+    <!-- Master Password  -->
+    <Button
+      title="Master Password Settings"
+      variant="ghost"
+      size="sm"
+      :icon="Shield"
+      :class="
+        isOverlayVisible('master-password-settings')
+          ? 'text-gray-400 hover:text-white'
+          : ''
+      "
+      @click="openOverlay('master-password-settings')"
+    />
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { LayoutGrid, Server } from "lucide-vue-next";
+import { LayoutGrid, Server, Shield } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 
 import { useViewStateStore } from "../stores/viewState";
-import { useOverlay } from '../composables/useOverlay'
+import { useOverlay } from "../composables/useOverlay";
 
 const viewState = useViewStateStore();
 const { openOverlay, isOverlayVisible } = useOverlay();

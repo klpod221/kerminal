@@ -7,20 +7,20 @@
     size="sm"
   >
     <div class="flex flex-col gap-4">
-      <div
-        class="flex items-start gap-4 p-4 bg-green-900/50 border-green-500 rounded-lg border"
-      >
-        <Lock class="text-blue-500 w-12 h-12" />
-        <div>
-          <h3 class="text-lg font-semibold text-gray-100 mb-1">
-            Enter Master Password
-          </h3>
-          <p class="text-sm text-gray-400">
-            Your SSH profiles are encrypted and require authentication to
-            access.
-          </p>
+      <Card class="!p-4 !border-green-500">
+        <div class="flex items-start gap-4">
+          <Lock class="text-blue-500 w-12 h-12" />
+          <div>
+            <h3 class="text-lg font-semibold text-gray-100 mb-1">
+              Enter Master Password
+            </h3>
+            <p class="text-sm text-gray-400">
+              Your SSH profiles are encrypted and require authentication to
+              access.
+            </p>
+          </div>
         </div>
-      </div>
+      </Card>
 
       <Form ref="masterPasswordUnlockForm" @submit="handleSubmit">
         <Input
@@ -58,6 +58,7 @@ import Modal from "./ui/Modal.vue";
 import Form from "./ui/Form.vue";
 import Input from "./ui/Input.vue";
 import Button from "./ui/Button.vue";
+import Card from "./ui/Card.vue";
 import { message } from "../utils/message";
 import { useOverlay } from "../composables/useOverlay";
 import { useAuthStore } from "../stores/auth";
