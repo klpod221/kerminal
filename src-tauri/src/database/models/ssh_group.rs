@@ -4,7 +4,7 @@ use crate::{
     impl_syncable,
     database::{
         models::base::BaseModel,
-        traits::{Syncable, Encryptable, EncryptionService, SyncStatus},
+    traits::{Encryptable, EncryptionService},
         error::DatabaseResult,
     },
 };

@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use chrono::{DateTime, Utc};
@@ -37,6 +38,7 @@ pub struct VerifyMasterPasswordRequest {
 
 /// Master password status
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct MasterPasswordStatus {
     pub is_setup: bool,
     pub is_unlocked: bool,
@@ -47,6 +49,7 @@ pub struct MasterPasswordStatus {
     pub loaded_device_count: usize,
 }
 
+#[allow(dead_code)]
 impl MasterPasswordManager {
     /// Create new master password manager
     pub fn new(current_device_id: String, config: MasterPasswordConfig) -> Self {
@@ -185,7 +188,7 @@ impl MasterPasswordManager {
 
     /// Get master password status
     pub async fn get_status(&self) -> MasterPasswordStatus {
-        let manager = self.device_key_manager.read().await;
+    let manager = self.device_key_manager.read().await;
         let loaded_devices = manager.get_loaded_device_ids();
 
         let session_expires_at = if let Some(start_time) = self.session_start {
@@ -339,12 +342,12 @@ impl EncryptionService for MasterPasswordManager {
 
     async fn encrypt_string(&self, data: &str, device_id: Option<&str>) -> crate::database::error::DatabaseResult<String> {
         let encrypted = self.encrypt(data.as_bytes(), device_id).await?;
-        Ok(base64::encode(encrypted))
+    Ok(general_purpose::STANDARD.encode(encrypted))
     }
 
     async fn decrypt_string(&self, encrypted_data: &str, device_id: Option<&str>) -> crate::database::error::DatabaseResult<String> {
-        let encrypted_bytes = base64::decode(encrypted_data)
-            .map_err(|e| EncryptionError::InvalidFormat)?;
+    let encrypted_bytes = general_purpose::STANDARD.decode(encrypted_data)
+            .map_err(|_e| EncryptionError::InvalidFormat)?;
 
         let decrypted = self.decrypt(&encrypted_bytes, device_id).await?;
 

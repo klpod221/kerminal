@@ -5,6 +5,7 @@ use chrono::{DateTime, Utc};
 use crate::database::error::DatabaseResult;
 
 /// Core database trait that all providers must implement
+#[allow(dead_code)]
 #[async_trait]
 pub trait Database: Send + Sync {
     /// Connect to the database
@@ -51,6 +52,7 @@ pub trait Database: Send + Sync {
 }
 
 /// Transaction trait for atomic operations
+#[allow(dead_code)]
 #[async_trait]
 pub trait DatabaseTransaction: Send + Sync {
     async fn commit(&mut self) -> DatabaseResult<()>;
@@ -70,6 +72,7 @@ pub trait DatabaseTransaction: Send + Sync {
 }
 
 /// Trait for models that can be synchronized across databases
+#[allow(dead_code)]
 pub trait Syncable: Send + Sync {
     /// Get the table/collection name for this model
     fn table_name() -> &'static str;
@@ -113,6 +116,7 @@ pub trait Syncable: Send + Sync {
 }
 
 /// Trait for models with encrypted fields
+#[allow(dead_code)]
 pub trait Encryptable: Send + Sync {
     /// Get fields that should be encrypted
     fn encrypted_fields() -> Vec<&'static str>;
@@ -132,6 +136,7 @@ pub trait Encryptable: Send + Sync {
 
 /// Encryption service trait
 #[async_trait]
+#[allow(dead_code)]
 pub trait EncryptionService: Send + Sync {
     async fn encrypt(&self, data: &[u8], device_id: Option<&str>) -> DatabaseResult<Vec<u8>>;
     async fn decrypt(&self, encrypted_data: &[u8], device_id: Option<&str>) -> DatabaseResult<Vec<u8>>;
@@ -200,6 +205,7 @@ pub enum DatabaseProviderType {
 }
 
 /// Trait for converting values to SQL parameters
+#[allow(dead_code)]
 pub trait ToSqlValue {
     fn to_sql_value(&self) -> SqlValue;
 }

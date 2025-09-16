@@ -1,5 +1,6 @@
 use crate::error::AppError;
-use crate::models::terminal::{SSHConfig, TerminalConfig, TerminalState};
+use crate::models::terminal::{TerminalConfig, TerminalState};
+use crate::database::models::ssh_profile::{SSHProfile, AuthData, ProxyConfig, ProxyType};
 use ssh2::{Channel, Session};
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -12,7 +13,7 @@ use tokio::sync::{mpsc, Mutex};
 pub struct SSHTerminal {
     id: String,
     config: TerminalConfig,
-    ssh_config: SSHConfig,
+    ssh_profile: SSHProfile,
     state: TerminalState,
     session: Option<Arc<Mutex<Session>>>,
     channel: Option<Arc<Mutex<Channel>>>,
@@ -23,12 +24,12 @@ impl SSHTerminal {
     pub fn new(
         id: String,
         config: TerminalConfig,
-        ssh_config: SSHConfig,
+        ssh_profile: SSHProfile,
     ) -> Result<Self, AppError> {
         Ok(SSHTerminal {
             id,
             config,
-            ssh_config,
+            ssh_profile,
             state: TerminalState::Disconnected,
             session: None,
             channel: None,
@@ -39,14 +40,28 @@ impl SSHTerminal {
     pub async fn connect(&mut self) -> Result<(), AppError> {
         self.state = TerminalState::Connecting;
 
-        // Create TCP connection
-        let tcp = TcpStream::connect(format!("{}:{}", self.ssh_config.host, self.ssh_config.port))
-            .map_err(|e| AppError::ConnectionFailed(format!("Failed to connect to {}:{}: {}",
-                self.ssh_config.host, self.ssh_config.port, e)))?;
+        // Create TCP connection (with proxy support if configured)
+        let tcp = if let Some(proxy) = &self.ssh_profile.proxy {
+            self.connect_via_proxy(proxy).await?
+        } else {
+            TcpStream::connect(format!("{}:{}", self.ssh_profile.host, self.ssh_profile.port))
+                .map_err(|e| AppError::ConnectionFailed(format!("Failed to connect to {}:{}: {}",
+                    self.ssh_profile.host, self.ssh_profile.port, e)))?
+        };
 
         // Create SSH session
         let mut session = Session::new()
             .map_err(|e| AppError::ConnectionFailed(format!("Failed to create SSH session: {}", e)))?;
+
+        // Set connection timeout if specified
+        if let Some(timeout) = self.ssh_profile.timeout {
+            session.set_timeout(timeout * 1000); // Convert to milliseconds
+        }
+
+        // Enable compression if configured
+        if self.ssh_profile.compression {
+            session.set_compress(true);
+        }
 
         session.set_tcp_stream(tcp);
         session.handshake()
@@ -76,31 +91,74 @@ impl SSHTerminal {
 
     /// Authenticate with the SSH server
     async fn authenticate(&self, session: &mut Session) -> Result<(), AppError> {
-        // Try public key authentication first if private key is provided
-        if let Some(private_key_path) = &self.ssh_config.private_key_path {
-            let passphrase = self.ssh_config.private_key_passphrase.as_deref();
-            match session.userauth_pubkey_file(
-                &self.ssh_config.username,
-                None, // public key path (optional)
-                std::path::Path::new(private_key_path),
-                passphrase,
-            ) {
-                Ok(_) => return Ok(()),
-                Err(e) => {
-                    eprintln!("Public key authentication failed: {}", e);
+        match &self.ssh_profile.auth_data {
+            AuthData::Password { password } => {
+                session.userauth_password(&self.ssh_profile.username, password)
+                    .map_err(|e| AppError::AuthenticationFailed(format!("Password authentication failed: {}", e)))?;
+            },
+            AuthData::PrivateKey { private_key, .. } => {
+                // For now, assume private_key is a file path
+                // TODO: Handle in-memory private keys
+                match session.userauth_pubkey_file(
+                    &self.ssh_profile.username,
+                    None,
+                    std::path::Path::new(private_key),
+                    None,
+                ) {
+                    Ok(_) => {},
+                    Err(e) => return Err(AppError::AuthenticationFailed(format!("Private key authentication failed: {}", e))),
                 }
+            },
+            AuthData::PrivateKeyWithPassphrase { private_key, passphrase, .. } => {
+                match session.userauth_pubkey_file(
+                    &self.ssh_profile.username,
+                    None,
+                    std::path::Path::new(private_key),
+                    Some(passphrase.as_str()),
+                ) {
+                    Ok(_) => {},
+                    Err(e) => return Err(AppError::AuthenticationFailed(format!("Private key with passphrase authentication failed: {}", e))),
+                }
+            },
+            AuthData::Agent { .. } => {
+                // Try SSH agent authentication
+                session.userauth_agent(&self.ssh_profile.username)
+                    .map_err(|e| AppError::AuthenticationFailed(format!("SSH agent authentication failed: {}", e)))?;
+            },
+            _ => {
+                return Err(AppError::AuthenticationFailed("Unsupported authentication method".to_string()));
             }
         }
 
-        // Try password authentication
-        if let Some(password) = &self.ssh_config.password {
-            session.userauth_password(&self.ssh_config.username, password)
-                .map_err(|e| AppError::AuthenticationFailed(format!("Password authentication failed: {}", e)))?;
-        } else {
-            return Err(AppError::AuthenticationFailed("No authentication method available".to_string()));
+        if !session.authenticated() {
+            return Err(AppError::AuthenticationFailed("Authentication failed".to_string()));
         }
 
         Ok(())
+    }
+
+    /// Connect via proxy
+    async fn connect_via_proxy(&self, proxy: &ProxyConfig) -> Result<TcpStream, AppError> {
+        match proxy.proxy_type {
+            ProxyType::Http => {
+                // TODO: Implement HTTP proxy support
+                return Err(AppError::ConnectionFailed("HTTP proxy not yet implemented".to_string()));
+            },
+            ProxyType::Socks5 => {
+                // TODO: Implement SOCKS5 proxy support
+                return Err(AppError::ConnectionFailed("SOCKS5 proxy not yet implemented".to_string()));
+            },
+            ProxyType::Socks4 => {
+                // TODO: Implement SOCKS4 proxy support
+                return Err(AppError::ConnectionFailed("SOCKS4 proxy not yet implemented".to_string()));
+            },
+        }
+    }
+
+    /// Old authentication method - deprecated - will be removed
+    async fn authenticate_old(&self, _session: &mut Session) -> Result<(), AppError> {
+        // This method is deprecated and will be removed
+        Err(AppError::AuthenticationFailed("Deprecated authentication method".to_string()))
     }
 
     /// Disconnect from the SSH terminal

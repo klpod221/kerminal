@@ -26,23 +26,12 @@ impl Default for LocalConfig {
     }
 }
 
-/// Configuration for SSH terminal
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SSHConfig {
-    pub host: String,
-    pub port: u16,
-    pub username: String,
-    pub password: Option<String>,
-    pub private_key_path: Option<String>,
-    pub private_key_passphrase: Option<String>,
-}
-
-/// Terminal configuration that can be either Local or SSH
+/// Terminal configuration that can be either Local or SSH with profile ID
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerminalConfig {
     pub terminal_type: TerminalType,
     pub local_config: Option<LocalConfig>,
-    pub ssh_config: Option<SSHConfig>,
+    pub ssh_profile_id: Option<String>, // ID of SSH profile instead of direct config
 }
 
 /// Represents the current state of a terminal

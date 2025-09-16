@@ -3,6 +3,7 @@ use crate::database::models::base::BaseModel;
 use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
 pub enum SyncStrategy {
     /// Local changes always win (default)
     LastWriteWins,
@@ -12,6 +13,7 @@ pub enum SyncStrategy {
     ManualResolve,
 }
 
+#[allow(dead_code)]
 impl SyncStrategy {
     /// Resolve conflict between two models using the strategy
     pub fn resolve_conflict<T>(&self, local: &T, remote: &T) -> SyncResolution
@@ -39,12 +41,14 @@ impl SyncStrategy {
 }
 
 #[derive(Debug, PartialEq)]
+#[allow(dead_code)]
 pub enum SyncResolution {
     UseLocal,
     UseRemote,
     RequiresManualResolution,
 }
 
+#[allow(dead_code)]
 pub trait HasBaseModel {
     fn base_model(&self) -> &BaseModel;
 }

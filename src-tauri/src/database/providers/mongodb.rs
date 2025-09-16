@@ -10,10 +10,12 @@ use crate::database::{
 };
 
 /// MongoDB database provider (placeholder implementation)
+#[allow(dead_code)]
 pub struct MongoDBProvider {
     connection_string: String,
 }
 
+#[allow(dead_code)]
 impl MongoDBProvider {
     pub fn new(connection_string: String) -> Self {
         Self {

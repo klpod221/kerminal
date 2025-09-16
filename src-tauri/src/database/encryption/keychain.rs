@@ -1,11 +1,13 @@
 use keyring::{Entry, Error as KeyringError};
 use crate::database::error::{EncryptionError, EncryptionResult};
 
+use base64::{engine::general_purpose, Engine as _};
 /// System keychain integration cho auto-unlock
 pub struct KeychainManager {
     app_name: String,
 }
 
+#[allow(dead_code)]
 impl KeychainManager {
     /// Create new keychain manager
     pub fn new(app_name: String) -> Self {
@@ -54,7 +56,7 @@ impl KeychainManager {
     /// Store device encryption key trong keychain
     pub fn store_device_key(&self, device_id: &str, key: &[u8]) -> EncryptionResult<()> {
         let service = format!("{}_device_key", self.app_name);
-        let key_string = base64::encode(key);
+        let key_string = general_purpose::STANDARD.encode(key);
 
         let entry = Entry::new(&service, device_id)
             .map_err(|e| EncryptionError::KeychainError(e.to_string()))?;
@@ -74,7 +76,7 @@ impl KeychainManager {
 
         match entry.get_password() {
             Ok(key_string) => {
-                let key = base64::decode(key_string)
+                let key = general_purpose::STANDARD.decode(key_string)
                     .map_err(|e| EncryptionError::KeychainError(format!("Invalid key format: {}", e)))?;
                 Ok(Some(key))
             },

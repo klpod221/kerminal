@@ -5,6 +5,7 @@ use crate::database::error::DatabaseResult;
 use async_trait::async_trait;
 
 #[async_trait]
+#[allow(dead_code)]
 pub trait Migration {
     fn version(&self) -> u32;
     fn description(&self) -> &str;
@@ -12,10 +13,12 @@ pub trait Migration {
     async fn down(&self, db: &dyn crate::database::Database) -> DatabaseResult<()>;
 }
 
+#[allow(dead_code)]
 pub struct MigrationRunner {
     migrations: Vec<Box<dyn Migration + Send + Sync>>,
 }
 
+#[allow(dead_code)]
 impl MigrationRunner {
     pub fn new() -> Self {
         Self {

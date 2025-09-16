@@ -10,10 +10,12 @@ use crate::database::{
 };
 
 /// PostgreSQL database provider (placeholder implementation)
+#[allow(dead_code)]
 pub struct PostgreSQLProvider {
     connection_string: String,
 }
 
+#[allow(dead_code)]
 impl PostgreSQLProvider {
     pub fn new(connection_string: String) -> Self {
         Self {

@@ -3,6 +3,7 @@ use crate::database::error::DatabaseResult;
 use async_trait::async_trait;
 use super::Migration;
 
+#[allow(dead_code)]
 pub struct SQLiteMigration {
     version: u32,
     description: String,
@@ -10,6 +11,7 @@ pub struct SQLiteMigration {
     down_sql: String,
 }
 
+#[allow(dead_code)]
 impl SQLiteMigration {
     pub fn new(version: u32, description: String, up_sql: String, down_sql: String) -> Self {
         Self {

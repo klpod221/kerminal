@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
-use crate::database::traits::{Syncable, SyncStatus};
+use crate::database::traits::SyncStatus;
 
 /// Base model that provides common fields for all syncable models
 #[derive(Debug, Clone, Serialize, Deserialize)]

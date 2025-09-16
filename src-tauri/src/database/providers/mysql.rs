@@ -10,10 +10,12 @@ use crate::database::{
 };
 
 /// MySQL database provider (placeholder implementation)
+#[allow(dead_code)]
 pub struct MySQLProvider {
     connection_string: String,
 }
 
+#[allow(dead_code)]
 impl MySQLProvider {
     pub fn new(connection_string: String) -> Self {
         Self {

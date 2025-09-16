@@ -6,8 +6,10 @@ use crate::database::{
 };
 
 /// Database factory để create appropriate provider
+#[allow(dead_code)]
 pub struct DatabaseFactory;
 
+#[allow(dead_code)]
 impl DatabaseFactory {
     /// Create database provider based on configuration
     pub fn create_provider(config: &DatabaseConfig) -> DatabaseResult<Box<dyn Database>> {

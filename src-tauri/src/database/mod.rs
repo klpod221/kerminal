@@ -9,7 +9,6 @@ pub mod config;
 pub mod error;
 
 // Re-exports for convenience
-pub use traits::{Database, Syncable, Encryptable, EncryptionService};
-pub use service::{DatabaseService, DatabaseServiceConfig, DatabaseStats};
-pub use encryption::MasterPasswordManager;
-pub use error::{DatabaseError, DatabaseResult};
+pub use traits::Database;
+pub use service::{DatabaseService, DatabaseServiceConfig};
+// pub use error::DatabaseError;

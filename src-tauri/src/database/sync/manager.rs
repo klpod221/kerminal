@@ -8,12 +8,14 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct SyncManager {
     conflict_resolver: ConflictResolver,
     scheduler: SyncScheduler,
     active_conflicts: Arc<RwLock<Vec<ConflictRecord>>>,
 }
 
+#[allow(dead_code)]
 impl SyncManager {
     pub fn new(strategy: SyncStrategy, sync_interval_minutes: u32) -> Self {
         Self {

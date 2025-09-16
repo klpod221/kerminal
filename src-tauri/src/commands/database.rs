@@ -32,6 +32,7 @@ impl From<DatabaseError> for String {
             DatabaseError::MasterPasswordRequired => "Master password required".to_string(),
             DatabaseError::UnsupportedProvider(msg) => format!("Unsupported provider: {}", msg),
             DatabaseError::Internal(err) => format!("Internal error: {}", err),
+            DatabaseError::NotImplemented(msg) => format!("Not implemented: {}", msg),
         }
     }
 }

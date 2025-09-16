@@ -1,4 +1,5 @@
 use crate::core::terminal::{TerminalFactory, TerminalWrapper};
+use crate::database::service::DatabaseService;
 use crate::error::AppError;
 use crate::models::terminal::{
     CreateTerminalRequest, CreateTerminalResponse, ResizeTerminalRequest, TerminalData,
@@ -18,11 +19,12 @@ pub struct TerminalManager {
     output_receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<TerminalData>>>>,
     output_sender: mpsc::UnboundedSender<TerminalData>,
     buffer_manager: Arc<TerminalBufferManager>,
+    database_service: Arc<DatabaseService>,
 }
 
 impl TerminalManager {
     /// Create a new terminal manager
-    pub fn new() -> Self {
+    pub fn new(database_service: Arc<DatabaseService>) -> Self {
         let (output_sender, output_receiver) = mpsc::unbounded_channel();
 
         Self {
@@ -31,6 +33,7 @@ impl TerminalManager {
             output_receiver: Arc::new(Mutex::new(Some(output_receiver))),
             output_sender,
             buffer_manager: Arc::new(TerminalBufferManager::default()),
+            database_service,
         }
     }
 
@@ -43,7 +46,7 @@ impl TerminalManager {
         let terminal_id = Uuid::new_v4().to_string();
 
         let mut terminal =
-            TerminalFactory::create_terminal(terminal_id.clone(), request.config.clone())?;
+            TerminalFactory::create_terminal(terminal_id.clone(), request.config.clone(), Some(self.database_service.clone())).await?;
 
         // Connect to the terminal
         terminal.connect().await?;
@@ -260,11 +263,5 @@ impl TerminalManager {
     /// Get the buffer manager instance
     pub fn get_buffer_manager(&self) -> Arc<TerminalBufferManager> {
         self.buffer_manager.clone()
-    }
-}
-
-impl Default for TerminalManager {
-    fn default() -> Self {
-        Self::new()
     }
 }

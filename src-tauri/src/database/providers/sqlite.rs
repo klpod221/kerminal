@@ -168,7 +168,7 @@ impl Database for SQLiteProvider {
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         let mut results = Vec::new();
-        for row in rows {
+    for _row in rows {
             let mut map = std::collections::HashMap::new();
             // Note: This is simplified - in real implementation you'd iterate over columns
             map.insert("placeholder".to_string(), SqlValue::Text("placeholder".to_string()));
@@ -294,6 +294,7 @@ impl Database for SQLiteProvider {
                 description: row.get("description"),
                 tags: serde_json::from_str(&row.get::<String, _>("tags"))
                     .unwrap_or_default(),
+                proxy: None, // TODO: Implement proxy support in database
             };
             Ok(Some(profile))
         } else {
@@ -346,6 +347,7 @@ impl Database for SQLiteProvider {
                 description: row.get("description"),
                 tags: serde_json::from_str(&row.get::<String, _>("tags"))
                     .unwrap_or_default(),
+                proxy: None, // TODO: Implement proxy support in database
             };
             profiles.push(profile);
         }

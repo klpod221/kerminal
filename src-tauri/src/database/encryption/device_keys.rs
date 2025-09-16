@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
-use argon2::password_hash::{rand_core::OsRng, SaltString};
+use argon2::password_hash::SaltString;
 use chrono::{DateTime, Utc};
 
 use crate::database::{
@@ -18,6 +18,7 @@ pub struct DeviceKeyManager {
 
 /// Device encryption key information
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct DeviceEncryptionKey {
     pub device_id: String,
     pub device_name: String,
@@ -40,6 +41,7 @@ pub struct MasterPasswordEntry {
     pub last_verified_at: Option<DateTime<Utc>>,
 }
 
+#[allow(dead_code)]
 impl DeviceKeyManager {
     /// Create new device key manager
     pub fn new(current_device_id: String) -> Self {
@@ -105,7 +107,7 @@ impl DeviceKeyManager {
     ) -> EncryptionResult<bool> {
         // Verify password hash
         let parsed_hash = PasswordHash::new(&entry.verification_hash)
-            .map_err(|e| EncryptionError::MasterPasswordVerificationFailed)?;
+            .map_err(|_e| EncryptionError::MasterPasswordVerificationFailed)?;
 
         let argon2 = Argon2::default();
         let is_valid = argon2
@@ -149,7 +151,7 @@ impl DeviceKeyManager {
         }
 
         // Fallback: try to get password from keychain
-        if let Some(password) = self.keychain.get_master_password(device_id)? {
+    if let Some(_password) = self.keychain.get_master_password(device_id)? {
             // Need master password entry to verify - this should be loaded from database
             // For now, return false and require manual unlock
             return Ok(false);
@@ -308,6 +310,7 @@ impl DeviceKeyManager {
     }
 }
 
+#[allow(dead_code)]
 impl DeviceEncryptionKey {
     /// Check if key is expired (for security)
     pub fn is_expired(&self, max_age_days: i64) -> bool {

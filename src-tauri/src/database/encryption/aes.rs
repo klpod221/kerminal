@@ -1,3 +1,5 @@
+use base64::Engine;
+use base64::engine::general_purpose;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
@@ -8,6 +10,7 @@ use crate::database::error::{EncryptionError, EncryptionResult};
 /// AES-256-GCM encryption service
 pub struct AESEncryption;
 
+#[allow(dead_code)]
 impl AESEncryption {
     /// Encrypt data using AES-256-GCM
     pub fn encrypt(key: &[u8; 32], data: &[u8]) -> EncryptionResult<Vec<u8>> {
@@ -56,13 +59,13 @@ impl AESEncryption {
     /// Encrypt string và return base64 encoded result
     pub fn encrypt_string(key: &[u8; 32], data: &str) -> EncryptionResult<String> {
         let encrypted = Self::encrypt(key, data.as_bytes())?;
-        Ok(base64::encode(encrypted))
+            Ok(general_purpose::STANDARD.encode(encrypted))
     }
 
     /// Decrypt base64 encoded string
     pub fn decrypt_string(key: &[u8; 32], encrypted_data: &str) -> EncryptionResult<String> {
-        let encrypted_bytes = base64::decode(encrypted_data)
-            .map_err(|e| EncryptionError::InvalidFormat)?;
+            let encrypted_bytes = general_purpose::STANDARD.decode(encrypted_data)
+            .map_err(|_e| EncryptionError::InvalidFormat)?;
 
         let decrypted = Self::decrypt(key, &encrypted_bytes)?;
 

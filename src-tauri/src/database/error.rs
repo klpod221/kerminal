@@ -21,6 +21,9 @@ pub enum DatabaseError {
     #[error("Validation error: {0}")]
     ValidationError(String),
 
+    #[error("Not implemented: {0}")]
+    NotImplemented(String),
+
     #[error("Parse error: {0}")]
     ParseError(String),
 

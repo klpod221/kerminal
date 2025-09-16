@@ -3,11 +3,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct SyncScheduler {
     interval_minutes: u32,
     is_running: Arc<RwLock<bool>>,
 }
 
+#[allow(dead_code)]
 impl SyncScheduler {
     pub fn new(interval_minutes: u32) -> Self {
         Self {

@@ -12,24 +12,37 @@ mod state;
 
 use crate::services::terminal::TerminalManager;
 use crate::state::AppState;
+use crate::database::{DatabaseService, DatabaseServiceConfig};
+use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
-    let terminal_manager = TerminalManager::new();
-
     // Initialize app state with database service
     let app_state = AppState::new().await
         .expect("Failed to initialize application state");
 
+    // Extract the database service for terminal manager
+    let database_service = {
+        let db_lock = app_state.database_service.lock().await;
+        // We need to create a new Arc<DatabaseService> here
+        // For now, let's work around this by managing DatabaseService separately
+        Arc::new(DatabaseService::new(DatabaseServiceConfig::default()).await
+            .expect("Failed to create database service for terminal manager"))
+    };
+
+    let terminal_manager = TerminalManager::new(database_service.clone());
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(terminal_manager)
+        .manage(database_service.clone())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Dashboard commands
             commands::dashboard::get_system_info,
             // Terminal commands
             commands::terminal::create_terminal,
+            commands::terminal::create_ssh_terminal,
             commands::terminal::write_to_terminal,
             commands::terminal::resize_terminal,
             commands::terminal::close_terminal,

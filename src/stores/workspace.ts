@@ -953,7 +953,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             title = tab.title;
           }
 
-          const response = await createLocalTerminal(title);
+          const response = await createLocalTerminal(undefined, undefined, title);
 
           // Store the backend terminal ID
           terminal.backendTerminalId = response.terminal_id;

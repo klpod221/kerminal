@@ -5,7 +5,7 @@ use crate::{
     impl_syncable,
     database::{
         models::base::BaseModel,
-        traits::{Syncable, Encryptable, EncryptionService, SyncStatus},
+    traits::{Encryptable, EncryptionService},
         error::DatabaseResult,
     },
 };
@@ -35,6 +35,9 @@ pub struct SSHProfile {
     pub keep_alive: bool,
     pub compression: bool,
 
+    /// Proxy settings
+    pub proxy: Option<ProxyConfig>,
+
     /// UI customization
     pub color: Option<String>,       // Hex color
     pub icon: Option<String>,        // Icon name
@@ -62,6 +65,25 @@ pub enum AuthMethod {
     Kerberos,
     /// PKCS#11 Hardware tokens (future)
     PKCS11,
+}
+
+/// Proxy configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProxyConfig {
+    pub proxy_type: ProxyType,
+    pub host: String,
+    pub port: u16,
+    pub username: Option<String>,
+    #[serde(with = "encrypted_option_string")]
+    pub password: Option<String>,
+}
+
+/// Proxy types supported
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ProxyType {
+    Http,
+    Socks5,
+    Socks4,
 }
 
 /// Authentication data - encrypted fields marked with [encrypt]
@@ -151,12 +173,24 @@ impl SSHProfile {
             timeout: Some(30),
             keep_alive: true,
             compression: false,
+            proxy: None,
             color: None,
             icon: None,
             sort_order: 0,
             description: None,
             tags: Vec::new(),
         }
+    }
+
+    /// Get profile by ID
+    pub fn get_id(&self) -> &str {
+        &self.base.id
+    }
+
+    /// Set proxy configuration
+    pub fn set_proxy(&mut self, proxy: Option<ProxyConfig>) {
+        self.proxy = proxy;
+        self.base.touch();
     }
 
     /// Set authentication method và data
@@ -199,6 +233,15 @@ impl SSHProfile {
             self.tags.remove(pos);
             self.base.touch();
         }
+    }
+
+    /// Static method to get profile by ID (will be implemented in service layer)
+    pub async fn get_by_id(profile_id: &str) -> Result<Option<SSHProfile>, crate::database::error::DatabaseError> {
+        // TODO: This should be implemented in the service layer
+        // For now, return an error to indicate it needs implementation
+        Err(crate::database::error::DatabaseError::NotImplemented(
+            "get_by_id should be implemented in service layer".to_string()
+        ))
     }
 
     /// Check if profile has valid authentication data
@@ -244,13 +287,13 @@ impl Encryptable for SSHProfile {
         vec!["auth_data"]
     }
 
-    fn encrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn encrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
         // Encryption is handled by the encrypted_string serde module
         // This is called during save operations
         Ok(())
     }
 
-    fn decrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn decrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
         // Decryption is handled by the encrypted_string serde module
         // This is called during load operations
         Ok(())
@@ -404,6 +447,27 @@ mod encrypted_string {
     {
         // Deserialize as-is
         String::deserialize(deserializer)
+    }
+}
+
+mod encrypted_option_string {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(value: &Option<String>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // For security reasons, we might want to store passwords encrypted at rest
+        // For now, serialize as-is to avoid complications with async encryption
+        value.serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        // Deserialize as-is
+        Option::<String>::deserialize(deserializer)
     }
 }
 

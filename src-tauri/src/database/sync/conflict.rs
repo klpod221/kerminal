@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use serde::{Serialize, Deserialize};
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct ConflictResolver {
     default_strategy: SyncStrategy,
 }
@@ -38,6 +39,7 @@ pub enum ConflictResolution {
     Manual(String), // Description of manual resolution
 }
 
+#[allow(dead_code)]
 impl ConflictResolver {
     pub fn new(default_strategy: SyncStrategy) -> Self {
         Self { default_strategy }
