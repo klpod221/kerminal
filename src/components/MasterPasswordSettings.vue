@@ -144,7 +144,7 @@
                 <div class="text-sm text-gray-100">
                   {{
                     formatRelativeTime(
-                      new Date(authStore.currentDevice.created_at)
+                      new Date(authStore.currentDevice.created_at),
                     )
                   }}
                 </div>
@@ -192,7 +192,7 @@ const handleAutoUnlockToggle = async () => {
     message.success(
       `Auto-unlock has been ${
         autoUnlockEnabled.value ? "enabled" : "disabled"
-      }.`
+      }.`,
     );
   } catch (error) {
     message.error("Failed to update auto-unlock setting.");
@@ -226,6 +226,6 @@ watch(
   (newVal) => {
     autoUnlockEnabled.value = newVal;
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>

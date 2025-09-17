@@ -1,14 +1,14 @@
-pub mod traits;
+pub mod config;
+pub mod encryption;
+pub mod error;
+pub mod migrations;
 pub mod models;
 pub mod providers;
-pub mod encryption;
-pub mod sync;
-pub mod migrations;
 pub mod service;
-pub mod config;
-pub mod error;
+pub mod sync;
+pub mod traits;
 
 // Re-exports for convenience
-pub use traits::Database;
 pub use service::{DatabaseService, DatabaseServiceConfig};
+pub use traits::Database;
 // pub use error::DatabaseError;

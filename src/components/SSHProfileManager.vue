@@ -3,5 +3,5 @@
 </template>
 
 <script setup lang="ts">
-import SSHProfileDrawer from './SSHProfileDrawer.vue';
+import SSHProfileDrawer from "./SSHProfileDrawer.vue";
 </script>

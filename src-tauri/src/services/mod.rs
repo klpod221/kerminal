@@ -1,2 +1,2 @@
-pub mod terminal;
 pub mod buffer_manager;
+pub mod terminal;

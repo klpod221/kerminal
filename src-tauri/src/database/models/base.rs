@@ -53,8 +53,6 @@ impl Default for BaseModel {
     }
 }
 
-
-
 /// Macro to automatically implement Syncable trait for models with BaseModel
 #[macro_export]
 macro_rules! impl_syncable {

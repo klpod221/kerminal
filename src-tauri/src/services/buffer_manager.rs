@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
 
 /// Statistics about the buffer manager
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,7 +60,8 @@ impl TerminalBuffer {
                 }
             }
         }
-    }    fn get_lines(&self) -> &Vec<String> {
+    }
+    fn get_lines(&self) -> &Vec<String> {
         &self.lines
     }
 
@@ -91,14 +92,18 @@ impl TerminalBufferManager {
     /// Save data to a terminal's buffer
     pub async fn save_data(&self, terminal_id: &str, data: &str) {
         let mut buffers = self.buffers.write().await;
-        let buffer = buffers.entry(terminal_id.to_string()).or_insert_with(TerminalBuffer::new);
+        let buffer = buffers
+            .entry(terminal_id.to_string())
+            .or_insert_with(TerminalBuffer::new);
         buffer.append_data(data, self.max_lines_per_terminal);
     }
 
     /// Get buffer as string for a terminal
     pub async fn get_buffer_string(&self, terminal_id: &str) -> Option<String> {
         let buffers = self.buffers.read().await;
-        buffers.get(terminal_id).map(|buffer| buffer.get_as_string())
+        buffers
+            .get(terminal_id)
+            .map(|buffer| buffer.get_as_string())
     }
 
     /// Check if a terminal has a buffer

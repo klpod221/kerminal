@@ -8,7 +8,7 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "pretty": "prettier --write \"./**/*.{js,jsx,mjs,cjs,ts,tsx,json}\""
+    "pretty": "prettier --write \"./**/*.{ts,vue,css}\""
   },
   "dependencies": {
     "@tauri-apps/api": "^2",

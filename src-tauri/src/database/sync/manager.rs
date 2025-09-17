@@ -1,6 +1,6 @@
 use crate::database::error::DatabaseResult;
 use crate::database::sync::{
-    conflict::{ConflictResolver, ConflictRecord},
+    conflict::{ConflictRecord, ConflictResolver},
     scheduler::SyncScheduler,
     strategies::SyncStrategy,
 };
@@ -26,7 +26,9 @@ impl SyncManager {
     }
 
     pub async fn start_scheduled_sync(&self) -> DatabaseResult<()> {
-        self.scheduler.start().await
+        self.scheduler
+            .start()
+            .await
             .map_err(|e| crate::database::error::DatabaseError::SyncError(e.to_string()))?;
         Ok(())
     }

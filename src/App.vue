@@ -87,6 +87,6 @@ watch(
     } else {
       viewState.toggleTopBar(true);
     }
-  }
+  },
 );
 </script>

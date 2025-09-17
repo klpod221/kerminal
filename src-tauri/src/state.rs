@@ -1,7 +1,7 @@
-use tokio::sync::Mutex;
-use std::sync::Arc;
-use futures::FutureExt;
 use crate::database::{DatabaseService, DatabaseServiceConfig};
+use futures::FutureExt;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
 // Application state
 pub struct AppState {
@@ -31,7 +31,7 @@ impl Default for AppState {
                 DatabaseService::new(DatabaseServiceConfig::default())
                     .now_or_never()
                     .unwrap()
-                    .unwrap()
+                    .unwrap(),
             )),
         }
     }

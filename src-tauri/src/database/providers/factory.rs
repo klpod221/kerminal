@@ -1,8 +1,8 @@
 use crate::database::{
-    traits::Database,
-    providers::{sqlite::SQLiteProvider},
-    config::{DatabaseConfig, DatabaseProvider, ConnectionConfig},
+    config::{ConnectionConfig, DatabaseConfig, DatabaseProvider},
     error::{DatabaseError, DatabaseResult},
+    providers::sqlite::SQLiteProvider,
+    traits::Database,
 };
 
 /// Database factory để create appropriate provider
@@ -18,18 +18,20 @@ impl DatabaseFactory {
                 if let ConnectionConfig::SQLite { file_path } = &config.connection {
                     Ok(Box::new(SQLiteProvider::new(file_path.clone())))
                 } else {
-                    Err(DatabaseError::ConfigError("Invalid SQLite configuration".to_string()))
+                    Err(DatabaseError::ConfigError(
+                        "Invalid SQLite configuration".to_string(),
+                    ))
                 }
-            },
-            DatabaseProvider::MySQL => {
-                Err(DatabaseError::UnsupportedProvider("MySQL support not implemented yet".to_string()))
-            },
-            DatabaseProvider::PostgreSQL => {
-                Err(DatabaseError::UnsupportedProvider("PostgreSQL support not implemented yet".to_string()))
-            },
-            DatabaseProvider::MongoDB => {
-                Err(DatabaseError::UnsupportedProvider("MongoDB support not implemented yet".to_string()))
-            },
+            }
+            DatabaseProvider::MySQL => Err(DatabaseError::UnsupportedProvider(
+                "MySQL support not implemented yet".to_string(),
+            )),
+            DatabaseProvider::PostgreSQL => Err(DatabaseError::UnsupportedProvider(
+                "PostgreSQL support not implemented yet".to_string(),
+            )),
+            DatabaseProvider::MongoDB => Err(DatabaseError::UnsupportedProvider(
+                "MongoDB support not implemented yet".to_string(),
+            )),
         }
     }
 

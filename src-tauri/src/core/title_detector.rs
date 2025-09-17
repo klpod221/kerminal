@@ -66,8 +66,11 @@ impl TitleDetector {
                 let host_str = host.as_str();
 
                 // Skip if user or host looks invalid
-                if user_str.is_empty() || host_str.is_empty()
-                    || user_str.len() > 50 || host_str.len() > 50 {
+                if user_str.is_empty()
+                    || host_str.is_empty()
+                    || user_str.len() > 50
+                    || host_str.len() > 50
+                {
                     return None;
                 }
 

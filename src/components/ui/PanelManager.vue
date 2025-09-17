@@ -27,7 +27,7 @@
         class="default-theme"
         @resize="onPaneResize"
       >
-         <Pane
+        <Pane
           v-for="(child, index) in layout.children"
           :key="child.id"
           :size="getPaneSize(index)"
@@ -59,9 +59,9 @@
 </template>
 
 <script setup lang="ts">
-import { Splitpanes, Pane } from 'splitpanes'
-import Panel from './Panel.vue';
-import { debounce } from '../../utils/helpers';
+import { Splitpanes, Pane } from "splitpanes";
+import Panel from "./Panel.vue";
+import { debounce } from "../../utils/helpers";
 import type { PanelLayout, TerminalInstance, Tab } from "../../types/panel";
 
 interface PanelManagerProps {
@@ -81,7 +81,7 @@ interface PanelManagerEmits {
     fromPanelId: string,
     toPanelId: string,
     tabId: string,
-    targetTabId?: string
+    targetTabId?: string,
   ];
   terminalReady: [terminalId: string];
   setActivePanel: [panelId: string];
@@ -89,15 +89,15 @@ interface PanelManagerEmits {
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
   splitPanelByDrop: [
-    direction: 'top' | 'bottom' | 'left' | 'right',
+    direction: "top" | "bottom" | "left" | "right",
     draggedTab: Tab,
     sourcePanelId: string,
-    targetPanelId: string
+    targetPanelId: string,
   ];
   cloneTabAndSplit: [
-    direction: 'top' | 'bottom' | 'left' | 'right',
+    direction: "top" | "bottom" | "left" | "right",
     tabId: string,
-    panelId: string
+    panelId: string,
   ];
 }
 
@@ -106,107 +106,111 @@ const props = defineProps<PanelManagerProps>();
 const emit = defineEmits<PanelManagerEmits>();
 
 const getPaneSize = (index: number): number => {
-  const size = props.layout.sizes?.[index] || 1 / (props.layout.children?.length || 1)
-  return Math.max(10, Math.min(90, size * 100)) // Clamp between 10% and 90%
-}
+  const size =
+    props.layout.sizes?.[index] || 1 / (props.layout.children?.length || 1);
+  return Math.max(10, Math.min(90, size * 100)); // Clamp between 10% and 90%
+};
 
 // Event handlers
 const selectTab = (panelId: string, tabId: string): void => {
-  emit('selectTab', panelId, tabId)
-}
+  emit("selectTab", panelId, tabId);
+};
 
 const closeTab = (panelId: string, tabId: string): void => {
-  emit('closeTab', panelId, tabId)
-}
+  emit("closeTab", panelId, tabId);
+};
 
 const addTab = (panelId: string): void => {
-  emit('addTab', panelId)
-}
+  emit("addTab", panelId);
+};
 
 const splitHorizontal = (panelId: string): void => {
-  emit('splitHorizontal', panelId)
-}
+  emit("splitHorizontal", panelId);
+};
 
 const splitVertical = (panelId: string): void => {
-  emit('splitVertical', panelId)
-}
+  emit("splitVertical", panelId);
+};
 
 const closePanel = (panelId: string): void => {
-  emit('closePanel', panelId)
-}
+  emit("closePanel", panelId);
+};
 
 const moveTab = (
   fromPanelId: string,
   toPanelId: string,
   tabId: string,
-  targetTabId?: string
+  targetTabId?: string,
 ): void => {
-  emit('moveTab', fromPanelId, toPanelId, tabId, targetTabId)
-}
+  emit("moveTab", fromPanelId, toPanelId, tabId, targetTabId);
+};
 
 const terminalReady = (terminalId: string): void => {
-  emit('terminalReady', terminalId)
-}
+  emit("terminalReady", terminalId);
+};
 
 const setActivePanel = (panelId: string): void => {
-  emit('setActivePanel', panelId)
-}
+  emit("setActivePanel", panelId);
+};
 
 const duplicateTab = (panelId: string, tabId: string): void => {
-  emit('duplicateTab', panelId, tabId)
-}
+  emit("duplicateTab", panelId, tabId);
+};
 
 const moveTabToNewPanel = (panelId: string, tabId: string): void => {
-  emit('moveTabToNewPanel', panelId, tabId)
-}
+  emit("moveTabToNewPanel", panelId, tabId);
+};
 
 const layoutUpdated = (layout: PanelLayout): void => {
-  emit('layoutUpdated', layout)
-}
+  emit("layoutUpdated", layout);
+};
 
 const splitPanelByDrop = (
-  direction: 'top' | 'bottom' | 'left' | 'right',
+  direction: "top" | "bottom" | "left" | "right",
   draggedTab: Tab,
   sourcePanelId: string,
-  targetPanelId: string
+  targetPanelId: string,
 ): void => {
-  emit('splitPanelByDrop', direction, draggedTab, sourcePanelId, targetPanelId)
-}
+  emit("splitPanelByDrop", direction, draggedTab, sourcePanelId, targetPanelId);
+};
 
 const cloneTabAndSplit = (
-  direction: 'top' | 'bottom' | 'left' | 'right',
+  direction: "top" | "bottom" | "left" | "right",
   tabId: string,
-  panelId: string
+  panelId: string,
 ): void => {
-  emit('cloneTabAndSplit', direction, tabId, panelId)
-}
+  emit("cloneTabAndSplit", direction, tabId, panelId);
+};
 
 // Handle splitpanes resize with debounce
 const handlePaneResize = (paneComponents: { size: number }[]): void => {
-  if (!props.layout.children || paneComponents.length !== props.layout.children.length) {
-    return
+  if (
+    !props.layout.children ||
+    paneComponents.length !== props.layout.children.length
+  ) {
+    return;
   }
 
   // Convert sizes from percentages to ratios
-  const newSizes = paneComponents.map((pane) => pane.size / 100)
+  const newSizes = paneComponents.map((pane) => pane.size / 100);
 
   // Update layout with new sizes
-  const updatedLayout = { ...props.layout, sizes: newSizes }
-  emit('layoutUpdated', updatedLayout)
+  const updatedLayout = { ...props.layout, sizes: newSizes };
+  emit("layoutUpdated", updatedLayout);
 
   // Trigger window resize event to make terminals adjust
   setTimeout(() => {
-    window.dispatchEvent(new Event('resize'))
-  }, 50)
-}
+    window.dispatchEvent(new Event("resize"));
+  }, 50);
+};
 
 // Debounced version to prevent excessive layout updates
-const onPaneResize = debounce(handlePaneResize, 150)
+const onPaneResize = debounce(handlePaneResize, 150);
 </script>
 
 <style scoped>
 /* Import splitpanes CSS */
-@import 'splitpanes/dist/splitpanes.css';
+@import "splitpanes/dist/splitpanes.css";
 
 /* Dark theme customizations */
 :deep(.splitpanes__splitter) {
@@ -220,7 +224,7 @@ const onPaneResize = debounce(handlePaneResize, 150)
 }
 
 :deep(.splitpanes__splitter:before) {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 0;

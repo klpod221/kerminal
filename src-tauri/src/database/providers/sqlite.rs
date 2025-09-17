@@ -1,18 +1,18 @@
 use async_trait::async_trait;
-use sqlx::{SqlitePool, Row};
+use sqlx::{Row, SqlitePool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::database::{
-    traits::{Database, DatabaseProviderType, ToSqlValue, SqlValue, QueryCriteria},
+    encryption::device_keys::MasterPasswordEntry,
     error::{DatabaseError, DatabaseResult},
     models::{
-        ssh_profile::SSHProfile,
-        ssh_group::SSHGroup,
         device::{Device, DeviceInfo},
-        sync_metadata::{SyncMetadata, ConflictRecord},
+        ssh_group::SSHGroup,
+        ssh_profile::SSHProfile,
+        sync_metadata::{ConflictRecord, SyncMetadata},
     },
-    encryption::device_keys::MasterPasswordEntry,
+    traits::{Database, DatabaseProviderType, QueryCriteria, SqlValue, ToSqlValue},
 };
 
 /// SQLite database provider implementation
@@ -32,7 +32,8 @@ impl SQLiteProvider {
 
     /// Get database pool reference
     fn get_pool(&self) -> DatabaseResult<&Arc<RwLock<SqlitePool>>> {
-        self.pool.as_ref()
+        self.pool
+            .as_ref()
             .ok_or_else(|| DatabaseError::ConnectionFailed("Database not connected".to_string()))
     }
 }
@@ -42,10 +43,12 @@ impl Database for SQLiteProvider {
     async fn connect(&mut self) -> DatabaseResult<()> {
         // Ensure parent directory exists
         if let Some(parent) = std::path::Path::new(&self.database_path).parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| DatabaseError::ConnectionFailed(
-                    format!("Failed to create database directory: {}", e)
-                ))?;
+            std::fs::create_dir_all(parent).map_err(|e| {
+                DatabaseError::ConnectionFailed(format!(
+                    "Failed to create database directory: {}",
+                    e
+                ))
+            })?;
         }
 
         // Connect to SQLite database - will create file if not exists
@@ -68,7 +71,8 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         // Create SSH profiles table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS ssh_profiles (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -91,13 +95,15 @@ impl Database for SQLiteProvider {
                 version INTEGER NOT NULL DEFAULT 1,
                 sync_status TEXT NOT NULL DEFAULT 'Clean'
             )
-        "#)
+        "#,
+        )
         .execute(&*pool)
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         // Create SSH groups table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS ssh_groups (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -113,13 +119,15 @@ impl Database for SQLiteProvider {
                 version INTEGER NOT NULL DEFAULT 1,
                 sync_status TEXT NOT NULL DEFAULT 'Clean'
             )
-        "#)
+        "#,
+        )
         .execute(&*pool)
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         // Create master passwords table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS master_passwords (
                 device_id TEXT PRIMARY KEY,
                 device_name TEXT NOT NULL,
@@ -129,13 +137,15 @@ impl Database for SQLiteProvider {
                 created_at TEXT NOT NULL,
                 last_verified_at TEXT
             )
-        "#)
+        "#,
+        )
         .execute(&*pool)
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         // Create devices table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS devices (
                 device_id TEXT PRIMARY KEY,
                 device_name TEXT NOT NULL,
@@ -146,13 +156,15 @@ impl Database for SQLiteProvider {
                 last_seen_at TEXT NOT NULL,
                 is_current BOOLEAN NOT NULL DEFAULT false
             )
-        "#)
+        "#,
+        )
         .execute(&*pool)
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         // Create sync metadata table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS sync_metadata (
                 id TEXT PRIMARY KEY,
                 table_name TEXT NOT NULL,
@@ -163,7 +175,8 @@ impl Database for SQLiteProvider {
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
-        "#)
+        "#,
+        )
         .execute(&*pool)
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
@@ -208,7 +221,11 @@ impl Database for SQLiteProvider {
         Ok(result.rows_affected())
     }
 
-    async fn fetch_raw(&self, query: &str, _params: &[&dyn ToSqlValue]) -> DatabaseResult<Vec<std::collections::HashMap<String, SqlValue>>> {
+    async fn fetch_raw(
+        &self,
+        query: &str,
+        _params: &[&dyn ToSqlValue],
+    ) -> DatabaseResult<Vec<std::collections::HashMap<String, SqlValue>>> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
@@ -218,10 +235,13 @@ impl Database for SQLiteProvider {
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         let mut results = Vec::new();
-    for _row in rows {
+        for _row in rows {
             let mut map = std::collections::HashMap::new();
             // Note: This is simplified - in real implementation you'd iterate over columns
-            map.insert("placeholder".to_string(), SqlValue::Text("placeholder".to_string()));
+            map.insert(
+                "placeholder".to_string(),
+                SqlValue::Text("placeholder".to_string()),
+            );
             results.push(map);
         }
 
@@ -232,11 +252,26 @@ impl Database for SQLiteProvider {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
-        sqlx::query("DROP TABLE IF EXISTS ssh_profiles").execute(&*pool).await.ok();
-        sqlx::query("DROP TABLE IF EXISTS ssh_groups").execute(&*pool).await.ok();
-        sqlx::query("DROP TABLE IF EXISTS devices").execute(&*pool).await.ok();
-        sqlx::query("DROP TABLE IF EXISTS master_passwords").execute(&*pool).await.ok();
-        sqlx::query("DROP TABLE IF EXISTS sync_metadata").execute(&*pool).await.ok();
+        sqlx::query("DROP TABLE IF EXISTS ssh_profiles")
+            .execute(&*pool)
+            .await
+            .ok();
+        sqlx::query("DROP TABLE IF EXISTS ssh_groups")
+            .execute(&*pool)
+            .await
+            .ok();
+        sqlx::query("DROP TABLE IF EXISTS devices")
+            .execute(&*pool)
+            .await
+            .ok();
+        sqlx::query("DROP TABLE IF EXISTS master_passwords")
+            .execute(&*pool)
+            .await
+            .ok();
+        sqlx::query("DROP TABLE IF EXISTS sync_metadata")
+            .execute(&*pool)
+            .await
+            .ok();
 
         Ok(())
     }
@@ -269,13 +304,15 @@ impl Database for SQLiteProvider {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             INSERT OR REPLACE INTO ssh_profiles (
                 id, name, host, port, username, group_id, auth_method, auth_data,
                 tags, notes, color, is_favorite, created_at, updated_at,
                 device_id, version, sync_status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#)
+        "#,
+        )
         .bind(&model.base.id)
         .bind(&model.name)
         .bind(&model.host)
@@ -315,12 +352,16 @@ impl Database for SQLiteProvider {
             let profile = SSHProfile {
                 base: crate::database::models::base::BaseModel {
                     id: row.get("id"),
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
                     device_id: row.get("device_id"),
                     version: row.get::<i64, _>("version") as u64,
                     sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -342,8 +383,7 @@ impl Database for SQLiteProvider {
                 icon: None, // Not stored in current schema
                 sort_order: row.get::<i32, _>("sort_order"),
                 description: row.get("description"),
-                tags: serde_json::from_str(&row.get::<String, _>("tags"))
-                    .unwrap_or_default(),
+                tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
                 proxy: None, // TODO: Implement proxy support in database
             };
             Ok(Some(profile))
@@ -368,12 +408,16 @@ impl Database for SQLiteProvider {
             let profile = SSHProfile {
                 base: crate::database::models::base::BaseModel {
                     id: row.get("id"),
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
                     device_id: row.get("device_id"),
                     version: row.get::<i64, _>("version") as u64,
                     sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -395,8 +439,7 @@ impl Database for SQLiteProvider {
                 icon: None, // Not stored in current schema
                 sort_order: row.get::<i32, _>("sort_order"),
                 description: row.get("description"),
-                tags: serde_json::from_str(&row.get::<String, _>("tags"))
-                    .unwrap_or_default(),
+                tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
                 proxy: None, // TODO: Implement proxy support in database
             };
             profiles.push(profile);
@@ -427,12 +470,14 @@ impl Database for SQLiteProvider {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             INSERT OR REPLACE INTO ssh_groups (
                 id, name, description, color, parent_id, sort_order,
                 created_at, updated_at, device_id, version, sync_status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        "#)
+        "#,
+        )
         .bind(&model.base.id)
         .bind(&model.name)
         .bind(&model.description)
@@ -466,12 +511,16 @@ impl Database for SQLiteProvider {
             let group = SSHGroup {
                 base: crate::database::models::base::BaseModel {
                     id: row.get("id"),
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
                     device_id: row.get("device_id"),
                     version: row.get::<i64, _>("version") as u64,
                     sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -507,12 +556,16 @@ impl Database for SQLiteProvider {
             let group = SSHGroup {
                 base: crate::database::models::base::BaseModel {
                     id: row.get("id"),
-                    created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
-                    updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                        .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                        .with_timezone(&chrono::Utc),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
                     device_id: row.get("device_id"),
                     version: row.get::<i64, _>("version") as u64,
                     sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -553,16 +606,21 @@ impl Database for SQLiteProvider {
 
 impl SQLiteProvider {
     /// Save master password entry
-    pub async fn save_master_password_entry(&self, entry: &MasterPasswordEntry) -> DatabaseResult<()> {
+    pub async fn save_master_password_entry(
+        &self,
+        entry: &MasterPasswordEntry,
+    ) -> DatabaseResult<()> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             INSERT OR REPLACE INTO master_passwords (
                 device_id, device_name, password_salt, verification_hash, auto_unlock,
                 created_at, last_verified_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        "#)
+        "#,
+        )
         .bind(&entry.device_id)
         .bind(&entry.device_name)
         .bind(&entry.password_salt.to_vec())
@@ -578,7 +636,10 @@ impl SQLiteProvider {
     }
 
     /// Get master password entry by device ID
-    pub async fn get_master_password_entry(&self, device_id: &str) -> DatabaseResult<Option<MasterPasswordEntry>> {
+    pub async fn get_master_password_entry(
+        &self,
+        device_id: &str,
+    ) -> DatabaseResult<Option<MasterPasswordEntry>> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
@@ -623,7 +684,9 @@ impl SQLiteProvider {
     }
 
     /// Get current device from database
-    pub async fn get_current_device(&self) -> DatabaseResult<Option<super::super::models::device::Device>> {
+    pub async fn get_current_device(
+        &self,
+    ) -> DatabaseResult<Option<super::super::models::device::Device>> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
@@ -645,12 +708,16 @@ impl SQLiteProvider {
                     hostname: "".to_string(), // Will be updated when we enhance schema
                 },
                 app_version: env!("CARGO_PKG_VERSION").to_string(),
-                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
-                    .with_timezone(&chrono::Utc),
-                last_seen: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("last_seen_at"))
-                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
-                    .with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("created_at"),
+                )
+                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&chrono::Utc),
+                last_seen: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("last_seen_at"),
+                )
+                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&chrono::Utc),
                 is_current: row.get("is_current"),
             };
             Ok(Some(device))
@@ -660,7 +727,10 @@ impl SQLiteProvider {
     }
 
     /// Save device to database
-    pub async fn save_device(&self, device: &super::super::models::device::Device) -> DatabaseResult<()> {
+    pub async fn save_device(
+        &self,
+        device: &super::super::models::device::Device,
+    ) -> DatabaseResult<()> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
@@ -677,11 +747,14 @@ impl SQLiteProvider {
                 device_id, device_name, device_type, os_name, os_version,
                 created_at, last_seen_at, is_current
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            "#
+            "#,
         )
         .bind(&device.device_id)
         .bind(&device.device_name)
-        .bind(serde_json::to_string(&device.device_type).unwrap_or_else(|_| "\"Unknown\"".to_string()))
+        .bind(
+            serde_json::to_string(&device.device_type)
+                .unwrap_or_else(|_| "\"Unknown\"".to_string()),
+        )
         .bind(&device.os_info.os_type)
         .bind(&device.os_info.os_version)
         .bind(device.created_at.to_rfc3339())

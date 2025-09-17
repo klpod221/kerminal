@@ -1,13 +1,13 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    impl_syncable,
     database::{
-        models::base::BaseModel,
-    traits::{Encryptable, EncryptionService},
         error::DatabaseResult,
+        models::base::BaseModel,
+        traits::{Encryptable, EncryptionService},
     },
+    impl_syncable,
 };
 
 /// SSH Profile với flexible authentication methods
@@ -31,7 +31,7 @@ pub struct SSHProfile {
     pub auth_data: AuthData,
 
     /// Connection settings
-    pub timeout: Option<u32>,        // seconds
+    pub timeout: Option<u32>, // seconds
     pub keep_alive: bool,
     pub compression: bool,
 
@@ -39,8 +39,8 @@ pub struct SSHProfile {
     pub proxy: Option<ProxyConfig>,
 
     /// UI customization
-    pub color: Option<String>,       // Hex color
-    pub icon: Option<String>,        // Icon name
+    pub color: Option<String>, // Hex color
+    pub icon: Option<String>, // Icon name
     pub sort_order: i32,
 
     /// Notes
@@ -97,7 +97,7 @@ pub enum AuthData {
         #[serde(with = "encrypted_string")]
         private_key: String,
         key_type: KeyType,
-        public_key: Option<String>,  // Not encrypted
+        public_key: Option<String>, // Not encrypted
     },
     PrivateKeyWithPassphrase {
         #[serde(with = "encrypted_string")]
@@ -105,7 +105,7 @@ pub enum AuthData {
         #[serde(with = "encrypted_string")]
         passphrase: String,
         key_type: KeyType,
-        public_key: Option<String>,  // Not encrypted
+        public_key: Option<String>, // Not encrypted
     },
     Agent {
         // No sensitive data - uses system SSH agent
@@ -128,7 +128,7 @@ pub enum AuthData {
         library_path: String,
         slot_id: Option<u32>,
         key_id: String,
-        pin: Option<String>,  // May need encryption
+        pin: Option<String>, // May need encryption
     },
 }
 
@@ -152,13 +152,7 @@ pub struct CertificateValidity {
 
 impl SSHProfile {
     /// Create a new SSH profile
-    pub fn new(
-        device_id: String,
-        name: String,
-        host: String,
-        port: u16,
-        username: String,
-    ) -> Self {
+    pub fn new(device_id: String, name: String, host: String, port: u16, username: String) -> Self {
         Self {
             base: BaseModel::new(device_id),
             name,
@@ -236,11 +230,13 @@ impl SSHProfile {
     }
 
     /// Static method to get profile by ID (will be implemented in service layer)
-    pub async fn get_by_id(profile_id: &str) -> Result<Option<SSHProfile>, crate::database::error::DatabaseError> {
+    pub async fn get_by_id(
+        profile_id: &str,
+    ) -> Result<Option<SSHProfile>, crate::database::error::DatabaseError> {
         // TODO: This should be implemented in the service layer
         // For now, return an error to indicate it needs implementation
         Err(crate::database::error::DatabaseError::NotImplemented(
-            "get_by_id should be implemented in service layer".to_string()
+            "get_by_id should be implemented in service layer".to_string(),
         ))
     }
 
@@ -248,14 +244,26 @@ impl SSHProfile {
     pub fn has_valid_auth(&self) -> bool {
         match (&self.auth_method, &self.auth_data) {
             (AuthMethod::Password, AuthData::Password { password }) => !password.is_empty(),
-            (AuthMethod::PrivateKey, AuthData::PrivateKey { private_key, .. }) => !private_key.is_empty(),
-            (AuthMethod::PrivateKeyWithPassphrase, AuthData::PrivateKeyWithPassphrase { private_key, passphrase, .. }) => {
-                !private_key.is_empty() && !passphrase.is_empty()
-            },
+            (AuthMethod::PrivateKey, AuthData::PrivateKey { private_key, .. }) => {
+                !private_key.is_empty()
+            }
+            (
+                AuthMethod::PrivateKeyWithPassphrase,
+                AuthData::PrivateKeyWithPassphrase {
+                    private_key,
+                    passphrase,
+                    ..
+                },
+            ) => !private_key.is_empty() && !passphrase.is_empty(),
             (AuthMethod::Agent, AuthData::Agent { .. }) => true,
-            (AuthMethod::Certificate, AuthData::Certificate { certificate, private_key, .. }) => {
-                !certificate.is_empty() && !private_key.is_empty()
-            },
+            (
+                AuthMethod::Certificate,
+                AuthData::Certificate {
+                    certificate,
+                    private_key,
+                    ..
+                },
+            ) => !certificate.is_empty() && !private_key.is_empty(),
             _ => false,
         }
     }
@@ -287,13 +295,19 @@ impl Encryptable for SSHProfile {
         vec!["auth_data"]
     }
 
-    fn encrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn encrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         // Encryption is handled by the encrypted_string serde module
         // This is called during save operations
         Ok(())
     }
 
-    fn decrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn decrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         // Decryption is handled by the encrypted_string serde module
         // This is called during load operations
         Ok(())
@@ -301,12 +315,11 @@ impl Encryptable for SSHProfile {
 
     fn has_encrypted_data(&self) -> bool {
         match &self.auth_data {
-            AuthData::Password { .. } |
-            AuthData::PrivateKey { .. } |
-            AuthData::PrivateKeyWithPassphrase { .. } |
-            AuthData::Certificate { .. } => true,
-            AuthData::Agent { .. } |
-            AuthData::Kerberos { .. } => false,
+            AuthData::Password { .. }
+            | AuthData::PrivateKey { .. }
+            | AuthData::PrivateKeyWithPassphrase { .. }
+            | AuthData::Certificate { .. } => true,
+            AuthData::Agent { .. } | AuthData::Kerberos { .. } => false,
             AuthData::PKCS11 { pin, .. } => pin.is_some(),
         }
     }
@@ -367,7 +380,7 @@ pub struct UpdateSSHProfileRequest {
     pub host: Option<String>,
     pub port: Option<u16>,
     pub username: Option<String>,
-    pub group_id: Option<Option<String>>,  // None = no change, Some(None) = remove from group
+    pub group_id: Option<Option<String>>, // None = no change, Some(None) = remove from group
     pub auth_method: Option<AuthMethod>,
     pub auth_data: Option<AuthData>,
     pub timeout: Option<Option<u32>>,

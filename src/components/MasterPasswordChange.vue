@@ -68,7 +68,10 @@
 
         <Card>
           <div class="flex items-start gap-3">
-            <AlertTriangle :size="20" class="text-yellow-500 mt-0.5 flex-shrink-0" />
+            <AlertTriangle
+              :size="20"
+              class="text-yellow-500 mt-0.5 flex-shrink-0"
+            />
             <div>
               <h5 class="text-sm font-semibold text-yellow-400 mb-1">
                 Important Security Notice
@@ -86,11 +89,7 @@
         </Card>
 
         <div class="flex justify-end gap-3 pt-4 border-t border-gray-700">
-          <Button
-            type="button"
-            variant="secondary"
-            :disabled="isLoading"
-          >
+          <Button type="button" variant="secondary" :disabled="isLoading">
             Cancel
           </Button>
           <Button type="submit" variant="primary" :loading="isLoading">

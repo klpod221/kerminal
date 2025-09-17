@@ -89,7 +89,7 @@ const formContext = inject<FormContext>("form-context");
 
 // Computed
 const inputId = computed(
-  () => props.id || `input-${Math.random().toString(36).substr(2, 9)}`
+  () => props.id || `input-${Math.random().toString(36).substr(2, 9)}`,
 );
 
 const sizeClasses = computed(() => {

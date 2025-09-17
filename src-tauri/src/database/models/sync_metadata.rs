@@ -1,12 +1,12 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Sync metadata cho tracking sync operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncMetadata {
     pub id: String,
-    pub database_id: String,         // External database ID
+    pub database_id: String, // External database ID
     pub last_sync_at: DateTime<Utc>,
     pub sync_direction: SyncDirection,
     pub records_synced: u32,
@@ -20,8 +20,8 @@ pub struct SyncMetadata {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SyncDirection {
-    Push,        // Local to remote
-    Pull,        // Remote to local
+    Push,          // Local to remote
+    Pull,          // Remote to local
     Bidirectional, // Both directions
 }
 
@@ -30,7 +30,7 @@ pub enum SyncOperationStatus {
     InProgress,
     Completed,
     Failed,
-    PartialSuccess,  // Some records synced, some failed
+    PartialSuccess, // Some records synced, some failed
 }
 
 /// Conflict record cho tracking và resolution
@@ -49,7 +49,7 @@ pub struct ConflictRecord {
     pub detected_at: DateTime<Utc>,
     pub resolved_at: Option<DateTime<Utc>>,
     pub resolution: Option<ConflictResolution>,
-    pub resolved_by: Option<String>,  // Device ID or "auto"
+    pub resolved_by: Option<String>, // Device ID or "auto"
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -72,7 +72,7 @@ pub enum ConflictResolution {
     UseRemote,
     Merge(MergeStrategy),
     Skip,
-    Manual(serde_json::Value),  // User-provided resolution
+    Manual(serde_json::Value), // User-provided resolution
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,7 +84,7 @@ pub struct MergeStrategy {
 pub enum FieldResolution {
     UseLocal,
     UseRemote,
-    Combine,  // For arrays/lists
+    Combine, // For arrays/lists
     Manual(serde_json::Value),
 }
 
@@ -105,7 +105,13 @@ impl SyncMetadata {
         }
     }
 
-    pub fn mark_completed(&mut self, records_synced: u32, conflicts_detected: u32, conflicts_resolved: u32, duration_ms: u64) {
+    pub fn mark_completed(
+        &mut self,
+        records_synced: u32,
+        conflicts_detected: u32,
+        conflicts_resolved: u32,
+        duration_ms: u64,
+    ) {
         self.records_synced = records_synced;
         self.conflicts_detected = conflicts_detected;
         self.conflicts_resolved = conflicts_resolved;

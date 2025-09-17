@@ -1,8 +1,8 @@
-pub mod sqlite;
+pub mod factory;
+pub mod mongodb;
 pub mod mysql;
 pub mod postgresql;
-pub mod mongodb;
-pub mod factory;
+pub mod sqlite;
 
 // Re-exports
 pub use factory::DatabaseFactory;

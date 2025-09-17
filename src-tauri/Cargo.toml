@@ -30,7 +30,14 @@ gethostname = "0.4"
 dirs = "5.0"
 
 # Database dependencies
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite", "mysql", "postgres", "chrono", "uuid"] }
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-rustls",
+    "sqlite",
+    "mysql",
+    "postgres",
+    "chrono",
+    "uuid",
+] }
 mongodb = "2.8"
 
 # Encryption dependencies

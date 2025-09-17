@@ -10,6 +10,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -26,6 +27,7 @@
     opacity: 0;
     transform: translateY(30px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -42,6 +44,7 @@
     opacity: 0;
     transform: translateX(-30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -58,6 +61,7 @@
     opacity: 0;
     transform: translateX(30px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -74,6 +78,7 @@
     opacity: 0;
     transform: scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -90,13 +95,16 @@
     opacity: 0;
     transform: scale(0.3);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.05);
   }
+
   70% {
     transform: scale(0.9);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -109,11 +117,13 @@
 }
 
 @keyframes pulseSoft {
+
   0%,
   100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.8;
     transform: scale(1.02);
@@ -151,11 +161,13 @@
 }
 
 @keyframes loadingDots {
+
   0%,
   80%,
   100% {
     transform: scale(0);
   }
+
   40% {
     transform: scale(1);
   }
@@ -248,6 +260,7 @@
 
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {

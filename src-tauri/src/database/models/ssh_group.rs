@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    impl_syncable,
     database::{
-        models::base::BaseModel,
-    traits::{Encryptable, EncryptionService},
         error::DatabaseResult,
+        models::base::BaseModel,
+        traits::{Encryptable, EncryptionService},
     },
+    impl_syncable,
 };
 
 /// SSH Group để organize profiles
@@ -21,13 +21,13 @@ pub struct SSHGroup {
     pub description: Option<String>,
 
     /// UI customization
-    pub color: Option<String>,       // Hex color
-    pub icon: Option<String>,        // Icon name
+    pub color: Option<String>, // Hex color
+    pub icon: Option<String>, // Icon name
     pub sort_order: i32,
 
     /// Group settings
-    pub is_expanded: bool,           // UI state - expanded/collapsed
-    pub default_auth_method: Option<String>,  // Default auth for new profiles in group
+    pub is_expanded: bool, // UI state - expanded/collapsed
+    pub default_auth_method: Option<String>, // Default auth for new profiles in group
 }
 
 impl SSHGroup {
@@ -102,11 +102,17 @@ impl Encryptable for SSHGroup {
         vec![]
     }
 
-    fn encrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn encrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 
-    fn decrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn decrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 
@@ -148,7 +154,7 @@ impl CreateSSHGroupRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateSSHGroupRequest {
     pub name: Option<String>,
-    pub description: Option<Option<String>>,  // Some(None) = clear description
+    pub description: Option<Option<String>>, // Some(None) = clear description
     pub color: Option<Option<String>>,
     pub icon: Option<Option<String>>,
     pub sort_order: Option<i32>,
@@ -201,7 +207,7 @@ pub struct SSHGroupWithStats {
     #[serde(flatten)]
     pub group: SSHGroup,
     pub profile_count: u32,
-    pub profiles: Vec<String>,  // Profile IDs in this group
+    pub profiles: Vec<String>, // Profile IDs in this group
 }
 
 impl SSHGroupWithStats {

@@ -52,8 +52,8 @@
               size === 'sm'
                 ? 'text-lg'
                 : size === 'lg'
-                ? 'text-2xl'
-                : 'text-xl',
+                  ? 'text-2xl'
+                  : 'text-xl',
             ]"
           >
             {{ title }}
@@ -135,7 +135,9 @@ const handleClick = (event: MouseEvent): void => {
     transparent 70%
   );
   transform: translate(-50%, -50%);
-  transition: width 0.3s, height 0.3s;
+  transition:
+    width 0.3s,
+    height 0.3s;
   pointer-events: none;
   z-index: 1;
 }

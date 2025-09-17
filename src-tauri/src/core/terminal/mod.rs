@@ -1,11 +1,11 @@
 pub mod local;
 pub mod ssh;
 
-use crate::models::terminal::{TerminalState, TerminalConfig, TerminalType, TerminalExited};
 use crate::database::service::DatabaseService;
 use crate::error::AppError;
-use tokio::sync::{mpsc, Mutex};
+use crate::models::terminal::{TerminalConfig, TerminalExited, TerminalState, TerminalType};
 use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex};
 
 /// Unified terminal wrapper that can handle both local and SSH terminals
 pub enum TerminalWrapper {
@@ -79,13 +79,22 @@ impl TerminalWrapper {
     }
 
     /// Start reading from terminal and send output to the provided sender
-    pub async fn start_read_loop(&mut self, sender: mpsc::UnboundedSender<Vec<u8>>, title_sender: Option<mpsc::UnboundedSender<String>>, exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>) -> Result<(), AppError> {
+    pub async fn start_read_loop(
+        &mut self,
+        sender: mpsc::UnboundedSender<Vec<u8>>,
+        title_sender: Option<mpsc::UnboundedSender<String>>,
+        exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>,
+    ) -> Result<(), AppError> {
         match self {
-            TerminalWrapper::Local(terminal) => terminal.start_read_loop(sender, title_sender, exit_sender).await,
+            TerminalWrapper::Local(terminal) => {
+                terminal
+                    .start_read_loop(sender, title_sender, exit_sender)
+                    .await
+            }
             TerminalWrapper::SSH(terminal) => {
                 // SSH doesn't support title detection and exit events yet
                 terminal.start_read_loop(sender).await
-            },
+            }
         }
     }
 }
@@ -102,27 +111,42 @@ impl TerminalFactory {
     ) -> Result<TerminalWrapper, AppError> {
         match config.terminal_type {
             TerminalType::Local => {
-                let local_config = config.local_config.clone()
-                    .unwrap_or_default();
-                Ok(TerminalWrapper::Local(local::LocalTerminal::new(id, config, local_config)?))
-            },
+                let local_config = config.local_config.clone().unwrap_or_default();
+                Ok(TerminalWrapper::Local(local::LocalTerminal::new(
+                    id,
+                    config,
+                    local_config,
+                )?))
+            }
             TerminalType::SSH => {
-                let ssh_profile_id = config.ssh_profile_id.clone()
-                    .ok_or_else(|| AppError::InvalidConfig("SSH profile ID is required for SSH terminal".to_string()))?;
+                let ssh_profile_id = config.ssh_profile_id.clone().ok_or_else(|| {
+                    AppError::InvalidConfig(
+                        "SSH profile ID is required for SSH terminal".to_string(),
+                    )
+                })?;
 
-                let database_service = database_service
-                    .ok_or_else(|| AppError::InvalidConfig("Database service is required for SSH terminal".to_string()))?;
+                let database_service = database_service.ok_or_else(|| {
+                    AppError::InvalidConfig(
+                        "Database service is required for SSH terminal".to_string(),
+                    )
+                })?;
 
                 let ssh_profile = {
                     let db_service = database_service.lock().await;
                     db_service
                         .get_ssh_profile(&ssh_profile_id)
                         .await
-                        .map_err(|e| AppError::Database(format!("Failed to get SSH profile: {}", e)))?
+                        .map_err(|e| {
+                            AppError::Database(format!("Failed to get SSH profile: {}", e))
+                        })?
                 };
 
-                Ok(TerminalWrapper::SSH(ssh::SSHTerminal::new(id, config, ssh_profile)?))
-            },
+                Ok(TerminalWrapper::SSH(ssh::SSHTerminal::new(
+                    id,
+                    config,
+                    ssh_profile,
+                )?))
+            }
         }
     }
 }

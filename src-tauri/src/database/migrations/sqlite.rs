@@ -1,7 +1,7 @@
 // SQLite-specific migrations
+use super::Migration;
 use crate::database::error::DatabaseResult;
 use async_trait::async_trait;
-use super::Migration;
 
 #[allow(dead_code)]
 pub struct SQLiteMigration {
@@ -18,7 +18,7 @@ impl SQLiteMigration {
             version,
             description,
             up_sql,
-            down_sql
+            down_sql,
         }
     }
 }
@@ -36,14 +36,20 @@ impl Migration for SQLiteMigration {
     async fn up(&self, _db: &dyn crate::database::Database) -> DatabaseResult<()> {
         // Execute up migration SQL
         // In a real implementation, this would execute the SQL against the database
-        println!("Running migration {} up: {}", self.version, self.description);
+        println!(
+            "Running migration {} up: {}",
+            self.version, self.description
+        );
         Ok(())
     }
 
     async fn down(&self, _db: &dyn crate::database::Database) -> DatabaseResult<()> {
         // Execute down migration SQL
         // In a real implementation, this would execute the rollback SQL
-        println!("Running migration {} down: {}", self.version, self.description);
+        println!(
+            "Running migration {} down: {}",
+            self.version, self.description
+        );
         Ok(())
     }
 }

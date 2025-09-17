@@ -15,9 +15,7 @@
             <h3 class="text-lg font-semibold text-gray-100 mb-1">
               Secure Your Data
             </h3>
-            <p class="text-red-400">
-              This password cannot be recovered.
-            </p>
+            <p class="text-red-400">This password cannot be recovered.</p>
           </div>
         </div>
       </Card>

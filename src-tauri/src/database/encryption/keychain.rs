@@ -1,5 +1,5 @@
-use keyring::{Entry, Error as KeyringError};
 use crate::database::error::{EncryptionError, EncryptionResult};
+use keyring::{Entry, Error as KeyringError};
 
 use base64::{engine::general_purpose, Engine as _};
 /// System keychain integration cho auto-unlock
@@ -76,10 +76,11 @@ impl KeychainManager {
 
         match entry.get_password() {
             Ok(key_string) => {
-                let key = general_purpose::STANDARD.decode(key_string)
-                    .map_err(|e| EncryptionError::KeychainError(format!("Invalid key format: {}", e)))?;
+                let key = general_purpose::STANDARD.decode(key_string).map_err(|e| {
+                    EncryptionError::KeychainError(format!("Invalid key format: {}", e))
+                })?;
                 Ok(Some(key))
-            },
+            }
             Err(KeyringError::NoEntry) => Ok(None),
             Err(e) => Err(EncryptionError::KeychainError(e.to_string())),
         }
@@ -114,10 +115,16 @@ impl KeychainManager {
 
         for device_id in device_ids {
             if let Err(e) = self.delete_master_password(device_id) {
-                errors.push(format!("Failed to delete master password for {}: {}", device_id, e));
+                errors.push(format!(
+                    "Failed to delete master password for {}: {}",
+                    device_id, e
+                ));
             }
             if let Err(e) = self.delete_device_key(device_id) {
-                errors.push(format!("Failed to delete device key for {}: {}", device_id, e));
+                errors.push(format!(
+                    "Failed to delete device key for {}: {}",
+                    device_id, e
+                ));
             }
         }
 
@@ -170,8 +177,10 @@ mod tests {
     fn test_device_key_operations() {
         let keychain = KeychainManager::new("kerminal_test".to_string());
         let device_id = "test_device";
-        let key = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-                   17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32];
+        let key = [
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32,
+        ];
 
         if !keychain.is_available() {
             println!("Keychain not available, skipping test");

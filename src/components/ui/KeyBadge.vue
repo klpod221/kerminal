@@ -108,7 +108,8 @@ const formatKey = (key: string): string => {
 
 <style scoped>
 kbd {
-  box-shadow: 0 1px 0 0 rgb(255 255 255 / 0.1) inset,
+  box-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.1) inset,
     0 1px 2px 0 rgb(0 0 0 / 0.3);
   background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
   border: 1px solid #4b5563;

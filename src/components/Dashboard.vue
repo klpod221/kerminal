@@ -1,10 +1,17 @@
 <template>
-  <div class="h-full bg-[#171717] text-white p-4 overflow-y-auto dashboard-container">
+  <div
+    class="h-full bg-[#171717] text-white p-4 overflow-y-auto dashboard-container"
+  >
     <div class="container mx-auto animate-fade-in">
       <div class="mt-4 mb-12">
-        <img src="../assets/images/logo_500.png" alt="Kerminal Logo" class="w-32 h-32 mx-auto mb-4" />
+        <img
+          src="../assets/images/logo_500.png"
+          alt="Kerminal Logo"
+          class="w-32 h-32 mx-auto mb-4"
+        />
         <h1
-          class="text-center text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent">
+          class="text-center text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent"
+        >
           Kerminal
         </h1>
         <p class="text-center text-sm text-gray-400 mb-2">v{{ appVersion }}</p>
@@ -13,31 +20,46 @@
         </p>
         <p class="text-center text-gray-400 mt-1">
           Made with ❤️ by
-          <a href="https://klpod221.com" target="_blank" rel="noopener noreferrer"
-            class="underline hover:text-white text-sm transition-colors duration-200">
+          <a
+            href="https://klpod221.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline hover:text-white text-sm transition-colors duration-200"
+          >
             klpod221
           </a>
         </p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card title="Computer" :icon="Computer" icon-background="bg-blue-500/20" icon-color="text-blue-400"
-          :hover="true">
+        <Card
+          title="Computer"
+          :icon="Computer"
+          icon-background="bg-blue-500/20"
+          icon-color="text-blue-400"
+          :hover="true"
+        >
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-medium mr-1">OS:</span>
-            <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate">
+            <span
+              class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate"
+            >
               {{ systemInfo.os_version }}
             </span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-medium mr-1">Kernel:</span>
-            <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate">
+            <span
+              class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate"
+            >
               {{ systemInfo.platform + " " + systemInfo.cpu_arch }}
             </span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-medium mr-1">Hostname:</span>
-            <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate">
+            <span
+              class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate"
+            >
               {{ systemInfo.hostname }}
             </span>
           </div>
@@ -49,36 +71,70 @@
           </div>
         </Card>
 
-        <Card title="CPU" :icon="Cpu" icon-background="bg-green-500/20" icon-color="text-green-400" :hover="true">
-          <div v-if="systemInfo.cpu_info" class="flex justify-between items-center">
+        <Card
+          title="CPU"
+          :icon="Cpu"
+          icon-background="bg-green-500/20"
+          icon-color="text-green-400"
+          :hover="true"
+        >
+          <div
+            v-if="systemInfo.cpu_info"
+            class="flex justify-between items-center"
+          >
             <span class="text-gray-400 font-medium mr-1">Cores:</span>
             <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded">
               {{ systemInfo.cpu_info }}
             </span>
           </div>
-          <div v-if="systemInfo.cpus && systemInfo.cpus.length > 0" class="flex justify-between items-center">
+          <div
+            v-if="systemInfo.cpus && systemInfo.cpus.length > 0"
+            class="flex justify-between items-center"
+          >
             <span class="text-gray-400 font-medium mr-1">Model:</span>
-            <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate" :title="systemInfo.cpus[0].model">
-              {{ systemInfo.cpus[0].model.length > 20 ? systemInfo.cpus[0].model.substring(0, 20) + '...' :
-                systemInfo.cpus[0].model }}
+            <span
+              class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate"
+              :title="systemInfo.cpus[0].model"
+            >
+              {{
+                systemInfo.cpus[0].model.length > 20
+                  ? systemInfo.cpus[0].model.substring(0, 20) + "..."
+                  : systemInfo.cpus[0].model
+              }}
             </span>
           </div>
-          <div v-if="systemInfo.cpus && systemInfo.cpus.length > 0" class="flex justify-between items-center">
+          <div
+            v-if="systemInfo.cpus && systemInfo.cpus.length > 0"
+            class="flex justify-between items-center"
+          >
             <span class="text-gray-400 font-medium mr-1">Speed:</span>
             <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded">
               {{ formatFrequency(systemInfo.cpus[0].speed) }}
             </span>
           </div>
-          <div v-if="systemInfo.cpus && systemInfo.cpus.length > 0" class="flex justify-between items-center">
+          <div
+            v-if="systemInfo.cpus && systemInfo.cpus.length > 0"
+            class="flex justify-between items-center"
+          >
             <span class="text-gray-400 font-medium mr-1">Usage:</span>
             <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded">
-              {{formatPercentage(systemInfo.cpus.reduce((acc, cpu) => acc + cpu.usage, 0) / systemInfo.cpus.length)}}
+              {{
+                formatPercentage(
+                  systemInfo.cpus.reduce((acc, cpu) => acc + cpu.usage, 0) /
+                    systemInfo.cpus.length,
+                )
+              }}
             </span>
           </div>
         </Card>
 
-        <Card title="Memory" :icon="MemoryStick" icon-background="bg-purple-500/20" icon-color="text-purple-400"
-          :hover="true">
+        <Card
+          title="Memory"
+          :icon="MemoryStick"
+          icon-background="bg-purple-500/20"
+          icon-color="text-purple-400"
+          :hover="true"
+        >
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-medium mr-1">Total:</span>
             <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded">
@@ -88,7 +144,9 @@
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-medium mr-1">Used:</span>
             <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded">
-              {{ formatBytes(systemInfo.total_memory - systemInfo.free_memory) }}
+              {{
+                formatBytes(systemInfo.total_memory - systemInfo.free_memory)
+              }}
             </span>
           </div>
           <div class="flex justify-between items-center">
@@ -100,57 +158,129 @@
           <div class="flex justify-between items-center">
             <span class="text-gray-400 font-medium mr-1">Load Avg:</span>
             <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded">
-              {{ `${systemInfo.load_average?.[0]?.toFixed(2) || '0.00'} / ${systemInfo.load_average?.[1]?.toFixed(2) ||
-                '0.00'} / ${systemInfo.load_average?.[2]?.toFixed(2) || '0.00'}` }}
+              {{
+                `${systemInfo.load_average?.[0]?.toFixed(2) || "0.00"} / ${
+                  systemInfo.load_average?.[1]?.toFixed(2) || "0.00"
+                } / ${systemInfo.load_average?.[2]?.toFixed(2) || "0.00"}`
+              }}
             </span>
           </div>
         </Card>
 
-        <Card v-if="systemInfo.disks_info && systemInfo.disks_info.length > 0" title="Storage" :icon="HardDrive"
-          icon-background="bg-orange-500/20" icon-color="text-orange-400" :hover="true">
-          <div v-for="disk in systemInfo.disks_info.slice(0, 3)" :key="disk.mount_point" class="space-y-2">
+        <Card
+          v-if="systemInfo.disks_info && systemInfo.disks_info.length > 0"
+          title="Storage"
+          :icon="HardDrive"
+          icon-background="bg-orange-500/20"
+          icon-color="text-orange-400"
+          :hover="true"
+        >
+          <div
+            v-for="disk in systemInfo.disks_info.slice(0, 3)"
+            :key="disk.mount_point"
+            class="space-y-2"
+          >
             <div class="flex justify-between items-start">
               <div class="flex-1 min-w-0">
-                <div class="text-white text-sm font-medium truncate">{{ disk.mount_point }}</div>
+                <div class="text-white text-sm font-medium truncate">
+                  {{ disk.mount_point }}
+                </div>
                 <div class="text-gray-400 text-xs">{{ disk.file_system }}</div>
               </div>
               <div class="text-right ml-2">
-                <div class="text-white text-sm">{{ formatBytes(disk.available_space) }}</div>
-                <div class="text-gray-400 text-xs">/ {{ formatBytes(disk.total_space) }}</div>
+                <div class="text-white text-sm">
+                  {{ formatBytes(disk.available_space) }}
+                </div>
+                <div class="text-gray-400 text-xs">
+                  / {{ formatBytes(disk.total_space) }}
+                </div>
               </div>
             </div>
-            <div v-if="disk !== systemInfo.disks_info[systemInfo.disks_info.length - 1]"
-              class="border-b border-gray-700"></div>
+            <div
+              v-if="
+                disk !== systemInfo.disks_info[systemInfo.disks_info.length - 1]
+              "
+              class="border-b border-gray-700"
+            ></div>
           </div>
         </Card>
 
-        <Card v-if="systemInfo.network_interfaces && systemInfo.network_interfaces.length > 0" title="Network"
-          :icon="Network" icon-background="bg-cyan-500/20" icon-color="text-cyan-400" :hover="true">
-          <div v-for="interface_ in systemInfo.network_interfaces.filter(i => i.status === 'up').slice(0, 3)"
-            :key="interface_.name" class="space-y-2">
+        <Card
+          v-if="
+            systemInfo.network_interfaces &&
+            systemInfo.network_interfaces.length > 0
+          "
+          title="Network"
+          :icon="Network"
+          icon-background="bg-cyan-500/20"
+          icon-color="text-cyan-400"
+          :hover="true"
+        >
+          <div
+            v-for="interface_ in systemInfo.network_interfaces
+              .filter((i) => i.status === 'up')
+              .slice(0, 3)"
+            :key="interface_.name"
+            class="space-y-2"
+          >
             <div class="flex justify-between items-start">
               <div class="flex-1 min-w-0">
-                <div class="text-white text-sm font-medium">{{ interface_.name }}</div>
-                <div class="text-gray-400 text-xs truncate">{{ interface_.address }}</div>
+                <div class="text-white text-sm font-medium">
+                  {{ interface_.name }}
+                </div>
+                <div class="text-gray-400 text-xs truncate">
+                  {{ interface_.address }}
+                </div>
               </div>
               <div class="text-right ml-2">
-                <div class="text-xs px-2 py-1 rounded"
-                  :class="interface_.status === 'up' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'">
+                <div
+                  class="text-xs px-2 py-1 rounded"
+                  :class="
+                    interface_.status === 'up'
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-red-500/20 text-red-400'
+                  "
+                >
                   {{ interface_.status }}
                 </div>
               </div>
             </div>
             <div
-              v-if="interface_ !== systemInfo.network_interfaces.filter(i => i.status === 'up').slice(0, 3)[systemInfo.network_interfaces.filter(i => i.status === 'up').slice(0, 3).length - 1]"
-              class="border-b border-gray-700"></div>
+              v-if="
+                interface_ !==
+                systemInfo.network_interfaces
+                  .filter((i) => i.status === 'up')
+                  .slice(0, 3)[
+                  systemInfo.network_interfaces
+                    .filter((i) => i.status === 'up')
+                    .slice(0, 3).length - 1
+                ]
+              "
+              class="border-b border-gray-700"
+            ></div>
           </div>
         </Card>
 
-        <Card v-if="systemInfo.components_info && systemInfo.components_info.length > 0" title="Temperature"
-          :icon="Thermometer" icon-background="bg-red-500/20" icon-color="text-red-400" :hover="true">
-          <div v-for="component in systemInfo.components_info.filter(c => c.temperature > 0).slice(0, 4)"
-            :key="component.label" class="flex justify-between items-center">
-            <span class="text-gray-400 font-medium mr-1 text-sm truncate">{{ component.label }}:</span>
+        <Card
+          v-if="
+            systemInfo.components_info && systemInfo.components_info.length > 0
+          "
+          title="Temperature"
+          :icon="Thermometer"
+          icon-background="bg-red-500/20"
+          icon-color="text-red-400"
+          :hover="true"
+        >
+          <div
+            v-for="component in systemInfo.components_info
+              .filter((c) => c.temperature > 0)
+              .slice(0, 4)"
+            :key="component.label"
+            class="flex justify-between items-center"
+          >
+            <span class="text-gray-400 font-medium mr-1 text-sm truncate"
+              >{{ component.label }}:</span
+            >
             <span class="text-white text-sm bg-gray-800 px-2 py-1 rounded">
               {{ formatTemperature(component.temperature) }}
             </span>
@@ -161,9 +291,12 @@
       <!-- Auto refresh indicator - Bottom -->
       <div class="text-center mt-8 pt-4 border-t border-gray-800 space-y-2">
         <div class="flex justify-center items-center space-x-2">
-          <div v-if="loading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-[#74c7ec]"></div>
+          <div
+            v-if="loading"
+            class="animate-spin rounded-full h-4 w-4 border-b-2 border-[#74c7ec]"
+          ></div>
           <span class="text-xs text-gray-500">
-            {{ loading ? 'Updating...' : 'Auto-refresh every 5s' }}
+            {{ loading ? "Updating..." : "Auto-refresh every 5s" }}
           </span>
         </div>
         <div v-if="lastUpdated" class="text-xs text-gray-600">
@@ -176,9 +309,22 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
-import Card from './ui/Card.vue'
-import { formatBytes, formatUptime, formatTemperature, formatPercentage, formatFrequency } from '../utils/formatter'
-import { Computer, Cpu, MemoryStick, HardDrive, Network, Thermometer } from 'lucide-vue-next'
+import Card from "./ui/Card.vue";
+import {
+  formatBytes,
+  formatUptime,
+  formatTemperature,
+  formatPercentage,
+  formatFrequency,
+} from "../utils/formatter";
+import {
+  Computer,
+  Cpu,
+  MemoryStick,
+  HardDrive,
+  Network,
+  Thermometer,
+} from "lucide-vue-next";
 
 import { getSystemInfo } from "../services/dashboard";
 
@@ -259,11 +405,11 @@ const fetchSystemInfo = async () => {
 
 // Format last updated time
 const formatLastUpdated = (date: Date) => {
-  return date.toLocaleTimeString('en-US', {
+  return date.toLocaleTimeString("en-US", {
     hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
   });
 };
 

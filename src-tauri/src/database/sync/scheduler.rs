@@ -1,6 +1,6 @@
-use tokio::time::Duration;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tokio::time::Duration;
 
 #[derive(Debug)]
 #[allow(dead_code)]

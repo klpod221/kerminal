@@ -16,7 +16,8 @@ use crate::state::AppState;
 #[tokio::main]
 async fn main() {
     // Initialize app state with database service
-    let app_state = AppState::new().await
+    let app_state = AppState::new()
+        .await
         .expect("Failed to initialize application state");
 
     // Extract a clone of the database service for terminal manager

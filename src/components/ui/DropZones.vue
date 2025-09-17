@@ -70,58 +70,66 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Tab } from '../../types/panel'
+import { ref } from "vue";
+import type { Tab } from "../../types/panel";
 
 interface DropZonesProps {
-  showDropZones: boolean
-  panelId: string
+  showDropZones: boolean;
+  panelId: string;
 }
 
 interface DropZonesEmits {
-  splitPanel: [direction: 'top' | 'bottom' | 'left' | 'right', draggedTab: Tab, sourcePanelId: string]
-  moveTab: [draggedTab: Tab, sourcePanelId: string]
+  splitPanel: [
+    direction: "top" | "bottom" | "left" | "right",
+    draggedTab: Tab,
+    sourcePanelId: string,
+  ];
+  moveTab: [draggedTab: Tab, sourcePanelId: string];
 }
 
-const props = defineProps<DropZonesProps>()
-const emit = defineEmits<DropZonesEmits>()
+const props = defineProps<DropZonesProps>();
+const emit = defineEmits<DropZonesEmits>();
 
 // Active drop zone state
-const activeZone = ref<'top' | 'bottom' | 'left' | 'right' | 'center' | null>(null)
-let hideActiveZoneTimeout: ReturnType<typeof setTimeout> | null = null
+const activeZone = ref<"top" | "bottom" | "left" | "right" | "center" | null>(
+  null,
+);
+let hideActiveZoneTimeout: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Set the active drop zone
  * @param {string} zone - The zone identifier
  */
-const setActiveZone = (zone: 'top' | 'bottom' | 'left' | 'right' | 'center'): void => {
+const setActiveZone = (
+  zone: "top" | "bottom" | "left" | "right" | "center",
+): void => {
   // Clear any pending timeout
   if (hideActiveZoneTimeout) {
-    clearTimeout(hideActiveZoneTimeout)
-    hideActiveZoneTimeout = null
+    clearTimeout(hideActiveZoneTimeout);
+    hideActiveZoneTimeout = null;
   }
 
-  activeZone.value = zone
-}
+  activeZone.value = zone;
+};
 
 /**
  * Handle drag over event
  * @param {DragEvent} event - The drag event
  */
 const onDragOver = (event: DragEvent): void => {
-  event.preventDefault()
+  event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
+    event.dataTransfer.dropEffect = "move";
   }
-}
+};
 
 /**
  * Handle drag enter event
  * @param {DragEvent} event - The drag event
  */
 const onDragEnter = (event: DragEvent): void => {
-  event.preventDefault()
-}
+  event.preventDefault();
+};
 
 /**
  * Handle drag leave event
@@ -129,65 +137,65 @@ const onDragEnter = (event: DragEvent): void => {
  */
 const onDragLeave = (event: DragEvent): void => {
   // Only clear active zone if leaving the entire drop zones container
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const isLeavingContainer = (
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const isLeavingContainer =
     event.clientX < rect.left ||
     event.clientX > rect.right ||
     event.clientY < rect.top ||
-    event.clientY > rect.bottom
-  )
+    event.clientY > rect.bottom;
 
   if (isLeavingContainer) {
     // Add a small delay before clearing to prevent flickering
     hideActiveZoneTimeout = setTimeout(() => {
-      activeZone.value = null
-    }, 50)
+      activeZone.value = null;
+    }, 50);
   }
-}
+};
 
 /**
  * Handle drop event
  * @param {DragEvent} event - The drop event
  */
 const onDrop = (event: DragEvent): void => {
-  event.preventDefault()
+  event.preventDefault();
 
   if (event.dataTransfer) {
-    const draggedTabData = event.dataTransfer.getData('application/json')
+    const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
       try {
-        const dragData = JSON.parse(draggedTabData)
-        const draggedTab = dragData.tab as Tab
-        const sourcePanelId = dragData.sourcePanelId as string
+        const dragData = JSON.parse(draggedTabData);
+        const draggedTab = dragData.tab as Tab;
+        const sourcePanelId = dragData.sourcePanelId as string;
 
-        if (activeZone.value && activeZone.value !== 'center') {
+        if (activeZone.value && activeZone.value !== "center") {
           // Split panel in the specified direction
-          emit('splitPanel', activeZone.value, draggedTab, sourcePanelId)
-        } else if (activeZone.value === 'center') {
+          emit("splitPanel", activeZone.value, draggedTab, sourcePanelId);
+        } else if (activeZone.value === "center") {
           // Move tab to existing panel (only if from different panel)
           if (sourcePanelId !== props.panelId) {
-            emit('moveTab', draggedTab, sourcePanelId)
+            emit("moveTab", draggedTab, sourcePanelId);
           }
         }
       } catch (error) {
-        console.error('Error parsing dragged tab data:', error)
+        console.error("Error parsing dragged tab data:", error);
       }
     }
   }
 
   // Reset active zone
   if (hideActiveZoneTimeout) {
-    clearTimeout(hideActiveZoneTimeout)
-    hideActiveZoneTimeout = null
+    clearTimeout(hideActiveZoneTimeout);
+    hideActiveZoneTimeout = null;
   }
-  activeZone.value = null
-}
+  activeZone.value = null;
+};
 </script>
 
 <style scoped>
 .drop-zones-container {
   position: absolute;
-  top: 32px; /* Start below TabBar */
+  top: 32px;
+  /* Start below TabBar */
   left: 0;
   right: 0;
   bottom: 0;
@@ -218,7 +226,8 @@ const onDrop = (event: DragEvent): void => {
   top: 0;
   left: 20%;
   right: 20%;
-  height: 80px; /* Restored original height */
+  height: 80px;
+  /* Restored original height */
 }
 
 .drop-zone-bottom {

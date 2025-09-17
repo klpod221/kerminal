@@ -15,8 +15,8 @@
 </template>
 
 <script setup lang="ts">
-import MasterPasswordSetup from './MasterPasswordSetup.vue'
-import MasterPasswordUnlock from './MasterPasswordUnlock.vue'
-import MasterPasswordSettings from './MasterPasswordSettings.vue'
-import MasterPasswordChange from './MasterPasswordChange.vue'
+import MasterPasswordSetup from "./MasterPasswordSetup.vue";
+import MasterPasswordUnlock from "./MasterPasswordUnlock.vue";
+import MasterPasswordSettings from "./MasterPasswordSettings.vue";
+import MasterPasswordChange from "./MasterPasswordChange.vue";
 </script>

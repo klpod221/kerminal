@@ -1,4 +1,4 @@
-use crate::models::system_info::{CPUInfo, DiskInfo, ComponentInfo, NetworkInterface, SystemInfo};
+use crate::models::system_info::{CPUInfo, ComponentInfo, DiskInfo, NetworkInterface, SystemInfo};
 use sysinfo::{Components, Disks, Networks, System};
 
 #[tauri::command]
@@ -10,12 +10,10 @@ pub fn get_system_info() -> SystemInfo {
     let cpus = sys
         .cpus()
         .iter()
-        .map(|cpu| {
-            CPUInfo {
-                model: cpu.brand().to_string(),
-                speed: cpu.frequency(),
-                usage: cpu.cpu_usage(),
-            }
+        .map(|cpu| CPUInfo {
+            model: cpu.brand().to_string(),
+            speed: cpu.frequency(),
+            usage: cpu.cpu_usage(),
         })
         .collect();
 
@@ -44,14 +42,12 @@ pub fn get_system_info() -> SystemInfo {
     let disks = Disks::new_with_refreshed_list();
     let disks_info: Vec<DiskInfo> = disks
         .iter()
-        .map(|disk| {
-            DiskInfo {
-                name: disk.name().to_string_lossy().to_string(),
-                total_space: disk.total_space(),
-                available_space: disk.available_space(),
-                file_system: disk.file_system().to_string_lossy().to_string(),
-                mount_point: disk.mount_point().to_string_lossy().to_string(),
-            }
+        .map(|disk| DiskInfo {
+            name: disk.name().to_string_lossy().to_string(),
+            total_space: disk.total_space(),
+            available_space: disk.available_space(),
+            file_system: disk.file_system().to_string_lossy().to_string(),
+            mount_point: disk.mount_point().to_string_lossy().to_string(),
         })
         .collect();
 
@@ -59,12 +55,10 @@ pub fn get_system_info() -> SystemInfo {
     let components = Components::new_with_refreshed_list();
     let components_info: Vec<ComponentInfo> = components
         .iter()
-        .map(|component| {
-            ComponentInfo {
-                label: component.label().to_string(),
-                temperature: component.temperature().unwrap_or(0.0),
-                max: component.max().unwrap_or(0.0),
-            }
+        .map(|component| ComponentInfo {
+            label: component.label().to_string(),
+            temperature: component.temperature().unwrap_or(0.0),
+            max: component.max().unwrap_or(0.0),
         })
         .collect();
 

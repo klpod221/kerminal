@@ -1,13 +1,13 @@
 // PostgreSQL database provider implementation
 // Note: This is a placeholder for future PostgreSQL support
 
+use crate::database::{
+    error::DatabaseResult,
+    models::{ssh_group::SSHGroup, ssh_profile::SSHProfile},
+    traits::{Database, DatabaseProviderType, SqlValue, ToSqlValue},
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use crate::database::{
-    traits::{Database, DatabaseProviderType, ToSqlValue, SqlValue},
-    error::DatabaseResult,
-    models::{ssh_profile::SSHProfile, ssh_group::SSHGroup},
-};
 
 /// PostgreSQL database provider (placeholder implementation)
 #[allow(dead_code)]
@@ -18,9 +18,7 @@ pub struct PostgreSQLProvider {
 #[allow(dead_code)]
 impl PostgreSQLProvider {
     pub fn new(connection_string: String) -> Self {
-        Self {
-            connection_string,
-        }
+        Self { connection_string }
     }
 }
 
@@ -46,7 +44,11 @@ impl Database for PostgreSQLProvider {
         unimplemented!("PostgreSQL provider not yet implemented")
     }
 
-    async fn fetch_raw(&self, _query: &str, _params: &[&dyn ToSqlValue]) -> DatabaseResult<Vec<HashMap<String, SqlValue>>> {
+    async fn fetch_raw(
+        &self,
+        _query: &str,
+        _params: &[&dyn ToSqlValue],
+    ) -> DatabaseResult<Vec<HashMap<String, SqlValue>>> {
         unimplemented!("PostgreSQL provider not yet implemented")
     }
 

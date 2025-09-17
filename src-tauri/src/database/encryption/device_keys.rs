@@ -1,12 +1,12 @@
-use std::collections::HashMap;
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::{DateTime, Utc};
+use std::collections::HashMap;
 
 use crate::database::{
+    config::MasterPasswordConfig,
     encryption::{AESEncryption, KeychainManager},
     error::{EncryptionError, EncryptionResult},
-    config::MasterPasswordConfig,
 };
 
 /// Device-specific encryption key manager
@@ -76,17 +76,24 @@ impl DeviceKeyManager {
 
         // Store in keychain if auto_unlock enabled
         if config.use_keychain && config.auto_unlock {
-            if let Err(e) = self.keychain.store_master_password(&self.current_device_id, password) {
+            if let Err(e) = self
+                .keychain
+                .store_master_password(&self.current_device_id, password)
+            {
                 eprintln!("Warning: Failed to store password in keychain: {}", e);
             }
 
-            if let Err(e) = self.keychain.store_device_key(&self.current_device_id, &device_key.encryption_key) {
+            if let Err(e) = self
+                .keychain
+                .store_device_key(&self.current_device_id, &device_key.encryption_key)
+            {
                 eprintln!("Warning: Failed to store device key in keychain: {}", e);
             }
         }
 
         // Store device key in memory
-        self.device_keys.insert(self.current_device_id.clone(), device_key);
+        self.device_keys
+            .insert(self.current_device_id.clone(), device_key);
 
         Ok(MasterPasswordEntry {
             device_id: self.current_device_id.clone(),
@@ -151,7 +158,7 @@ impl DeviceKeyManager {
         }
 
         // Fallback: try to get password from keychain
-    if let Some(_password) = self.keychain.get_master_password(device_id)? {
+        if let Some(_password) = self.keychain.get_master_password(device_id)? {
             // Need master password entry to verify - this should be loaded from database
             // For now, return false and require manual unlock
             return Ok(false);
@@ -177,7 +184,8 @@ impl DeviceKeyManager {
         let device_key = DeviceEncryptionKey {
             device_id: device_id.clone(),
             device_name,
-            encryption_key: self.derive_key_from_password(password, &password_entry.password_salt)?,
+            encryption_key: self
+                .derive_key_from_password(password, &password_entry.password_salt)?,
             key_salt: password_entry.password_salt,
             key_version: 1,
             created_at: Utc::now(),
@@ -208,7 +216,8 @@ impl DeviceKeyManager {
     ) -> EncryptionResult<Vec<u8>> {
         let device_id_str = device_id.unwrap_or(&self.current_device_id).to_string();
 
-        let device_key = self.get_device_key(&device_id_str)
+        let device_key = self
+            .get_device_key(&device_id_str)
             .ok_or_else(|| EncryptionError::UnknownDeviceKey(device_id_str.clone()))?;
 
         AESEncryption::encrypt(&device_key.encryption_key, data)
@@ -222,21 +231,29 @@ impl DeviceKeyManager {
     ) -> EncryptionResult<Vec<u8>> {
         let device_id_str = device_id.unwrap_or(&self.current_device_id).to_string();
 
-        let device_key = self.get_device_key(&device_id_str)
+        let device_key = self
+            .get_device_key(&device_id_str)
             .ok_or_else(|| EncryptionError::UnknownDeviceKey(device_id_str.clone()))?;
 
         AESEncryption::decrypt(&device_key.encryption_key, encrypted_data)
     }
 
     /// Try to decrypt với tất cả known device keys
-    pub fn try_decrypt_with_any_device(&mut self, encrypted_data: &[u8]) -> EncryptionResult<(Vec<u8>, String)> {
+    pub fn try_decrypt_with_any_device(
+        &mut self,
+        encrypted_data: &[u8],
+    ) -> EncryptionResult<(Vec<u8>, String)> {
         for (device_id, device_key) in &self.device_keys {
-            if let Ok(decrypted) = AESEncryption::decrypt(&device_key.encryption_key, encrypted_data) {
+            if let Ok(decrypted) =
+                AESEncryption::decrypt(&device_key.encryption_key, encrypted_data)
+            {
                 return Ok((decrypted, device_id.clone()));
             }
         }
 
-        Err(EncryptionError::DecryptionFailed("No device key could decrypt this data".to_string()))
+        Err(EncryptionError::DecryptionFailed(
+            "No device key could decrypt this data".to_string(),
+        ))
     }
 
     /// Change master password cho current device
@@ -267,7 +284,11 @@ impl DeviceKeyManager {
     }
 
     /// Derive device encryption key từ master password
-    fn derive_device_key(&self, password: &str, salt: &[u8; 32]) -> EncryptionResult<DeviceEncryptionKey> {
+    fn derive_device_key(
+        &self,
+        password: &str,
+        salt: &[u8; 32],
+    ) -> EncryptionResult<DeviceEncryptionKey> {
         let encryption_key = self.derive_key_from_password(password, salt)?;
 
         Ok(DeviceEncryptionKey {
@@ -282,7 +303,11 @@ impl DeviceKeyManager {
     }
 
     /// Derive encryption key từ password và salt
-    fn derive_key_from_password(&self, password: &str, salt: &[u8; 32]) -> EncryptionResult<[u8; 32]> {
+    fn derive_key_from_password(
+        &self,
+        password: &str,
+        salt: &[u8; 32],
+    ) -> EncryptionResult<[u8; 32]> {
         let mut key = [0u8; 32];
 
         // Use PBKDF2 để derive key
@@ -306,7 +331,9 @@ impl DeviceKeyManager {
             .map_err(|_| EncryptionError::MasterPasswordVerificationFailed)?;
 
         let argon2 = Argon2::default();
-        Ok(argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok())
+        Ok(argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok())
     }
 }
 
@@ -337,18 +364,18 @@ mod tests {
         let password = "test_password_123";
 
         // Create master password
-        let entry = manager.create_master_password(
-            "Test Device".to_string(),
-            password,
-            &config,
-        ).unwrap();
+        let entry = manager
+            .create_master_password("Test Device".to_string(), password, &config)
+            .unwrap();
 
         // Verify correct password
         let is_valid = manager.verify_master_password(password, &entry).unwrap();
         assert!(is_valid);
 
         // Verify incorrect password
-        let is_invalid = manager.verify_master_password("wrong_password", &entry).unwrap();
+        let is_invalid = manager
+            .verify_master_password("wrong_password", &entry)
+            .unwrap();
         assert!(!is_invalid);
     }
 
@@ -360,11 +387,9 @@ mod tests {
         let data = b"Hello, World!";
 
         // Create master password
-        let _master_password_entry = manager.create_master_password(
-            "Test Device".to_string(),
-            password,
-            &config,
-        ).unwrap();
+        let _master_password_entry = manager
+            .create_master_password("Test Device".to_string(), password, &config)
+            .unwrap();
 
         // Encrypt data
         let encrypted = manager.encrypt_with_device(data, None).unwrap();

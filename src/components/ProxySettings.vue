@@ -11,7 +11,11 @@
     <!-- Proxy Configuration -->
     <div v-if="enabled" class="space-y-4 pl-6 border-l-2 border-gray-600">
       <!-- Proxy Type -->
-      <Select v-model="proxyData.type" label="Proxy Type" @change="handleTypeChange">
+      <Select
+        v-model="proxyData.type"
+        label="Proxy Type"
+        @change="handleTypeChange"
+      >
         <option value="http">HTTP Proxy</option>
         <option value="socks4">SOCKS4</option>
         <option value="socks5">SOCKS5</option>
@@ -40,9 +44,15 @@
 
         <!-- Proxy Authentication (optional) -->
         <div v-if="proxyData.type !== 'socks4'" class="space-y-3">
-          <h4 class="text-sm font-medium text-gray-300">Proxy Authentication (Optional)</h4>
+          <h4 class="text-sm font-medium text-gray-300">
+            Proxy Authentication (Optional)
+          </h4>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input v-model="proxyData.username" label="Username" placeholder="proxy username" />
+            <Input
+              v-model="proxyData.username"
+              label="Username"
+              placeholder="proxy username"
+            />
             <Input
               v-model="proxyData.password"
               label="Password"
@@ -57,7 +67,9 @@
 
       <!-- Jump Host Settings -->
       <div v-if="proxyData.type === 'jump'" class="space-y-3">
-        <h4 class="text-sm font-medium text-gray-300">Jump Host Configuration</h4>
+        <h4 class="text-sm font-medium text-gray-300">
+          Jump Host Configuration
+        </h4>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
@@ -117,70 +129,70 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { Eye, EyeOff, Folder } from 'lucide-vue-next'
-import Input from './Input.vue'
-import Select from './Select.vue'
-import Checkbox from './Checkbox.vue'
-import type { SSHProxy } from '../types/ssh'
+import { ref, watch } from "vue";
+import { Eye, EyeOff, Folder } from "lucide-vue-next";
+import Input from "./Input.vue";
+import Select from "./Select.vue";
+import Checkbox from "./Checkbox.vue";
+import type { SSHProxy } from "../types/ssh";
 
 interface ProxySettingsProps {
-  proxy: SSHProxy | null
-  disabled?: boolean
+  proxy: SSHProxy | null;
+  disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<ProxySettingsProps>(), {
   proxy: null,
-  disabled: false
-})
+  disabled: false,
+});
 
 const emit = defineEmits<{
-  'update:proxy': [proxy: SSHProxy | null]
-}>()
+  "update:proxy": [proxy: SSHProxy | null];
+}>();
 
 // State
-const enabled = ref(false)
-const showProxyPassword = ref(false)
-const showJumpPassword = ref(false)
-const jumpAuthType = ref<'password' | 'key'>('password')
+const enabled = ref(false);
+const showProxyPassword = ref(false);
+const showJumpPassword = ref(false);
+const jumpAuthType = ref<"password" | "key">("password");
 
 // Proxy data
 const proxyData = ref<SSHProxy>({
-  type: 'http',
-  host: '',
+  type: "http",
+  host: "",
   port: 8080,
-  username: '',
-  password: '',
-  jumpHost: '',
+  username: "",
+  password: "",
+  jumpHost: "",
   jumpPort: 22,
-  jumpUser: '',
-  jumpKeyPath: '',
-  jumpPassword: ''
-})
+  jumpUser: "",
+  jumpKeyPath: "",
+  jumpPassword: "",
+});
 
 // Methods
 const handleToggleProxy = (value: boolean): void => {
-  enabled.value = value
-  emitProxy()
-}
+  enabled.value = value;
+  emitProxy();
+};
 
 const handleTypeChange = (): void => {
   // Reset type-specific fields
-  if (proxyData.value.type === 'jump') {
-    proxyData.value.host = ''
-    proxyData.value.port = 22
-    proxyData.value.username = ''
-    proxyData.value.password = ''
+  if (proxyData.value.type === "jump") {
+    proxyData.value.host = "";
+    proxyData.value.port = 22;
+    proxyData.value.username = "";
+    proxyData.value.password = "";
   } else {
-    proxyData.value.jumpHost = ''
-    proxyData.value.jumpPort = 22
-    proxyData.value.jumpUser = ''
-    proxyData.value.jumpKeyPath = ''
-    proxyData.value.jumpPassword = ''
+    proxyData.value.jumpHost = "";
+    proxyData.value.jumpPort = 22;
+    proxyData.value.jumpUser = "";
+    proxyData.value.jumpKeyPath = "";
+    proxyData.value.jumpPassword = "";
   }
 
-  emitProxy()
-}
+  emitProxy();
+};
 
 const selectJumpKeyFile = async (): Promise<void> => {
   try {
@@ -190,85 +202,88 @@ const selectJumpKeyFile = async (): Promise<void> => {
     //   emitProxy()
     // }
   } catch (error) {
-    console.error('Failed to select jump key file:', error)
+    console.error("Failed to select jump key file:", error);
   }
-}
+};
 
 const emitProxy = (): void => {
   if (!enabled.value) {
-    emit('update:proxy', null)
-    return
+    emit("update:proxy", null);
+    return;
   }
 
   // Build clean proxy object with only necessary properties
   const cleanProxy: SSHProxy = {
     type: proxyData.value.type,
-    host: proxyData.value.host || '',
-    port: proxyData.value.port || (proxyData.value.type === 'jump' ? 22 : 8080)
-  }
+    host: proxyData.value.host || "",
+    port: proxyData.value.port || (proxyData.value.type === "jump" ? 22 : 8080),
+  };
 
-  if (proxyData.value.type !== 'jump') {
+  if (proxyData.value.type !== "jump") {
     // Only add username and password if they have actual values
     if (proxyData.value.username?.trim()) {
-      cleanProxy.username = proxyData.value.username.trim()
+      cleanProxy.username = proxyData.value.username.trim();
     }
     if (proxyData.value.password?.trim()) {
-      cleanProxy.password = proxyData.value.password.trim()
+      cleanProxy.password = proxyData.value.password.trim();
     }
   } else {
     // Jump host specific properties
-    cleanProxy.jumpHost = proxyData.value.jumpHost?.trim() || ''
-    cleanProxy.jumpPort = proxyData.value.jumpPort || 22
-    cleanProxy.jumpUser = proxyData.value.jumpUser?.trim() || ''
+    cleanProxy.jumpHost = proxyData.value.jumpHost?.trim() || "";
+    cleanProxy.jumpPort = proxyData.value.jumpPort || 22;
+    cleanProxy.jumpUser = proxyData.value.jumpUser?.trim() || "";
 
     // Only add authentication method being used
-    if (jumpAuthType.value === 'key' && proxyData.value.jumpKeyPath?.trim()) {
-      cleanProxy.jumpKeyPath = proxyData.value.jumpKeyPath.trim()
-    } else if (jumpAuthType.value === 'password' && proxyData.value.jumpPassword?.trim()) {
-      cleanProxy.jumpPassword = proxyData.value.jumpPassword.trim()
+    if (jumpAuthType.value === "key" && proxyData.value.jumpKeyPath?.trim()) {
+      cleanProxy.jumpKeyPath = proxyData.value.jumpKeyPath.trim();
+    } else if (
+      jumpAuthType.value === "password" &&
+      proxyData.value.jumpPassword?.trim()
+    ) {
+      cleanProxy.jumpPassword = proxyData.value.jumpPassword.trim();
     }
   }
 
   // Create a new clean object to break any potential references
-  emit('update:proxy', JSON.parse(JSON.stringify(cleanProxy)))
-}
+  emit("update:proxy", JSON.parse(JSON.stringify(cleanProxy)));
+};
 
 // Watch for prop changes
 watch(
   () => props.proxy,
   (newProxy) => {
     if (newProxy) {
-      enabled.value = true
+      enabled.value = true;
       proxyData.value = {
-        type: newProxy.type || 'http',
-        host: newProxy.host || '',
-        port: newProxy.port || (newProxy.type === 'jump' ? 22 : 8080),
-        username: newProxy.username || '',
-        password: newProxy.password || '',
-        jumpHost: newProxy.jumpHost || '',
+        type: newProxy.type || "http",
+        host: newProxy.host || "",
+        port: newProxy.port || (newProxy.type === "jump" ? 22 : 8080),
+        username: newProxy.username || "",
+        password: newProxy.password || "",
+        jumpHost: newProxy.jumpHost || "",
         jumpPort: newProxy.jumpPort || 22,
-        jumpUser: newProxy.jumpUser || '',
-        jumpKeyPath: newProxy.jumpKeyPath || '',
-        jumpPassword: newProxy.jumpPassword || ''
-      }
+        jumpUser: newProxy.jumpUser || "",
+        jumpKeyPath: newProxy.jumpKeyPath || "",
+        jumpPassword: newProxy.jumpPassword || "",
+      };
 
       // Set jump auth type based on available data
-      if (newProxy.type === 'jump') {
-        jumpAuthType.value = newProxy.jumpKeyPath ? 'key' : 'password'
+      if (newProxy.type === "jump") {
+        jumpAuthType.value = newProxy.jumpKeyPath ? "key" : "password";
       }
     } else {
-      enabled.value = false
+      enabled.value = false;
     }
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 // Watch for proxy data changes
 watch(
   [proxyData, enabled, jumpAuthType],
   () => {
-    emitProxy()
+    emitProxy();
   },
-  { deep: true }
-)
+  { deep: true },
+);
 </script>

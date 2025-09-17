@@ -1,7 +1,7 @@
+use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::Utc;
 
 use crate::database::{
     config::MasterPasswordConfig,
@@ -130,10 +130,7 @@ impl DatabaseService {
     }
 
     /// Verify master password
-    pub async fn verify_master_password(
-        &self,
-        password: String
-    ) -> DatabaseResult<()> {
+    pub async fn verify_master_password(&self, password: String) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
         let mut entry = local_db
             .get_master_password_entry(&self.current_device.device_id)
@@ -152,7 +149,9 @@ impl DatabaseService {
             .map_err(DatabaseError::from)?;
 
         if !is_valid {
-            return Err(DatabaseError::AuthenticationFailed("Invalid master password".to_string()));
+            return Err(DatabaseError::AuthenticationFailed(
+                "Invalid master password".to_string(),
+            ));
         }
 
         // Update device last_seen_at on successful unlock
@@ -225,7 +224,10 @@ impl DatabaseService {
             local_db.save_master_password_entry(&entry).await?;
         }
 
-        println!("Master password config updated: auto_unlock={}", auto_unlock);
+        println!(
+            "Master password config updated: auto_unlock={}",
+            auto_unlock
+        );
 
         Ok(())
     }

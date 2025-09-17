@@ -1,8 +1,8 @@
+use crate::database::error::DatabaseResult;
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
-use crate::database::error::DatabaseResult;
 
 /// Core database trait that all providers must implement
 #[allow(dead_code)]
@@ -24,19 +24,45 @@ pub trait Database: Send + Sync {
     async fn execute_raw(&self, query: &str, params: &[&dyn ToSqlValue]) -> DatabaseResult<u64>;
 
     /// Fetch raw query results (for SQL databases)
-    async fn fetch_raw(&self, query: &str, params: &[&dyn ToSqlValue]) -> DatabaseResult<Vec<HashMap<String, SqlValue>>>;
+    async fn fetch_raw(
+        &self,
+        query: &str,
+        params: &[&dyn ToSqlValue],
+    ) -> DatabaseResult<Vec<HashMap<String, SqlValue>>>;
 
     /// Concrete methods for specific types (object-safe)
-    async fn save_ssh_profile(&self, model: &crate::database::models::ssh_profile::SSHProfile) -> DatabaseResult<()>;
-    async fn find_ssh_profile_by_id(&self, id: &str) -> DatabaseResult<Option<crate::database::models::ssh_profile::SSHProfile>>;
-    async fn find_all_ssh_profiles(&self) -> DatabaseResult<Vec<crate::database::models::ssh_profile::SSHProfile>>;
-    async fn update_ssh_profile(&self, model: &crate::database::models::ssh_profile::SSHProfile) -> DatabaseResult<()>;
+    async fn save_ssh_profile(
+        &self,
+        model: &crate::database::models::ssh_profile::SSHProfile,
+    ) -> DatabaseResult<()>;
+    async fn find_ssh_profile_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::database::models::ssh_profile::SSHProfile>>;
+    async fn find_all_ssh_profiles(
+        &self,
+    ) -> DatabaseResult<Vec<crate::database::models::ssh_profile::SSHProfile>>;
+    async fn update_ssh_profile(
+        &self,
+        model: &crate::database::models::ssh_profile::SSHProfile,
+    ) -> DatabaseResult<()>;
     async fn delete_ssh_profile(&self, id: &str) -> DatabaseResult<()>;
 
-    async fn save_ssh_group(&self, model: &crate::database::models::ssh_group::SSHGroup) -> DatabaseResult<()>;
-    async fn find_ssh_group_by_id(&self, id: &str) -> DatabaseResult<Option<crate::database::models::ssh_group::SSHGroup>>;
-    async fn find_all_ssh_groups(&self) -> DatabaseResult<Vec<crate::database::models::ssh_group::SSHGroup>>;
-    async fn update_ssh_group(&self, model: &crate::database::models::ssh_group::SSHGroup) -> DatabaseResult<()>;
+    async fn save_ssh_group(
+        &self,
+        model: &crate::database::models::ssh_group::SSHGroup,
+    ) -> DatabaseResult<()>;
+    async fn find_ssh_group_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::database::models::ssh_group::SSHGroup>>;
+    async fn find_all_ssh_groups(
+        &self,
+    ) -> DatabaseResult<Vec<crate::database::models::ssh_group::SSHGroup>>;
+    async fn update_ssh_group(
+        &self,
+        model: &crate::database::models::ssh_group::SSHGroup,
+    ) -> DatabaseResult<()>;
     async fn delete_ssh_group(&self, id: &str) -> DatabaseResult<()>;
 
     /// Transaction support
@@ -139,9 +165,17 @@ pub trait Encryptable: Send + Sync {
 #[allow(dead_code)]
 pub trait EncryptionService: Send + Sync {
     async fn encrypt(&self, data: &[u8], device_id: Option<&str>) -> DatabaseResult<Vec<u8>>;
-    async fn decrypt(&self, encrypted_data: &[u8], device_id: Option<&str>) -> DatabaseResult<Vec<u8>>;
+    async fn decrypt(
+        &self,
+        encrypted_data: &[u8],
+        device_id: Option<&str>,
+    ) -> DatabaseResult<Vec<u8>>;
     async fn encrypt_string(&self, data: &str, device_id: Option<&str>) -> DatabaseResult<String>;
-    async fn decrypt_string(&self, encrypted_data: &str, device_id: Option<&str>) -> DatabaseResult<String>;
+    async fn decrypt_string(
+        &self,
+        encrypted_data: &str,
+        device_id: Option<&str>,
+    ) -> DatabaseResult<String>;
 }
 
 /// Query criteria for filtering data
@@ -189,11 +223,11 @@ pub enum SqlValue {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SyncStatus {
-    Pending,    // Waiting to be synced
-    Syncing,    // Currently syncing
-    Synced,     // Successfully synced
-    Failed,     // Sync failed
-    Conflict,   // Conflict detected
+    Pending,  // Waiting to be synced
+    Syncing,  // Currently syncing
+    Synced,   // Successfully synced
+    Failed,   // Sync failed
+    Conflict, // Conflict detected
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

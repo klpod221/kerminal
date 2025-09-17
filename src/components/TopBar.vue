@@ -85,7 +85,6 @@
         @click="openOverlay('master-password-settings')"
       />
     </div>
-
   </div>
 </template>
 

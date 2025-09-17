@@ -45,8 +45,12 @@ impl TerminalManager {
     ) -> Result<CreateTerminalResponse, AppError> {
         let terminal_id = Uuid::new_v4().to_string();
 
-        let mut terminal =
-            TerminalFactory::create_terminal(terminal_id.clone(), request.config.clone(), Some(self.database_service.clone())).await?;
+        let mut terminal = TerminalFactory::create_terminal(
+            terminal_id.clone(),
+            request.config.clone(),
+            Some(self.database_service.clone()),
+        )
+        .await?;
 
         // Connect to the terminal
         terminal.connect().await?;

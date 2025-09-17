@@ -72,7 +72,7 @@ defineExpose({
  */
 const setTerminalRef = (
   terminalId: string,
-  el: ComponentPublicInstance | Element | null
+  el: ComponentPublicInstance | Element | null,
 ): void => {
   // Check if el is a Vue component instance (has $el property)
   if (el && typeof el === "object" && "$el" in el) {
@@ -88,19 +88,24 @@ const onTerminalReady = async (terminalId: string): Promise<void> => {
   // Try to restore buffer when terminal is ready
   const terminalInstance = terminalRefs.value[terminalId];
   if (terminalInstance && "restoreBuffer" in terminalInstance) {
-    const matchingTerminal = props.terminals.find(t => t.id === terminalId);
+    const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
     if (matchingTerminal && matchingTerminal.backendTerminalId) {
       try {
         await (terminalInstance as TerminalComponent).restoreBuffer();
       } catch (error) {
-        console.error(`Failed to restore buffer for terminal ${terminalId}:`, error);
+        console.error(
+          `Failed to restore buffer for terminal ${terminalId}:`,
+          error,
+        );
       }
     }
   }
 
   // Check if this terminal should be focused when ready (e.g., from split operation)
-  const matchingTerminal = props.terminals.find(t => t.id === terminalId);
-  const shouldFocusOnReady = matchingTerminal?.shouldFocusOnReady || terminalId === props.activeTerminalId;
+  const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
+  const shouldFocusOnReady =
+    matchingTerminal?.shouldFocusOnReady ||
+    terminalId === props.activeTerminalId;
 
   if (shouldFocusOnReady) {
     await nextTick();
@@ -127,7 +132,7 @@ watch(
       }, 100);
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 // Listen to terminal output from backend
@@ -138,7 +143,9 @@ onMounted(async () => {
       const backendTerminalId = terminalData.terminal_id;
 
       // Find the terminal instance that matches this backend terminal ID
-      const matchingTerminal = props.terminals.find(t => t.backendTerminalId === backendTerminalId);
+      const matchingTerminal = props.terminals.find(
+        (t) => t.backendTerminalId === backendTerminalId,
+      );
       if (!matchingTerminal) return;
 
       const terminalRef = terminalRefs.value[matchingTerminal.id];
@@ -157,13 +164,13 @@ onMounted(async () => {
       }, 100);
     };
 
-    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener("focus", handleWindowFocus);
 
     // Store the cleanup function
     const originalUnlisten = outputUnlisten;
     outputUnlisten = () => {
       if (originalUnlisten) originalUnlisten();
-      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener("focus", handleWindowFocus);
     };
   } catch (error) {
     console.error("Failed to listen to terminal output:", error);
@@ -177,8 +184,8 @@ onBeforeUnmount(() => {
   }
 
   // Cleanup local buffers for terminals that are being unmounted
-  Object.keys(terminalRefs.value).forEach(terminalId => {
-    const matchingTerminal = props.terminals.find(t => t.id === terminalId);
+  Object.keys(terminalRefs.value).forEach((terminalId) => {
+    const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
     if (matchingTerminal && matchingTerminal.backendTerminalId) {
       bufferManager.clearLocalBuffer(matchingTerminal.backendTerminalId);
     }

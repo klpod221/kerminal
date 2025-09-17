@@ -116,7 +116,8 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } = useOverlay();
+const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } =
+  useOverlay();
 
 const widthClass = computed(() => {
   const widthMap = {
@@ -157,7 +158,7 @@ const handleKeydown = (event: KeyboardEvent): void => {
 onMounted(() => {
   registerOverlay({
     id: props.id,
-    type: 'drawer',
+    type: "drawer",
     parentId: props.parentId || null,
     title: props.title,
     icon: props.icon,
@@ -167,8 +168,8 @@ onMounted(() => {
       iconBackground: props.iconBackground,
       iconColor: props.iconColor,
       closeOnOverlay: props.closeOnOverlay,
-      closeOnEsc: props.closeOnEsc
-    }
+      closeOnEsc: props.closeOnEsc,
+    },
   });
 });
 
@@ -187,7 +188,7 @@ watch(
     } else if (!newVisible && isVisible.value) {
       closeOverlay(props.id);
     }
-  }
+  },
 );
 
 // Watch for drawer visibility to manage keyboard event listener

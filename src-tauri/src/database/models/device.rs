@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Device information cho tracking và encryption
@@ -12,7 +12,7 @@ pub struct Device {
     pub app_version: String,
     pub created_at: DateTime<Utc>,
     pub last_seen: DateTime<Utc>,
-    pub is_current: bool,  // True for current device
+    pub is_current: bool, // True for current device
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,10 +26,10 @@ pub enum DeviceType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OsInfo {
-    pub os_type: String,        // "linux", "windows", "macos", etc.
-    pub os_version: String,     // OS version
-    pub arch: String,           // "x86_64", "arm64", etc.
-    pub hostname: String,       // System hostname
+    pub os_type: String,    // "linux", "windows", "macos", etc.
+    pub os_version: String, // OS version
+    pub arch: String,       // "x86_64", "arm64", etc.
+    pub hostname: String,   // System hostname
 }
 
 impl Device {
@@ -93,7 +93,7 @@ impl Device {
                 } else {
                     DeviceType::Desktop
                 }
-            },
+            }
             "windows" | "macos" => DeviceType::Desktop,
             _ => DeviceType::Unknown,
         }
@@ -105,9 +105,7 @@ impl Device {
             os_type: std::env::consts::OS.to_string(),
             os_version: Self::get_os_version(),
             arch: std::env::consts::ARCH.to_string(),
-            hostname: gethostname::gethostname()
-                .to_string_lossy()
-                .to_string(),
+            hostname: gethostname::gethostname().to_string_lossy().to_string(),
         }
     }
 
@@ -123,10 +121,14 @@ impl Device {
                         content
                             .lines()
                             .find(|line| line.starts_with("VERSION="))
-                            .map(|line| line.trim_start_matches("VERSION=").trim_matches('"').to_string())
+                            .map(|line| {
+                                line.trim_start_matches("VERSION=")
+                                    .trim_matches('"')
+                                    .to_string()
+                            })
                     })
                     .unwrap_or_else(|| "Unknown".to_string())
-            },
+            }
             _ => "Unknown".to_string(),
         }
     }
@@ -142,10 +144,9 @@ impl Device {
 
     /// Get short device info
     pub fn short_info(&self) -> String {
-        format!("{} - {} {}",
-            self.device_name,
-            self.os_info.os_type,
-            self.os_info.arch
+        format!(
+            "{} - {} {}",
+            self.device_name, self.os_info.os_type, self.os_info.arch
         )
     }
 }

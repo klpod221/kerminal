@@ -1,6 +1,6 @@
+use crate::database::error::DatabaseResult;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::database::error::DatabaseResult;
 
 /// Database configuration for different providers
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,7 +32,7 @@ pub enum ConnectionConfig {
         host: String,
         port: u16,
         username: String,
-        password: String,        // Will be encrypted
+        password: String, // Will be encrypted
         database: String,
         ssl_mode: Option<String>,
     },
@@ -40,12 +40,12 @@ pub enum ConnectionConfig {
         host: String,
         port: u16,
         username: String,
-        password: String,        // Will be encrypted
+        password: String, // Will be encrypted
         database: String,
         ssl_mode: Option<String>,
     },
     MongoDB {
-        connection_string: String,  // Will be encrypted
+        connection_string: String, // Will be encrypted
         database: String,
     },
 }
@@ -57,7 +57,7 @@ pub struct SyncSettings {
     pub auto_sync: bool,
     pub sync_interval_minutes: u32,
     pub conflict_resolution: ConflictResolution,
-    pub enabled_models: Vec<String>,  // Which models to sync
+    pub enabled_models: Vec<String>, // Which models to sync
 }
 
 /// Sync strategies
@@ -66,7 +66,7 @@ pub enum SyncStrategy {
     LastWriteWins,
     FirstWriteWins,
     ManualResolve,
-    DevicePriority(Vec<String>),  // Ordered list of device IDs
+    DevicePriority(Vec<String>), // Ordered list of device IDs
 }
 
 /// Conflict resolution strategies
@@ -98,7 +98,7 @@ impl DatabaseConfig {
             connection: ConnectionConfig::SQLite { file_path },
             sync_settings: SyncSettings {
                 strategy: SyncStrategy::LastWriteWins,
-                auto_sync: false,  // SQLite is local only
+                auto_sync: false, // SQLite is local only
                 sync_interval_minutes: 0,
                 conflict_resolution: ConflictResolution::UseLocal,
                 enabled_models: vec![],
@@ -160,11 +160,7 @@ impl DatabaseConfig {
     }
 
     /// Create a new MongoDB configuration
-    pub fn new_mongodb(
-        name: String,
-        connection_string: String,
-        database: String,
-    ) -> Self {
+    pub fn new_mongodb(name: String, connection_string: String, database: String) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             name,
@@ -181,22 +177,44 @@ impl DatabaseConfig {
     /// Get connection string for SQL databases
     pub fn get_connection_string(&self) -> DatabaseResult<String> {
         match &self.connection {
-            ConnectionConfig::SQLite { file_path } => {
-                Ok(format!("sqlite:{}", file_path))
-            },
-            ConnectionConfig::MySQL { host, port, username, password, database, ssl_mode } => {
-                let ssl = ssl_mode.as_ref().map(|s| format!("?sslmode={}", s)).unwrap_or_default();
-                Ok(format!("mysql://{}:{}@{}:{}/{}{}",
-                    username, password, host, port, database, ssl))
-            },
-            ConnectionConfig::PostgreSQL { host, port, username, password, database, ssl_mode } => {
-                let ssl = ssl_mode.as_ref().map(|s| format!("?sslmode={}", s)).unwrap_or_default();
-                Ok(format!("postgres://{}:{}@{}:{}/{}{}",
-                    username, password, host, port, database, ssl))
-            },
-            ConnectionConfig::MongoDB { connection_string, .. } => {
-                Ok(connection_string.clone())
-            },
+            ConnectionConfig::SQLite { file_path } => Ok(format!("sqlite:{}", file_path)),
+            ConnectionConfig::MySQL {
+                host,
+                port,
+                username,
+                password,
+                database,
+                ssl_mode,
+            } => {
+                let ssl = ssl_mode
+                    .as_ref()
+                    .map(|s| format!("?sslmode={}", s))
+                    .unwrap_or_default();
+                Ok(format!(
+                    "mysql://{}:{}@{}:{}/{}{}",
+                    username, password, host, port, database, ssl
+                ))
+            }
+            ConnectionConfig::PostgreSQL {
+                host,
+                port,
+                username,
+                password,
+                database,
+                ssl_mode,
+            } => {
+                let ssl = ssl_mode
+                    .as_ref()
+                    .map(|s| format!("?sslmode={}", s))
+                    .unwrap_or_default();
+                Ok(format!(
+                    "postgres://{}:{}@{}:{}/{}{}",
+                    username, password, host, port, database, ssl
+                ))
+            }
+            ConnectionConfig::MongoDB {
+                connection_string, ..
+            } => Ok(connection_string.clone()),
         }
     }
 }
@@ -208,10 +226,7 @@ impl Default for SyncSettings {
             auto_sync: true,
             sync_interval_minutes: 15,
             conflict_resolution: ConflictResolution::MergeFields,
-            enabled_models: vec![
-                "SSHProfile".to_string(),
-                "SSHGroup".to_string(),
-            ],
+            enabled_models: vec!["SSHProfile".to_string(), "SSHGroup".to_string()],
         }
     }
 }

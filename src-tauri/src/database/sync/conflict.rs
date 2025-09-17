@@ -1,7 +1,7 @@
 use crate::database::error::DatabaseResult;
-use crate::database::sync::strategies::{SyncStrategy, SyncResolution, HasBaseModel};
+use crate::database::sync::strategies::{HasBaseModel, SyncResolution, SyncStrategy};
 use chrono::{DateTime, Utc};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 #[allow(dead_code)]
@@ -63,7 +63,8 @@ impl ConflictResolver {
         if local_base.version != remote_base.version {
             Some(ConflictType::VersionConflict)
         } else if local_base.device_id != remote_base.device_id
-                  && local_base.updated_at != remote_base.updated_at {
+            && local_base.updated_at != remote_base.updated_at
+        {
             Some(ConflictType::DataConflict)
         } else {
             None

@@ -1,7 +1,7 @@
-pub mod manager;
 pub mod conflict;
-pub mod strategies;
+pub mod manager;
 pub mod scheduler;
+pub mod strategies;
 
 // Re-exports
 // pub use manager::SyncManager;

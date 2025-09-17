@@ -117,7 +117,8 @@ const props = withDefaults(defineProps<ModalProps>(), {
 
 const emit = defineEmits(["close", "update:visible"]);
 
-const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } = useOverlay();
+const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } =
+  useOverlay();
 
 /**
  * Compute size class based on size prop
@@ -167,7 +168,7 @@ function handleKeydown(event: KeyboardEvent): void {
 onMounted(() => {
   registerOverlay({
     id: props.id,
-    type: 'modal',
+    type: "modal",
     parentId: props.parentId || null,
     title: props.title,
     icon: props.icon,
@@ -176,8 +177,8 @@ onMounted(() => {
       iconBackground: props.iconBackground,
       iconColor: props.iconColor,
       showCloseButton: props.showCloseButton,
-      closeOnBackdrop: props.closeOnBackdrop
-    }
+      closeOnBackdrop: props.closeOnBackdrop,
+    },
   });
 });
 
@@ -195,7 +196,7 @@ watch(
     } else if (!newVisible && isVisible.value) {
       closeOverlay(props.id);
     }
-  }
+  },
 );
 
 // Watch for modal visibility to control body scroll

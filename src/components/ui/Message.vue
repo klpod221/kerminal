@@ -23,11 +23,7 @@
           <!-- Icon -->
           <div class="flex-shrink-0">
             <div class="rounded-lg p-2" :class="iconBackgroundClass">
-              <component
-                :is="iconComponent"
-                :size="16"
-                :class="iconClass"
-              />
+              <component :is="iconComponent" :size="16" :class="iconClass" />
             </div>
           </div>
 

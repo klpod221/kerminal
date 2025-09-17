@@ -197,7 +197,7 @@ interface TabBarEmits {
     fromPanelId: string,
     toPanelId: string,
     tabId: string,
-    targetTabId?: string
+    targetTabId?: string,
   ];
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
@@ -224,7 +224,7 @@ const dragEnterCounter = ref(0);
 // Scroll state
 const canScrollLeft = computed(() => scrollOffset.value < 0);
 const canScrollRight = computed(
-  () => scrollOffset.value > -maxScrollOffset.value
+  () => scrollOffset.value > -maxScrollOffset.value,
 );
 const showScrollButtons = computed(() => maxScrollOffset.value > 0);
 
@@ -281,7 +281,7 @@ const scrollRight = (): void => {
   const scrollAmount = Math.min(200, remainingScroll);
   scrollOffset.value = Math.max(
     -maxScrollOffset.value,
-    scrollOffset.value - scrollAmount
+    scrollOffset.value - scrollAmount,
   );
 };
 
@@ -333,7 +333,7 @@ const scrollActiveTabIntoView = (): void => {
   // Ensure scroll offset stays within bounds
   scrollOffset.value = Math.max(
     -maxScrollOffset.value,
-    Math.min(0, scrollOffset.value)
+    Math.min(0, scrollOffset.value),
   );
 };
 
@@ -355,7 +355,7 @@ watch(
     nextTick(() => {
       debouncedScrollIntoView();
     });
-  }
+  },
 );
 
 // Watch for tab count changes to update scroll limits (with debounce)
@@ -375,7 +375,7 @@ watch(
     nextTick(() => {
       debouncedUpdateLimits();
     });
-  }
+  },
 );
 
 // Update scroll limits when window resizes

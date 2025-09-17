@@ -1,9 +1,16 @@
 <template>
   <div class="space-y-0.5">
     <!-- Label -->
-    <label v-if="label" :for="pickerId" class="block text-sm font-medium text-gray-300">
+    <label
+      v-if="label"
+      :for="pickerId"
+      class="block text-sm font-medium text-gray-300"
+    >
       {{ label }}
-      <span v-if="props.rules && props.rules.includes('required')" class="text-red-400">
+      <span
+        v-if="props.rules && props.rules.includes('required')"
+        class="text-red-400"
+      >
         *
       </span>
     </label>
@@ -11,7 +18,13 @@
     <!-- Color input wrapper -->
     <div class="relative flex items-center gap-2">
       <!-- Color input -->
-      <input :id="pickerId" ref="pickerRef" v-model="colorValue" type="color" :disabled="disabled" :readonly="readonly"
+      <input
+        :id="pickerId"
+        ref="pickerRef"
+        v-model="colorValue"
+        type="color"
+        :disabled="disabled"
+        :readonly="readonly"
         :class="[
           'block w-10 h-10 p-0 border rounded-lg cursor-pointer transition-all duration-200',
           'focus:outline-none',
@@ -19,28 +32,46 @@
           'readonly:bg-gray-700 readonly:cursor-default',
           sizeClasses,
           stateClasses,
-        ]" @blur="handleBlur" @focus="handleFocus" @input="handleColorInput" />
+        ]"
+        @blur="handleBlur"
+        @focus="handleFocus"
+        @input="handleColorInput"
+      />
 
       <!-- Hex input -->
-      <input v-model="hexInput" type="text" :disabled="disabled" :readonly="readonly" placeholder="#RRGGBB"
-        maxlength="7" :class="[
+      <input
+        v-model="hexInput"
+        type="text"
+        :disabled="disabled"
+        :readonly="readonly"
+        placeholder="#RRGGBB"
+        maxlength="7"
+        :class="[
           'block flex-1 rounded-lg border transition-all duration-200',
           'focus:outline-none',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'readonly:bg-gray-700 readonly:cursor-default',
           sizeClasses,
           hexStateClasses,
-        ]" @input="handleHexInput" />
+        ]"
+        @input="handleHexInput"
+      />
     </div>
 
     <div v-if="helper" class="min-h-[1.25rem]">
       <!-- Helper text (only show if no error) -->
-      <p v-if="helperText && !errorMessage && !localError" class="text-xs text-gray-400">
+      <p
+        v-if="helperText && !errorMessage && !localError"
+        class="text-xs text-gray-400"
+      >
         {{ helperText }}
       </p>
 
       <!-- Error message -->
-      <p v-if="errorMessage || localError" class="text-xs text-red-400 flex items-center">
+      <p
+        v-if="errorMessage || localError"
+        class="text-xs text-red-400 flex items-center"
+      >
         <TriangleAlert class="mr-1" :size="12" />
         {{ errorMessage || localError }}
       </p>

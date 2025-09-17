@@ -1,11 +1,11 @@
-use crate::models::terminal::{
-    CreateTerminalRequest, CreateTerminalResponse, ResizeTerminalRequest,
-    TerminalInfo, WriteTerminalRequest, TerminalConfig, TerminalType, LocalConfig
-};
-use crate::services::terminal::TerminalManager;
 use crate::database::service::DatabaseService;
 use crate::error::AppError;
-use tauri::{State, AppHandle};
+use crate::models::terminal::{
+    CreateTerminalRequest, CreateTerminalResponse, LocalConfig, ResizeTerminalRequest,
+    TerminalConfig, TerminalInfo, TerminalType, WriteTerminalRequest,
+};
+use crate::services::terminal::TerminalManager;
+use tauri::{AppHandle, State};
 
 /// Create a new local terminal
 #[tauri::command]
@@ -27,7 +27,9 @@ pub async fn create_terminal(
     };
 
     let request = CreateTerminalRequest { config, title };
-    terminal_manager.create_terminal(request, Some(app_handle)).await
+    terminal_manager
+        .create_terminal(request, Some(app_handle))
+        .await
 }
 
 /// Create a new SSH terminal using profile ID
@@ -56,7 +58,9 @@ pub async fn create_ssh_terminal(
         title: Some(ssh_profile.display_name()),
     };
 
-    terminal_manager.create_terminal(request, Some(app_handle)).await
+    terminal_manager
+        .create_terminal(request, Some(app_handle))
+        .await
 }
 
 /// Write data to a terminal

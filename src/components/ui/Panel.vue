@@ -63,7 +63,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import {
+  computed,
+  ref,
+  watch,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+} from "vue";
 import TabBar from "./TabBar.vue";
 import TerminalManager from "./TerminalManager.vue";
 import DropZones from "./DropZones.vue";
@@ -91,22 +98,22 @@ interface PanelEmits {
     fromPanelId: string,
     toPanelId: string,
     tabId: string,
-    targetTabId?: string
+    targetTabId?: string,
   ];
   terminalReady: [terminalId: string];
   setActivePanel: [panelId: string];
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
   splitPanelByDrop: [
-    direction: 'top' | 'bottom' | 'left' | 'right',
+    direction: "top" | "bottom" | "left" | "right",
     draggedTab: Tab,
     sourcePanelId: string,
-    targetPanelId: string
+    targetPanelId: string,
   ];
   cloneTabAndSplit: [
-    direction: 'top' | 'bottom' | 'left' | 'right',
+    direction: "top" | "bottom" | "left" | "right",
     tabId: string,
-    panelId: string
+    panelId: string,
   ];
 }
 
@@ -140,7 +147,7 @@ watch(
       }, 50);
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 const selectTab = (panelId: string, tabId: string): void => {
@@ -173,7 +180,7 @@ const moveTab = (
   fromPanelId: string,
   toPanelId: string,
   tabId: string,
-  targetTabId?: string
+  targetTabId?: string,
 ): void => {
   emit("moveTab", fromPanelId, toPanelId, tabId, targetTabId);
 };
@@ -204,7 +211,7 @@ const handlePanelClick = (): void => {
 const onDragOver = (event: DragEvent): void => {
   event.preventDefault();
   if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.dropEffect = "move";
   }
 };
 
@@ -216,7 +223,10 @@ const onDragEnter = (event: DragEvent): void => {
   event.preventDefault();
 
   // Check if dragging a tab
-  if (event.dataTransfer && event.dataTransfer.types.includes('application/json')) {
+  if (
+    event.dataTransfer &&
+    event.dataTransfer.types.includes("application/json")
+  ) {
     // Clear any pending hide timeout
     if (hideDropZonesTimeout) {
       clearTimeout(hideDropZonesTimeout);
@@ -242,12 +252,11 @@ const onDragLeave = (event: DragEvent): void => {
   const rect = panelElement.getBoundingClientRect();
 
   // Check if actually leaving the panel
-  const isLeavingPanel = (
+  const isLeavingPanel =
     event.clientX < rect.left ||
     event.clientX > rect.right ||
     event.clientY < rect.top ||
-    event.clientY > rect.bottom
-  );
+    event.clientY > rect.bottom;
 
   if (isLeavingPanel) {
     dragEnterCounter.value--;
@@ -290,19 +299,25 @@ const resetDropZones = (): void => {
  * @param {string} sourcePanelId - The source panel ID
  */
 const onSplitPanel = (
-  direction: 'top' | 'bottom' | 'left' | 'right',
+  direction: "top" | "bottom" | "left" | "right",
   draggedTab: Tab,
-  sourcePanelId: string
+  sourcePanelId: string,
 ): void => {
   resetDropZones();
 
   // Check if dragging from same panel or different panel
   if (sourcePanelId === props.panel.id) {
     // Same panel: Clone the tab and split (like clicking split button)
-    emit('cloneTabAndSplit', direction, draggedTab.id, props.panel.id);
+    emit("cloneTabAndSplit", direction, draggedTab.id, props.panel.id);
   } else {
     // Different panel: Move the tab and split
-    emit('splitPanelByDrop', direction, draggedTab, sourcePanelId, props.panel.id);
+    emit(
+      "splitPanelByDrop",
+      direction,
+      draggedTab,
+      sourcePanelId,
+      props.panel.id,
+    );
   }
 };
 
@@ -314,7 +329,7 @@ const onSplitPanel = (
 const onMoveTab = (draggedTab: Tab, sourcePanelId: string): void => {
   resetDropZones();
   // Move tab to this panel (at the end)
-  emit('moveTab', sourcePanelId, props.panel.id, draggedTab.id);
+  emit("moveTab", sourcePanelId, props.panel.id, draggedTab.id);
 };
 
 /**
@@ -331,20 +346,20 @@ const onGlobalDragEnd = (): void => {
  * Handle ESC key to reset drop zones
  */
 const onEscapeKey = (event: KeyboardEvent): void => {
-  if (event.key === 'Escape') {
+  if (event.key === "Escape") {
     resetDropZones();
   }
 };
 
 // Setup global drag end listener
 onMounted(() => {
-  document.addEventListener('dragend', onGlobalDragEnd);
-  document.addEventListener('keydown', onEscapeKey);
+  document.addEventListener("dragend", onGlobalDragEnd);
+  document.addEventListener("keydown", onEscapeKey);
 });
 
 onBeforeUnmount(() => {
-  document.removeEventListener('dragend', onGlobalDragEnd);
-  document.removeEventListener('keydown', onEscapeKey);
+  document.removeEventListener("dragend", onGlobalDragEnd);
+  document.removeEventListener("keydown", onEscapeKey);
   if (hideDropZonesTimeout) {
     clearTimeout(hideDropZonesTimeout);
   }

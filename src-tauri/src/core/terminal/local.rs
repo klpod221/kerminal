@@ -1,12 +1,12 @@
-use crate::error::AppError;
-use crate::models::terminal::{LocalConfig, TerminalConfig, TerminalState, TerminalExited};
 use crate::core::title_detector::TitleDetector;
+use crate::error::AppError;
+use crate::models::terminal::{LocalConfig, TerminalConfig, TerminalExited, TerminalState};
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize};
 use std::io::{Read, Write};
 use std::sync::Arc;
-use tokio::sync::{mpsc, Mutex};
 use std::thread;
 use std::time::Duration;
+use tokio::sync::{mpsc, Mutex};
 
 /// Local terminal implementation using portable-pty
 pub struct LocalTerminal {
@@ -42,15 +42,20 @@ impl LocalTerminal {
         self.state = TerminalState::Connecting;
 
         let pty_system = portable_pty::native_pty_system();
-        let pty_pair = pty_system.openpty(PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 0,
-            pixel_height: 0,
-        }).map_err(|e| AppError::PtyError(e.to_string()))?;
+        let pty_pair = pty_system
+            .openpty(PtySize {
+                rows: 24,
+                cols: 80,
+                pixel_width: 0,
+                pixel_height: 0,
+            })
+            .map_err(|e| AppError::PtyError(e.to_string()))?;
 
         // Determine shell to use
-        let shell = self.local_config.shell.clone()
+        let shell = self
+            .local_config
+            .shell
+            .clone()
             .or_else(|| std::env::var("SHELL").ok())
             .unwrap_or_else(|| {
                 if cfg!(windows) {
@@ -74,8 +79,14 @@ impl LocalTerminal {
             }
         }
 
-        let child = pty_pair.slave.spawn_command(cmd).map_err(|e| AppError::PtyError(e.to_string()))?;
-        let writer = pty_pair.master.take_writer().map_err(|e| AppError::PtyError(e.to_string()))?;
+        let child = pty_pair
+            .slave
+            .spawn_command(cmd)
+            .map_err(|e| AppError::PtyError(e.to_string()))?;
+        let writer = pty_pair
+            .master
+            .take_writer()
+            .map_err(|e| AppError::PtyError(e.to_string()))?;
 
         self.writer = Some(Arc::new(Mutex::new(writer)));
         self.pty_pair = Some((pty_pair.master, child));
@@ -116,7 +127,9 @@ impl LocalTerminal {
             writer_guard.flush()?;
             Ok(())
         } else {
-            Err(AppError::TerminalError("Terminal not connected".to_string()))
+            Err(AppError::TerminalError(
+                "Terminal not connected".to_string(),
+            ))
         }
     }
 
@@ -129,10 +142,14 @@ impl LocalTerminal {
                 pixel_width: 0,
                 pixel_height: 0,
             };
-            pty_master.resize(size).map_err(|e| AppError::PtyError(e.to_string()))?;
+            pty_master
+                .resize(size)
+                .map_err(|e| AppError::PtyError(e.to_string()))?;
             Ok(())
         } else {
-            Err(AppError::TerminalError("Terminal not connected".to_string()))
+            Err(AppError::TerminalError(
+                "Terminal not connected".to_string(),
+            ))
         }
     }
 
@@ -157,9 +174,16 @@ impl LocalTerminal {
     }
 
     /// Start reading from terminal and send output to the provided sender
-    pub async fn start_read_loop(&mut self, sender: mpsc::UnboundedSender<Vec<u8>>, title_sender: Option<mpsc::UnboundedSender<String>>, exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>) -> Result<(), AppError> {
+    pub async fn start_read_loop(
+        &mut self,
+        sender: mpsc::UnboundedSender<Vec<u8>>,
+        title_sender: Option<mpsc::UnboundedSender<String>>,
+        exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>,
+    ) -> Result<(), AppError> {
         if let Some((pty_master, _)) = &mut self.pty_pair {
-            let mut reader = pty_master.try_clone_reader().map_err(|e| AppError::PtyError(e.to_string()))?;
+            let mut reader = pty_master
+                .try_clone_reader()
+                .map_err(|e| AppError::PtyError(e.to_string()))?;
 
             // Move title detector to the spawned task
             let mut title_detector = std::mem::take(&mut self.title_detector);
@@ -179,7 +203,10 @@ impl LocalTerminal {
                                 };
                                 if let Err(_) = exit_sender.send(exit_event) {
                                     // Channel closed, receiver has been dropped
-                                    eprintln!("Exit event channel closed for terminal {}", terminal_id);
+                                    eprintln!(
+                                        "Exit event channel closed for terminal {}",
+                                        terminal_id
+                                    );
                                 }
                             }
                             break;
@@ -221,7 +248,9 @@ impl LocalTerminal {
 
             Ok(())
         } else {
-            Err(AppError::TerminalError("Terminal not connected".to_string()))
+            Err(AppError::TerminalError(
+                "Terminal not connected".to_string(),
+            ))
         }
     }
 }

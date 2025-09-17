@@ -175,7 +175,7 @@ watch(
         fitAndFocus();
       });
     }
-  }
+  },
 );
 
 // Expose methods to parent component
@@ -217,7 +217,7 @@ onMounted(async () => {
     new WebLinksAddon((event, _uri) => {
       event.preventDefault();
       // window.api.send('open-external-link', uri)
-    })
+    }),
   );
 
   // 4. Search Addon (enable text search)
@@ -270,6 +270,7 @@ onBeforeUnmount(() => {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -286,6 +287,7 @@ onBeforeUnmount(() => {
   50% {
     opacity: 1;
   }
+
   51%,
   100% {
     opacity: 0;
