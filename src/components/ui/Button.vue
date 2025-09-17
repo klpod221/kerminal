@@ -114,7 +114,7 @@ const variantClasses = computed(() => {
     case "warning":
       return "bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 text-white shadow-sm";
     case "danger":
-      return "bg-red-600 hover:bg-red-700 focus:ring-red-500 text-white shadow-sm";
+      return "bg-red-600 hover:bg-red-700 text-white shadow-sm";
     case "ghost":
       return "text-gray-400 hover:text-white hover:bg-gray-700/50 focus:ring-gray-500";
     case "outline":

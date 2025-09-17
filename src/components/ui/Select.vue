@@ -33,14 +33,15 @@
         :autocomplete="autocomplete"
         :class="[
           'block w-full rounded-lg border transition-all duration-200',
-          'focus:outline-none',
+          'focus:outline-none appearance-none',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'readonly:bg-gray-700 readonly:cursor-default',
           sizeClasses,
           stateClasses,
           leftIcon ? 'pl-10' : 'pl-3',
-          rightIcon ? 'pr-10' : 'pr-3',
+          rightIcon ? 'pr-10' : 'pr-8',
         ]"
+        :style="selectStyle"
         @blur="handleBlur"
         @focus="handleFocus"
         @change="handleChange"
@@ -51,6 +52,16 @@
           {{ placeholder || "Select an option" }}
         </option>
 
+        <!-- Options from prop -->
+        <option
+          v-for="option in options"
+          :key="option.value"
+          :value="option.value"
+        >
+          {{ option.label }}
+        </option>
+
+        <!-- Slot for custom options -->
         <slot></slot>
       </select>
 
@@ -100,6 +111,7 @@ interface SelectProps {
   modelValue?: string | number;
   label?: string;
   placeholder?: string;
+  options?: Array<{ value: string | number; label: string }>;
   rules?: string;
   helperText?: string;
   errorMessage?: string;
@@ -117,6 +129,7 @@ const props = withDefaults(defineProps<SelectProps>(), {
   disabled: false,
   readonly: false,
   helper: true,
+  options: () => [],
 });
 
 const emit = defineEmits([
@@ -169,19 +182,26 @@ const sizeClasses = computed(() => {
 
 const stateClasses = computed(() => {
   if (props.errorMessage) {
-    return "border-red-500 bg-red-500/5 text-white focus:border-red-400 focus:ring-red-500";
+    return "border-red-500 bg-red-500/5 text-white focus:border-red-400 !bg-red-500/5";
   }
 
   if (props.disabled) {
-    return "border-gray-600 bg-gray-800 text-gray-400";
+    return "border-gray-600 bg-gray-800 text-gray-400 !bg-gray-800";
   }
 
   if (props.readonly) {
-    return "border-gray-600 bg-gray-700 text-gray-300";
+    return "border-gray-600 bg-gray-700 text-gray-300 !bg-gray-700";
   }
 
-  return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500";
+  return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500 !bg-gray-800";
 });
+
+const selectStyle = computed(() => ({
+  backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 0.5rem center',
+  backgroundSize: '1rem',
+}));
 
 // Methods
 const validate = (): string => {
@@ -243,3 +263,20 @@ defineExpose({
   select: () => inputRef.value?.select(),
 });
 </script>
+
+<style scoped>
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+select::-ms-expand {
+  display: none;
+}
+
+/* Ensure background color is applied */
+select {
+  background-color: inherit !important;
+}
+</style>

@@ -37,6 +37,7 @@ pub struct MasterPasswordEntry {
     pub password_salt: [u8; 32],
     pub verification_hash: String,
     pub auto_unlock: bool,
+    pub auto_lock_timeout: Option<u32>, // in minutes
     pub created_at: DateTime<Utc>,
     pub last_verified_at: Option<DateTime<Utc>>,
 }
@@ -101,6 +102,7 @@ impl DeviceKeyManager {
             password_salt: salt_bytes,
             verification_hash: password_hash,
             auto_unlock: config.auto_unlock && config.use_keychain,
+            auto_lock_timeout: config.session_timeout_minutes,
             created_at: Utc::now(),
             last_verified_at: Some(Utc::now()),
         })

@@ -29,7 +29,6 @@ export const useAuthStore = defineStore("auth", () => {
 
   const securitySettings = ref<SecuritySettings>({
     autoLockTimeout: 0,
-    useBiometrics: false,
   });
 
   const currentDevice = ref<CurrentDevice | null>({
@@ -66,7 +65,13 @@ export const useAuthStore = defineStore("auth", () => {
   const setupMasterPassword = async (
     setup: MasterPasswordSetup,
   ): Promise<boolean> => {
-    await masterPasswordService.setup(setup);
+    // Ensure autoLockTimeout is a number
+    const setupData = {
+      ...setup,
+      autoLockTimeout: Number(setup.autoLockTimeout),
+    };
+
+    await masterPasswordService.setup(setupData);
 
     // Refresh status after setup
     await checkStatus();
@@ -122,6 +127,13 @@ export const useAuthStore = defineStore("auth", () => {
     changeData: MasterPasswordChange,
   ): Promise<boolean> => {
     await masterPasswordService.change(changeData);
+
+    // Clear current auto-lock timer
+    clearAutoLockTimer();
+
+    // Refresh status after successful password change (backend will lock the session)
+    await checkStatus();
+
     return true;
   };
 
@@ -132,7 +144,15 @@ export const useAuthStore = defineStore("auth", () => {
   const updateMasterPasswordConfig = async (
     config: MasterPasswordConfig,
   ): Promise<boolean> => {
-    await masterPasswordService.updateConfig(config);
+    // Ensure autoLockTimeout is a number if provided
+    const configData = {
+      ...config,
+      ...(config.autoLockTimeout !== undefined && {
+        autoLockTimeout: Number(config.autoLockTimeout),
+      }),
+    };
+
+    await masterPasswordService.updateConfig(configData);
 
     await checkStatus();
     return true;

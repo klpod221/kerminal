@@ -297,19 +297,123 @@ impl Encryptable for SSHProfile {
 
     fn encrypt_fields(
         &mut self,
-        _encryption_service: &dyn EncryptionService,
+        encryption_service: &dyn EncryptionService,
     ) -> DatabaseResult<()> {
-        // Encryption is handled by the encrypted_string serde module
-        // This is called during save operations
+        // Encrypt auth_data fields based on auth method
+        match &mut self.auth_data {
+            AuthData::Password { password } => {
+                // Encrypt password
+                let encrypted = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.encrypt_string(password, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *password = encrypted;
+            }
+            AuthData::PrivateKey { private_key, key_type: _, public_key: _ } => {
+                // Encrypt private key
+                let encrypted = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.encrypt_string(private_key, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *private_key = encrypted;
+            }
+            AuthData::PrivateKeyWithPassphrase { private_key, passphrase, key_type: _, public_key: _ } => {
+                // Encrypt both private key and passphrase
+                let encrypted_key = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.encrypt_string(private_key, Some(&self.base.device_id)).await
+                    })
+                })?;
+                let encrypted_passphrase = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.encrypt_string(passphrase, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *private_key = encrypted_key;
+                *passphrase = encrypted_passphrase;
+            }
+            AuthData::Certificate { certificate, private_key, key_type: _, validity_period: _ } => {
+                // Encrypt certificate and private key
+                let encrypted_cert = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.encrypt_string(certificate, Some(&self.base.device_id)).await
+                    })
+                })?;
+                let encrypted_key = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.encrypt_string(private_key, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *certificate = encrypted_cert;
+                *private_key = encrypted_key;
+            }
+            _ => {
+                // No encryption needed for other auth methods (Agent, etc.)
+            }
+        }
         Ok(())
     }
 
     fn decrypt_fields(
         &mut self,
-        _encryption_service: &dyn EncryptionService,
+        encryption_service: &dyn EncryptionService,
     ) -> DatabaseResult<()> {
-        // Decryption is handled by the encrypted_string serde module
-        // This is called during load operations
+        // Decrypt auth_data fields based on auth method
+        match &mut self.auth_data {
+            AuthData::Password { password } => {
+                // Decrypt password
+                let decrypted = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.decrypt_string(password, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *password = decrypted;
+            }
+            AuthData::PrivateKey { private_key, key_type: _, public_key: _ } => {
+                // Decrypt private key
+                let decrypted = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.decrypt_string(private_key, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *private_key = decrypted;
+            }
+            AuthData::PrivateKeyWithPassphrase { private_key, passphrase, key_type: _, public_key: _ } => {
+                // Decrypt both private key and passphrase
+                let decrypted_key = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.decrypt_string(private_key, Some(&self.base.device_id)).await
+                    })
+                })?;
+                let decrypted_passphrase = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.decrypt_string(passphrase, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *private_key = decrypted_key;
+                *passphrase = decrypted_passphrase;
+            }
+            AuthData::Certificate { certificate, private_key, key_type: _, validity_period: _ } => {
+                // Decrypt certificate and private key
+                let decrypted_cert = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.decrypt_string(certificate, Some(&self.base.device_id)).await
+                    })
+                })?;
+                let decrypted_key = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service.decrypt_string(private_key, Some(&self.base.device_id)).await
+                    })
+                })?;
+                *certificate = decrypted_cert;
+                *private_key = decrypted_key;
+            }
+            _ => {
+                // No decryption needed for other auth methods (Agent, etc.)
+            }
+        }
         Ok(())
     }
 
@@ -450,8 +554,9 @@ mod encrypted_string {
     where
         S: Serializer,
     {
-        // For security reasons, we might want to store passwords encrypted at rest
-        // For now, serialize as-is to avoid complications with async encryption
+        // TODO: In a real implementation, we would encrypt the value here
+        // For now, we serialize as-is since encryption/decryption is handled
+        // by the Encryptable trait methods during save/load operations
         value.serialize(serializer)
     }
 
@@ -459,7 +564,9 @@ mod encrypted_string {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize as-is
+        // TODO: In a real implementation, we would decrypt the value here
+        // For now, we deserialize as-is since encryption/decryption is handled
+        // by the Encryptable trait methods during save/load operations
         String::deserialize(deserializer)
     }
 }

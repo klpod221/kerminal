@@ -51,6 +51,7 @@ pub async fn setup_master_password(
     confirm_password: String,
     device_name: String,
     auto_unlock: bool,
+    auto_lock_timeout: u32,
 ) -> Result<(), String> {
     let db_service = state.database_service.lock().await;
     let request = SetupMasterPasswordRequest {
@@ -59,6 +60,7 @@ pub async fn setup_master_password(
         confirm_password,
         auto_unlock,
         use_keychain: true,
+        auto_lock_timeout: if auto_lock_timeout == 0 { None } else { Some(auto_lock_timeout) },
     };
     db_result!(db_service.setup_master_password(request).await)
 }
@@ -136,25 +138,59 @@ pub async fn change_master_password(
     old_password: String,
     new_password: String,
 ) -> Result<(), String> {
-    let _db_service = state.database_service.lock().await;
+    let db_service = state.database_service.lock().await;
 
-    // This should be implemented in the backend
-    // For now, just validate that passwords are provided
-    if old_password.is_empty() || new_password.is_empty() {
-        return Err("Both old and new passwords are required".to_string());
+    // Validate that passwords are provided
+    if old_password.is_empty() {
+        return Err("Current password is required".to_string());
+    }
+    
+    if new_password.is_empty() {
+        return Err("New password is required".to_string());
     }
 
-    // TODO: Implement actual password change logic
-    Ok(())
+    // Validate new password strength (basic checks)
+    if new_password.len() < 8 {
+        return Err("New password must be at least 8 characters long".to_string());
+    }
+
+    if old_password == new_password {
+        return Err("New password must be different from current password".to_string());
+    }
+
+    // Execute password change
+    match db_service.change_master_password(old_password, new_password).await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            match e {
+                crate::database::error::DatabaseError::AuthenticationFailed(_) => {
+                    Err("Current password is incorrect".to_string())
+                }
+                crate::database::error::DatabaseError::MasterPasswordRequired => {
+                    Err("Master password is not set up".to_string())
+                }
+                _ => Err(format!("Failed to change password: {}", e))
+            }
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn reset_master_password(state: State<'_, AppState>) -> Result<(), String> {
-    let _db_service = state.database_service.lock().await;
+    let db_service = state.database_service.lock().await;
 
-    // TODO: Implement reset master password logic
-    // This should remove all encrypted data and reset the master password
-    Ok(())
+    // Execute reset operation
+    match db_service.reset_master_password().await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            match e {
+                crate::database::error::DatabaseError::MasterPasswordRequired => {
+                    Err("Master password is not set up".to_string())
+                }
+                _ => Err(format!("Failed to reset master password: {}", e))
+            }
+        }
+    }
 }
 
 #[tauri::command]
@@ -170,7 +206,13 @@ pub async fn update_master_password_config(
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    db_result!(db_service.update_master_password_config(auto_unlock).await)
+    // Extract auto_lock_timeout from config
+    let auto_lock_timeout = config
+        .get("autoLockTimeout")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+
+    db_result!(db_service.update_master_password_config(auto_unlock, auto_lock_timeout).await)
 }
 
 // === SSH Group Commands ===

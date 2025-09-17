@@ -153,7 +153,7 @@ const sizeClasses = computed(() => {
 
 const stateClasses = computed(() => {
   if (props.errorMessage || localError.value) {
-    return "border-red-500 bg-red-500/5 focus:border-red-400 focus:ring-red-500";
+    return "border-red-500 bg-red-500/5 focus:border-red-400";
   }
   if (props.disabled) {
     return "border-gray-600 bg-gray-800";
@@ -166,7 +166,7 @@ const stateClasses = computed(() => {
 
 const hexStateClasses = computed(() => {
   if (props.errorMessage || localError.value) {
-    return "border-red-500 bg-red-500/5 text-white focus:border-red-400 focus:ring-red-500";
+    return "border-red-500 bg-red-500/5 text-white focus:border-red-400";
   }
 
   if (props.disabled) {

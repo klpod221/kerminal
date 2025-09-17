@@ -44,6 +44,7 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
+import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 
@@ -71,7 +72,7 @@ const handleSubmit = async () => {
     closeOverlay("master-password-unlock");
   } catch (error) {
     console.error("Error during master password unlock:", error);
-    message.error("Failed to unlock master password. Please try again.");
+    message.error(getErrorMessage(error, "Failed to unlock master password. Please try again."));
   } finally {
     isLoading.value = false;
   }

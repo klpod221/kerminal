@@ -68,7 +68,22 @@
             helper-text="Automatically unlock master password when the application starts using system keychain"
           />
 
-          <Button variant="danger" :disabled="isLoading" :icon="Trash2">
+          <Select
+            id="auto-lock-timeout"
+            v-model="autoLockTimeout"
+            label="Auto-lock Timeout"
+            :options="timeoutOptions"
+            @change="handleTimeoutChange"
+            :disabled="isLoading"
+            helper-text="Automatically lock the session after period of inactivity"
+          />
+
+          <Button 
+            variant="danger" 
+            :disabled="isLoading" 
+            :icon="Trash2"
+            @click="handleResetPassword"
+          >
             Reset Master Password
           </Button>
 
@@ -166,17 +181,31 @@ import { ref, watch } from "vue";
 import { useAuthStore } from "../../stores/auth";
 import { Key, Lock, Trash2, Book } from "lucide-vue-next";
 import { message } from "../../utils/message";
+import { getErrorMessage } from "../../utils/helpers";
 import { formatRelativeTime } from "../../utils/formatter";
 import { useOverlay } from "../../composables/useOverlay";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
+import Select from "../ui/Select.vue";
 import Card from "../ui/Card.vue";
 
 // State
 const isLoading = ref(false);
 const autoUnlockEnabled = ref(false);
+const autoLockTimeout = ref(0);
+
+// Timeout options
+const timeoutOptions = [
+  { value: 0, label: "Never" },
+  { value: 5, label: "5 minutes" },
+  { value: 15, label: "15 minutes" },
+  { value: 30, label: "30 minutes" },
+  { value: 60, label: "1 hour" },
+  { value: 120, label: "2 hours" },
+  { value: 240, label: "4 hours" },
+];
 
 // Stores and composables
 const authStore = useAuthStore();
@@ -188,6 +217,7 @@ const handleAutoUnlockToggle = async () => {
   try {
     await authStore.updateMasterPasswordConfig({
       autoUnlock: autoUnlockEnabled.value,
+      autoLockTimeout: autoLockTimeout.value,
     });
     message.success(
       `Auto-unlock has been ${
@@ -195,7 +225,7 @@ const handleAutoUnlockToggle = async () => {
       }.`,
     );
   } catch (error) {
-    message.error("Failed to update auto-unlock setting.");
+    message.error(getErrorMessage(error, "Failed to update auto-unlock setting."));
     // Revert the toggle state on error
     autoUnlockEnabled.value = !autoUnlockEnabled.value;
   } finally {
@@ -210,7 +240,7 @@ const handleLock = async () => {
     closeOverlay("master-password-settings");
     message.success("Session locked.");
   } catch (error) {
-    message.error("Failed to lock session.");
+    message.error(getErrorMessage(error, "Failed to lock session."));
   } finally {
     isLoading.value = false;
   }
@@ -220,11 +250,74 @@ const openChangePasswordModal = () => {
   openOverlay("master-password-change");
 };
 
+const handleResetPassword = async () => {
+  // Show confirmation dialog
+  const confirmed = confirm(
+    "Are you sure you want to reset your master password?\n\n" +
+    "This will permanently delete:\n" +
+    "• All SSH profiles and connections\n" +
+    "• All SSH groups and configurations\n" +
+    "• Your master password and encryption keys\n\n" +
+    "This action cannot be undone!"
+  );
+
+  if (!confirmed) return;
+
+  isLoading.value = true;
+  try {
+    await authStore.resetMasterPassword();
+    closeOverlay("master-password-settings");
+    message.success("Master password has been reset successfully. You can now set up a new master password.");
+  } catch (error) {
+    console.error("Error resetting master password:", error);
+    message.error(getErrorMessage(error, "Failed to reset master password. Please try again."));
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const handleTimeoutChange = async () => {
+  isLoading.value = true;
+  try {
+    // Update master password config with both settings
+    await authStore.updateMasterPasswordConfig({
+      autoUnlock: autoUnlockEnabled.value,
+      autoLockTimeout: autoLockTimeout.value,
+    });
+
+    // Update local security settings with converted number
+    authStore.securitySettings.autoLockTimeout = Number(autoLockTimeout.value);
+
+    // Reset auto-lock timer with new timeout
+    authStore.resetAutoLockTimer();
+
+    message.success(
+      `Auto-lock timeout updated to ${
+        Number(autoLockTimeout.value) === 0
+          ? "never"
+          : `${autoLockTimeout.value} minutes`
+      }.`
+    );
+  } catch (error) {
+    message.error(getErrorMessage(error, "Failed to update auto-lock timeout."));
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 // Watchers
 watch(
   () => authStore.status.autoUnlockEnabled,
   (newVal) => {
     autoUnlockEnabled.value = newVal;
+  },
+  { immediate: true },
+);
+
+watch(
+  () => authStore.securitySettings.autoLockTimeout,
+  (newVal) => {
+    autoLockTimeout.value = newVal;
   },
   { immediate: true },
 );

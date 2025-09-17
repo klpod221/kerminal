@@ -73,37 +73,46 @@
             </div>
           </div>
         </Card>
-
-        <div class="flex justify-end gap-3 pt-4 border-t border-gray-700">
-          <Button type="button" variant="secondary" :disabled="isLoading">
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            :loading="isLoading"
-            :icon="Key"
-            @click="handleSubmit"
-          >
-            Change Password
-          </Button>
-        </div>
       </Form>
     </div>
+
+    <template #footer>
+      <Button 
+        type="button" 
+        variant="secondary" 
+        :disabled="isLoading"
+        @click="closeOverlay('master-password-change')"
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        variant="primary"
+        :loading="isLoading"
+        :icon="Key"
+        @click="handleSubmit"
+      >
+        Change Password
+      </Button>
+    </template>
   </Modal>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
 import { Key, AlertTriangle } from "lucide-vue-next";
+import { message } from "../../utils/message";
+import { getErrorMessage } from "../../utils/helpers";
+import { useOverlay } from "../../composables/useOverlay";
+import { useAuthStore } from "../../stores/auth";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";
-import { useAuthStore } from "../../stores/auth";
 
-// Stores
+// Import stores and composables
+const { closeOverlay } = useOverlay();
 const { changeMasterPassword } = useAuthStore();
 
 // State
@@ -122,10 +131,21 @@ const handleSubmit = async () => {
 
   try {
     isLoading.value = true;
+
     await changeMasterPassword(changeForm.value);
-    console.log("Master password changed successfully");
+
+    // Reset form after successful change
+    changeForm.value = {
+      oldPassword: "",
+      newPassword: "",
+      confirmNewPassword: "",
+    };
+
+    message.success("Master password changed successfully!");
+    closeOverlay("master-password-change");
   } catch (error) {
     console.error("Error changing master password:", error);
+    message.error(getErrorMessage(error, "Failed to change master password. Please try again."));
   } finally {
     isLoading.value = false;
   }

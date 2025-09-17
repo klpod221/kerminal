@@ -10,7 +10,7 @@
     <div class="flex flex-col gap-4">
       <Card>
         <div class="flex items-start gap-4">
-          <Lock :size="80" class="text-amber-400" />
+          <Lock :size="80" class="text-blue-400" />
           <div>
             <h3 class="text-lg font-semibold text-gray-100 mb-1">
               Secure Your Data
@@ -66,21 +66,32 @@
         >
           Security Options
         </h4>
-        <Checkbox
-          id="use-keychain"
-          v-model="setupForm.useKeychain"
-          class="mb-2"
-          label="Use system keychain"
-          helper-text="Store encrypted password in system keychain for convenience"
-        />
 
-        <Checkbox
-          id="auto-unlock"
-          v-model="setupForm.autoUnlock"
-          :disabled="!setupForm.useKeychain"
-          label="Auto-unlock on startup"
-          helper-text="Automatically unlock when application starts (requires keychain)"
-        />
+        <div class="flex flex-col gap-2">
+          <Checkbox
+            id="use-keychain"
+            v-model="setupForm.useKeychain"
+            label="Use system keychain"
+            helper-text="Store encrypted password in system keychain for convenience"
+          />
+
+          <Checkbox
+            id="auto-unlock"
+            v-model="setupForm.autoUnlock"
+            :disabled="!setupForm.useKeychain"
+            label="Auto-unlock on startup"
+            helper-text="Automatically unlock when application starts (requires keychain)"
+          />
+
+          <Select
+            id="auto-lock-timeout-setup"
+            v-model="setupForm.autoLockTimeout"
+            label="Auto-lock Timeout"
+            :options="timeoutOptions"
+            :disabled="isLoading"
+            helper-text="Automatically lock the session after period of inactivity"
+          />
+        </div>
       </Form>
     </div>
 
@@ -102,6 +113,7 @@
 import { ref } from "vue";
 import { Lock, Save } from "lucide-vue-next";
 import { message } from "../../utils/message";
+import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 import Modal from "../ui/Modal.vue";
@@ -109,6 +121,7 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
+import Select from "../ui/Select.vue";
 import Card from "../ui/Card.vue";
 
 // Import stores and composables
@@ -123,8 +136,20 @@ const setupForm = ref({
   confirmPassword: "",
   useKeychain: true,
   autoUnlock: false,
+  autoLockTimeout: 0,
 });
 const isLoading = ref(false);
+
+// Timeout options
+const timeoutOptions = [
+  { value: 0, label: "Never" },
+  { value: 5, label: "5 minutes" },
+  { value: 15, label: "15 minutes" },
+  { value: 30, label: "30 minutes" },
+  { value: 60, label: "1 hour" },
+  { value: 120, label: "2 hours" },
+  { value: 240, label: "4 hours" },
+];
 
 // Handle form submission
 const handleSubmit = async () => {
@@ -142,13 +167,14 @@ const handleSubmit = async () => {
       confirmPassword: "",
       useKeychain: true,
       autoUnlock: false,
+      autoLockTimeout: 0,
     };
 
     message.success("Master password setup successfully!");
     closeOverlay("master-password-setup");
   } catch (error) {
     console.error("Error during master password setup:", error);
-    message.error("Failed to set up master password. Please try again.");
+    message.error(getErrorMessage(error, "Failed to set up master password. Please try again."));
   } finally {
     isLoading.value = false;
   }

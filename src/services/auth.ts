@@ -17,6 +17,7 @@ export async function setup(setup: MasterPasswordSetup): Promise<void> {
     confirmPassword: setup.confirmPassword,
     deviceName: setup.deviceName,
     autoUnlock: setup.autoUnlock,
+    autoLockTimeout: setup.autoLockTimeout,
   });
 }
 

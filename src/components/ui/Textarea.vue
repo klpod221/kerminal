@@ -117,7 +117,7 @@ const sizeClasses = computed(() => {
 
 const stateClasses = computed(() => {
   if (props.errorMessage) {
-    return "border-red-500 bg-red-500/5 text-white focus:border-red-400 focus:ring-red-500";
+    return "border-red-500 bg-red-500/5 text-white focus:border-red-400";
   }
 
   if (props.disabled) {

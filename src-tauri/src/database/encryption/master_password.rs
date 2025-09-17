@@ -27,6 +27,7 @@ pub struct SetupMasterPasswordRequest {
     pub confirm_password: String,
     pub auto_unlock: bool,
     pub use_keychain: bool,
+    pub auto_lock_timeout: Option<u32>, // in minutes
 }
 
 /// Master password verification request
@@ -77,6 +78,7 @@ impl MasterPasswordManager {
         // Update config based on request
         self.config.auto_unlock = request.auto_unlock && request.use_keychain;
         self.config.use_keychain = request.use_keychain;
+        self.config.session_timeout_minutes = request.auto_lock_timeout;
 
         // Create master password entry
         let mut manager = self.device_key_manager.write().await;
@@ -212,10 +214,19 @@ impl MasterPasswordManager {
         }
     }
 
-    /// Update auto-unlock setting
-    pub async fn update_auto_unlock_setting(&mut self, auto_unlock: bool) -> EncryptionResult<()> {
+    /// Update master password configuration
+    pub async fn update_config(
+        &mut self,
+        auto_unlock: bool,
+        auto_lock_timeout: Option<u32>
+    ) -> EncryptionResult<()> {
         self.config.auto_unlock = auto_unlock;
         self.config.require_on_startup = !auto_unlock;
+
+        // Update session timeout if provided
+        if let Some(timeout) = auto_lock_timeout {
+            self.config.session_timeout_minutes = if timeout == 0 { None } else { Some(timeout) };
+        }
 
         if !auto_unlock {
             // Remove từ keychain nếu tắt auto-unlock
@@ -418,6 +429,7 @@ mod tests {
             confirm_password: "TestPassword123".to_string(),
             auto_unlock: false,
             use_keychain: false,
+            auto_lock_timeout: None,
         };
 
         let entry = manager.setup_master_password(request).await.unwrap();
@@ -457,6 +469,7 @@ mod tests {
             confirm_password: "TestPassword123".to_string(),
             auto_unlock: false,
             use_keychain: false,
+            auto_lock_timeout: None,
         };
 
         let _password_entry = manager.setup_master_password(request).await.unwrap();

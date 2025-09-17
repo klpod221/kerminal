@@ -7,6 +7,7 @@ export interface MasterPasswordSetup {
   deviceName: string;
   autoUnlock: boolean;
   useKeychain: boolean;
+  autoLockTimeout: number; // in minutes (0 = never)
 }
 
 /**
@@ -43,7 +44,6 @@ export interface MasterPasswordChange {
  */
 export interface SecuritySettings {
   autoLockTimeout: number; // in minutes (0 = never)
-  useBiometrics?: boolean; // for future implementation
 }
 
 /**
@@ -51,6 +51,7 @@ export interface SecuritySettings {
  */
 export interface MasterPasswordConfig {
   autoUnlock: boolean;
+  autoLockTimeout: number; // in minutes (0 = never)
 }
 
 /**

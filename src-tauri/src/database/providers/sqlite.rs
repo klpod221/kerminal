@@ -134,6 +134,7 @@ impl Database for SQLiteProvider {
                 password_salt BLOB NOT NULL,
                 verification_hash TEXT NOT NULL,
                 auto_unlock BOOLEAN NOT NULL DEFAULT false,
+                auto_lock_timeout INTEGER,
                 created_at TEXT NOT NULL,
                 last_verified_at TEXT
             )
@@ -282,6 +283,31 @@ impl Database for SQLiteProvider {
             1 => {
                 // Version 1: Create initial tables (already done in create_tables)
                 self.create_tables().await?;
+                Ok(())
+            }
+            2 => {
+                // Version 2: Add auto_lock_timeout column to master_passwords table
+                let pool_arc = self.get_pool()?;
+                let pool = pool_arc.read().await;
+
+                // Check if column exists first
+                let columns_result = sqlx::query("PRAGMA table_info(master_passwords)")
+                    .fetch_all(&*pool)
+                    .await
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+                let has_auto_lock_timeout = columns_result.iter().any(|row| {
+                    let name: String = row.get("name");
+                    name == "auto_lock_timeout"
+                });
+
+                if !has_auto_lock_timeout {
+                    sqlx::query("ALTER TABLE master_passwords ADD COLUMN auto_lock_timeout INTEGER")
+                        .execute(&*pool)
+                        .await
+                        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+                }
+
                 Ok(())
             }
             _ => {
@@ -617,8 +643,8 @@ impl SQLiteProvider {
             r#"
             INSERT OR REPLACE INTO master_passwords (
                 device_id, device_name, password_salt, verification_hash, auto_unlock,
-                created_at, last_verified_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                auto_lock_timeout, created_at, last_verified_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         )
         .bind(&entry.device_id)
@@ -626,6 +652,7 @@ impl SQLiteProvider {
         .bind(&entry.password_salt.to_vec())
         .bind(&entry.verification_hash)
         .bind(entry.auto_unlock)
+        .bind(entry.auto_lock_timeout.map(|t| t as i64))
         .bind(entry.created_at)
         .bind(entry.last_verified_at)
         .execute(&*pool)
@@ -660,6 +687,7 @@ impl SQLiteProvider {
                 password_salt: salt_array,
                 verification_hash: row.get("verification_hash"),
                 auto_unlock: row.get("auto_unlock"),
+                auto_lock_timeout: row.get::<Option<i64>, _>("auto_lock_timeout").map(|t| t as u32),
                 created_at: row.get("created_at"),
                 last_verified_at: row.get("last_verified_at"),
             };
