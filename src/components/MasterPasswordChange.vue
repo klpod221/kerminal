@@ -21,50 +21,36 @@
         </div>
       </Card>
 
-      <Form @submit="" class="flex flex-col gap-6">
-        <div class="flex flex-col gap-2">
-          <h4
-            class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2"
-          >
-            Current Password
-          </h4>
-          <Input
-            id="current-password"
-            v-model="changeForm.oldPassword"
-            label="Current Master Password"
-            type="password"
-            placeholder="Enter your current password"
-            rules="required"
-            :disabled="isLoading"
-          />
-        </div>
+      <Form ref="changeMasterPasswordForm" @submit="handleSubmit">
+        <Input
+          id="current-password"
+          v-model="changeForm.oldPassword"
+          label="Current Master Password"
+          type="password"
+          placeholder="Enter your current password"
+          rules="required|password"
+          :disabled="isLoading"
+        />
 
-        <div class="flex flex-col gap-2">
-          <h4
-            class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2"
-          >
-            New Password
-          </h4>
-          <Input
-            id="new-password"
-            v-model="changeForm.newPassword"
-            label="New Master Password"
-            type="password"
-            placeholder="Enter a strong new password"
-            rules="required"
-            :disabled="isLoading"
-          />
+        <Input
+          id="new-password"
+          v-model="changeForm.newPassword"
+          label="New Master Password"
+          type="password"
+          placeholder="Enter a strong new password"
+          rules="required|password|different:current-password"
+          :disabled="isLoading"
+        />
 
-          <Input
-            id="confirm-new-password"
-            v-model="changeForm.confirmNewPassword"
-            label="Confirm New Password"
-            type="password"
-            placeholder="Confirm your new password"
-            rules="required"
-            :disabled="isLoading"
-          />
-        </div>
+        <Input
+          id="confirm-new-password"
+          v-model="changeForm.confirmNewPassword"
+          label="Confirm New Password"
+          type="password"
+          placeholder="Confirm your new password"
+          rules="required|password|same:new-password"
+          :disabled="isLoading"
+        />
 
         <Card>
           <div class="flex items-start gap-3">
@@ -80,7 +66,7 @@
                 Changing your master password will:
               </p>
               <ul class="text-sm text-gray-400 list-disc pl-4 space-y-1">
-                <li>Re-encrypt all your stored SSH credentials</li>
+                <li>Re-encrypt all your stored credentials</li>
                 <li>Invalidate auto-unlock on other devices</li>
                 <li>Require you to re-enter the new password on all devices</li>
               </ul>
@@ -92,7 +78,13 @@
           <Button type="button" variant="secondary" :disabled="isLoading">
             Cancel
           </Button>
-          <Button type="submit" variant="primary" :loading="isLoading">
+          <Button
+            type="submit"
+            variant="primary"
+            :loading="isLoading"
+            :icon="Key"
+            @click="handleSubmit"
+          >
             Change Password
           </Button>
         </div>
@@ -109,12 +101,33 @@ import Form from "./ui/Form.vue";
 import Input from "./ui/Input.vue";
 import Button from "./ui/Button.vue";
 import Card from "./ui/Card.vue";
+import { useAuthStore } from "../stores/auth";
+
+// Stores
+const { changeMasterPassword } = useAuthStore();
 
 // State
+const changeMasterPasswordForm = ref<InstanceType<typeof Form> | null>(null);
 const isLoading = ref(false);
 const changeForm = ref({
   oldPassword: "",
   newPassword: "",
   confirmNewPassword: "",
 });
+
+// Handle form submission
+const handleSubmit = async () => {
+  const isValid = await changeMasterPasswordForm.value?.validate();
+  if (!isValid) return;
+
+  try {
+    isLoading.value = true;
+    await changeMasterPassword(changeForm.value);
+    console.log("Master password changed successfully");
+  } catch (error) {
+    console.error("Error changing master password:", error);
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>

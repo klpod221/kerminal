@@ -2,17 +2,11 @@
  * SSH Proxy configuration
  */
 export interface SSHProxy {
-  type: "http" | "socks4" | "socks5" | "jump";
+  proxy_type: "http" | "socks4" | "socks5";
   host: string;
   port: number;
   username?: string;
   password?: string;
-  // For jump host proxy
-  jumpHost?: string;
-  jumpPort?: number;
-  jumpUser?: string;
-  jumpKeyPath?: string;
-  jumpPassword?: string;
 }
 
 /**
@@ -42,15 +36,12 @@ export interface SSHGroup {
   id: string;
   name: string;
   description?: string;
-  defaultUser?: string;
-  defaultHost?: string;
-  defaultPort?: number;
-  defaultKeyPath?: string;
-  defaultPassword?: string;
-  defaultProxy?: SSHProxy;
   color?: string;
-  created: Date;
-  updated: Date;
+  icon?: string;
+  sortOrder: number;
+  is_expanded: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
 /**
@@ -59,100 +50,22 @@ export interface SSHGroup {
 export interface SSHProfile {
   id: string;
   name: string;
-  description?: string;
-  groupId?: string;
   host: string;
   port?: number;
-  user: string;
-  keyPath?: string;
-  password?: string;
+  username: string;
+  groupId?: string;
+  auth_method: "password" | "privateKey" | "privateKeyWithPassphrase" | "agent" | "certificate" | "kerberos" | "PKCS11";
+  auth_data?: object; // e.g., { password: string } or { keyPath: string, passphrase?: string }
+  timeout?: number;
+  keep_alive?: boolean;
+  compression?: boolean;
   proxy?: SSHProxy;
-  commands?: string[];
   color?: string;
-  favorite: boolean;
-  lastConnected?: Date;
-  created: Date;
-  updated: Date;
-}
-
-/**
- * Interface for SSH Connection record
- */
-export interface SSHConnection {
-  id: string;
-  profileId: string;
-  profileName: string;
-  host: string;
-  user: string;
-  connectedAt: Date;
-  duration?: number;
-  status: "connected" | "disconnected" | "failed";
-}
-
-/**
- * Interface for saved command
- */
-export interface SavedCommand {
-  id: string;
-  name: string;
-  command: string;
+  icon?: string;
+  sortOrder: number;
   description?: string;
-  created: Date;
-  updated: Date;
-}
-
-/**
- * Interface for SSH Profile with resolved configuration
- * This combines profile data with group defaults
- */
-export interface ResolvedSSHConfig {
-  host: string;
-  port: number;
-  user: string;
-  keyPath?: string;
-  password?: string;
-  proxy?: SSHProxy;
-  commands?: string[];
-}
-
-/**
- * Interface for SSH Profile with resolved configuration and group info
- */
-export interface SSHProfileWithConfig extends SSHProfile {
-  resolvedConfig: ResolvedSSHConfig;
-  group?: SSHGroup;
-}
-
-/**
- * Interface for SSH Tunnel with profile information
- */
-export interface SSHTunnelWithProfile extends SSHTunnel {
-  profile: SSHProfileWithConfig;
-}
-
-/**
- * Interface for command execution options
- */
-export interface CommandExecutionOptions {
-  terminalId: string;
-  command: string;
-  addToHistory?: boolean;
-}
-
-/**
- * Interface for SSH Group with profiles
- */
-export interface SSHGroupWithProfiles extends SSHGroup {
-  profiles: SSHProfile[];
-}
-
-/**
- * Interface for SSH Tunnel connection options
- */
-export interface SSHTunnelOptions {
-  tunnelId: string;
-  onConnect?: () => void;
-  onDisconnect?: () => void;
-  onError?: (error: Error) => void;
-  onReconnect?: () => void;
+  tags?: string[];
+  created_at: Date;
+  updated_at: Date;
+  last_connected_at?: Date;
 }

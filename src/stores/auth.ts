@@ -28,8 +28,7 @@ export const useAuthStore = defineStore("auth", () => {
   });
 
   const securitySettings = ref<SecuritySettings>({
-    autoLockTimeout: 15,
-    sessionTimeoutMinutes: 60,
+    autoLockTimeout: 0,
     useBiometrics: false,
   });
 

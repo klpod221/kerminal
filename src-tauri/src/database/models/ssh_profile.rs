@@ -342,6 +342,7 @@ pub struct CreateSSHProfileRequest {
     pub timeout: Option<u32>,
     pub keep_alive: Option<bool>,
     pub compression: Option<bool>,
+    pub proxy: Option<ProxyConfig>,
     pub color: Option<String>,
     pub icon: Option<String>,
     pub description: Option<String>,

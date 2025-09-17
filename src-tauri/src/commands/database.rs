@@ -111,7 +111,9 @@ pub async fn get_master_password_status(
 }
 
 #[tauri::command]
-pub async fn get_current_device(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
+pub async fn get_current_device(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
     let db_service = state.database_service.lock().await;
 
     let device_info = db_result!(db_service.get_current_device_info().await)?;
@@ -162,16 +164,11 @@ pub async fn update_master_password_config(
 ) -> Result<(), String> {
     let db_service = state.database_service.lock().await;
 
-    // Validate config is provided
-    if config.is_null() {
-        return Err("Configuration is required".to_string());
-    }
-
     // Extract auto_unlock from config
     let auto_unlock = config
         .get("autoUnlock")
         .and_then(|v| v.as_bool())
-        .ok_or_else(|| "Invalid or missing 'autoUnlock' field in config".to_string())?;
+        .unwrap_or(false);
 
     db_result!(db_service.update_master_password_config(auto_unlock).await)
 }
@@ -205,7 +202,10 @@ pub async fn get_ssh_groups(state: State<'_, AppState>) -> Result<Vec<SSHGroup>,
 }
 
 #[tauri::command]
-pub async fn get_ssh_group(state: State<'_, AppState>, id: String) -> Result<SSHGroup, String> {
+pub async fn get_ssh_group(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<SSHGroup, String> {
     let db_service = state.database_service.lock().await;
     db_result!(db_service.get_ssh_group(&id).await)
 }

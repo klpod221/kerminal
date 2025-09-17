@@ -47,7 +47,14 @@ export function validate(
       case "same": {
         const otherValue = allValues[params[0]];
 
-        if (value !== otherValue) return "Values do not match.";
+        if (value !== otherValue) return `Values must match with ${params[0]}.`;
+        break;
+      }
+
+      case "different": {
+        const otherValue = allValues[params[0]];
+
+        if (value === otherValue) return `Values must be different from ${params[0]}.`;
         break;
       }
     }

@@ -52,7 +52,7 @@ const { closeOverlay } = useOverlay();
 const { unlock } = useAuthStore();
 
 // Form state
-const masterPasswordUnlockForm = ref();
+const masterPasswordUnlockForm = ref<InstanceType<typeof Form> | null>(null);
 const verificationForm = ref({
   password: "",
 });
@@ -60,7 +60,7 @@ const isLoading = ref(false);
 
 // Handle form submission
 const handleSubmit = async () => {
-  const isValid = await masterPasswordUnlockForm.value.validate();
+  const isValid = await masterPasswordUnlockForm.value?.validate();
   if (!isValid) return;
 
   try {

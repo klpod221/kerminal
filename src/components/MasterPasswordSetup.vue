@@ -116,7 +116,7 @@ const { closeOverlay } = useOverlay();
 const { setupMasterPassword } = useAuthStore();
 
 // Form state
-const masterPasswordSetupForm = ref();
+const masterPasswordSetupForm = ref<InstanceType<typeof Form> | null>(null);
 const setupForm = ref({
   deviceName: "",
   password: "",
@@ -128,7 +128,7 @@ const isLoading = ref(false);
 
 // Handle form submission
 const handleSubmit = async () => {
-  const isValid = await masterPasswordSetupForm.value.validate();
+  const isValid = await masterPasswordSetupForm.value?.validate();
   if (!isValid) return;
 
   try {

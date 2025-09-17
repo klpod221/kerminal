@@ -43,7 +43,6 @@ export interface MasterPasswordChange {
  */
 export interface SecuritySettings {
   autoLockTimeout: number; // in minutes (0 = never)
-  sessionTimeoutMinutes?: number;
   useBiometrics?: boolean; // for future implementation
 }
 

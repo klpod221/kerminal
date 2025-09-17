@@ -66,7 +66,7 @@
 
     <!-- Clock in the center -->
     <div class="flex justify-center items-center h-full">
-      <Clock />
+      <!-- <Clock /> -->
     </div>
 
     <!-- Right side buttons -->
