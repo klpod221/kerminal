@@ -1,87 +1,87 @@
-import { createApp, App as VueApp } from 'vue'
-import Message from '../components/ui/Message.vue'
+import { createApp, App as VueApp } from "vue";
+import Message from "../components/ui/Message.vue";
 
 export interface MessageOptions {
-  type?: 'success' | 'error' | 'warning' | 'info' | 'loading'
-  title?: string
-  content: string
-  duration?: number
-  closable?: boolean
+  type?: "success" | "error" | "warning" | "info" | "loading";
+  title?: string;
+  content: string;
+  duration?: number;
+  closable?: boolean;
 }
 
 class MessageService {
-  private readonly instances: Set<VueApp> = new Set()
+  private readonly instances: Set<VueApp> = new Set();
 
   private create(options: MessageOptions): Promise<void> {
     return new Promise((resolve) => {
       const app = createApp(Message, {
         ...options,
         onClose: () => {
-          this.instances.delete(app)
-          app.unmount()
-          resolve()
-        }
-      })
+          this.instances.delete(app);
+          app.unmount();
+          resolve();
+        },
+      });
 
-      this.instances.add(app)
-      const container = document.createElement('div')
-      document.body.appendChild(container)
-      app.mount(container)
-    })
+      this.instances.add(app);
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      app.mount(container);
+    });
   }
 
   success(content: string, title?: string, duration = 3000): Promise<void> {
     return this.create({
-      type: 'success',
+      type: "success",
       content,
       title,
-      duration
-    })
+      duration,
+    });
   }
 
   error(content: string, title?: string, duration = 4000): Promise<void> {
     return this.create({
-      type: 'error',
+      type: "error",
       content,
       title,
-      duration
-    })
+      duration,
+    });
   }
 
   warning(content: string, title?: string, duration = 3000): Promise<void> {
     return this.create({
-      type: 'warning',
+      type: "warning",
       content,
       title,
-      duration
-    })
+      duration,
+    });
   }
 
   info(content: string, title?: string, duration = 3000): Promise<void> {
     return this.create({
-      type: 'info',
+      type: "info",
       content,
       title,
-      duration
-    })
+      duration,
+    });
   }
 
   loading(content: string, title?: string): Promise<void> {
     return this.create({
-      type: 'loading',
+      type: "loading",
       content,
       title,
       duration: 0,
-      closable: false
-    })
+      closable: false,
+    });
   }
 
   destroy(): void {
     this.instances.forEach((app) => {
-      app.unmount()
-    })
-    this.instances.clear()
+      app.unmount();
+    });
+    this.instances.clear();
   }
 }
 
-export const message = new MessageService()
+export const message = new MessageService();

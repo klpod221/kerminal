@@ -111,6 +111,26 @@ pub async fn get_master_password_status(
 }
 
 #[tauri::command]
+pub async fn get_current_device(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    let db_service = state.database_service.lock().await;
+
+    let device_info = db_result!(db_service.get_current_device_info().await)?;
+
+    let device = serde_json::json!({
+        "device_id": device_info.device_id,
+        "device_name": device_info.device_name,
+        "device_type": device_info.device_type.to_string(),
+        "os_name": device_info.os_info.os_type,
+        "os_version": device_info.os_info.os_version,
+        "created_at": device_info.created_at.to_rfc3339()
+    });
+
+    Ok(device)
+}
+
+#[tauri::command]
 pub async fn change_master_password(
     state: State<'_, AppState>,
     old_password: String,
@@ -135,6 +155,27 @@ pub async fn reset_master_password(state: State<'_, AppState>) -> Result<(), Str
     // TODO: Implement reset master password logic
     // This should remove all encrypted data and reset the master password
     Ok(())
+}
+
+#[tauri::command]
+pub async fn update_master_password_config(
+    state: State<'_, AppState>,
+    config: serde_json::Value,
+) -> Result<(), String> {
+    let db_service = state.database_service.lock().await;
+
+    // Validate config is provided
+    if config.is_null() {
+        return Err("Configuration is required".to_string());
+    }
+
+    // Extract auto_unlock from config
+    let auto_unlock = config
+        .get("autoUnlock")
+        .and_then(|v| v.as_bool())
+        .ok_or_else(|| "Invalid or missing 'autoUnlock' field in config".to_string())?;
+
+    db_result!(db_service.update_master_password_config(auto_unlock).await)
 }
 
 // === SSH Group Commands ===

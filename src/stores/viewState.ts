@@ -6,16 +6,19 @@ import { ref } from "vue";
  * Manages the state of current active views.
  */
 export const useViewStateStore = defineStore("viewState", () => {
-  const isTopBarActive = ref(true);
+  const isTopBarActive = ref(false);
 
-  const activeView = ref<"dashboard" | "workspace" | "fileManager">("workspace");
+  const activeView = ref<"dashboard" | "workspace" | "fileManager">(
+    "workspace",
+  );
 
   function setActiveView(view: "dashboard" | "workspace" | "fileManager") {
     activeView.value = view;
   }
 
   function toggleTopBar(status?: boolean) {
-    isTopBarActive.value = status !== undefined ? status : !isTopBarActive.value;
+    isTopBarActive.value =
+      status !== undefined ? status : !isTopBarActive.value;
   }
 
   return {

@@ -1,4 +1,4 @@
-import { onMounted, onBeforeUnmount, type Ref } from 'vue';
+import { onMounted, onBeforeUnmount, type Ref } from "vue";
 
 /**
  * Keyboard shortcuts configuration
@@ -20,7 +20,7 @@ interface KeyboardShortcutConfig {
  */
 export function useKeyboardShortcuts(
   shortcuts: KeyboardShortcutConfig[],
-  enabled?: Ref<boolean>
+  enabled?: Ref<boolean>,
 ) {
   const handleKeydown = (event: KeyboardEvent): void => {
     // Check if shortcuts are enabled
@@ -28,12 +28,13 @@ export function useKeyboardShortcuts(
 
     // Don't trigger shortcuts when user is typing in input fields
     const target = event.target as HTMLElement;
-    const isInputElement = target.tagName === 'INPUT' ||
-                          target.tagName === 'TEXTAREA' ||
-                          target.contentEditable === 'true';
+    const isInputElement =
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.contentEditable === "true";
 
     // Skip shortcuts for most input elements, but allow them in terminals
-    if (isInputElement && !target.classList.contains('xterm-helper-textarea')) {
+    if (isInputElement && !target.classList.contains("xterm-helper-textarea")) {
       return;
     }
 
@@ -44,7 +45,13 @@ export function useKeyboardShortcuts(
       const shiftMatches = !!shortcut.shiftKey === event.shiftKey;
       const metaMatches = !!shortcut.metaKey === event.metaKey;
 
-      if (keyMatches && ctrlMatches && altMatches && shiftMatches && metaMatches) {
+      if (
+        keyMatches &&
+        ctrlMatches &&
+        altMatches &&
+        shiftMatches &&
+        metaMatches
+      ) {
         if (shortcut.preventDefault !== false) {
           event.preventDefault();
           event.stopPropagation();
@@ -56,11 +63,11 @@ export function useKeyboardShortcuts(
   };
 
   onMounted(() => {
-    document.addEventListener('keydown', handleKeydown);
+    document.addEventListener("keydown", handleKeydown);
   });
 
   onBeforeUnmount(() => {
-    document.removeEventListener('keydown', handleKeydown);
+    document.removeEventListener("keydown", handleKeydown);
   });
 
   return {

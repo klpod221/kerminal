@@ -8,7 +8,7 @@
       <template v-if="authStore.isAuthenticated">
         <Dashboard v-if="viewState.activeView === 'dashboard'" />
 
-        <Workspace v-show="viewState.activeView === 'workspace'" />
+        <Workspace v-if="viewState.activeView === 'workspace'" />
 
         <SSHProfileManager />
       </template>
@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { onMounted, onUnmounted, watch } from "vue";
 
 // Import components
 import TopBar from "./components/TopBar.vue";
@@ -26,9 +26,9 @@ import Dashboard from "./components/Dashboard.vue";
 import Workspace from "./components/Workspace.vue";
 import SSHProfileManager from "./components/SSHProfileManager.vue";
 
+// Import stores and composables
 import { useOverlay } from "./composables/useOverlay";
 
-// Import stores
 import { useViewStateStore } from "./stores/viewState";
 import { useAuthStore } from "./stores/auth";
 
@@ -59,14 +59,12 @@ onMounted(async () => {
     // if setup is not completed, ensure the setup view is shown
     if (authStore.requiresSetup) {
       openOverlay("master-password-setup");
-      viewState.toggleTopBar(false);
       return;
     }
 
     // If app is locked, show the unlock overlay
     if (authStore.requiresUnlock) {
       openOverlay("master-password-unlock");
-      viewState.toggleTopBar(false);
       return;
     }
   } catch (error) {
@@ -78,4 +76,17 @@ onMounted(async () => {
 onUnmounted(() => {
   authStore.cleanup();
 });
+
+// Watch for changes to toggle top bar visibility based on authentication status
+watch(
+  () => authStore.isAuthenticated,
+  (isAuthenticated) => {
+    if (!isAuthenticated) {
+      openOverlay("master-password-unlock");
+      viewState.toggleTopBar(false);
+    } else {
+      viewState.toggleTopBar(true);
+    }
+  }
+);
 </script>

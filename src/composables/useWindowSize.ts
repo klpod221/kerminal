@@ -1,5 +1,5 @@
-import { ref, onMounted, onUnmounted } from 'vue';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { ref, onMounted, onUnmounted } from "vue";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export function useWindowSize() {
   const width = ref(0);
@@ -16,11 +16,11 @@ export function useWindowSize() {
 
   onMounted(() => {
     updateSize();
-    window.addEventListener('resize', updateSize);
+    window.addEventListener("resize", updateSize);
   });
 
   onUnmounted(() => {
-    window.removeEventListener('resize', updateSize);
+    window.removeEventListener("resize", updateSize);
   });
 
   return { width, height };

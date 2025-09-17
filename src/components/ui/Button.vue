@@ -16,7 +16,7 @@
     <div
       v-if="loading"
       class="animate-spin rounded-full border-2 border-current border-t-transparent mr-2"
-      :class="{ 'w-4 h-4': size !== 'sm', 'w-3 h-3': size === 'sm' }"
+      :class="{ 'w-4 h-4': iconSize === 16, 'w-3 h-3': iconSize === 14, 'w-5 h-5': iconSize === 20 }"
     ></div>
 
     <!-- Icon (Left) -->

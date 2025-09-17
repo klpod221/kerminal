@@ -3,16 +3,17 @@
     id="master-password-setup"
     :show-close-button="false"
     :close-on-backdrop="false"
+    :close-on-esc="false"
     title="Setup Master Password"
     size="md"
   >
-    <div class="flex flex-col gap-6">
-      <Card class="!p-4 !border-blue-400">
+    <div class="flex flex-col gap-4">
+      <Card>
         <div class="flex items-start gap-4">
-          <Lock class="text-blue-500 w-12 h-12" />
+          <Lock :size="80" class="text-amber-400" />
           <div>
             <h3 class="text-lg font-semibold text-gray-100 mb-1">
-              Secure Your SSH Profiles
+              Secure Your Data
             </h3>
             <p class="text-red-400">
               This password cannot be recovered.
@@ -112,6 +113,7 @@ import Button from "./ui/Button.vue";
 import Checkbox from "./ui/Checkbox.vue";
 import Card from "./ui/Card.vue";
 
+// Import stores and composables
 const { closeOverlay } = useOverlay();
 const { setupMasterPassword } = useAuthStore();
 
@@ -135,6 +137,14 @@ const handleSubmit = async () => {
     isLoading.value = true;
 
     await setupMasterPassword(setupForm.value);
+
+    setupForm.value = {
+      deviceName: "",
+      password: "",
+      confirmPassword: "",
+      useKeychain: true,
+      autoUnlock: false,
+    };
 
     message.success("Master password setup successfully!");
     closeOverlay("master-password-setup");

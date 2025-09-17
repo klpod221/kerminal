@@ -46,8 +46,8 @@
                 <div class="rounded-lg p-2" :class="iconBackgroundClass">
                   <component
                     :is="iconComponent"
+                    :size="16"
                     :class="iconClass"
-                    class="w-4 h-4"
                   />
                 </div>
               </div>

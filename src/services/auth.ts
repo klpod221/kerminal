@@ -26,7 +26,7 @@ export async function setup(setup: MasterPasswordSetup): Promise<void> {
  * @returns True if password is valid, false otherwise
  */
 export async function verify(
-  verification: MasterPasswordVerification
+  verification: MasterPasswordVerification,
 ): Promise<boolean> {
   return await invoke<boolean>("verify_master_password", {
     password: verification.password,
@@ -81,8 +81,16 @@ export async function reset(): Promise<void> {
  * @param config - New configuration
  */
 export async function updateConfig(
-  config: Partial<MasterPasswordConfig>
+  config: Partial<MasterPasswordConfig>,
 ): Promise<void> {
   // Note: Backend command not yet implemented
   return await invoke<void>("update_master_password_config", { config });
+}
+
+/**
+ * Get current device information
+ * @returns Current device information
+ */
+export async function getCurrentDevice(): Promise<any> {
+  return await invoke<any>("get_current_device");
 }

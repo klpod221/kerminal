@@ -12,7 +12,7 @@
       }"
       @click="$emit('update:modelValue', tab.id)"
     >
-      <component :is="tab.icon" class="w-4 h-4 inline-block mr-2" />
+      <component :is="tab.icon" :size="16" class="inline-block mr-2" />
       {{ tab.label }}
     </button>
   </nav>

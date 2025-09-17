@@ -5,7 +5,9 @@ import type {
   MasterPasswordSetup,
   MasterPasswordVerification,
   MasterPasswordChange,
+  MasterPasswordConfig,
   SecuritySettings,
+  CurrentDevice,
 } from "../types/auth";
 import * as masterPasswordService from "../services/auth";
 
@@ -26,10 +28,18 @@ export const useAuthStore = defineStore("auth", () => {
   });
 
   const securitySettings = ref<SecuritySettings>({
-    requirePasswordOnStart: true,
     autoLockTimeout: 15,
     sessionTimeoutMinutes: 60,
     useBiometrics: false,
+  });
+
+  const currentDevice = ref<CurrentDevice | null>({
+    device_id: "",
+    device_name: "",
+    device_type: "",
+    os_name: "",
+    os_version: "",
+    created_at: "",
   });
 
   // Auto-lock timer
@@ -39,7 +49,7 @@ export const useAuthStore = defineStore("auth", () => {
   const isAuthenticated = computed(() => status.value.isUnlocked);
   const requiresSetup = computed(() => !status.value.isSetup);
   const requiresUnlock = computed(
-    () => status.value.isSetup && !status.value.isUnlocked
+    () => status.value.isSetup && !status.value.isUnlocked,
   );
 
   /**
@@ -47,7 +57,6 @@ export const useAuthStore = defineStore("auth", () => {
    */
   const checkStatus = async (): Promise<void> => {
     const result = await masterPasswordService.getStatus();
-    console.log("Master password status:", result);
     status.value = result;
   };
 
@@ -56,12 +65,15 @@ export const useAuthStore = defineStore("auth", () => {
    * @param setup - Master password setup configuration
    */
   const setupMasterPassword = async (
-    setup: MasterPasswordSetup
+    setup: MasterPasswordSetup,
   ): Promise<boolean> => {
     await masterPasswordService.setup(setup);
 
     // Refresh status after setup
     await checkStatus();
+
+    // Load current device information
+    await getCurrentDevice();
 
     // Setup auto-lock timer if enabled
     setupAutoLockTimer();
@@ -73,7 +85,7 @@ export const useAuthStore = defineStore("auth", () => {
    * @param verification - Master password verification data
    */
   const unlock = async (
-    verification: MasterPasswordVerification
+    verification: MasterPasswordVerification,
   ): Promise<boolean> => {
     const isValid = await masterPasswordService.verify(verification);
 
@@ -108,9 +120,22 @@ export const useAuthStore = defineStore("auth", () => {
    * @param changeData - Password change data
    */
   const changeMasterPassword = async (
-    changeData: MasterPasswordChange
+    changeData: MasterPasswordChange,
   ): Promise<boolean> => {
     await masterPasswordService.change(changeData);
+    return true;
+  };
+
+  /**
+   * Update master password configuration
+   * @param config - New configuration values
+   */
+  const updateMasterPasswordConfig = async (
+    config: MasterPasswordConfig,
+  ): Promise<boolean> => {
+    await masterPasswordService.updateConfig(config);
+
+    await checkStatus();
     return true;
   };
 
@@ -143,10 +168,13 @@ export const useAuthStore = defineStore("auth", () => {
 
     const timeoutMinutes = securitySettings.value.autoLockTimeout;
     if (timeoutMinutes > 0 && status.value.isUnlocked) {
-      autoLockTimer = setTimeout(() => {
-        console.log("Auto-lock triggered");
-        lock();
-      }, timeoutMinutes * 60 * 1000);
+      autoLockTimer = setTimeout(
+        () => {
+          console.log("Auto-lock triggered");
+          lock();
+        },
+        timeoutMinutes * 60 * 1000,
+      );
     }
   };
 
@@ -186,11 +214,20 @@ export const useAuthStore = defineStore("auth", () => {
    */
   const initialize = async (): Promise<void> => {
     await checkStatus();
+    await getCurrentDevice();
 
     // If already unlocked, setup auto-lock timer
     if (status.value.isUnlocked) {
       setupAutoLockTimer();
     }
+  };
+
+  /**
+   * Get current device information
+   */
+  const getCurrentDevice = async (): Promise<void> => {
+    const deviceInfo = await masterPasswordService.getCurrentDevice();
+    currentDevice.value = deviceInfo;
   };
 
   /**
@@ -204,6 +241,7 @@ export const useAuthStore = defineStore("auth", () => {
     // State
     status,
     securitySettings,
+    currentDevice,
 
     // Computed
     isAuthenticated,
@@ -218,7 +256,9 @@ export const useAuthStore = defineStore("auth", () => {
     tryAutoUnlock,
     changeMasterPassword,
     resetMasterPassword,
+    updateMasterPasswordConfig,
     resetAutoLockTimer,
+    getCurrentDevice,
     initialize,
     cleanup,
   };

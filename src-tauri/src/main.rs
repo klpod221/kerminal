@@ -12,8 +12,6 @@ mod state;
 
 use crate::services::terminal::TerminalManager;
 use crate::state::AppState;
-use crate::database::{DatabaseService, DatabaseServiceConfig};
-use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
@@ -54,6 +52,8 @@ async fn main() {
             commands::database::try_auto_unlock,
             commands::database::lock_session,
             commands::database::get_master_password_status,
+            commands::database::update_master_password_config,
+            commands::database::get_current_device,
             commands::database::change_master_password,
             commands::database::reset_master_password,
             // Database commands - SSH Groups

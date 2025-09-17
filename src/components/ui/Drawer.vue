@@ -96,6 +96,7 @@ interface DrawerProps {
   position?: "left" | "right";
   width?: "sm" | "md" | "lg" | "xl" | "2xl";
   closeOnOverlay?: boolean;
+  closeOnEsc?: boolean;
   parentId?: string;
 }
 
@@ -107,6 +108,7 @@ const props = withDefaults(defineProps<DrawerProps>(), {
   iconBackground: "bg-gray-700",
   iconColor: "text-gray-300",
   closeOnOverlay: true,
+  closeOnEsc: true,
 });
 
 const emit = defineEmits<{
@@ -142,6 +144,15 @@ const handleOverlayClick = (): void => {
   }
 };
 
+/**
+ * Handle keyboard events - close drawer on Esc key
+ */
+const handleKeydown = (event: KeyboardEvent): void => {
+  if (event.key === "Escape" && props.closeOnEsc && isVisible.value) {
+    close();
+  }
+};
+
 // Register overlay on mount
 onMounted(() => {
   registerOverlay({
@@ -155,7 +166,8 @@ onMounted(() => {
       width: props.width,
       iconBackground: props.iconBackground,
       iconColor: props.iconColor,
-      closeOnOverlay: props.closeOnOverlay
+      closeOnOverlay: props.closeOnOverlay,
+      closeOnEsc: props.closeOnEsc
     }
   });
 });
@@ -163,6 +175,7 @@ onMounted(() => {
 // Unregister on unmount
 onUnmounted(() => {
   unregisterOverlay(props.id);
+  document.removeEventListener("keydown", handleKeydown);
 });
 
 // Watch for visibility changes from parent component
@@ -176,4 +189,15 @@ watch(
     }
   }
 );
+
+// Watch for drawer visibility to manage keyboard event listener
+watch(isVisible, (visible) => {
+  if (visible) {
+    // Add keyboard event listener when drawer is visible
+    document.addEventListener("keydown", handleKeydown);
+  } else {
+    // Remove keyboard event listener when drawer is hidden
+    document.removeEventListener("keydown", handleKeydown);
+  }
+});
 </script>

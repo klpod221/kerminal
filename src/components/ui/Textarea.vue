@@ -26,7 +26,7 @@
         :autocomplete="autocomplete"
         :class="[
           'block w-full rounded-lg border transition-all duration-200',
-          'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800',
+          'focus:outline-none',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'readonly:bg-gray-700 readonly:cursor-default',
           sizeClasses,
@@ -47,7 +47,7 @@
 
       <!-- Error message -->
       <p v-if="errorMessage" class="text-xs text-red-400 flex items-center">
-        <span class="mr-1">⚠</span>
+        <TriangleAlert class="mr-1" :size="12" />
         {{ errorMessage }}
       </p>
     </div>
@@ -56,6 +56,7 @@
 
 <script setup lang="ts">
 import { ref, computed, inject, onMounted, onUnmounted, toRef } from "vue";
+import { TriangleAlert } from "lucide-vue-next";
 import { validate as validateFn } from "../../utils/validators";
 import type { FormContext } from "../../types/form";
 

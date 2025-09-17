@@ -36,7 +36,8 @@
         <slot name="icon">
           <component
             :is="icon"
-            :class="['w-8 h-8', iconColor || 'text-blue-400']"
+            :size="32"
+            :class="iconColor || 'text-blue-400'"
           />
         </slot>
       </div>

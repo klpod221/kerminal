@@ -1,24 +1,8 @@
-import { onMounted, onUnmounted } from "vue";
 import { useOverlayStore } from "../stores/overlay";
 import type { OverlayConfig } from "../types/overlay";
 
 export function useOverlay() {
   const overlayStore = useOverlayStore();
-
-  // Register global ESC key handler
-  const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === "Escape") {
-      overlayStore.handleEscapeKey();
-    }
-  };
-
-  onMounted(() => {
-    document.addEventListener("keydown", handleKeyDown);
-  });
-
-  onUnmounted(() => {
-    document.removeEventListener("keydown", handleKeyDown);
-  });
 
   const registerOverlay = (config: OverlayConfig) => {
     overlayStore.register(config);
@@ -70,7 +54,7 @@ export function useOverlay() {
 export function createOverlayConfig(
   id: string,
   type: "drawer" | "modal",
-  options: Partial<OverlayConfig> = {}
+  options: Partial<OverlayConfig> = {},
 ): OverlayConfig {
   return {
     id,

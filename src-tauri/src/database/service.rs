@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use chrono::Utc;
 
 use crate::database::{
     config::MasterPasswordConfig,
@@ -113,11 +114,17 @@ impl DatabaseService {
         request: SetupMasterPasswordRequest,
     ) -> DatabaseResult<()> {
         let mut mp_manager = self.master_password_manager.write().await;
-        let entry = mp_manager.setup_master_password(request).await?;
+        let entry = mp_manager.setup_master_password(request.clone()).await?;
 
         // Save to local database
         let local_db = self.local_db.read().await;
         local_db.save_master_password_entry(&entry).await?;
+
+        // Update current device with the new device name and last_seen_at
+        let mut updated_device = self.current_device.clone();
+        updated_device.device_name = request.device_name;
+        updated_device.update_last_seen();
+        local_db.save_device(&updated_device).await?;
 
         Ok(())
     }
@@ -128,7 +135,7 @@ impl DatabaseService {
         password: String
     ) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
-        let entry = local_db
+        let mut entry = local_db
             .get_master_password_entry(&self.current_device.device_id)
             .await?
             .ok_or_else(|| DatabaseError::MasterPasswordRequired)?;
@@ -148,16 +155,46 @@ impl DatabaseService {
             return Err(DatabaseError::AuthenticationFailed("Invalid master password".to_string()));
         }
 
+        // Update device last_seen_at on successful unlock
+        let mut updated_device = self.current_device.clone();
+        updated_device.update_last_seen();
+        local_db.save_device(&updated_device).await?;
+
+        // Update last_verified_at in master password entry
+        entry.last_verified_at = Some(Utc::now());
+        local_db.save_master_password_entry(&entry).await?;
+
         Ok(())
     }
 
     /// Try auto-unlock
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
         let mut mp_manager = self.master_password_manager.write().await;
-        mp_manager
+        let success = mp_manager
             .try_auto_unlock()
             .await
-            .map_err(DatabaseError::from)
+            .map_err(DatabaseError::from)?;
+
+        // Update device last_seen_at and last_verified_at on successful auto-unlock
+        if success {
+            let local_db = self.local_db.read().await;
+
+            // Update device last_seen_at
+            let mut updated_device = self.current_device.clone();
+            updated_device.update_last_seen();
+            local_db.save_device(&updated_device).await?;
+
+            // Update last_verified_at in master password entry
+            if let Some(mut entry) = local_db
+                .get_master_password_entry(&self.current_device.device_id)
+                .await?
+            {
+                entry.last_verified_at = Some(Utc::now());
+                local_db.save_master_password_entry(&entry).await?;
+            }
+        }
+
+        Ok(success)
     }
 
     /// Lock session
@@ -188,7 +225,21 @@ impl DatabaseService {
             local_db.save_master_password_entry(&entry).await?;
         }
 
+        println!("Master password config updated: auto_unlock={}", auto_unlock);
+
         Ok(())
+    }
+
+    /// Get current device information
+    pub async fn get_current_device_info(&self) -> DatabaseResult<DeviceInfo> {
+        let local_db = self.local_db.read().await;
+        // Get current device from database (prefer latest data)
+        if let Some(device) = local_db.get_current_device().await? {
+            Ok(DeviceInfo::from(device))
+        } else {
+            // Fallback to the device stored in service
+            Ok(DeviceInfo::from(self.current_device.clone()))
+        }
     }
 
     // === SSH Group Operations ===

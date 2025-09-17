@@ -1,20 +1,21 @@
 <template>
   <Modal
     id="master-password-change"
+    parent-id="master-password-settings"
     :show-close-button="true"
     title="Change Master Password"
     size="md"
   >
     <div class="flex flex-col gap-6">
-      <Card class="!p-4 !border-yellow-400">
+      <Card>
         <div class="flex items-start gap-4">
-          <Key :size="32" class="text-yellow-500" />
+          <Key :size="80" class="text-blue-400" />
           <div>
             <h3 class="text-lg font-semibold text-gray-100 mb-1">
               Update Security
             </h3>
             <p class="text-sm text-gray-400">
-              Change your master password to keep your SSH profiles secure.
+              Change your master password regularly to keep your data secure.
             </p>
           </div>
         </div>
@@ -65,9 +66,9 @@
           />
         </div>
 
-        <Card class="!p-4 !border-yellow-400">
+        <Card>
           <div class="flex items-start gap-3">
-            <AlertTriangle :size="20" class="text-yellow-500 mt-0.5" />
+            <AlertTriangle :size="20" class="text-yellow-500 mt-0.5 flex-shrink-0" />
             <div>
               <h5 class="text-sm font-semibold text-yellow-400 mb-1">
                 Important Security Notice

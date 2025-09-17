@@ -1,5 +1,8 @@
 import type { TerminalTitleChanged, TerminalExited } from "../types/panel";
-import { invokeWithErrorHandling, listenWithErrorHandling } from "../utils/terminal";
+import {
+  invokeWithErrorHandling,
+  listenWithErrorHandling,
+} from "../utils/terminal";
 import type {
   CreateTerminalResponse,
   WriteTerminalRequest,
@@ -19,16 +22,16 @@ let exitUnlisten: (() => void) | null = null;
 export async function createTerminal(
   shell?: string,
   workingDir?: string,
-  title?: string
+  title?: string,
 ): Promise<CreateTerminalResponse> {
   return invokeWithErrorHandling<CreateTerminalResponse>(
     "create_terminal",
     {
       shell,
       working_dir: workingDir,
-      title
+      title,
     },
-    "create terminal"
+    "create terminal",
   );
 }
 
@@ -40,33 +43,39 @@ export const createLocalTerminal = createTerminal;
 /**
  * Create a new SSH terminal using profile ID
  */
-export async function createSSHTerminal(profileId: string): Promise<CreateTerminalResponse> {
+export async function createSSHTerminal(
+  profileId: string,
+): Promise<CreateTerminalResponse> {
   return invokeWithErrorHandling<CreateTerminalResponse>(
     "create_ssh_terminal",
     { profile_id: profileId },
-    "create SSH terminal"
+    "create SSH terminal",
   );
 }
 
 /**
  * Write data to a terminal
  */
-export async function writeToTerminal(request: WriteTerminalRequest): Promise<void> {
+export async function writeToTerminal(
+  request: WriteTerminalRequest,
+): Promise<void> {
   return invokeWithErrorHandling<void>(
     "write_to_terminal",
     { request },
-    "write to terminal"
+    "write to terminal",
   );
 }
 
 /**
  * Resize a terminal
  */
-export async function resizeTerminal(request: ResizeTerminalRequest): Promise<void> {
+export async function resizeTerminal(
+  request: ResizeTerminalRequest,
+): Promise<void> {
   return invokeWithErrorHandling<void>(
     "resize_terminal",
     { request },
-    "resize terminal"
+    "resize terminal",
   );
 }
 
@@ -74,25 +83,27 @@ export async function resizeTerminal(request: ResizeTerminalRequest): Promise<vo
  * Close a specific terminal
  */
 export async function closeTerminal(terminalId: string): Promise<void> {
-  if (!terminalId || terminalId.trim() === '') {
-    throw new Error('Terminal ID is required and cannot be empty');
+  if (!terminalId || terminalId.trim() === "") {
+    throw new Error("Terminal ID is required and cannot be empty");
   }
 
   return invokeWithErrorHandling<void>(
     "close_terminal",
     { terminalId },
-    "close terminal"
+    "close terminal",
   );
 }
 
 /**
  * Get information about a specific terminal
  */
-export async function getTerminalInfo(terminalId: string): Promise<TerminalInfo> {
+export async function getTerminalInfo(
+  terminalId: string,
+): Promise<TerminalInfo> {
   return invokeWithErrorHandling<TerminalInfo>(
     "get_terminal_info",
     { terminal_id: terminalId },
-    "get terminal info"
+    "get terminal info",
   );
 }
 
@@ -103,7 +114,7 @@ export async function listTerminals(): Promise<TerminalInfo[]> {
   return invokeWithErrorHandling<TerminalInfo[]>(
     "list_terminals",
     undefined,
-    "list terminals"
+    "list terminals",
   );
 }
 
@@ -114,7 +125,7 @@ export async function closeAllTerminals(): Promise<void> {
   return invokeWithErrorHandling<void>(
     "close_all_terminals",
     undefined,
-    "close all terminals"
+    "close all terminals",
   );
 }
 
@@ -126,7 +137,7 @@ export async function getUserHostname(): Promise<string> {
     return await invokeWithErrorHandling<string>(
       "get_user_hostname",
       undefined,
-      "get user hostname"
+      "get user hostname",
     );
   } catch {
     return "user@localhost";
@@ -136,11 +147,13 @@ export async function getUserHostname(): Promise<string> {
 /**
  * Listen to terminal output events
  */
-export async function listenToTerminalOutput(callback: (data: TerminalData) => void): Promise<() => void> {
+export async function listenToTerminalOutput(
+  callback: (data: TerminalData) => void,
+): Promise<() => void> {
   outputUnlisten = await listenWithErrorHandling<TerminalData>(
     "terminal-output",
     callback,
-    "listen to terminal output"
+    "listen to terminal output",
   );
   return outputUnlisten;
 }
@@ -148,11 +161,13 @@ export async function listenToTerminalOutput(callback: (data: TerminalData) => v
 /**
  * Listen to terminal title change events
  */
-export async function listenToTerminalTitleChanges(callback: (data: TerminalTitleChanged) => void): Promise<() => void> {
+export async function listenToTerminalTitleChanges(
+  callback: (data: TerminalTitleChanged) => void,
+): Promise<() => void> {
   titleUnlisten = await listenWithErrorHandling<TerminalTitleChanged>(
     "terminal-title-changed",
     callback,
-    "listen to terminal title changes"
+    "listen to terminal title changes",
   );
   return titleUnlisten;
 }
@@ -160,11 +175,13 @@ export async function listenToTerminalTitleChanges(callback: (data: TerminalTitl
 /**
  * Listen to terminal exit events
  */
-export async function listenToTerminalExits(callback: (data: TerminalExited) => void): Promise<() => void> {
+export async function listenToTerminalExits(
+  callback: (data: TerminalExited) => void,
+): Promise<() => void> {
   exitUnlisten = await listenWithErrorHandling<TerminalExited>(
     "terminal-exited",
     callback,
-    "listen to terminal exit events"
+    "listen to terminal exit events",
   );
   return exitUnlisten;
 }

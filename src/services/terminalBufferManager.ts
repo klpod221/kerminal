@@ -2,21 +2,21 @@
  * Terminal Buffer Manager for Tauri Application
  * Manages terminal output buffers and synchronizes with Rust backend
  */
-import { invoke } from '@tauri-apps/api/core'
+import { invoke } from "@tauri-apps/api/core";
 
 export class TerminalBufferManager {
-  private static instance: TerminalBufferManager
-  private readonly localBuffers: Map<string, string[]> = new Map()
-  private readonly MAX_LOCAL_BUFFER_LINES = 500
+  private static instance: TerminalBufferManager;
+  private readonly localBuffers: Map<string, string[]> = new Map();
+  private readonly MAX_LOCAL_BUFFER_LINES = 500;
 
   /**
    * Get singleton instance
    */
   static getInstance(): TerminalBufferManager {
     if (!TerminalBufferManager.instance) {
-      TerminalBufferManager.instance = new TerminalBufferManager()
+      TerminalBufferManager.instance = new TerminalBufferManager();
     }
-    return TerminalBufferManager.instance
+    return TerminalBufferManager.instance;
   }
 
   /**
@@ -26,33 +26,36 @@ export class TerminalBufferManager {
    */
   saveToLocalBuffer(terminalId: string, data: string): void {
     try {
-      if (!data || typeof data !== 'string') {
-        return
+      if (!data || typeof data !== "string") {
+        return;
       }
 
       // Initialize buffer if not exists
       if (!this.localBuffers.has(terminalId)) {
-        this.localBuffers.set(terminalId, [])
+        this.localBuffers.set(terminalId, []);
       }
 
-      const buffer = this.localBuffers.get(terminalId)!
+      const buffer = this.localBuffers.get(terminalId)!;
 
       // Split data by lines and add to buffer
-      const lines = data.split('\n')
+      const lines = data.split("\n");
 
       // If the data doesn't end with newline, the last element should be merged with existing last line
-      if (buffer.length > 0 && !data.startsWith('\n') && lines.length > 0) {
-        buffer[buffer.length - 1] += lines[0]
-        lines.shift() // Remove first element as it's already merged
+      if (buffer.length > 0 && !data.startsWith("\n") && lines.length > 0) {
+        buffer[buffer.length - 1] += lines[0];
+        lines.shift(); // Remove first element as it's already merged
       }
 
       // Add remaining lines
-      buffer.push(...lines)
+      buffer.push(...lines);
 
       // Trim buffer to prevent memory overflow
-      this.trimLocalBuffer(buffer)
+      this.trimLocalBuffer(buffer);
     } catch (error) {
-      console.error(`Failed to save to local buffer for terminal ${terminalId}:`, error)
+      console.error(
+        `Failed to save to local buffer for terminal ${terminalId}:`,
+        error,
+      );
     }
   }
 
@@ -63,11 +66,14 @@ export class TerminalBufferManager {
    */
   async getBufferFromBackend(terminalId: string): Promise<string> {
     try {
-      const bufferString = await invoke('get_terminal_buffer', { terminalId })
-      return typeof bufferString === 'string' ? bufferString : ''
+      const bufferString = await invoke("get_terminal_buffer", { terminalId });
+      return typeof bufferString === "string" ? bufferString : "";
     } catch (error) {
-      console.error(`Failed to get buffer string from backend for terminal ${terminalId}:`, error)
-      return ''
+      console.error(
+        `Failed to get buffer string from backend for terminal ${terminalId}:`,
+        error,
+      );
+      return "";
     }
   }
 
@@ -78,11 +84,14 @@ export class TerminalBufferManager {
    */
   async hasBufferInBackend(terminalId: string): Promise<boolean> {
     try {
-      const hasBuffer = await invoke('has_terminal_buffer', { terminalId })
-      return Boolean(hasBuffer)
+      const hasBuffer = await invoke("has_terminal_buffer", { terminalId });
+      return Boolean(hasBuffer);
     } catch (error) {
-      console.error(`Failed to check buffer in backend for terminal ${terminalId}:`, error)
-      return false
+      console.error(
+        `Failed to check buffer in backend for terminal ${terminalId}:`,
+        error,
+      );
+      return false;
     }
   }
 
@@ -91,26 +100,26 @@ export class TerminalBufferManager {
    * @returns Promise of buffer statistics
    */
   async getBufferStats(): Promise<{
-    totalTerminals: number
-    totalLines: number
-    memoryUsage: number
+    totalTerminals: number;
+    totalLines: number;
+    memoryUsage: number;
   }> {
     try {
-      const stats = await invoke('get_buffer_stats')
+      const stats = await invoke("get_buffer_stats");
       return stats &&
-        typeof stats === 'object' &&
-        'total_terminals' in stats &&
-        'total_lines' in stats &&
-        'memory_usage' in stats
+        typeof stats === "object" &&
+        "total_terminals" in stats &&
+        "total_lines" in stats &&
+        "memory_usage" in stats
         ? {
             totalTerminals: (stats as any).total_terminals,
             totalLines: (stats as any).total_lines,
-            memoryUsage: (stats as any).memory_usage
+            memoryUsage: (stats as any).memory_usage,
           }
-        : { totalTerminals: 0, totalLines: 0, memoryUsage: 0 }
+        : { totalTerminals: 0, totalLines: 0, memoryUsage: 0 };
     } catch (error) {
-      console.error('Failed to get buffer stats from backend:', error)
-      return { totalTerminals: 0, totalLines: 0, memoryUsage: 0 }
+      console.error("Failed to get buffer stats from backend:", error);
+      return { totalTerminals: 0, totalLines: 0, memoryUsage: 0 };
     }
   }
 
@@ -119,7 +128,7 @@ export class TerminalBufferManager {
    * @param terminalId - Terminal identifier
    */
   clearLocalBuffer(terminalId: string): void {
-    this.localBuffers.delete(terminalId)
+    this.localBuffers.delete(terminalId);
   }
 
   /**
@@ -130,29 +139,32 @@ export class TerminalBufferManager {
    */
   async restoreBuffer(
     terminalId: string,
-    terminal: { clear: () => void; write: (data: string) => void }
+    terminal: { clear: () => void; write: (data: string) => void },
   ): Promise<boolean> {
     try {
       // Check if buffer exists in backend
-      const hasBuffer = await this.hasBufferInBackend(terminalId)
+      const hasBuffer = await this.hasBufferInBackend(terminalId);
       if (!hasBuffer) {
-        return false
+        return false;
       }
 
       // Get buffer from backend
-      const bufferString = await this.getBufferFromBackend(terminalId)
+      const bufferString = await this.getBufferFromBackend(terminalId);
       if (!bufferString) {
-        return false
+        return false;
       }
 
       // Clear terminal and write buffer
-      terminal.clear()
-      terminal.write(bufferString)
+      terminal.clear();
+      terminal.write(bufferString);
 
-      return true
+      return true;
     } catch (error) {
-      console.error(`Failed to restore buffer for terminal ${terminalId}:`, error)
-      return false
+      console.error(
+        `Failed to restore buffer for terminal ${terminalId}:`,
+        error,
+      );
+      return false;
     }
   }
 
@@ -162,14 +174,14 @@ export class TerminalBufferManager {
   async triggerCleanup(): Promise<void> {
     try {
       // Get list of active terminal IDs from terminal manager first
-      const activeTerminals = await invoke('list_terminals')
+      const activeTerminals = await invoke("list_terminals");
       const activeTerminalIds = Array.isArray(activeTerminals)
         ? activeTerminals.map((t: any) => t.id)
-        : []
+        : [];
 
-      await invoke('cleanup_terminal_buffers', { activeTerminalIds })
+      await invoke("cleanup_terminal_buffers", { activeTerminalIds });
     } catch (error) {
-      console.error('Failed to trigger buffer cleanup:', error)
+      console.error("Failed to trigger buffer cleanup:", error);
     }
   }
 
@@ -178,30 +190,30 @@ export class TerminalBufferManager {
    * @returns Promise of combined statistics
    */
   async getCombinedStats(): Promise<{
-    local: { terminals: number; lines: number }
-    main: { totalTerminals: number; totalLines: number; memoryUsage: number }
+    local: { terminals: number; lines: number };
+    main: { totalTerminals: number; totalLines: number; memoryUsage: number };
   }> {
     try {
-      const mainStats = await this.getBufferStats()
+      const mainStats = await this.getBufferStats();
 
-      let localLines = 0
+      let localLines = 0;
       for (const buffer of this.localBuffers.values()) {
-        localLines += buffer.length
+        localLines += buffer.length;
       }
 
       return {
         local: {
           terminals: this.localBuffers.size,
-          lines: localLines
+          lines: localLines,
         },
-        main: mainStats
-      }
+        main: mainStats,
+      };
     } catch (error) {
-      console.error('Failed to get combined stats:', error)
+      console.error("Failed to get combined stats:", error);
       return {
         local: { terminals: 0, lines: 0 },
-        main: { totalTerminals: 0, totalLines: 0, memoryUsage: 0 }
-      }
+        main: { totalTerminals: 0, totalLines: 0, memoryUsage: 0 },
+      };
     }
   }
 
@@ -209,7 +221,7 @@ export class TerminalBufferManager {
    * Cleanup all local buffers
    */
   cleanup(): void {
-    this.localBuffers.clear()
+    this.localBuffers.clear();
   }
 
   /**
@@ -218,8 +230,8 @@ export class TerminalBufferManager {
    */
   private trimLocalBuffer(buffer: string[]): void {
     if (buffer.length > this.MAX_LOCAL_BUFFER_LINES) {
-      const trimCount = buffer.length - this.MAX_LOCAL_BUFFER_LINES
-      buffer.splice(0, trimCount)
+      const trimCount = buffer.length - this.MAX_LOCAL_BUFFER_LINES;
+      buffer.splice(0, trimCount);
     }
   }
 }

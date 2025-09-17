@@ -42,7 +42,6 @@ export interface MasterPasswordChange {
  * Security settings for master password
  */
 export interface SecuritySettings {
-  requirePasswordOnStart: boolean;
   autoLockTimeout: number; // in minutes (0 = never)
   sessionTimeoutMinutes?: number;
   useBiometrics?: boolean; // for future implementation
@@ -53,18 +52,16 @@ export interface SecuritySettings {
  */
 export interface MasterPasswordConfig {
   autoUnlock: boolean;
-  useKeychain: boolean;
-  sessionTimeoutMinutes?: number;
-  securitySettings: SecuritySettings;
 }
 
 /**
  * Device information for master password
  */
-export interface DeviceInfo {
-  id: string;
-  name: string;
-  isCurrentDevice: boolean;
-  lastVerified?: string;
-  created: string;
+export interface CurrentDevice {
+  device_id: string;
+  device_name: string;
+  device_type: string;
+  os_name: string;
+  os_version: string;
+  created_at: string;
 }

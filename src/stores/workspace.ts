@@ -49,7 +49,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    */
   const findPanelInLayout = (
     layout: PanelLayout,
-    panelId: string
+    panelId: string,
   ): Panel | null => {
     if (layout.type === "panel" && layout.panel?.id === panelId) {
       return layout.panel;
@@ -71,7 +71,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    */
   const removePanelFromLayout = (
     layout: PanelLayout,
-    panelId: string
+    panelId: string,
   ): PanelLayout | null => {
     if (layout.type === "panel" && layout.panel?.id === panelId) {
       return null; // This panel should be removed
@@ -221,7 +221,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     const tabIndex = panel.tabs.findIndex((tab) => tab.id === tabId);
     const terminalIndex = terminals.value.findIndex(
-      (terminal) => terminal.id === tabId
+      (terminal) => terminal.id === tabId,
     );
 
     if (tabIndex !== -1) {
@@ -289,7 +289,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     layout: PanelLayout,
     panelId: string,
     newPanel: Panel,
-    direction: "horizontal" | "vertical"
+    direction: "horizontal" | "vertical",
   ): boolean => {
     if (layout.type === "panel" && layout.panel?.id === panelId) {
       // This is the panel want to split
@@ -355,7 +355,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
-          shouldFocusOnReady: true // Mark this terminal to focus when ready
+          shouldFocusOnReady: true, // Mark this terminal to focus when ready
         };
         terminals.value.push(newTerminal);
       } else {
@@ -364,7 +364,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
-          shouldFocusOnReady: true
+          shouldFocusOnReady: true,
         };
         terminals.value.push(newTerminal);
       }
@@ -374,7 +374,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       const newTerminal: TerminalInstance = {
         id: newTabId,
         ready: false,
-        shouldFocusOnReady: true
+        shouldFocusOnReady: true,
       };
       terminals.value.push(newTerminal);
     }
@@ -418,7 +418,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
-          shouldFocusOnReady: true // Mark this terminal to focus when ready
+          shouldFocusOnReady: true, // Mark this terminal to focus when ready
         };
         terminals.value.push(newTerminal);
       } else {
@@ -427,7 +427,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
-          shouldFocusOnReady: true
+          shouldFocusOnReady: true,
         };
         terminals.value.push(newTerminal);
       }
@@ -437,7 +437,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       const newTerminal: TerminalInstance = {
         id: newTabId,
         ready: false,
-        shouldFocusOnReady: true
+        shouldFocusOnReady: true,
       };
       terminals.value.push(newTerminal);
     }
@@ -469,7 +469,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     for (const tabId of tabIds) {
       const terminalIndex = terminals.value.findIndex(
-        (terminal) => terminal.id === tabId
+        (terminal) => terminal.id === tabId,
       );
       if (terminalIndex !== -1) {
         terminals.value.splice(terminalIndex, 1);
@@ -504,7 +504,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    */
   const findPanelContainingTab = (
     layout: PanelLayout,
-    tabId: string
+    tabId: string,
   ): Panel | null => {
     if (layout.type === "panel" && layout.panel) {
       const hasTab = layout.panel.tabs.some((tab) => tab.id === tabId);
@@ -525,7 +525,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    * @param tab - The tab to insert
    * @param targetTabId - The tab ID to insert before (optional)
    */
-  const insertTabToPanel = (panel: Panel, tab: Tab, targetTabId?: string): void => {
+  const insertTabToPanel = (
+    panel: Panel,
+    tab: Tab,
+    targetTabId?: string,
+  ): void => {
     if (targetTabId) {
       const targetIndex = panel.tabs.findIndex((t) => t.id === targetTabId);
       if (targetIndex !== -1) {
@@ -545,7 +549,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const reorderTabWithinPanel = (
     panelId: string,
     tabId: string,
-    targetTabId?: string
+    targetTabId?: string,
   ): void => {
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel || !targetTabId) return;
@@ -570,7 +574,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     fromPanel: Panel,
     toPanel: Panel,
     tabId: string,
-    tabIndex: number
+    tabIndex: number,
   ): void => {
     if (fromPanel.activeTabId === tabId) {
       if (fromPanel.tabs.length > 0) {
@@ -595,7 +599,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     fromPanelId: string,
     toPanelId: string,
     tabId: string,
-    targetTabId?: string
+    targetTabId?: string,
   ): void => {
     const fromPanel = findPanelInLayout(panelLayout.value, fromPanelId);
     const toPanel = findPanelInLayout(panelLayout.value, toPanelId);
@@ -623,7 +627,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     fromPanelId: string,
     toPanelId: string,
     tabId: string,
-    targetTabId?: string
+    targetTabId?: string,
   ): void => {
     // Auto-detect source panel if not provided
     let actualFromPanelId = fromPanelId;
@@ -668,7 +672,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const newTerminal: TerminalInstance = {
       id: newTabId,
       ready: false,
-      shouldFocusOnReady: true // Focus duplicated tabs when ready
+      shouldFocusOnReady: true, // Focus duplicated tabs when ready
     };
 
     // Add tab to panel
@@ -692,10 +696,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    * @param targetPanelId - The target panel ID
    */
   const splitPanelByDrop = (
-    direction: 'top' | 'bottom' | 'left' | 'right',
+    direction: "top" | "bottom" | "left" | "right",
     draggedTab: Tab,
     sourcePanelId: string,
-    targetPanelId: string
+    targetPanelId: string,
   ): void => {
     const sourcePanel = findPanelInLayout(panelLayout.value, sourcePanelId);
     const targetPanel = findPanelInLayout(panelLayout.value, targetPanelId);
@@ -703,7 +707,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (!sourcePanel || !targetPanel) return;
 
     // Remove tab from source panel
-    const tabIndex = sourcePanel.tabs.findIndex((tab) => tab.id === draggedTab.id);
+    const tabIndex = sourcePanel.tabs.findIndex(
+      (tab) => tab.id === draggedTab.id,
+    );
     if (tabIndex === -1) return;
 
     const [tab] = sourcePanel.tabs.splice(tabIndex, 1);
@@ -728,29 +734,39 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     // Determine split direction based on drop zone
     let splitDirection: "horizontal" | "vertical";
-    if (direction === 'top' || direction === 'bottom') {
-      splitDirection = 'vertical';
+    if (direction === "top" || direction === "bottom") {
+      splitDirection = "vertical";
     } else {
-      splitDirection = 'horizontal';
+      splitDirection = "horizontal";
     }
 
     // Split the target panel
-    const success = splitPanelInLayout(panelLayout.value, targetPanelId, newPanel, splitDirection);
+    const success = splitPanelInLayout(
+      panelLayout.value,
+      targetPanelId,
+      newPanel,
+      splitDirection,
+    );
 
     if (success) {
       // If direction is 'top' or 'left', we need to swap the order of panels
-      if (direction === 'top' || direction === 'left') {
+      if (direction === "top" || direction === "left") {
         // Find the newly created split layout and swap its children
         const swapChildrenInLayout = (layout: PanelLayout): boolean => {
-          if (layout.type === 'split' && layout.children && layout.children.length === 2) {
+          if (
+            layout.type === "split" &&
+            layout.children &&
+            layout.children.length === 2
+          ) {
             // Check if one of the children is our new panel
-            const hasNewPanel = layout.children.some(child =>
-              child.type === 'panel' && child.panel?.id === newPanelId
+            const hasNewPanel = layout.children.some(
+              (child) =>
+                child.type === "panel" && child.panel?.id === newPanelId,
             );
-            const hasTargetPanel = layout.children.some(child => {
-              if (child.type === 'panel') {
+            const hasTargetPanel = layout.children.some((child) => {
+              if (child.type === "panel") {
                 return child.panel?.id === targetPanelId;
-              } else if (child.type === 'split') {
+              } else if (child.type === "split") {
                 return findPanelInLayout(child, targetPanelId) !== null;
               }
               return false;
@@ -758,13 +774,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
             if (hasNewPanel && hasTargetPanel) {
               // Swap the children
-              [layout.children[0], layout.children[1]] = [layout.children[1], layout.children[0]];
+              [layout.children[0], layout.children[1]] = [
+                layout.children[1],
+                layout.children[0],
+              ];
               return true;
             }
           }
 
-          if (layout.type === 'split' && layout.children) {
-            return layout.children.some(child => swapChildrenInLayout(child));
+          if (layout.type === "split" && layout.children) {
+            return layout.children.some((child) => swapChildrenInLayout(child));
           }
 
           return false;
@@ -789,9 +808,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    * @param panelId - The panel ID
    */
   const cloneTabAndSplit = (
-    direction: 'top' | 'bottom' | 'left' | 'right',
+    direction: "top" | "bottom" | "left" | "right",
     tabId: string,
-    panelId: string
+    panelId: string,
   ): void => {
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
@@ -827,29 +846,39 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     // Determine split direction based on drop zone
     let splitDirection: "horizontal" | "vertical";
-    if (direction === 'top' || direction === 'bottom') {
-      splitDirection = 'vertical';
+    if (direction === "top" || direction === "bottom") {
+      splitDirection = "vertical";
     } else {
-      splitDirection = 'horizontal';
+      splitDirection = "horizontal";
     }
 
     // Split the panel
-    const success = splitPanelInLayout(panelLayout.value, panelId, newPanel, splitDirection);
+    const success = splitPanelInLayout(
+      panelLayout.value,
+      panelId,
+      newPanel,
+      splitDirection,
+    );
 
     if (success) {
       // If direction is 'top' or 'left', we need to swap the order of panels
-      if (direction === 'top' || direction === 'left') {
+      if (direction === "top" || direction === "left") {
         // Find the newly created split layout and swap its children
         const swapChildrenInLayout = (layout: PanelLayout): boolean => {
-          if (layout.type === 'split' && layout.children && layout.children.length === 2) {
+          if (
+            layout.type === "split" &&
+            layout.children &&
+            layout.children.length === 2
+          ) {
             // Check if one of the children is our new panel
-            const hasNewPanel = layout.children.some(child =>
-              child.type === 'panel' && child.panel?.id === newPanelId
+            const hasNewPanel = layout.children.some(
+              (child) =>
+                child.type === "panel" && child.panel?.id === newPanelId,
             );
-            const hasTargetPanel = layout.children.some(child => {
-              if (child.type === 'panel') {
+            const hasTargetPanel = layout.children.some((child) => {
+              if (child.type === "panel") {
                 return child.panel?.id === panelId;
-              } else if (child.type === 'split') {
+              } else if (child.type === "split") {
                 return findPanelInLayout(child, panelId) !== null;
               }
               return false;
@@ -857,13 +886,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
             if (hasNewPanel && hasTargetPanel) {
               // Swap the children
-              [layout.children[0], layout.children[1]] = [layout.children[1], layout.children[0]];
+              [layout.children[0], layout.children[1]] = [
+                layout.children[1],
+                layout.children[0],
+              ];
               return true;
             }
           }
 
-          if (layout.type === 'split' && layout.children) {
-            return layout.children.some(child => swapChildrenInLayout(child));
+          if (layout.type === "split" && layout.children) {
+            return layout.children.some((child) => swapChildrenInLayout(child));
           }
 
           return false;
@@ -953,7 +985,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             title = tab.title;
           }
 
-          const response = await createLocalTerminal(undefined, undefined, title);
+          const response = await createLocalTerminal(
+            undefined,
+            undefined,
+            title,
+          );
 
           // Store the backend terminal ID
           terminal.backendTerminalId = response.terminal_id;
@@ -998,7 +1034,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
             if (layout.type === "panel" && layout.panel) {
               return layout.panel.tabs.find((t: Tab) => {
-                const terminal = terminals.value.find((term) => term.id === t.id);
+                const terminal = terminals.value.find(
+                  (term) => term.id === t.id,
+                );
                 return terminal?.backendTerminalId === titleChange.terminal_id;
               });
             } else if (layout.type === "split" && layout.children) {
@@ -1014,7 +1052,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           if (tab) {
             tab.title = titleChange.title;
           }
-        }
+        },
       );
 
       // Setup terminal exit listener
@@ -1022,10 +1060,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         (exitEvent: TerminalExited) => {
           console.log("Terminal exited:", exitEvent);
           // Find the tab that corresponds to this terminal and close it
-          const findTabByBackendId = (layout: PanelLayout): { panel: Panel; tab: Tab } | undefined => {
+          const findTabByBackendId = (
+            layout: PanelLayout,
+          ): { panel: Panel; tab: Tab } | undefined => {
             if (layout.type === "panel" && layout.panel) {
               for (const tab of layout.panel.tabs) {
-                const terminal = terminals.value.find((term) => term.id === tab.id);
+                const terminal = terminals.value.find(
+                  (term) => term.id === tab.id,
+                );
                 if (terminal?.backendTerminalId === exitEvent.terminal_id) {
                   return { panel: layout.panel, tab };
                 }
@@ -1042,15 +1084,19 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           const result = findTabByBackendId(panelLayout.value);
           if (result) {
             // Check if the terminal is already being closed to prevent double close
-            const terminal = terminals.value.find((term) => term.id === result.tab.id);
+            const terminal = terminals.value.find(
+              (term) => term.id === result.tab.id,
+            );
             if (terminal?.isClosing) {
               return; // Already being closed, skip
             }
 
-            console.log(`Auto-closing tab ${result.tab.id} due to terminal exit`);
+            console.log(
+              `Auto-closing tab ${result.tab.id} due to terminal exit`,
+            );
             closeTab(result.panel.id, result.tab.id);
           }
-        }
+        },
       );
     } catch (error) {
       console.error("Failed to setup title change listener:", error);
@@ -1113,6 +1159,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     cleanup,
 
     // Getters/Computed
-    findPanelInLayout: (panelId: string) => findPanelInLayout(panelLayout.value, panelId),
+    findPanelInLayout: (panelId: string) =>
+      findPanelInLayout(panelLayout.value, panelId),
   };
 });

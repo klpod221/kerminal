@@ -15,7 +15,7 @@ export const handleTerminalError = (operation: string, error: any): void => {
 export const invokeWithErrorHandling = async <T>(
   command: string,
   args?: Record<string, any>,
-  operation?: string
+  operation?: string,
 ): Promise<T> => {
   try {
     const finalArgs = args || {};
@@ -32,7 +32,7 @@ export const invokeWithErrorHandling = async <T>(
 export const listenWithErrorHandling = async <T>(
   eventName: string,
   callback: (data: T) => void,
-  operation?: string
+  operation?: string,
 ): Promise<() => void> => {
   try {
     const unlisten = await listen<T>(eventName, (event) => {

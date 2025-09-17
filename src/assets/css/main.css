@@ -13,8 +13,8 @@ body {
 
 /* Custom backdrop blur for overlay */
 .backdrop-blur {
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 /* css for scroll bar */

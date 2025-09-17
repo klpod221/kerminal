@@ -102,6 +102,7 @@ interface ModalProps {
   iconColor?: string;
   showCloseButton?: boolean;
   closeOnBackdrop?: boolean;
+  closeOnEsc?: boolean;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   parentId?: string;
 }
@@ -110,6 +111,7 @@ const props = withDefaults(defineProps<ModalProps>(), {
   visible: false,
   showCloseButton: true,
   closeOnBackdrop: true,
+  closeOnEsc: true,
   size: "md",
 });
 
@@ -148,6 +150,15 @@ function handleClose(): void {
  */
 function handleBackdropClick(): void {
   if (props.closeOnBackdrop) {
+    handleClose();
+  }
+}
+
+/**
+ * Handle keyboard events - close modal on Esc key
+ */
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape" && props.closeOnEsc && isVisible.value) {
     handleClose();
   }
 }
@@ -191,14 +202,19 @@ watch(
 watch(isVisible, (visible) => {
   if (visible) {
     document.body.style.overflow = "hidden";
+    // Add keyboard event listener when modal is visible
+    document.addEventListener("keydown", handleKeydown);
   } else {
     document.body.style.overflow = "";
+    // Remove keyboard event listener when modal is hidden
+    document.removeEventListener("keydown", handleKeydown);
   }
 });
 
 // Cleanup on unmount
 onUnmounted(() => {
   document.body.style.overflow = "";
+  document.removeEventListener("keydown", handleKeydown);
 });
 </script>
 
