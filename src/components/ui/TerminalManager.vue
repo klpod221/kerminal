@@ -20,7 +20,7 @@ import Terminal from "./Terminal.vue";
 import type { ComponentPublicInstance } from "vue";
 import type { TerminalInstance } from "../../types/panel";
 import { listenToTerminalOutput, bytesToString } from "../../services/terminal";
-import { TerminalBufferManager } from "../../services/terminalBufferManager";
+import { TerminalBufferManager } from "../../utils/terminalBufferManager";
 
 interface TerminalManagerProps {
   terminals: TerminalInstance[];

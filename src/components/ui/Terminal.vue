@@ -37,7 +37,7 @@
 import { onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
 import { debounce } from "../../utils/helpers";
 import { writeToTerminal, resizeTerminal } from "../../services/terminal";
-import { TerminalBufferManager } from "../../services/terminalBufferManager";
+import { TerminalBufferManager } from "../../utils/terminalBufferManager";
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";

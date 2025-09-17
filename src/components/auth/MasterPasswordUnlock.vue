@@ -39,13 +39,13 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Unlock } from "lucide-vue-next";
-import Modal from "./ui/Modal.vue";
-import Form from "./ui/Form.vue";
-import Input from "./ui/Input.vue";
-import Button from "./ui/Button.vue";
-import { message } from "../utils/message";
-import { useOverlay } from "../composables/useOverlay";
-import { useAuthStore } from "../stores/auth";
+import Modal from "../ui/Modal.vue";
+import Form from "../ui/Form.vue";
+import Input from "../ui/Input.vue";
+import Button from "../ui/Button.vue";
+import { message } from "../../utils/message";
+import { useOverlay } from "../../composables/useOverlay";
+import { useAuthStore } from "../../stores/auth";
 
 // Stores and composables
 const { closeOverlay } = useOverlay();

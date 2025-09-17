@@ -62,10 +62,10 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import Drawer from "./ui/Drawer.vue";
-import Input from "./ui/Input.vue";
-import Checkbox from "./ui/Checkbox.vue";
-import Button from "./ui/Button.vue";
+import Drawer from "../ui/Drawer.vue";
+import Input from "../ui/Input.vue";
+import Checkbox from "../ui/Checkbox.vue";
+import Button from "../ui/Button.vue";
 import { Server, Search, RefreshCw, FolderPlus, Plus } from "lucide-vue-next";
 
 // State

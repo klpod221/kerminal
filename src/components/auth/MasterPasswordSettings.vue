@@ -163,16 +163,16 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
-import { useAuthStore } from "../stores/auth";
+import { useAuthStore } from "../../stores/auth";
 import { Key, Lock, Trash2, Book } from "lucide-vue-next";
-import { message } from "../utils/message";
-import { formatRelativeTime } from "../utils/formatter";
-import { useOverlay } from "../composables/useOverlay";
-import Modal from "./ui/Modal.vue";
-import Form from "./ui/Form.vue";
-import Button from "./ui/Button.vue";
-import Checkbox from "./ui/Checkbox.vue";
-import Card from "./ui/Card.vue";
+import { message } from "../../utils/message";
+import { formatRelativeTime } from "../../utils/formatter";
+import { useOverlay } from "../../composables/useOverlay";
+import Modal from "../ui/Modal.vue";
+import Form from "../ui/Form.vue";
+import Button from "../ui/Button.vue";
+import Checkbox from "../ui/Checkbox.vue";
+import Card from "../ui/Card.vue";
 
 // State
 const isLoading = ref(false);

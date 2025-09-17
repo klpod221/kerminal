@@ -96,12 +96,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { Key, AlertTriangle } from "lucide-vue-next";
-import Modal from "./ui/Modal.vue";
-import Form from "./ui/Form.vue";
-import Input from "./ui/Input.vue";
-import Button from "./ui/Button.vue";
-import Card from "./ui/Card.vue";
-import { useAuthStore } from "../stores/auth";
+import Modal from "../ui/Modal.vue";
+import Form from "../ui/Form.vue";
+import Input from "../ui/Input.vue";
+import Button from "../ui/Button.vue";
+import Card from "../ui/Card.vue";
+import { useAuthStore } from "../../stores/auth";
 
 // Stores
 const { changeMasterPassword } = useAuthStore();

@@ -21,10 +21,10 @@ import { onMounted, onUnmounted, watch } from "vue";
 
 // Import components
 import TopBar from "./components/TopBar.vue";
-import MasterPasswordManager from "./components/MasterPasswordManager.vue";
 import Dashboard from "./components/Dashboard.vue";
 import Workspace from "./components/Workspace.vue";
-import SSHProfileManager from "./components/SSHProfileManager.vue";
+import SSHProfileManager from "./components/ssh-profiles/SSHProfileManager.vue";
+import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
 
 // Import stores and composables
 import { useOverlay } from "./composables/useOverlay";
