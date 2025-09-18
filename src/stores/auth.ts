@@ -50,19 +50,43 @@ export const useAuthStore = defineStore("auth", () => {
     () => status.value.isSetup && !status.value.isUnlocked,
   );
 
-  /**
+    /**
    * Check master password status from backend
    */
   const checkStatus = async (): Promise<void> => {
     const result = await masterPasswordService.getStatus();
-    console.log("Master password status:", result);
-
-    // Update status and log the change for debugging
-    const previousUnlocked = status.value.isUnlocked;
     status.value = result;
+  };
 
-    if (previousUnlocked !== result.isUnlocked) {
-      console.log(`Auth status changed: isUnlocked ${previousUnlocked} -> ${result.isUnlocked}`);
+  /**
+   * Load security settings from backend
+   */
+  const loadSecuritySettings = async (): Promise<void> => {
+    try {
+      // Get master password config from backend
+      const config = await masterPasswordService.getConfig();
+      if (config && config.sessionTimeoutMinutes !== undefined) {
+        securitySettings.value.autoLockTimeout = config.sessionTimeoutMinutes || 0;
+      }
+    } catch (error) {
+      console.error("Failed to load security settings:", error);
+    }
+  };
+
+  /**
+   * Check if current session is valid (not expired)
+   */
+  const checkSessionValidity = async (): Promise<boolean> => {
+    try {
+      const isValid = await masterPasswordService.isSessionValid();
+      if (!isValid && status.value.isUnlocked) {
+        // Session was expired and locked, update local status
+        await checkStatus();
+      }
+      return isValid;
+    } catch (error) {
+      console.error("Failed to check session validity:", error);
+      return false;
     }
   };  /**
    * Setup master password for the first time
@@ -160,7 +184,13 @@ export const useAuthStore = defineStore("auth", () => {
 
     await masterPasswordService.updateConfig(configData);
 
+    // Reload security settings and status after config update
+    await loadSecuritySettings();
     await checkStatus();
+
+    // Restart auto-lock timer with new settings
+    setupAutoLockTimer();
+
     return true;
   };
 
@@ -242,6 +272,7 @@ export const useAuthStore = defineStore("auth", () => {
    */
   const initialize = async (): Promise<void> => {
     await checkStatus();
+    await loadSecuritySettings();
     await getCurrentDevice();
 
     // If already unlocked, setup auto-lock timer
@@ -278,6 +309,8 @@ export const useAuthStore = defineStore("auth", () => {
 
     // Actions
     checkStatus,
+    checkSessionValidity,
+    loadSecuritySettings,
     setupMasterPassword,
     unlock,
     lock,

@@ -91,12 +91,7 @@ impl MasterPasswordManager {
             manager.create_master_password(request.device_name, &request.password, &self.config)?;
 
         // Start session immediately after setup
-        self.session_start = Some(Utc::now());
-
-        // Log the session creation for debugging
-        println!("Master password setup completed, session started at: {:?}", self.session_start);
-
-        Ok(entry)
+        self.session_start = Some(Utc::now());        Ok(entry)
     }
 
     /// Verify master password
@@ -123,8 +118,6 @@ impl MasterPasswordManager {
 
         if is_valid {
             self.session_start = Some(Utc::now());
-            // Log the session creation for debugging
-            println!("Master password verified, session started at: {:?}", self.session_start);
         }
 
         Ok(is_valid)
@@ -141,8 +134,6 @@ impl MasterPasswordManager {
 
         if success {
             self.session_start = Some(Utc::now());
-            // Log the session creation for debugging
-            println!("Auto-unlock successful, session started at: {:?}", self.session_start);
         }
 
         Ok(success)
@@ -202,6 +193,16 @@ impl MasterPasswordManager {
         }
     }
 
+    /// Check and auto-lock if session expired
+    pub async fn check_and_auto_lock(&mut self) -> bool {
+        if self.is_session_expired() && self.session_start.is_some() {
+            self.lock_session().await;
+            true // Session was locked
+        } else {
+            false // Session is still valid
+        }
+    }
+
     /// Get master password status
     pub async fn get_status(&self) -> MasterPasswordStatus {
         let manager = self.device_key_manager.read().await;
@@ -215,15 +216,7 @@ impl MasterPasswordManager {
             None
         };
 
-        let is_unlocked = self.session_start.is_some() && !self.is_session_expired();
-
-        // Debug logging
-        println!("MasterPasswordManager status check:");
-        println!("  session_start: {:?}", self.session_start);
-        println!("  is_session_expired: {}", self.is_session_expired());
-        println!("  calculated is_unlocked: {}", is_unlocked);
-
-        MasterPasswordStatus {
+        let is_unlocked = self.session_start.is_some() && !self.is_session_expired();        MasterPasswordStatus {
             is_setup: false, // Sẽ được set từ database check
             is_unlocked,
             auto_unlock_enabled: self.config.auto_unlock,
@@ -266,6 +259,11 @@ impl MasterPasswordManager {
         }
 
         Ok(())
+    }
+
+    /// Get current configuration
+    pub fn get_config(&self) -> &MasterPasswordConfig {
+        &self.config
     }
 
     /// Reset master password (removes all encrypted data)

@@ -84,3 +84,19 @@ export async function updateConfig(
 export async function getCurrentDevice(): Promise<any> {
   return await api.callRaw<any>("get_current_device");
 }
+
+/**
+ * Check if session is valid (not expired)
+ * @returns True if session is valid, false otherwise
+ */
+export async function isSessionValid(): Promise<boolean> {
+  return await api.callRaw<boolean>("is_session_valid");
+}
+
+/**
+ * Get master password configuration
+ * @returns Master password configuration
+ */
+export async function getConfig(): Promise<any> {
+  return await api.callRaw<any>("get_master_password_config");
+}

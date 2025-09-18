@@ -50,6 +50,8 @@ async fn main() {
             commands::database::auth::change_master_password,
             commands::database::auth::reset_master_password,
             commands::database::auth::get_master_password_status,
+            commands::database::auth::is_session_valid,
+            commands::database::auth::get_master_password_config,
             commands::database::auth::get_current_device,
             commands::database::auth::update_master_password_config,
             // Database commands - SSH Groups & Profiles

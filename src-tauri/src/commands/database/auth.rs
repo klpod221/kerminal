@@ -51,6 +51,22 @@ pub async fn get_master_password_status(
     app_result!(state.auth_service.get_master_password_status().await)
 }
 
+/// Check if session is valid
+#[tauri::command]
+pub async fn is_session_valid(state: State<'_, AppState>) -> Result<bool, String> {
+    let database_service = state.database_service.clone();
+    let db_guard = database_service.lock().await;
+    app_result!(db_guard.is_session_valid().await)
+}
+
+/// Get master password configuration
+#[tauri::command]
+pub async fn get_master_password_config(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    app_result!(state.auth_service.get_master_password_config().await)
+}
+
 /// Get current device information
 #[tauri::command]
 pub async fn get_current_device(

@@ -353,9 +353,28 @@ impl DatabaseService {
         Ok(())
     }
 
+    /// Check if session is valid (not expired)
+    pub async fn is_session_valid(&self) -> DatabaseResult<bool> {
+        let mut mp_manager = self.master_password_manager.write().await;
+
+        // Check and auto-lock if session expired
+        let was_locked = mp_manager.check_and_auto_lock().await;
+
+        if was_locked {
+            Ok(false) // Session was expired and locked
+        } else {
+            let status = mp_manager.get_status().await;
+            Ok(status.is_unlocked)
+        }
+    }
+
     /// Get master password status
     pub async fn get_master_password_status(&self) -> DatabaseResult<MasterPasswordStatus> {
-        let mp_manager = self.master_password_manager.read().await;
+        let mut mp_manager = self.master_password_manager.write().await;
+
+        // Check and auto-lock if session expired
+        mp_manager.check_and_auto_lock().await;
+
         Ok(mp_manager.get_status().await)
     }
 
@@ -386,6 +405,12 @@ impl DatabaseService {
         );
 
         Ok(())
+    }
+
+    /// Get master password configuration
+    pub async fn get_master_password_config(&self) -> DatabaseResult<crate::database::config::MasterPasswordConfig> {
+        let mp_manager = self.master_password_manager.read().await;
+        Ok(mp_manager.get_config().clone())
     }
 
     /// Get current device information

@@ -66,9 +66,7 @@ const handleSubmit = async () => {
 
   try {
     isLoading.value = true;
-    console.log("Starting master password unlock...");
     await unlock(verificationForm.value);
-    console.log("Master password unlock completed successfully");
     verificationForm.value.password = "";
     message.success("Master password unlocked successfully!");
     closeOverlay("master-password-unlock");

@@ -159,9 +159,7 @@ const handleSubmit = async () => {
   try {
     isLoading.value = true;
 
-    console.log("Starting master password setup...");
     await setupMasterPassword(setupForm.value);
-    console.log("Master password setup completed successfully");
 
     setupForm.value = {
       deviceName: "",

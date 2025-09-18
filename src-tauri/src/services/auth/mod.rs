@@ -57,10 +57,6 @@ impl AuthService {
         let is_setup = db_service.is_master_password_setup().await?;
         let actual_status = db_service.get_master_password_status().await?;
 
-        println!("AuthService get_master_password_status:");
-        println!("  is_setup: {}", is_setup);
-        println!("  actual_status from db: {:?}", actual_status);
-
         let status = serde_json::json!({
             "isSetup": is_setup,
             "isUnlocked": actual_status.is_unlocked,
@@ -70,8 +66,6 @@ impl AuthService {
             "sessionExpiresAt": actual_status.session_expires_at,
             "loadedDeviceCount": actual_status.loaded_device_count
         });
-
-        println!("  final status JSON: {}", status);
 
         Ok(status)
     }
@@ -139,5 +133,20 @@ impl AuthService {
     ) -> DatabaseResult<()> {
         let db_service = self.database_service.lock().await;
         db_service.update_master_password_config(auto_unlock, auto_lock_timeout).await
+    }
+
+    /// Get master password configuration
+    pub async fn get_master_password_config(&self) -> DatabaseResult<serde_json::Value> {
+        let db_service = self.database_service.lock().await;
+        let config = db_service.get_master_password_config().await?;
+
+        let config_json = serde_json::json!({
+            "autoUnlock": config.auto_unlock,
+            "sessionTimeoutMinutes": config.session_timeout_minutes,
+            "requireOnStartup": config.require_on_startup,
+            "useKeychain": config.use_keychain
+        });
+
+        Ok(config_json)
     }
 }
