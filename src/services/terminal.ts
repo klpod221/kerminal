@@ -1,8 +1,5 @@
 import type { TerminalTitleChanged, TerminalExited } from "../types/panel";
-import {
-  invokeWithErrorHandling,
-  listenWithErrorHandling,
-} from "../utils/terminal";
+import { api } from "./api";
 import type {
   CreateTerminalResponse,
   WriteTerminalRequest,
@@ -24,15 +21,19 @@ export async function createTerminal(
   workingDir?: string,
   title?: string,
 ): Promise<CreateTerminalResponse> {
-  return invokeWithErrorHandling<CreateTerminalResponse>(
-    "create_terminal",
-    {
-      shell,
-      working_dir: workingDir,
-      title,
-    },
-    "create terminal",
-  );
+  try {
+    return await api.call<CreateTerminalResponse>(
+      "create_terminal",
+      {
+        shell,
+        working_dir: workingDir,
+        title,
+      },
+    );
+  } catch (error) {
+    console.error("Failed to create terminal:", error);
+    throw error;
+  }
 }
 
 /**
@@ -46,11 +47,17 @@ export const createLocalTerminal = createTerminal;
 export async function createSSHTerminal(
   profileId: string,
 ): Promise<CreateTerminalResponse> {
-  return invokeWithErrorHandling<CreateTerminalResponse>(
-    "create_ssh_terminal",
-    { params: { profile_id: profileId } },
-    "create SSH terminal",
-  );
+  try {
+    return await api.call<CreateTerminalResponse>(
+      "create_ssh_terminal",
+      {
+        profile_id: profileId,
+      },
+    );
+  } catch (error) {
+    console.error("Failed to create SSH terminal:", error);
+    throw error;
+  }
 }
 
 /**
@@ -59,11 +66,18 @@ export async function createSSHTerminal(
 export async function writeToTerminal(
   request: WriteTerminalRequest,
 ): Promise<void> {
-  return invokeWithErrorHandling<void>(
-    "write_to_terminal",
-    { request },
-    "write to terminal",
-  );
+  try {
+    return await api.call<void>(
+      "write_to_terminal",
+      {
+        terminal_id: request.terminal_id,
+        data: request.data,
+      },
+    );
+  } catch (error) {
+    console.error("Failed to write to terminal:", error);
+    throw error;
+  }
 }
 
 /**
@@ -72,11 +86,15 @@ export async function writeToTerminal(
 export async function resizeTerminal(
   request: ResizeTerminalRequest,
 ): Promise<void> {
-  return invokeWithErrorHandling<void>(
-    "resize_terminal",
-    { request },
-    "resize terminal",
-  );
+  try {
+    return await api.call<void>(
+      "resize_terminal",
+      request,
+    );
+  } catch (error) {
+    console.error("Failed to resize terminal:", error);
+    throw error;
+  }
 }
 
 /**
@@ -87,11 +105,15 @@ export async function closeTerminal(terminalId: string): Promise<void> {
     throw new Error("Terminal ID is required and cannot be empty");
   }
 
-  return invokeWithErrorHandling<void>(
-    "close_terminal",
-    { params: { terminal_id: terminalId } },
-    "close terminal",
-  );
+  try {
+    return await api.call<void>(
+      "close_terminal",
+      { terminal_id: terminalId },
+    );
+  } catch (error) {
+    console.error("Failed to close terminal:", error);
+    throw error;
+  }
 }
 
 /**
@@ -100,33 +122,39 @@ export async function closeTerminal(terminalId: string): Promise<void> {
 export async function getTerminalInfo(
   terminalId: string,
 ): Promise<TerminalInfo> {
-  return invokeWithErrorHandling<TerminalInfo>(
-    "get_terminal_info",
-    { params: { terminal_id: terminalId } },
-    "get terminal info",
-  );
+  try {
+    return await api.call<TerminalInfo>(
+      "get_terminal_info",
+      { terminal_id: terminalId },
+    );
+  } catch (error) {
+    console.error("Failed to get terminal info:", error);
+    throw error;
+  }
 }
 
 /**
  * List all active terminals
  */
 export async function listTerminals(): Promise<TerminalInfo[]> {
-  return invokeWithErrorHandling<TerminalInfo[]>(
-    "list_terminals",
-    undefined,
-    "list terminals",
-  );
+  try {
+    return await api.callRaw<TerminalInfo[]>("list_terminals");
+  } catch (error) {
+    console.error("Failed to list terminals:", error);
+    throw error;
+  }
 }
 
 /**
  * Close all terminals
  */
 export async function closeAllTerminals(): Promise<void> {
-  return invokeWithErrorHandling<void>(
-    "close_all_terminals",
-    undefined,
-    "close all terminals",
-  );
+  try {
+    return await api.callRaw<void>("close_all_terminals");
+  } catch (error) {
+    console.error("Failed to close all terminals:", error);
+    throw error;
+  }
 }
 
 /**
@@ -134,13 +162,10 @@ export async function closeAllTerminals(): Promise<void> {
  */
 export async function getUserHostname(): Promise<string> {
   try {
-    return await invokeWithErrorHandling<string>(
-      "get_user_hostname",
-      undefined,
-      "get user hostname",
-    );
-  } catch {
-    return "user@localhost";
+    return await api.callRaw<string>("get_user_hostname");
+  } catch (error) {
+    console.error("Failed to get user hostname:", error);
+    return "user@hostname"; // fallback
   }
 }
 
@@ -150,10 +175,9 @@ export async function getUserHostname(): Promise<string> {
 export async function listenToTerminalOutput(
   callback: (data: TerminalData) => void,
 ): Promise<() => void> {
-  outputUnlisten = await listenWithErrorHandling<TerminalData>(
+  outputUnlisten = await api.listen<TerminalData>(
     "terminal-output",
     callback,
-    "listen to terminal output",
   );
   return outputUnlisten;
 }
@@ -161,13 +185,12 @@ export async function listenToTerminalOutput(
 /**
  * Listen to terminal title change events
  */
-export async function listenToTerminalTitleChanges(
+export async function listenToTerminalTitleChanged(
   callback: (data: TerminalTitleChanged) => void,
 ): Promise<() => void> {
-  titleUnlisten = await listenWithErrorHandling<TerminalTitleChanged>(
+  titleUnlisten = await api.listen<TerminalTitleChanged>(
     "terminal-title-changed",
     callback,
-    "listen to terminal title changes",
   );
   return titleUnlisten;
 }
@@ -175,21 +198,20 @@ export async function listenToTerminalTitleChanges(
 /**
  * Listen to terminal exit events
  */
-export async function listenToTerminalExits(
+export async function listenToTerminalExit(
   callback: (data: TerminalExited) => void,
 ): Promise<() => void> {
-  exitUnlisten = await listenWithErrorHandling<TerminalExited>(
+  exitUnlisten = await api.listen<TerminalExited>(
     "terminal-exited",
     callback,
-    "listen to terminal exit events",
   );
   return exitUnlisten;
 }
 
 /**
- * Clean up all listeners
+ * Cleanup all terminal listeners
  */
-export function cleanupTerminalListeners(): void {
+export const cleanupTerminalListeners = (): void => {
   if (outputUnlisten) {
     outputUnlisten();
     outputUnlisten = null;
@@ -202,7 +224,4 @@ export function cleanupTerminalListeners(): void {
     exitUnlisten();
     exitUnlisten = null;
   }
-}
-
-// Re-export utility
-export { bytesToString } from "../utils/terminal";
+};

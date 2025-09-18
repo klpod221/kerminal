@@ -2,7 +2,8 @@
  * Terminal Buffer Manager for Tauri Application
  * Manages terminal output buffers and synchronizes with Rust backend
  */
-import { invoke } from "@tauri-apps/api/core";
+import * as bufferService from "../services/buffer";
+import type { BufferStats } from "../services/buffer";
 
 export class TerminalBufferManager {
   private static instance: TerminalBufferManager;
@@ -66,8 +67,7 @@ export class TerminalBufferManager {
    */
   async getBufferFromBackend(terminalId: string): Promise<string> {
     try {
-      const bufferString = await invoke("get_terminal_buffer", { terminalId });
-      return typeof bufferString === "string" ? bufferString : "";
+      return await bufferService.getTerminalBuffer(terminalId);
     } catch (error) {
       console.error(
         `Failed to get buffer string from backend for terminal ${terminalId}:`,
@@ -84,8 +84,7 @@ export class TerminalBufferManager {
    */
   async hasBufferInBackend(terminalId: string): Promise<boolean> {
     try {
-      const hasBuffer = await invoke("has_terminal_buffer", { terminalId });
-      return Boolean(hasBuffer);
+      return await bufferService.hasTerminalBuffer(terminalId);
     } catch (error) {
       console.error(
         `Failed to check buffer in backend for terminal ${terminalId}:`,
@@ -99,24 +98,9 @@ export class TerminalBufferManager {
    * Get buffer statistics from Rust backend
    * @returns Promise of buffer statistics
    */
-  async getBufferStats(): Promise<{
-    totalTerminals: number;
-    totalLines: number;
-    memoryUsage: number;
-  }> {
+  async getBufferStats(): Promise<BufferStats> {
     try {
-      const stats = await invoke("get_buffer_stats");
-      return stats &&
-        typeof stats === "object" &&
-        "total_terminals" in stats &&
-        "total_lines" in stats &&
-        "memory_usage" in stats
-        ? {
-            totalTerminals: (stats as any).total_terminals,
-            totalLines: (stats as any).total_lines,
-            memoryUsage: (stats as any).memory_usage,
-          }
-        : { totalTerminals: 0, totalLines: 0, memoryUsage: 0 };
+      return await bufferService.getBufferStats();
     } catch (error) {
       console.error("Failed to get buffer stats from backend:", error);
       return { totalTerminals: 0, totalLines: 0, memoryUsage: 0 };
@@ -174,12 +158,12 @@ export class TerminalBufferManager {
   async triggerCleanup(): Promise<void> {
     try {
       // Get list of active terminal IDs from terminal manager first
-      const activeTerminals = await invoke("list_terminals");
+      const activeTerminals = await bufferService.listTerminals();
       const activeTerminalIds = Array.isArray(activeTerminals)
         ? activeTerminals.map((t: any) => t.id)
         : [];
 
-      await invoke("cleanup_terminal_buffers", { activeTerminalIds });
+      await bufferService.cleanupTerminalBuffers(activeTerminalIds);
     } catch (error) {
       console.error("Failed to trigger buffer cleanup:", error);
     }
@@ -191,7 +175,7 @@ export class TerminalBufferManager {
    */
   async getCombinedStats(): Promise<{
     local: { terminals: number; lines: number };
-    main: { totalTerminals: number; totalLines: number; memoryUsage: number };
+    main: BufferStats;
   }> {
     try {
       const mainStats = await this.getBufferStats();

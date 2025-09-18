@@ -29,23 +29,30 @@ export function getErrorMessage(error: unknown, fallbackMessage: string): string
   if (typeof error === 'string') {
     return error;
   }
-  
+
   if (error && typeof error === 'object') {
     // Handle Tauri error format
     if ('message' in error && typeof error.message === 'string') {
       return error.message;
     }
-    
+
     // Handle standard Error objects
     if (error instanceof Error) {
       return error.message;
     }
-    
+
     // Handle other object formats
     if ('error' in error && typeof error.error === 'string') {
       return error.error;
     }
   }
-  
+
   return fallbackMessage;
 }
+
+/**
+ * Convert byte array to string
+ */
+export const bytesToString = (bytes: number[]): string => {
+  return new TextDecoder().decode(new Uint8Array(bytes));
+};

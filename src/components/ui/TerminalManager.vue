@@ -18,8 +18,9 @@
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import Terminal from "./Terminal.vue";
 import type { ComponentPublicInstance } from "vue";
+import { bytesToString } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
-import { listenToTerminalOutput, bytesToString } from "../../services/terminal";
+import { listenToTerminalOutput } from "../../services/terminal";
 import { TerminalBufferManager } from "../../utils/terminalBufferManager";
 
 interface TerminalManagerProps {

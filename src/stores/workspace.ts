@@ -7,8 +7,8 @@ import {
   createLocalTerminal,
   closeTerminal,
   getUserHostname,
-  listenToTerminalTitleChanges,
-  listenToTerminalExits,
+  listenToTerminalTitleChanged,
+  listenToTerminalExit,
 } from "../services/terminal";
 import type { TerminalTitleChanged, TerminalExited } from "../types/panel";
 
@@ -1028,7 +1028,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const initialize = async (): Promise<void> => {
     // Setup title change listener
     try {
-      unlistenTitleChanges = await listenToTerminalTitleChanges(
+      unlistenTitleChanges = await listenToTerminalTitleChanged(
         (titleChange: TerminalTitleChanged) => {
           // Find the terminal and update its tab title
           const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
@@ -1056,7 +1056,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       );
 
       // Setup terminal exit listener
-      unlistenTerminalExits = await listenToTerminalExits(
+      unlistenTerminalExits = await listenToTerminalExit(
         (exitEvent: TerminalExited) => {
           console.log("Terminal exited:", exitEvent);
           // Find the tab that corresponds to this terminal and close it

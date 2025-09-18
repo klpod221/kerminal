@@ -1,6 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { api } from "./api";
 
 export async function getSystemInfo() {
-  const systemInfo = await invoke("get_system_info");
+  const systemInfo = await api.callRaw("get_system_info");
   return systemInfo;
 }

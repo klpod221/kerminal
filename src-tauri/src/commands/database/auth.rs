@@ -1,4 +1,5 @@
 use crate::database::encryption::master_password::SetupMasterPasswordRequest;
+use crate::models::auth::{VerifyMasterPasswordRequest, ChangeMasterPasswordRequest, UpdateMasterPasswordConfigRequest};
 use crate::state::AppState;
 use tauri::State;
 
@@ -18,9 +19,12 @@ pub async fn setup_master_password(
 #[tauri::command]
 pub async fn verify_master_password(
     state: State<'_, AppState>,
-    password: String,
+    request: serde_json::Value,
 ) -> Result<bool, String> {
-    match state.auth_service.verify_master_password(password).await {
+    let req: VerifyMasterPasswordRequest = serde_json::from_value(request.get("request").unwrap_or(&request).clone())
+        .map_err(|e| format!("Invalid request format: {}", e))?;
+
+    match state.auth_service.verify_master_password(req.password).await {
         Ok(()) => Ok(true),
         Err(e) => Err(e.to_string()),
     }
@@ -59,10 +63,12 @@ pub async fn get_current_device(
 #[tauri::command]
 pub async fn change_master_password(
     state: State<'_, AppState>,
-    old_password: String,
-    new_password: String,
+    request: serde_json::Value,
 ) -> Result<(), String> {
-    match state.auth_service.change_master_password(old_password, new_password).await {
+    let req: ChangeMasterPasswordRequest = serde_json::from_value(request.get("request").unwrap_or(&request).clone())
+        .map_err(|e| format!("Invalid request format: {}", e))?;
+
+    match state.auth_service.change_master_password(req.old_password, req.new_password).await {
         Ok(()) => Ok(()),
         Err(e) => {
             match e {
@@ -101,15 +107,15 @@ pub async fn reset_master_password(state: State<'_, AppState>) -> Result<(), Str
 #[tauri::command]
 pub async fn update_master_password_config(
     state: State<'_, AppState>,
-    config: serde_json::Value,
+    request: serde_json::Value,
 ) -> Result<(), String> {
-    // Extract auto_unlock from config
+    let config = request.get("request").unwrap_or(&request);
+
     let auto_unlock = config
         .get("autoUnlock")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    // Extract auto_lock_timeout from config
     let auto_lock_timeout = config
         .get("autoLockTimeout")
         .and_then(|v| v.as_u64())

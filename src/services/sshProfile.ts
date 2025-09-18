@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { api } from "./api";
 import type { SSHProfile } from "../types/ssh";
 
 /**
@@ -7,7 +7,7 @@ import type { SSHProfile } from "../types/ssh";
  * @returns The created SSH profile
  */
 export async function createSSHProfile(profile: SSHProfile) {
-  return await invoke("create_ssh_profile", { request: profile });
+  return await api.call("create_ssh_profile", profile);
 }
 
 

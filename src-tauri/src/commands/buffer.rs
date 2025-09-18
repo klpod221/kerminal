@@ -1,4 +1,5 @@
 use crate::error::AppError;
+use crate::models::buffer::{GetTerminalBufferRequest, HasTerminalBufferRequest, CleanupTerminalBuffersRequest};
 use crate::services::buffer_manager::BufferStats;
 use crate::state::AppState;
 use tauri::State;
@@ -6,22 +7,24 @@ use tauri::State;
 /// Get buffer as string for a terminal
 #[tauri::command]
 pub async fn get_terminal_buffer(
-    terminal_id: String,
+    request: GetTerminalBufferRequest,
     app_state: State<'_, AppState>,
 ) -> Result<String, AppError> {
+
     let buffer_manager = app_state.terminal_manager.get_buffer_manager();
-    let buffer_string = buffer_manager.get_buffer_string(&terminal_id).await;
+    let buffer_string = buffer_manager.get_buffer_string(&request.terminal_id).await;
     Ok(buffer_string.unwrap_or_default())
 }
 
 /// Check if terminal has buffer
 #[tauri::command]
 pub async fn has_terminal_buffer(
-    terminal_id: String,
+    request: HasTerminalBufferRequest,
     app_state: State<'_, AppState>,
 ) -> Result<bool, AppError> {
+
     let buffer_manager = app_state.terminal_manager.get_buffer_manager();
-    let has_buffer = buffer_manager.has_buffer(&terminal_id).await;
+    let has_buffer = buffer_manager.has_buffer(&request.terminal_id).await;
     Ok(has_buffer)
 }
 
@@ -38,12 +41,13 @@ pub async fn get_buffer_stats(
 /// Cleanup orphaned buffers
 #[tauri::command]
 pub async fn cleanup_terminal_buffers(
-    active_terminal_ids: Vec<String>,
+    request: CleanupTerminalBuffersRequest,
     app_state: State<'_, AppState>,
 ) -> Result<(), AppError> {
+
     let buffer_manager = app_state.terminal_manager.get_buffer_manager();
     buffer_manager
-        .cleanup_orphaned_buffers(&active_terminal_ids)
+        .cleanup_orphaned_buffers(&request.active_terminal_ids)
         .await;
     Ok(())
 }

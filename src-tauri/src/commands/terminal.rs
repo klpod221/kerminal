@@ -2,6 +2,7 @@ use crate::error::AppError;
 use crate::models::terminal::{
     CreateTerminalRequest, CreateTerminalResponse, LocalConfig, ResizeTerminalRequest,
     TerminalConfig, TerminalInfo, TerminalType, WriteTerminalRequest,
+    CreateLocalTerminalRequest, CreateSshTerminalRequest, CloseTerminalRequest, GetTerminalInfoRequest,
 };
 use crate::state::AppState;
 use tauri::{AppHandle, State};
@@ -9,38 +10,36 @@ use tauri::{AppHandle, State};
 /// Create a new local terminal
 #[tauri::command]
 pub async fn create_terminal(
-    shell: Option<String>,
-    working_dir: Option<String>,
-    title: Option<String>,
+    request: CreateLocalTerminalRequest,
     app_state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<CreateTerminalResponse, AppError> {
     let config = TerminalConfig {
         terminal_type: TerminalType::Local,
         local_config: Some(LocalConfig {
-            shell,
-            working_dir,
+            shell: request.shell,
+            working_dir: request.working_dir,
             env_vars: None,
         }),
         ssh_profile_id: None,
     };
 
-    let request = CreateTerminalRequest { config, title };
+    let create_request = CreateTerminalRequest { config, title: request.title };
     app_state.terminal_manager
-        .create_terminal(request, Some(app_handle))
+        .create_terminal(create_request, Some(app_handle))
         .await
 }
 
 /// Create a new SSH terminal using profile ID
 #[tauri::command]
 pub async fn create_ssh_terminal(
-    profile_id: String,
+    request: CreateSshTerminalRequest,
     app_state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<CreateTerminalResponse, AppError> {
     // Get SSH profile from database
     let ssh_profile = app_state.ssh_service
-        .get_ssh_profile(&profile_id)
+        .get_ssh_profile(&request.profile_id)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
@@ -48,16 +47,16 @@ pub async fn create_ssh_terminal(
     let config = TerminalConfig {
         terminal_type: TerminalType::SSH,
         local_config: None,
-        ssh_profile_id: Some(profile_id),
+        ssh_profile_id: Some(request.profile_id),
     };
 
-    let request = CreateTerminalRequest {
+    let terminal_request = CreateTerminalRequest {
         config,
         title: Some(ssh_profile.display_name()),
     };
 
     app_state.terminal_manager
-        .create_terminal(request, Some(app_handle))
+        .create_terminal(terminal_request, Some(app_handle))
         .await
 }
 
@@ -82,19 +81,19 @@ pub async fn resize_terminal(
 /// Close a specific terminal
 #[tauri::command]
 pub async fn close_terminal(
-    terminal_id: String,
+    request: CloseTerminalRequest,
     app_state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    app_state.terminal_manager.close_terminal(terminal_id).await
+    app_state.terminal_manager.close_terminal(request.terminal_id).await
 }
 
 /// Get information about a specific terminal
 #[tauri::command]
 pub async fn get_terminal_info(
-    terminal_id: String,
+    request: GetTerminalInfoRequest,
     app_state: State<'_, AppState>,
 ) -> Result<TerminalInfo, AppError> {
-    app_state.terminal_manager.get_terminal_info(terminal_id).await
+    app_state.terminal_manager.get_terminal_info(request.terminal_id).await
 }
 
 /// List all active terminals
