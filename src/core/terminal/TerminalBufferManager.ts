@@ -2,13 +2,15 @@
  * Terminal Buffer Manager for Tauri Application
  * Manages terminal output buffers and synchronizes with Rust backend
  */
-import * as bufferService from "../services/buffer";
-import type { BufferStats } from "../services/buffer";
+import * as bufferService from "../../services/buffer";
+import type { BufferStats } from "../../services/buffer";
+import { IncrementalBufferLoader } from "../performance/IncrementalBufferLoader";
 
 export class TerminalBufferManager {
   private static instance: TerminalBufferManager;
   private readonly localBuffers: Map<string, string[]> = new Map();
   private readonly MAX_LOCAL_BUFFER_LINES = 500;
+  private readonly incrementalLoader = new IncrementalBufferLoader();
 
   /**
    * Get singleton instance
@@ -116,12 +118,51 @@ export class TerminalBufferManager {
   }
 
   /**
-   * Restore terminal buffer from Rust backend
+   * Restore terminal buffer from Rust backend using incremental loading
+   * @param terminalId - Terminal identifier
+   * @param terminal - xterm.js Terminal instance
+   * @param showProgress - Whether to show loading progress (default: true)
+   * @returns Promise of success boolean
+   */
+  async restoreBuffer(
+    terminalId: string,
+    terminal: { clear: () => void; write: (data: string) => void },
+    showProgress: boolean = true,
+  ): Promise<boolean> {
+    try {
+      if (showProgress) {
+        // Use incremental loader with user feedback
+        return await this.incrementalLoader.loadBufferWithFeedback(
+          terminalId,
+          terminal,
+          {
+            chunkSize: 100, // Load 100 lines at a time
+            delayBetweenChunks: 5, // 5ms delay between chunks
+          },
+        );
+      } else {
+        // Use incremental loader without feedback (faster)
+        return await this.incrementalLoader.loadBuffer(terminalId, terminal, {
+          chunkSize: 200, // Larger chunks when no progress feedback needed
+          delayBetweenChunks: 1, // Minimal delay
+        });
+      }
+    } catch (error) {
+      console.error(
+        `Failed to restore buffer for terminal ${terminalId}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Restore terminal buffer using legacy method (for fallback)
    * @param terminalId - Terminal identifier
    * @param terminal - xterm.js Terminal instance
    * @returns Promise of success boolean
    */
-  async restoreBuffer(
+  async restoreBufferLegacy(
     terminalId: string,
     terminal: { clear: () => void; write: (data: string) => void },
   ): Promise<boolean> {
@@ -149,6 +190,25 @@ export class TerminalBufferManager {
         error,
       );
       return false;
+    }
+  }
+
+  /**
+   * Get buffer information without loading the full buffer
+   * @param terminalId - Terminal identifier
+   * @returns Buffer info or null if not available
+   */
+  async getBufferInfo(
+    terminalId: string,
+  ): Promise<{ totalLines: number } | null> {
+    try {
+      return await this.incrementalLoader.getBufferInfo(terminalId);
+    } catch (error) {
+      console.error(
+        `Failed to get buffer info for terminal ${terminalId}:`,
+        error,
+      );
+      return null;
     }
   }
 

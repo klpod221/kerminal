@@ -9,5 +9,3 @@ import type { SSHProfile } from "../types/ssh";
 export async function createSSHProfile(profile: SSHProfile) {
   return await api.call("create_ssh_profile", profile);
 }
-
-

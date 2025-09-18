@@ -32,12 +32,12 @@ export const useAuthStore = defineStore("auth", () => {
   });
 
   const currentDevice = ref<CurrentDevice | null>({
-    device_id: "",
-    device_name: "",
-    device_type: "",
-    os_name: "",
-    os_version: "",
-    created_at: "",
+    deviceId: "",
+    deviceName: "",
+    deviceType: "",
+    osName: "",
+    osVersion: "",
+    createdAt: "",
   });
 
   // Auto-lock timer
@@ -55,10 +55,16 @@ export const useAuthStore = defineStore("auth", () => {
    */
   const checkStatus = async (): Promise<void> => {
     const result = await masterPasswordService.getStatus();
-    status.value = result;
-  };
+    console.log("Master password status:", result);
 
-  /**
+    // Update status and log the change for debugging
+    const previousUnlocked = status.value.isUnlocked;
+    status.value = result;
+
+    if (previousUnlocked !== result.isUnlocked) {
+      console.log(`Auth status changed: isUnlocked ${previousUnlocked} -> ${result.isUnlocked}`);
+    }
+  };  /**
    * Setup master password for the first time
    * @param setup - Master password setup configuration
    */
@@ -165,7 +171,10 @@ export const useAuthStore = defineStore("auth", () => {
     const success = await masterPasswordService.tryAutoUnlock();
 
     await checkStatus();
-    setupAutoLockTimer();
+
+    if (status.value.isUnlocked) {
+      setupAutoLockTimer();
+    }
 
     return success;
   };

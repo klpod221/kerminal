@@ -57,6 +57,10 @@ impl AuthService {
         let is_setup = db_service.is_master_password_setup().await?;
         let actual_status = db_service.get_master_password_status().await?;
 
+        println!("AuthService get_master_password_status:");
+        println!("  is_setup: {}", is_setup);
+        println!("  actual_status from db: {:?}", actual_status);
+
         let status = serde_json::json!({
             "isSetup": is_setup,
             "isUnlocked": actual_status.is_unlocked,
@@ -66,6 +70,8 @@ impl AuthService {
             "sessionExpiresAt": actual_status.session_expires_at,
             "loadedDeviceCount": actual_status.loaded_device_count
         });
+
+        println!("  final status JSON: {}", status);
 
         Ok(status)
     }
@@ -97,7 +103,7 @@ impl AuthService {
         if old_password.is_empty() {
             return Err(DatabaseError::ValidationError("Current password is required".to_string()));
         }
-        
+
         if new_password.is_empty() {
             return Err(DatabaseError::ValidationError("New password is required".to_string()));
         }

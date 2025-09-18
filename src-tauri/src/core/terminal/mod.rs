@@ -63,6 +63,7 @@ impl TerminalWrapper {
     }
 
     /// Get terminal ID
+    #[allow(dead_code)]
     pub fn get_id(&self) -> &str {
         match self {
             TerminalWrapper::Local(terminal) => terminal.get_id(),
@@ -71,6 +72,7 @@ impl TerminalWrapper {
     }
 
     /// Check if terminal is alive/connected
+    #[allow(dead_code)]
     pub fn is_alive(&self) -> bool {
         match self {
             TerminalWrapper::Local(terminal) => terminal.is_alive(),

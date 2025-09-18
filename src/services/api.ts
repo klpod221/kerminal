@@ -33,7 +33,10 @@ class ApiClient {
    * @param params - Raw parameters to send directly
    * @returns Promise with the result
    */
-  async callRaw<T = any>(command: string, params?: Record<string, any>): Promise<T> {
+  async callRaw<T = any>(
+    command: string,
+    params?: Record<string, any>,
+  ): Promise<T> {
     try {
       return await invoke<T>(command, params);
     } catch (error) {

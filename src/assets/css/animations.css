@@ -117,7 +117,6 @@
 }
 
 @keyframes pulseSoft {
-
   0%,
   100% {
     opacity: 1;
@@ -161,7 +160,6 @@
 }
 
 @keyframes loadingDots {
-
   0%,
   80%,
   100% {
@@ -230,14 +228,18 @@
 }
 
 .ripple::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.2) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 70%
+  );
   transform: translate(-50%, -50%);
   transition:
     width 0.3s,
@@ -260,7 +262,6 @@
 
 /* Reduced Motion Support */
 @media (prefers-reduced-motion: reduce) {
-
   *,
   *::before,
   *::after {

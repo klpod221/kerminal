@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="flex items-center text-center text-white text-xs"
-  >
+  <div class="flex items-center text-center text-white text-xs">
     <div class="text-gray-300">{{ currentDate }}</div>
     <div class="mx-2 text-gray-500">|</div>
     <div class="text-gray-300">{{ currentTime }}</div>
@@ -30,11 +28,13 @@ const updateDateTime = () => {
   });
 
   // Format date as DD-MM-YYYY
-  currentDate.value = now.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).replace(/\//g, '-');
+  currentDate.value = now
+    .toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+    .replace(/\//g, "-");
 };
 
 onMounted(() => {

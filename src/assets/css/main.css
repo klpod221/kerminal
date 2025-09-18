@@ -1,6 +1,6 @@
-@import './fonts.css';
-@import './animations.css';
-@import 'tailwindcss';
+@import "./fonts.css";
+@import "./animations.css";
+@import "tailwindcss";
 
 html,
 body {
@@ -8,7 +8,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: 'Fira Code', 'JetBrains Mono', monospace;
+  font-family: "Fira Code", "JetBrains Mono", monospace;
 }
 
 /* Custom backdrop blur for overlay */

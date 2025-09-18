@@ -248,22 +248,6 @@ impl TerminalManager {
         Ok(terminal_infos)
     }
 
-    /// Close all terminals
-    pub async fn close_all_terminals(&self) -> Result<(), AppError> {
-        let terminal_ids: Vec<String> = {
-            let terminals = self.terminals.read().await;
-            terminals.keys().cloned().collect()
-        };
-
-        for terminal_id in terminal_ids {
-            if let Err(e) = self.close_terminal(terminal_id).await {
-                eprintln!("Failed to close terminal: {}", e);
-            }
-        }
-
-        Ok(())
-    }
-
     /// Get the buffer manager instance
     pub fn get_buffer_manager(&self) -> Arc<TerminalBufferManager> {
         self.buffer_manager.clone()

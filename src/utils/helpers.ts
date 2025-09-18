@@ -25,14 +25,17 @@ export function debounce<T extends (...args: any[]) => any>(
  * @param fallbackMessage - Fallback message if no specific error message is found
  * @returns The error message to display
  */
-export function getErrorMessage(error: unknown, fallbackMessage: string): string {
-  if (typeof error === 'string') {
+export function getErrorMessage(
+  error: unknown,
+  fallbackMessage: string,
+): string {
+  if (typeof error === "string") {
     return error;
   }
 
-  if (error && typeof error === 'object') {
+  if (error && typeof error === "object") {
     // Handle Tauri error format
-    if ('message' in error && typeof error.message === 'string') {
+    if ("message" in error && typeof error.message === "string") {
       return error.message;
     }
 
@@ -42,7 +45,7 @@ export function getErrorMessage(error: unknown, fallbackMessage: string): string
     }
 
     // Handle other object formats
-    if ('error' in error && typeof error.error === 'string') {
+    if ("error" in error && typeof error.error === "string") {
       return error.error;
     }
   }

@@ -64,10 +64,8 @@
       />
     </div>
 
-    <!-- Clock in the center -->
-    <div class="flex justify-center items-center h-full">
-      <!-- <Clock /> -->
-    </div>
+    <!-- Center content -->
+    <div class="flex justify-center items-center h-full" />
 
     <!-- Right side buttons -->
     <div class="flex items-center justify-end">
@@ -91,7 +89,7 @@
 <script setup lang="ts">
 import { LayoutGrid, Server, Shield } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
-import Clock from "./ui/Clock.vue";
+// import Clock from "./ui/Clock.vue";
 
 import { useViewStateStore } from "../stores/viewState";
 import { useOverlay } from "../composables/useOverlay";

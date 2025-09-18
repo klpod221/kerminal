@@ -203,14 +203,6 @@ impl SSHTerminal {
         }
     }
 
-    /// Old authentication method - deprecated - will be removed
-    async fn authenticate_old(&self, _session: &mut Session) -> Result<(), AppError> {
-        // This method is deprecated and will be removed
-        Err(AppError::authentication_failed(
-            "Deprecated authentication method".to_string(),
-        ))
-    }
-
     /// Disconnect from the SSH terminal
     pub async fn disconnect(&mut self) -> Result<(), AppError> {
         if let Some(channel) = self.channel.take() {

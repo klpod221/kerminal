@@ -78,9 +78,9 @@
             helper-text="Automatically lock the session after period of inactivity"
           />
 
-          <Button 
-            variant="danger" 
-            :disabled="isLoading" 
+          <Button
+            variant="danger"
+            :disabled="isLoading"
             :icon="Trash2"
             @click="handleResetPassword"
           >
@@ -117,7 +117,7 @@
               <div class="flex justify-between items-center">
                 <div class="text-sm font-medium text-gray-400">Device Name</div>
                 <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.device_name }}
+                  {{ authStore.currentDevice.deviceName }}
                 </div>
               </div>
             </Card>
@@ -126,7 +126,7 @@
               <div class="flex justify-between items-center">
                 <div class="text-sm font-medium text-gray-400">Device Type</div>
                 <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.device_type }}
+                  {{ authStore.currentDevice.deviceType }}
                 </div>
               </div>
             </Card>
@@ -137,7 +137,7 @@
                   Operating System
                 </div>
                 <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.os_name }}
+                  {{ authStore.currentDevice.osName }}
                 </div>
               </div>
             </Card>
@@ -148,7 +148,7 @@
                   Operating System Version
                 </div>
                 <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.os_version }}
+                  {{ authStore.currentDevice.osVersion }}
                 </div>
               </div>
             </Card>
@@ -159,7 +159,7 @@
                 <div class="text-sm text-gray-100">
                   {{
                     formatRelativeTime(
-                      new Date(authStore.currentDevice.created_at),
+                      new Date(authStore.currentDevice.createdAt),
                     )
                   }}
                 </div>
@@ -225,7 +225,9 @@ const handleAutoUnlockToggle = async () => {
       }.`,
     );
   } catch (error) {
-    message.error(getErrorMessage(error, "Failed to update auto-unlock setting."));
+    message.error(
+      getErrorMessage(error, "Failed to update auto-unlock setting."),
+    );
     // Revert the toggle state on error
     autoUnlockEnabled.value = !autoUnlockEnabled.value;
   } finally {
@@ -254,11 +256,11 @@ const handleResetPassword = async () => {
   // Show confirmation dialog
   const confirmed = confirm(
     "Are you sure you want to reset your master password?\n\n" +
-    "This will permanently delete:\n" +
-    "• All SSH profiles and connections\n" +
-    "• All SSH groups and configurations\n" +
-    "• Your master password and encryption keys\n\n" +
-    "This action cannot be undone!"
+      "This will permanently delete:\n" +
+      "• All SSH profiles and connections\n" +
+      "• All SSH groups and configurations\n" +
+      "• Your master password and encryption keys\n\n" +
+      "This action cannot be undone!",
   );
 
   if (!confirmed) return;
@@ -267,10 +269,17 @@ const handleResetPassword = async () => {
   try {
     await authStore.resetMasterPassword();
     closeOverlay("master-password-settings");
-    message.success("Master password has been reset successfully. You can now set up a new master password.");
+    message.success(
+      "Master password has been reset successfully. You can now set up a new master password.",
+    );
   } catch (error) {
     console.error("Error resetting master password:", error);
-    message.error(getErrorMessage(error, "Failed to reset master password. Please try again."));
+    message.error(
+      getErrorMessage(
+        error,
+        "Failed to reset master password. Please try again.",
+      ),
+    );
   } finally {
     isLoading.value = false;
   }
@@ -296,10 +305,12 @@ const handleTimeoutChange = async () => {
         Number(autoLockTimeout.value) === 0
           ? "never"
           : `${autoLockTimeout.value} minutes`
-      }.`
+      }.`,
     );
   } catch (error) {
-    message.error(getErrorMessage(error, "Failed to update auto-lock timeout."));
+    message.error(
+      getErrorMessage(error, "Failed to update auto-lock timeout."),
+    );
   } finally {
     isLoading.value = false;
   }

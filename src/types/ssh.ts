@@ -39,9 +39,9 @@ export interface SSHGroup {
   color?: string;
   icon?: string;
   sortOrder: number;
-  is_expanded: boolean;
-  created_at: Date;
-  updated_at: Date;
+  isExpanded: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 /**
@@ -54,10 +54,17 @@ export interface SSHProfile {
   port?: number;
   username: string;
   groupId?: string;
-  auth_method: "password" | "privateKey" | "privateKeyWithPassphrase" | "agent" | "certificate" | "kerberos" | "PKCS11";
-  auth_data?: object; // e.g., { password: string } or { keyPath: string, passphrase?: string }
+  authMethod:
+    | "password"
+    | "privateKey"
+    | "privateKeyWithPassphrase"
+    | "agent"
+    | "certificate"
+    | "kerberos"
+    | "PKCS11";
+  authData?: object; // e.g., { password: string } or { keyPath: string, passphrase?: string }
   timeout?: number;
-  keep_alive?: boolean;
+  keepAlive?: boolean;
   compression?: boolean;
   proxy?: SSHProxy;
   color?: string;
@@ -65,7 +72,7 @@ export interface SSHProfile {
   sortOrder: number;
   description?: string;
   tags?: string[];
-  created_at: Date;
-  updated_at: Date;
-  last_connected_at?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  lastConnectedAt?: Date;
 }

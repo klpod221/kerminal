@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use crate::models::buffer::TerminalBufferChunk;
 
 /// Statistics about the buffer manager
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,6 +105,53 @@ impl TerminalBufferManager {
         buffers
             .get(terminal_id)
             .map(|buffer| buffer.get_as_string())
+    }
+
+    /// Get buffer chunk for a terminal
+    pub async fn get_buffer_chunk(
+        &self,
+        terminal_id: &str,
+        start_line: usize,
+        chunk_size: usize,
+    ) -> TerminalBufferChunk {
+        let buffers = self.buffers.read().await;
+
+        if let Some(buffer) = buffers.get(terminal_id) {
+            let lines = buffer.get_lines();
+            let total_lines = lines.len();
+
+            // Calculate actual range
+            let end_line = std::cmp::min(start_line + chunk_size, total_lines);
+            let has_more = end_line < total_lines;
+
+            // Extract chunk data
+            let chunk_lines = if start_line < total_lines {
+                &lines[start_line..end_line]
+            } else {
+                &[]
+            };
+
+            let data = chunk_lines.join("\n");
+
+            TerminalBufferChunk {
+                terminal_id: terminal_id.to_string(),
+                start_line,
+                end_line,
+                total_lines,
+                data,
+                has_more,
+            }
+        } else {
+            // Return empty chunk if terminal not found
+            TerminalBufferChunk {
+                terminal_id: terminal_id.to_string(),
+                start_line: 0,
+                end_line: 0,
+                total_lines: 0,
+                data: String::new(),
+                has_more: false,
+            }
+        }
     }
 
     /// Check if a terminal has a buffer

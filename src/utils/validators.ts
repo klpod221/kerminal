@@ -54,7 +54,8 @@ export function validate(
       case "different": {
         const otherValue = allValues[params[0]];
 
-        if (value === otherValue) return `Values must be different from ${params[0]}.`;
+        if (value === otherValue)
+          return `Values must be different from ${params[0]}.`;
         break;
       }
     }

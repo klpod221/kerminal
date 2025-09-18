@@ -77,9 +77,9 @@
     </div>
 
     <template #footer>
-      <Button 
-        type="button" 
-        variant="secondary" 
+      <Button
+        type="button"
+        variant="secondary"
         :disabled="isLoading"
         @click="closeOverlay('master-password-change')"
       >
@@ -145,7 +145,12 @@ const handleSubmit = async () => {
     closeOverlay("master-password-change");
   } catch (error) {
     console.error("Error changing master password:", error);
-    message.error(getErrorMessage(error, "Failed to change master password. Please try again."));
+    message.error(
+      getErrorMessage(
+        error,
+        "Failed to change master password. Please try again.",
+      ),
+    );
   } finally {
     isLoading.value = false;
   }

@@ -28,7 +28,7 @@ impl SyncScheduler {
         let duration = Duration::from_secs((self.interval_minutes * 60) as u64);
 
         // Spawn background task
-        let is_running_clone = Arc::clone(&self.is_running);
+        let _is_running_clone = Arc::clone(&self.is_running);
         tokio::spawn(async move {
             let mut sync_interval = tokio::time::interval(duration);
 

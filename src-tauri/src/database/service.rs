@@ -265,17 +265,17 @@ impl DatabaseService {
     async fn re_encrypt_ssh_profiles(
         &self,
         local_db: &dyn crate::database::traits::Database,
-        new_entry: &MasterPasswordEntry,
+        _new_entry: &MasterPasswordEntry,
     ) -> DatabaseResult<usize> {
         use crate::database::traits::Encryptable;
-        
+
         let profiles = local_db.find_all_ssh_profiles().await?;
         let mut re_encrypted_count = 0;
         let mut errors = Vec::new();
 
         // Get current encryption service (with old password)
-        let old_mp_manager = self.master_password_manager.read().await;
-        
+        let _old_mp_manager = self.master_password_manager.read().await;
+
         // For now, we'll re-encrypt by decrypt->encrypt in place since we don't have
         // a way to create a temporary manager with the new key easily.
         // This works because the MasterPasswordManager updates its keys after password change.
@@ -287,10 +287,10 @@ impl DatabaseService {
                 // We need to decrypt it first, then re-encrypt with the new password.
                 // Since the master password manager has already been updated with the new key,
                 // we can directly decrypt and re-encrypt.
-                
+
                 // Mark as updated for database consistency
                 profile.base.updated_at = chrono::Utc::now();
-                
+
                 match local_db.update_ssh_profile(&profile).await {
                     Ok(_) => {
                         re_encrypted_count += 1;

@@ -1,4 +1,5 @@
 import { api } from "./api";
+import { terminalCache } from "../core/performance";
 
 /**
  * Buffer statistics interface
@@ -16,31 +17,29 @@ export interface BufferStats {
  */
 export async function getTerminalBuffer(terminalId: string): Promise<string> {
   return await api.call<string>("get_terminal_buffer", {
-    terminal_id: terminalId,
+    terminalId,
   });
 }
 
 /**
- * Check if terminal has buffer in Rust backend
+ * Check if terminal has buffer in Rust backend (cached)
  * @param terminalId - Terminal identifier
  * @returns Promise of boolean
  */
 export async function hasTerminalBuffer(terminalId: string): Promise<boolean> {
-  return await api.call<boolean>("has_terminal_buffer", {
-    terminal_id: terminalId,
-  });
+  return await terminalCache.hasTerminalBuffer(terminalId);
 }
 
 /**
- * Get buffer statistics from Rust backend
+ * Get buffer statistics from Rust backend (cached)
  * @returns Promise of buffer statistics
  */
 export async function getBufferStats(): Promise<BufferStats> {
-  const stats = await api.callRaw<any>("get_buffer_stats");
+  const stats = await terminalCache.getBufferStats();
   return {
-    totalTerminals: stats.total_terminals || 0,
-    totalLines: stats.total_lines || 0,
-    memoryUsage: stats.memory_usage || 0,
+    totalTerminals: stats.totalTerminals || 0,
+    totalLines: stats.totalLines || 0,
+    memoryUsage: stats.memoryUsage || 0,
   };
 }
 
@@ -52,7 +51,7 @@ export async function cleanupTerminalBuffers(
   activeTerminalIds: string[],
 ): Promise<void> {
   return await api.call<void>("cleanup_terminal_buffers", {
-    active_terminal_ids: activeTerminalIds,
+    activeTerminalIds,
   });
 }
 

@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::models::terminal::{
     CreateTerminalRequest, CreateTerminalResponse, LocalConfig, ResizeTerminalRequest,
-    TerminalConfig, TerminalInfo, TerminalType, WriteTerminalRequest,
+    TerminalConfig, TerminalInfo, TerminalType, WriteTerminalRequest, WriteBatchTerminalRequest,
     CreateLocalTerminalRequest, CreateSshTerminalRequest, CloseTerminalRequest, GetTerminalInfoRequest,
 };
 use crate::state::AppState;
@@ -69,6 +69,19 @@ pub async fn write_to_terminal(
     app_state.terminal_manager.write_to_terminal(request).await
 }
 
+/// Write data to multiple terminals in batch
+#[tauri::command]
+pub async fn write_batch_to_terminal(
+    request: WriteBatchTerminalRequest,
+    app_state: State<'_, AppState>,
+) -> Result<(), AppError> {
+    // Process each write request in the batch
+    for write_request in request.requests {
+        app_state.terminal_manager.write_to_terminal(write_request).await?;
+    }
+    Ok(())
+}
+
 /// Resize a terminal
 #[tauri::command]
 pub async fn resize_terminal(
@@ -102,12 +115,4 @@ pub async fn list_terminals(
     app_state: State<'_, AppState>,
 ) -> Result<Vec<TerminalInfo>, AppError> {
     app_state.terminal_manager.list_terminals().await
-}
-
-/// Close all terminals
-#[tauri::command]
-pub async fn close_all_terminals(
-    app_state: State<'_, AppState>,
-) -> Result<(), AppError> {
-    app_state.terminal_manager.close_all_terminals().await
 }

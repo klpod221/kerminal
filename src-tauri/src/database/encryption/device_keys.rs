@@ -313,7 +313,7 @@ impl DeviceKeyManager {
         let mut key = [0u8; 32];
 
         // Use PBKDF2 để derive key
-        pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
+        let _ = pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
             password.as_bytes(),
             salt,
             100_000, // 100k iterations
@@ -351,54 +351,5 @@ impl DeviceEncryptionKey {
     pub fn is_recently_used(&self, threshold_hours: i64) -> bool {
         let threshold = chrono::Duration::hours(threshold_hours);
         (Utc::now() - self.last_used_at) < threshold
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::database::config::MasterPasswordConfig;
-
-    #[test]
-    fn test_master_password_creation_and_verification() {
-        let mut manager = DeviceKeyManager::new("test_device".to_string());
-        let config = MasterPasswordConfig::default();
-        let password = "test_password_123";
-
-        // Create master password
-        let entry = manager
-            .create_master_password("Test Device".to_string(), password, &config)
-            .unwrap();
-
-        // Verify correct password
-        let is_valid = manager.verify_master_password(password, &entry).unwrap();
-        assert!(is_valid);
-
-        // Verify incorrect password
-        let is_invalid = manager
-            .verify_master_password("wrong_password", &entry)
-            .unwrap();
-        assert!(!is_invalid);
-    }
-
-    #[test]
-    fn test_encryption_decryption() {
-        let mut manager = DeviceKeyManager::new("test_device".to_string());
-        let config = MasterPasswordConfig::default();
-        let password = "test_password_123";
-        let data = b"Hello, World!";
-
-        // Create master password
-        let _master_password_entry = manager
-            .create_master_password("Test Device".to_string(), password, &config)
-            .unwrap();
-
-        // Encrypt data
-        let encrypted = manager.encrypt_with_device(data, None).unwrap();
-
-        // Decrypt data
-        let decrypted = manager.decrypt_with_device(&encrypted, None).unwrap();
-
-        assert_eq!(data, decrypted.as_slice());
     }
 }

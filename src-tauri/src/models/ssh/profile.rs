@@ -231,7 +231,7 @@ impl SSHProfile {
 
     /// Static method to get profile by ID (will be implemented in service layer)
     pub async fn get_by_id(
-        profile_id: &str,
+        _profile_id: &str,
     ) -> Result<Option<SSHProfile>, crate::database::error::DatabaseError> {
         // TODO: This should be implemented in the service layer
         // For now, return an error to indicate it needs implementation

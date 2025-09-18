@@ -1,5 +1,8 @@
 use crate::error::AppError;
-use crate::models::buffer::{GetTerminalBufferRequest, HasTerminalBufferRequest, CleanupTerminalBuffersRequest};
+use crate::models::buffer::{
+    GetTerminalBufferRequest, HasTerminalBufferRequest, CleanupTerminalBuffersRequest,
+    GetTerminalBufferChunkRequest, TerminalBufferChunk,
+};
 use crate::services::buffer_manager::BufferStats;
 use crate::state::AppState;
 use tauri::State;
@@ -14,6 +17,20 @@ pub async fn get_terminal_buffer(
     let buffer_manager = app_state.terminal_manager.get_buffer_manager();
     let buffer_string = buffer_manager.get_buffer_string(&request.terminal_id).await;
     Ok(buffer_string.unwrap_or_default())
+}
+
+/// Get buffer chunk for a terminal
+#[tauri::command]
+pub async fn get_terminal_buffer_chunk(
+    request: GetTerminalBufferChunkRequest,
+    app_state: State<'_, AppState>,
+) -> Result<TerminalBufferChunk, AppError> {
+    let buffer_manager = app_state.terminal_manager.get_buffer_manager();
+    let chunk = buffer_manager
+        .get_buffer_chunk(&request.terminal_id, request.start_line, request.chunk_size)
+        .await;
+
+    Ok(chunk)
 }
 
 /// Check if terminal has buffer

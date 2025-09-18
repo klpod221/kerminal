@@ -13,12 +13,8 @@ import type {
  */
 export async function setup(setup: MasterPasswordSetup): Promise<void> {
   return await api.call<void>("setup_master_password", {
-    device_name: setup.deviceName,
-    password: setup.password,
-    confirm_password: setup.confirmPassword,
-    auto_unlock: setup.autoUnlock,
-    use_keychain: setup.useKeychain || false,
-    auto_lock_timeout: setup.autoLockTimeout,
+    ...setup,
+    useKeychain: setup.useKeychain || false,
   });
 }
 
@@ -30,9 +26,7 @@ export async function setup(setup: MasterPasswordSetup): Promise<void> {
 export async function verify(
   verification: MasterPasswordVerification,
 ): Promise<boolean> {
-  return await api.call<boolean>("verify_master_password", {
-    password: verification.password,
-  });
+  return await api.call<boolean>("verify_master_password", verification);
 }
 
 /**
@@ -55,10 +49,7 @@ export async function lock(): Promise<void> {
  * @param change - Master password change request
  */
 export async function change(change: MasterPasswordChange): Promise<void> {
-  return await api.call<void>("change_master_password", {
-    old_password: change.oldPassword,
-    new_password: change.newPassword,
-  });
+  return await api.call<void>("change_master_password", change);
 }
 
 /**
@@ -73,7 +64,6 @@ export async function getStatus(): Promise<MasterPasswordStatus> {
  * Reset master password (removes all encrypted data)
  */
 export async function reset(): Promise<void> {
-  // Note: Backend implementation is incomplete (TODO)
   return await api.callRaw<void>("reset_master_password");
 }
 

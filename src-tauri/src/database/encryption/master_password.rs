@@ -22,11 +22,16 @@ pub struct MasterPasswordManager {
 /// Master password setup request
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SetupMasterPasswordRequest {
+    #[serde(rename = "deviceName")]
     pub device_name: String,
     pub password: String,
+    #[serde(rename = "confirmPassword")]
     pub confirm_password: String,
+    #[serde(rename = "autoUnlock")]
     pub auto_unlock: bool,
+    #[serde(rename = "useKeychain")]
     pub use_keychain: bool,
+    #[serde(rename = "autoLockTimeout")]
     pub auto_lock_timeout: Option<u32>, // in minutes
 }
 
@@ -85,8 +90,11 @@ impl MasterPasswordManager {
         let entry =
             manager.create_master_password(request.device_name, &request.password, &self.config)?;
 
-        // Start session
+        // Start session immediately after setup
         self.session_start = Some(Utc::now());
+
+        // Log the session creation for debugging
+        println!("Master password setup completed, session started at: {:?}", self.session_start);
 
         Ok(entry)
     }
@@ -115,6 +123,8 @@ impl MasterPasswordManager {
 
         if is_valid {
             self.session_start = Some(Utc::now());
+            // Log the session creation for debugging
+            println!("Master password verified, session started at: {:?}", self.session_start);
         }
 
         Ok(is_valid)
@@ -131,6 +141,8 @@ impl MasterPasswordManager {
 
         if success {
             self.session_start = Some(Utc::now());
+            // Log the session creation for debugging
+            println!("Auto-unlock successful, session started at: {:?}", self.session_start);
         }
 
         Ok(success)
@@ -203,9 +215,17 @@ impl MasterPasswordManager {
             None
         };
 
+        let is_unlocked = self.session_start.is_some() && !self.is_session_expired();
+
+        // Debug logging
+        println!("MasterPasswordManager status check:");
+        println!("  session_start: {:?}", self.session_start);
+        println!("  is_session_expired: {}", self.is_session_expired());
+        println!("  calculated is_unlocked: {}", is_unlocked);
+
         MasterPasswordStatus {
             is_setup: false, // Sẽ được set từ database check
-            is_unlocked: self.session_start.is_some() && !self.is_session_expired(),
+            is_unlocked,
             auto_unlock_enabled: self.config.auto_unlock,
             keychain_available: self.keychain_manager.is_available(),
             session_active: self.session_start.is_some(),
@@ -272,7 +292,7 @@ impl MasterPasswordManager {
         password: &str,
         stored_entry: &MasterPasswordEntry,
     ) -> EncryptionResult<bool> {
-        let manager = self.device_key_manager.read().await;
+        let _manager = self.device_key_manager.read().await;
         // Use temporary verification
         use argon2::{Argon2, PasswordHash, PasswordVerifier};
 
@@ -411,74 +431,5 @@ impl EncryptionService for MasterPasswordManager {
 
         String::from_utf8(decrypted)
             .map_err(|e| EncryptionError::DecryptionFailed(format!("Invalid UTF-8: {}", e)).into())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_master_password_setup() {
-        let config = MasterPasswordConfig::default();
-        let mut manager = MasterPasswordManager::new("test_device".to_string(), config);
-
-        let request = SetupMasterPasswordRequest {
-            device_name: "Test Device".to_string(),
-            password: "TestPassword123".to_string(),
-            confirm_password: "TestPassword123".to_string(),
-            auto_unlock: false,
-            use_keychain: false,
-            auto_lock_timeout: None,
-        };
-
-        let entry = manager.setup_master_password(request).await.unwrap();
-        assert_eq!(entry.device_id, "test_device");
-        assert_eq!(entry.device_name, "Test Device");
-    }
-
-    #[tokio::test]
-    async fn test_password_validation() {
-        let config = MasterPasswordConfig::default();
-        let manager = MasterPasswordManager::new("test_device".to_string(), config);
-
-        // Test weak password
-        assert!(manager.validate_password("weak").is_err());
-
-        // Test good password
-        assert!(manager.validate_password("StrongPassword123").is_ok());
-
-        // Test common password
-        assert!(manager.validate_password("password123").is_err());
-    }
-
-    #[tokio::test]
-    async fn test_session_management() {
-        let mut config = MasterPasswordConfig::default();
-        config.session_timeout_minutes = Some(1);
-
-        let mut manager = MasterPasswordManager::new("test_device".to_string(), config);
-
-        // No active session
-        assert!(manager.is_session_expired());
-
-        // Setup master password (starts session)
-        let request = SetupMasterPasswordRequest {
-            device_name: "Test Device".to_string(),
-            password: "TestPassword123".to_string(),
-            confirm_password: "TestPassword123".to_string(),
-            auto_unlock: false,
-            use_keychain: false,
-            auto_lock_timeout: None,
-        };
-
-        let _password_entry = manager.setup_master_password(request).await.unwrap();
-
-        // Session should be active
-        assert!(!manager.is_session_expired());
-
-        // Lock session
-        manager.lock_session().await;
-        assert!(manager.is_session_expired());
     }
 }

@@ -58,10 +58,10 @@ export interface MasterPasswordConfig {
  * Device information for master password
  */
 export interface CurrentDevice {
-  device_id: string;
-  device_name: string;
-  device_type: string;
-  os_name: string;
-  os_version: string;
-  created_at: string;
+  deviceId: string;
+  deviceName: string;
+  deviceType: string;
+  osName: string;
+  osVersion: string;
+  createdAt: string;
 }

@@ -42,8 +42,8 @@ export type TerminalState =
 
 export interface LocalConfig {
   shell?: string;
-  working_dir?: string;
-  env_vars?: Record<string, string>;
+  workingDir?: string;
+  envVars?: Record<string, string>;
 }
 
 export interface SSHConfig {
@@ -56,16 +56,16 @@ export interface SSHConfig {
 }
 
 export interface TerminalConfig {
-  terminal_type: TerminalType;
-  local_config?: LocalConfig;
-  ssh_config?: SSHConfig;
+  terminalType: TerminalType;
+  localConfig?: LocalConfig;
+  sshConfig?: SSHConfig;
 }
 
 export interface TerminalInfo {
   id: string;
   config: TerminalConfig;
   state: TerminalState;
-  created_at: string;
+  createdAt: string;
   title?: string;
 }
 
@@ -75,32 +75,32 @@ export interface CreateTerminalRequest {
 }
 
 export interface CreateTerminalResponse {
-  terminal_id: string;
+  terminalId: string;
   info: TerminalInfo;
 }
 
 export interface WriteTerminalRequest {
-  terminal_id: string;
+  terminalId: string;
   data: string;
 }
 
 export interface ResizeTerminalRequest {
-  terminal_id: string;
+  terminalId: string;
   cols: number;
   rows: number;
 }
 
 export interface TerminalData {
-  terminal_id: string;
+  terminalId: string;
   data: number[]; // Vec<u8> from Rust
 }
 
 export interface TerminalTitleChanged {
-  terminal_id: string;
+  terminalId: string;
   title: string;
 }
 
 export interface TerminalExited {
-  terminal_id: string;
-  exit_code?: number;
+  terminalId: string;
+  exitCode?: number;
 }

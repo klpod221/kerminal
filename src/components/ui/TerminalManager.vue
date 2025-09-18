@@ -21,7 +21,7 @@ import type { ComponentPublicInstance } from "vue";
 import { bytesToString } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
 import { listenToTerminalOutput } from "../../services/terminal";
-import { TerminalBufferManager } from "../../utils/terminalBufferManager";
+import { TerminalBufferManager } from "../../core";
 
 interface TerminalManagerProps {
   terminals: TerminalInstance[];
@@ -141,7 +141,7 @@ onMounted(async () => {
   try {
     // Listen to terminal output from backend
     outputUnlisten = await listenToTerminalOutput((terminalData) => {
-      const backendTerminalId = terminalData.terminal_id;
+      const backendTerminalId = terminalData.terminalId;
 
       // Find the terminal instance that matches this backend terminal ID
       const matchingTerminal = props.terminals.find(

@@ -159,7 +159,9 @@ const handleSubmit = async () => {
   try {
     isLoading.value = true;
 
+    console.log("Starting master password setup...");
     await setupMasterPassword(setupForm.value);
+    console.log("Master password setup completed successfully");
 
     setupForm.value = {
       deviceName: "",
@@ -174,7 +176,12 @@ const handleSubmit = async () => {
     closeOverlay("master-password-setup");
   } catch (error) {
     console.error("Error during master password setup:", error);
-    message.error(getErrorMessage(error, "Failed to set up master password. Please try again."));
+    message.error(
+      getErrorMessage(
+        error,
+        "Failed to set up master password. Please try again.",
+      ),
+    );
   } finally {
     isLoading.value = false;
   }

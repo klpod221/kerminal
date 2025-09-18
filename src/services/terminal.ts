@@ -1,5 +1,6 @@
 import type { TerminalTitleChanged, TerminalExited } from "../types/panel";
 import { api } from "./api";
+import { terminalCache } from "../core/performance";
 import type {
   CreateTerminalResponse,
   WriteTerminalRequest,
@@ -22,14 +23,11 @@ export async function createTerminal(
   title?: string,
 ): Promise<CreateTerminalResponse> {
   try {
-    return await api.call<CreateTerminalResponse>(
-      "create_terminal",
-      {
-        shell,
-        working_dir: workingDir,
-        title,
-      },
-    );
+    return await api.call<CreateTerminalResponse>("create_terminal", {
+      shell,
+      workingDir,
+      title,
+    });
   } catch (error) {
     console.error("Failed to create terminal:", error);
     throw error;
@@ -48,12 +46,9 @@ export async function createSSHTerminal(
   profileId: string,
 ): Promise<CreateTerminalResponse> {
   try {
-    return await api.call<CreateTerminalResponse>(
-      "create_ssh_terminal",
-      {
-        profile_id: profileId,
-      },
-    );
+    return await api.call<CreateTerminalResponse>("create_ssh_terminal", {
+      profileId,
+    });
   } catch (error) {
     console.error("Failed to create SSH terminal:", error);
     throw error;
@@ -67,15 +62,25 @@ export async function writeToTerminal(
   request: WriteTerminalRequest,
 ): Promise<void> {
   try {
-    return await api.call<void>(
-      "write_to_terminal",
-      {
-        terminal_id: request.terminal_id,
-        data: request.data,
-      },
-    );
+    return await api.call<void>("write_to_terminal", request);
   } catch (error) {
     console.error("Failed to write to terminal:", error);
+    throw error;
+  }
+}
+
+/**
+ * Write data to multiple terminals in batch
+ */
+export async function writeBatchToTerminal(
+  requests: WriteTerminalRequest[],
+): Promise<void> {
+  try {
+    return await api.call<void>("write_batch_to_terminal", {
+      requests,
+    });
+  } catch (error) {
+    console.error("Failed to write batch to terminals:", error);
     throw error;
   }
 }
@@ -87,10 +92,7 @@ export async function resizeTerminal(
   request: ResizeTerminalRequest,
 ): Promise<void> {
   try {
-    return await api.call<void>(
-      "resize_terminal",
-      request,
-    );
+    return await api.call<void>("resize_terminal", request);
   } catch (error) {
     console.error("Failed to resize terminal:", error);
     throw error;
@@ -106,10 +108,14 @@ export async function closeTerminal(terminalId: string): Promise<void> {
   }
 
   try {
-    return await api.call<void>(
-      "close_terminal",
-      { terminal_id: terminalId },
-    );
+    const result = await api.call<void>("close_terminal", {
+      terminalId,
+    });
+
+    // Invalidate cache for this terminal
+    terminalCache.invalidateTerminal(terminalId);
+
+    return result;
   } catch (error) {
     console.error("Failed to close terminal:", error);
     throw error;
@@ -117,16 +123,13 @@ export async function closeTerminal(terminalId: string): Promise<void> {
 }
 
 /**
- * Get information about a specific terminal
+ * Get information about a specific terminal (cached)
  */
 export async function getTerminalInfo(
   terminalId: string,
 ): Promise<TerminalInfo> {
   try {
-    return await api.call<TerminalInfo>(
-      "get_terminal_info",
-      { terminal_id: terminalId },
-    );
+    return await terminalCache.getTerminalInfo(terminalId);
   } catch (error) {
     console.error("Failed to get terminal info:", error);
     throw error;
@@ -134,25 +137,13 @@ export async function getTerminalInfo(
 }
 
 /**
- * List all active terminals
+ * List all active terminals (cached)
  */
 export async function listTerminals(): Promise<TerminalInfo[]> {
   try {
-    return await api.callRaw<TerminalInfo[]>("list_terminals");
+    return await terminalCache.getTerminalList();
   } catch (error) {
     console.error("Failed to list terminals:", error);
-    throw error;
-  }
-}
-
-/**
- * Close all terminals
- */
-export async function closeAllTerminals(): Promise<void> {
-  try {
-    return await api.callRaw<void>("close_all_terminals");
-  } catch (error) {
-    console.error("Failed to close all terminals:", error);
     throw error;
   }
 }
@@ -175,10 +166,7 @@ export async function getUserHostname(): Promise<string> {
 export async function listenToTerminalOutput(
   callback: (data: TerminalData) => void,
 ): Promise<() => void> {
-  outputUnlisten = await api.listen<TerminalData>(
-    "terminal-output",
-    callback,
-  );
+  outputUnlisten = await api.listen<TerminalData>("terminal-output", callback);
   return outputUnlisten;
 }
 
@@ -201,10 +189,7 @@ export async function listenToTerminalTitleChanged(
 export async function listenToTerminalExit(
   callback: (data: TerminalExited) => void,
 ): Promise<() => void> {
-  exitUnlisten = await api.listen<TerminalExited>(
-    "terminal-exited",
-    callback,
-  );
+  exitUnlisten = await api.listen<TerminalExited>("terminal-exited", callback);
   return exitUnlisten;
 }
 

@@ -1,5 +1,5 @@
 use crate::database::encryption::master_password::SetupMasterPasswordRequest;
-use crate::models::auth::{VerifyMasterPasswordRequest, ChangeMasterPasswordRequest, UpdateMasterPasswordConfigRequest};
+use crate::models::auth::{VerifyMasterPasswordRequest, ChangeMasterPasswordRequest};
 use crate::state::AppState;
 use tauri::State;
 

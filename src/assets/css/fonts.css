@@ -1,7 +1,7 @@
 @font-face {
-  font-family: 'Fira Code';
+  font-family: "Fira Code";
 
-  src: url('../fonts/FiraCodeNerdFont.ttf');
+  src: url("../fonts/FiraCodeNerdFont.ttf");
   font-weight: normal;
   font-style: normal;
 }

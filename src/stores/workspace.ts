@@ -992,7 +992,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           );
 
           // Store the backend terminal ID
-          terminal.backendTerminalId = response.terminal_id;
+          terminal.backendTerminalId = response.terminalId;
         } catch (error) {
           console.error("Failed to create terminal:", error);
         }
@@ -1037,7 +1037,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                 const terminal = terminals.value.find(
                   (term) => term.id === t.id,
                 );
-                return terminal?.backendTerminalId === titleChange.terminal_id;
+                return terminal?.backendTerminalId === titleChange.terminalId;
               });
             } else if (layout.type === "split" && layout.children) {
               for (const child of layout.children) {
@@ -1068,7 +1068,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                 const terminal = terminals.value.find(
                   (term) => term.id === tab.id,
                 );
-                if (terminal?.backendTerminalId === exitEvent.terminal_id) {
+                if (terminal?.backendTerminalId === exitEvent.terminalId) {
                   return { panel: layout.panel, tab };
                 }
               }

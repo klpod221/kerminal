@@ -36,8 +36,8 @@
 <script setup lang="ts">
 import { onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
 import { debounce } from "../../utils/helpers";
-import { writeToTerminal, resizeTerminal } from "../../services/terminal";
-import { TerminalBufferManager } from "../../utils/terminalBufferManager";
+import { resizeTerminal } from "../../services/terminal";
+import { TerminalBufferManager, InputBatcher } from "../../core";
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -74,17 +74,18 @@ let fitAddon: FitAddon;
 // Get buffer manager instance
 const bufferManager = TerminalBufferManager.getInstance();
 
-// Handle terminal input and send to backend
-const handleTerminalInput = async (data: string): Promise<void> => {
+// Get input batcher instance
+const inputBatcher = InputBatcher.getInstance();
+
+// Handle terminal input using batching for better performance
+const handleTerminalInput = (data: string): void => {
   if (!props.backendTerminalId) return;
 
   try {
-    await writeToTerminal({
-      terminal_id: props.backendTerminalId,
-      data,
-    });
+    // Use InputBatcher to batch rapid input and reduce API calls
+    inputBatcher.batchInput(props.backendTerminalId, data);
   } catch (error) {
-    console.error("Failed to send input to terminal:", error);
+    console.error("Failed to batch input for terminal:", error);
   }
 };
 
@@ -96,7 +97,7 @@ const handleTerminalResize = async (): Promise<void> => {
     const dimensions = fitAddon.proposeDimensions();
     if (dimensions) {
       await resizeTerminal({
-        terminal_id: props.backendTerminalId,
+        terminalId: props.backendTerminalId,
         cols: dimensions.cols,
         rows: dimensions.rows,
       });
@@ -233,7 +234,7 @@ onMounted(async () => {
   // Open terminal in DOM
   term.open(terminalRef.value);
 
-  // Handle user input and send to backend
+  // Handle user input and send to backend via InputBatcher
   term.onData((data) => {
     handleTerminalInput(data);
   });
@@ -252,8 +253,21 @@ onMounted(async () => {
 });
 
 // Cleanup on unmount
-onBeforeUnmount(() => {
+onBeforeUnmount(async () => {
   window.removeEventListener("resize", handleResize);
+
+  // Flush any pending input before cleanup
+  if (props.backendTerminalId) {
+    try {
+      await inputBatcher.flushInput(props.backendTerminalId);
+    } catch (error) {
+      console.error("Failed to flush input during cleanup:", error);
+    }
+
+    // Clear batcher data for this terminal
+    inputBatcher.clearTerminal(props.backendTerminalId);
+  }
+
   if (term) {
     term.dispose();
   }
