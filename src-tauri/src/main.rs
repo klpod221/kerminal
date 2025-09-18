@@ -10,7 +10,6 @@ mod services;
 mod setup;
 mod state;
 
-use crate::services::terminal::TerminalManager;
 use crate::state::AppState;
 
 #[tokio::main]
@@ -20,13 +19,8 @@ async fn main() {
         .await
         .expect("Failed to initialize application state");
 
-    // Extract a clone of the database service for terminal manager
-    let database_service = app_state.database_service.clone();
-    let terminal_manager = TerminalManager::new(database_service);
-
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(terminal_manager)
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Dashboard commands
@@ -48,31 +42,30 @@ async fn main() {
             // System commands
             commands::system::get_user_hostname,
             // Database commands - Master Password
-            commands::database::setup_master_password,
-            commands::database::verify_master_password,
-            commands::database::try_auto_unlock,
-            commands::database::lock_session,
-            commands::database::get_master_password_status,
-            commands::database::update_master_password_config,
-            commands::database::get_current_device,
-            commands::database::change_master_password,
-            commands::database::reset_master_password,
-            // Database commands - SSH Groups
-            commands::database::create_ssh_group,
-            commands::database::get_ssh_groups,
-            commands::database::get_ssh_group,
-            commands::database::update_ssh_group,
-            commands::database::delete_ssh_group,
-            // Database commands - SSH Profiles
-            commands::database::create_ssh_profile,
-            commands::database::get_ssh_profiles,
-            commands::database::get_ssh_profile,
-            commands::database::update_ssh_profile,
-            commands::database::delete_ssh_profile,
-            commands::database::move_profile_to_group,
-            commands::database::duplicate_ssh_profile,
-            // Database commands - Utilities
-            commands::database::get_database_stats
+            commands::database::auth::setup_master_password,
+            commands::database::auth::verify_master_password,
+            commands::database::auth::try_auto_unlock,
+            commands::database::auth::lock_session,
+            commands::database::auth::change_master_password,
+            commands::database::auth::reset_master_password,
+            commands::database::auth::get_master_password_status,
+            commands::database::auth::get_current_device,
+            commands::database::auth::update_master_password_config,
+            // Database commands - SSH Groups & Profiles
+            commands::database::ssh::create_ssh_group,
+            commands::database::ssh::get_ssh_groups,
+            commands::database::ssh::get_ssh_group,
+            commands::database::ssh::update_ssh_group,
+            commands::database::ssh::delete_ssh_group,
+            commands::database::ssh::create_ssh_profile,
+            commands::database::ssh::get_ssh_profiles,
+            commands::database::ssh::get_ssh_profile,
+            commands::database::ssh::update_ssh_profile,
+            commands::database::ssh::delete_ssh_profile,
+            commands::database::ssh::move_profile_to_group,
+            commands::database::ssh::duplicate_ssh_profile,
+            // Database commands - System
+            commands::database::system::get_database_stats
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

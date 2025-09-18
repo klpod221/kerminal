@@ -120,13 +120,13 @@ impl TerminalFactory {
             }
             TerminalType::SSH => {
                 let ssh_profile_id = config.ssh_profile_id.clone().ok_or_else(|| {
-                    AppError::InvalidConfig(
+                    AppError::invalid_config(
                         "SSH profile ID is required for SSH terminal".to_string(),
                     )
                 })?;
 
                 let database_service = database_service.ok_or_else(|| {
-                    AppError::InvalidConfig(
+                    AppError::invalid_config(
                         "Database service is required for SSH terminal".to_string(),
                     )
                 })?;
@@ -137,7 +137,7 @@ impl TerminalFactory {
                         .get_ssh_profile(&ssh_profile_id)
                         .await
                         .map_err(|e| {
-                            AppError::Database(format!("Failed to get SSH profile: {}", e))
+                            AppError::Database(e.to_string())
                         })?
                 };
 

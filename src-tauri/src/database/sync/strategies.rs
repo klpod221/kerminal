@@ -1,6 +1,4 @@
-use crate::database::error::DatabaseResult;
-use crate::database::models::base::BaseModel;
-use chrono::{DateTime, Utc};
+use crate::models::base::BaseModel;
 
 #[derive(Debug, Clone, PartialEq)]
 #[allow(dead_code)]

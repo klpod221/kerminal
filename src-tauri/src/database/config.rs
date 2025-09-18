@@ -1,6 +1,5 @@
 use crate::database::error::DatabaseResult;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Database configuration for different providers
 #[derive(Debug, Clone, Serialize, Deserialize)]

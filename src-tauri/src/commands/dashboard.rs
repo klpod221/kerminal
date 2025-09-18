@@ -1,4 +1,4 @@
-use crate::models::system_info::{CPUInfo, ComponentInfo, DiskInfo, NetworkInterface, SystemInfo};
+use crate::models::system::{CPUInfo, ComponentInfo, DiskInfo, NetworkInterface, SystemInfo};
 use sysinfo::{Components, Disks, Networks, System};
 
 #[tauri::command]

@@ -4,10 +4,10 @@ use serde::{Deserialize, Serialize};
 use crate::{
     database::{
         error::DatabaseResult,
-        models::base::BaseModel,
         traits::{Encryptable, EncryptionService},
     },
     impl_syncable,
+    models::base::BaseModel,
 };
 
 /// SSH Profile với flexible authentication methods
@@ -632,7 +632,7 @@ impl std::fmt::Display for KeyType {
 }
 
 impl crate::database::sync::strategies::HasBaseModel for SSHProfile {
-    fn base_model(&self) -> &crate::database::models::base::BaseModel {
+    fn base_model(&self) -> &crate::models::base::BaseModel {
         &self.base
     }
 }

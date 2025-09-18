@@ -1,10 +1,12 @@
 // MySQL database provider implementation
 // Note: This is a placeholder for future MySQL support
 
-use crate::database::{
-    error::DatabaseResult,
-    models::{ssh_group::SSHGroup, ssh_profile::SSHProfile},
-    traits::{Database, DatabaseProviderType, SqlValue, ToSqlValue},
+use crate::{
+    database::{
+        error::DatabaseResult,
+        traits::{Database, DatabaseProviderType, SqlValue, ToSqlValue},
+    },
+    models::{ssh::SSHGroup, ssh::SSHProfile},
 };
 use async_trait::async_trait;
 use std::collections::HashMap;

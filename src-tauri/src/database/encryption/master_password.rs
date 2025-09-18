@@ -20,7 +20,7 @@ pub struct MasterPasswordManager {
 }
 
 /// Master password setup request
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SetupMasterPasswordRequest {
     pub device_name: String,
     pub password: String,

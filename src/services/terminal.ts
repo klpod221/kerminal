@@ -48,7 +48,7 @@ export async function createSSHTerminal(
 ): Promise<CreateTerminalResponse> {
   return invokeWithErrorHandling<CreateTerminalResponse>(
     "create_ssh_terminal",
-    { profile_id: profileId },
+    { params: { profile_id: profileId } },
     "create SSH terminal",
   );
 }
@@ -89,7 +89,7 @@ export async function closeTerminal(terminalId: string): Promise<void> {
 
   return invokeWithErrorHandling<void>(
     "close_terminal",
-    { terminalId },
+    { params: { terminal_id: terminalId } },
     "close terminal",
   );
 }
@@ -102,7 +102,7 @@ export async function getTerminalInfo(
 ): Promise<TerminalInfo> {
   return invokeWithErrorHandling<TerminalInfo>(
     "get_terminal_info",
-    { terminal_id: terminalId },
+    { params: { terminal_id: terminalId } },
     "get terminal info",
   );
 }

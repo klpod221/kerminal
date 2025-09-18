@@ -3,16 +3,15 @@ use sqlx::{Row, SqlitePool};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use crate::database::{
-    encryption::device_keys::MasterPasswordEntry,
-    error::{DatabaseError, DatabaseResult},
-    models::{
-        device::{Device, DeviceInfo},
-        ssh_group::SSHGroup,
-        ssh_profile::SSHProfile,
-        sync_metadata::{ConflictRecord, SyncMetadata},
+use crate::{
+    database::{
+        encryption::device_keys::MasterPasswordEntry,
+        error::{DatabaseError, DatabaseResult},
+        traits::{Database, DatabaseProviderType, SqlValue, ToSqlValue},
     },
-    traits::{Database, DatabaseProviderType, QueryCriteria, SqlValue, ToSqlValue},
+    models::{
+        ssh::{SSHGroup, SSHProfile},
+    },
 };
 
 /// SQLite database provider implementation
@@ -376,7 +375,7 @@ impl Database for SQLiteProvider {
 
         if let Some(row) = row {
             let profile = SSHProfile {
-                base: crate::database::models::base::BaseModel {
+                base: crate::models::base::BaseModel {
                     id: row.get("id"),
                     created_at: chrono::DateTime::parse_from_rfc3339(
                         &row.get::<String, _>("created_at"),
@@ -432,7 +431,7 @@ impl Database for SQLiteProvider {
         let mut profiles = Vec::new();
         for row in rows {
             let profile = SSHProfile {
-                base: crate::database::models::base::BaseModel {
+                base: crate::models::base::BaseModel {
                     id: row.get("id"),
                     created_at: chrono::DateTime::parse_from_rfc3339(
                         &row.get::<String, _>("created_at"),
@@ -535,7 +534,7 @@ impl Database for SQLiteProvider {
 
         if let Some(row) = row {
             let group = SSHGroup {
-                base: crate::database::models::base::BaseModel {
+                base: crate::models::base::BaseModel {
                     id: row.get("id"),
                     created_at: chrono::DateTime::parse_from_rfc3339(
                         &row.get::<String, _>("created_at"),
@@ -580,7 +579,7 @@ impl Database for SQLiteProvider {
         let mut groups = Vec::new();
         for row in rows {
             let group = SSHGroup {
-                base: crate::database::models::base::BaseModel {
+                base: crate::models::base::BaseModel {
                     id: row.get("id"),
                     created_at: chrono::DateTime::parse_from_rfc3339(
                         &row.get::<String, _>("created_at"),
@@ -714,7 +713,7 @@ impl SQLiteProvider {
     /// Get current device from database
     pub async fn get_current_device(
         &self,
-    ) -> DatabaseResult<Option<super::super::models::device::Device>> {
+    ) -> DatabaseResult<Option<crate::models::auth::Device>> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
 
@@ -724,12 +723,12 @@ impl SQLiteProvider {
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         if let Some(row) = row {
-            let device = super::super::models::device::Device {
+            let device = crate::models::auth::Device {
                 device_id: row.get("device_id"),
                 device_name: row.get("device_name"),
                 device_type: serde_json::from_str(&row.get::<String, _>("device_type"))
-                    .unwrap_or(super::super::models::device::DeviceType::Unknown),
-                os_info: super::super::models::device::OsInfo {
+                    .unwrap_or(crate::models::auth::DeviceType::Unknown),
+                os_info: crate::models::auth::OsInfo {
                     os_type: row.get("os_name"),
                     os_version: row.get("os_version"),
                     arch: "".to_string(), // Will be updated when we enhance schema
@@ -757,7 +756,7 @@ impl SQLiteProvider {
     /// Save device to database
     pub async fn save_device(
         &self,
-        device: &super::super::models::device::Device,
+        device: &crate::models::auth::Device,
     ) -> DatabaseResult<()> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;

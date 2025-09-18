@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    impl_syncable,
     database::{
-        models::base::BaseModel,
-    traits::{Encryptable, EncryptionService},
         error::DatabaseResult,
+        traits::{Encryptable, EncryptionService},
     },
+    impl_syncable,
+    models::base::BaseModel,
 };
 
 /// SSH Group để organize profiles
@@ -232,7 +232,7 @@ impl Default for DeleteGroupAction {
 }
 
 impl crate::database::sync::strategies::HasBaseModel for SSHGroup {
-    fn base_model(&self) -> &crate::database::models::base::BaseModel {
+    fn base_model(&self) -> &crate::models::base::BaseModel {
         &self.base
     }
 }

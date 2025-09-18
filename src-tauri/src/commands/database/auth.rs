@@ -1,0 +1,119 @@
+use crate::database::encryption::master_password::SetupMasterPasswordRequest;
+use crate::state::AppState;
+use tauri::State;
+
+use super::common::app_result;
+
+/// Setup master password for first time
+#[tauri::command]
+pub async fn setup_master_password(
+    state: State<'_, AppState>,
+    request: SetupMasterPasswordRequest,
+) -> Result<(), String> {
+    let auth_service = &state.auth_service;
+    app_result!(auth_service.setup_master_password(request).await)
+}
+
+/// Verify master password
+#[tauri::command]
+pub async fn verify_master_password(
+    state: State<'_, AppState>,
+    password: String,
+) -> Result<bool, String> {
+    match state.auth_service.verify_master_password(password).await {
+        Ok(()) => Ok(true),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// Try auto unlock with keychain
+#[tauri::command]
+pub async fn try_auto_unlock(state: State<'_, AppState>) -> Result<bool, String> {
+    app_result!(state.auth_service.try_auto_unlock().await)
+}
+
+/// Lock current session
+#[tauri::command]
+pub async fn lock_session(state: State<'_, AppState>) -> Result<(), String> {
+    state.auth_service.lock_session().await;
+    Ok(())
+}
+
+/// Get master password status
+#[tauri::command]
+pub async fn get_master_password_status(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    app_result!(state.auth_service.get_master_password_status().await)
+}
+
+/// Get current device information
+#[tauri::command]
+pub async fn get_current_device(
+    state: State<'_, AppState>,
+) -> Result<serde_json::Value, String> {
+    app_result!(state.auth_service.get_current_device().await)
+}
+
+/// Change master password
+#[tauri::command]
+pub async fn change_master_password(
+    state: State<'_, AppState>,
+    old_password: String,
+    new_password: String,
+) -> Result<(), String> {
+    match state.auth_service.change_master_password(old_password, new_password).await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            match e {
+                crate::database::error::DatabaseError::AuthenticationFailed(_) => {
+                    Err("Current password is incorrect".to_string())
+                }
+                crate::database::error::DatabaseError::MasterPasswordRequired => {
+                    Err("Master password is not set up".to_string())
+                }
+                crate::database::error::DatabaseError::ValidationError(msg) => {
+                    Err(msg)
+                }
+                _ => Err(format!("Failed to change password: {}", e))
+            }
+        }
+    }
+}
+
+/// Reset master password (dangerous operation)
+#[tauri::command]
+pub async fn reset_master_password(state: State<'_, AppState>) -> Result<(), String> {
+    match state.auth_service.reset_master_password().await {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            match e {
+                crate::database::error::DatabaseError::MasterPasswordRequired => {
+                    Err("Master password is not set up".to_string())
+                }
+                _ => Err(format!("Failed to reset master password: {}", e))
+            }
+        }
+    }
+}
+
+/// Update master password configuration
+#[tauri::command]
+pub async fn update_master_password_config(
+    state: State<'_, AppState>,
+    config: serde_json::Value,
+) -> Result<(), String> {
+    // Extract auto_unlock from config
+    let auto_unlock = config
+        .get("autoUnlock")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    // Extract auto_lock_timeout from config
+    let auto_lock_timeout = config
+        .get("autoLockTimeout")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+
+    app_result!(state.auth_service.update_master_password_config(auto_unlock, auto_lock_timeout).await)
+}

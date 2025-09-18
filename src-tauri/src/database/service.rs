@@ -13,14 +13,14 @@ use crate::database::{
         MasterPasswordManager,
     },
     error::{DatabaseError, DatabaseResult},
-    models::{
-        device::{Device, DeviceInfo},
-        ssh_group::{CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest},
-        ssh_profile::{CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest},
-        sync_metadata::SyncStats,
-    },
     providers::SQLiteProvider,
     traits::{Database, Encryptable},
+};
+use crate::models::{
+    auth::{Device, DeviceInfo},
+    ssh::{CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest,
+          CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest},
+    sync::SyncStats,
 };
 
 // Đã import ở trên, không cần lặp lại
@@ -603,8 +603,7 @@ impl DatabaseService {
 
         // Create new profile with new ID
         let mut duplicate = original.clone();
-        duplicate.base =
-            crate::database::models::base::BaseModel::new(self.current_device.device_id.clone());
+        duplicate.base = crate::models::base::BaseModel::new(self.current_device.device_id.clone());
         duplicate.name = new_name;
 
         // Re-encrypt

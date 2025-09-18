@@ -1,4 +1,4 @@
-use crate::database::models::ssh_profile::{AuthData, ProxyConfig, ProxyType, SSHProfile};
+use crate::models::ssh::{AuthData, ProxyConfig, ProxyType, SSHProfile};
 use crate::error::AppError;
 use crate::models::terminal::{TerminalConfig, TerminalState};
 use ssh2::{Channel, Session};
@@ -49,7 +49,7 @@ impl SSHTerminal {
                 self.ssh_profile.host, self.ssh_profile.port
             ))
             .map_err(|e| {
-                AppError::ConnectionFailed(format!(
+                AppError::connection_failed(format!(
                     "Failed to connect to {}:{}: {}",
                     self.ssh_profile.host, self.ssh_profile.port, e
                 ))
@@ -58,7 +58,7 @@ impl SSHTerminal {
 
         // Create SSH session
         let mut session = Session::new().map_err(|e| {
-            AppError::ConnectionFailed(format!("Failed to create SSH session: {}", e))
+            AppError::connection_failed(format!("Failed to create SSH session: {}", e))
         })?;
 
         // Set connection timeout if specified
@@ -74,25 +74,25 @@ impl SSHTerminal {
         session.set_tcp_stream(tcp);
         session
             .handshake()
-            .map_err(|e| AppError::ConnectionFailed(format!("SSH handshake failed: {}", e)))?;
+            .map_err(|e| AppError::connection_failed(format!("SSH handshake failed: {}", e)))?;
 
         // Authenticate
         self.authenticate(&mut session).await?;
 
         // Create channel
         let mut channel = session.channel_session().map_err(|e| {
-            AppError::ConnectionFailed(format!("Failed to create SSH channel: {}", e))
+            AppError::connection_failed(format!("Failed to create SSH channel: {}", e))
         })?;
 
         // Request a pseudo-terminal
         channel
             .request_pty("xterm", None, Some((80, 24, 0, 0)))
-            .map_err(|e| AppError::TerminalError(format!("Failed to request PTY: {}", e)))?;
+            .map_err(|e| AppError::terminal_error(format!("Failed to request PTY: {}", e)))?;
 
         // Start shell
         channel
             .shell()
-            .map_err(|e| AppError::TerminalError(format!("Failed to start shell: {}", e)))?;
+            .map_err(|e| AppError::terminal_error(format!("Failed to start shell: {}", e)))?;
 
         self.session = Some(Arc::new(Mutex::new(session)));
         self.channel = Some(Arc::new(Mutex::new(channel)));
@@ -108,7 +108,7 @@ impl SSHTerminal {
                 session
                     .userauth_password(&self.ssh_profile.username, password)
                     .map_err(|e| {
-                        AppError::AuthenticationFailed(format!(
+                        AppError::authentication_failed(format!(
                             "Password authentication failed: {}",
                             e
                         ))
@@ -125,7 +125,7 @@ impl SSHTerminal {
                 ) {
                     Ok(_) => {}
                     Err(e) => {
-                        return Err(AppError::AuthenticationFailed(format!(
+                        return Err(AppError::authentication_failed(format!(
                             "Private key authentication failed: {}",
                             e
                         )))
@@ -145,7 +145,7 @@ impl SSHTerminal {
                 ) {
                     Ok(_) => {}
                     Err(e) => {
-                        return Err(AppError::AuthenticationFailed(format!(
+                        return Err(AppError::authentication_failed(format!(
                             "Private key with passphrase authentication failed: {}",
                             e
                         )))
@@ -157,21 +157,21 @@ impl SSHTerminal {
                 session
                     .userauth_agent(&self.ssh_profile.username)
                     .map_err(|e| {
-                        AppError::AuthenticationFailed(format!(
+                        AppError::authentication_failed(format!(
                             "SSH agent authentication failed: {}",
                             e
                         ))
                     })?;
             }
             _ => {
-                return Err(AppError::AuthenticationFailed(
+                return Err(AppError::authentication_failed(
                     "Unsupported authentication method".to_string(),
                 ));
             }
         }
 
         if !session.authenticated() {
-            return Err(AppError::AuthenticationFailed(
+            return Err(AppError::authentication_failed(
                 "Authentication failed".to_string(),
             ));
         }
@@ -184,19 +184,19 @@ impl SSHTerminal {
         match proxy.proxy_type {
             ProxyType::Http => {
                 // TODO: Implement HTTP proxy support
-                return Err(AppError::ConnectionFailed(
+                return Err(AppError::connection_failed(
                     "HTTP proxy not yet implemented".to_string(),
                 ));
             }
             ProxyType::Socks5 => {
                 // TODO: Implement SOCKS5 proxy support
-                return Err(AppError::ConnectionFailed(
+                return Err(AppError::connection_failed(
                     "SOCKS5 proxy not yet implemented".to_string(),
                 ));
             }
             ProxyType::Socks4 => {
                 // TODO: Implement SOCKS4 proxy support
-                return Err(AppError::ConnectionFailed(
+                return Err(AppError::connection_failed(
                     "SOCKS4 proxy not yet implemented".to_string(),
                 ));
             }
@@ -206,7 +206,7 @@ impl SSHTerminal {
     /// Old authentication method - deprecated - will be removed
     async fn authenticate_old(&self, _session: &mut Session) -> Result<(), AppError> {
         // This method is deprecated and will be removed
-        Err(AppError::AuthenticationFailed(
+        Err(AppError::authentication_failed(
             "Deprecated authentication method".to_string(),
         ))
     }
@@ -242,14 +242,14 @@ impl SSHTerminal {
         if let Some(channel) = &self.channel {
             let mut channel_guard = channel.lock().await;
             channel_guard.write_all(data).map_err(|e| {
-                AppError::TerminalError(format!("Failed to write to SSH channel: {}", e))
+                AppError::terminal_error(format!("Failed to write to SSH channel: {}", e))
             })?;
             channel_guard.flush().map_err(|e| {
-                AppError::TerminalError(format!("Failed to flush SSH channel: {}", e))
+                AppError::terminal_error(format!("Failed to flush SSH channel: {}", e))
             })?;
             Ok(())
         } else {
-            Err(AppError::TerminalError(
+            Err(AppError::terminal_error(
                 "SSH terminal not connected".to_string(),
             ))
         }
@@ -262,11 +262,11 @@ impl SSHTerminal {
             channel_guard
                 .request_pty_size(cols as u32, rows as u32, None, None)
                 .map_err(|e| {
-                    AppError::TerminalError(format!("Failed to resize SSH terminal: {}", e))
+                    AppError::terminal_error(format!("Failed to resize SSH terminal: {}", e))
                 })?;
             Ok(())
         } else {
-            Err(AppError::TerminalError(
+            Err(AppError::terminal_error(
                 "SSH terminal not connected".to_string(),
             ))
         }
@@ -347,7 +347,7 @@ impl SSHTerminal {
 
             Ok(())
         } else {
-            Err(AppError::TerminalError(
+            Err(AppError::terminal_error(
                 "SSH terminal not connected".to_string(),
             ))
         }

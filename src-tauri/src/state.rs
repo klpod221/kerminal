@@ -1,4 +1,5 @@
 use crate::database::{DatabaseService, DatabaseServiceConfig};
+use crate::services::{auth::AuthService, ssh::SSHService, sync::SyncService, terminal::TerminalManager};
 use futures::FutureExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -6,6 +7,10 @@ use tokio::sync::Mutex;
 // Application state
 pub struct AppState {
     pub database_service: Arc<Mutex<DatabaseService>>,
+    pub auth_service: AuthService,
+    pub ssh_service: SSHService,
+    pub sync_service: SyncService,
+    pub terminal_manager: TerminalManager,
 }
 
 impl AppState {
@@ -16,8 +21,20 @@ impl AppState {
             .await
             .map_err(|e| format!("Failed to initialize database service: {}", e))?;
 
+        let database_service_arc = Arc::new(Mutex::new(database_service));
+
+        // Create service instances
+        let auth_service = AuthService::new(database_service_arc.clone());
+        let ssh_service = SSHService::new(database_service_arc.clone());
+        let sync_service = SyncService::new(database_service_arc.clone());
+        let terminal_manager = TerminalManager::new(database_service_arc.clone());
+
         Ok(Self {
-            database_service: Arc::new(Mutex::new(database_service)),
+            database_service: database_service_arc,
+            auth_service,
+            ssh_service,
+            sync_service,
+            terminal_manager,
         })
     }
 }
@@ -26,13 +43,25 @@ impl Default for AppState {
     fn default() -> Self {
         // For backward compatibility, create empty state
         // Real initialization should use AppState::new()
+        let database_service_arc = Arc::new(Mutex::new(
+            DatabaseService::new(DatabaseServiceConfig::default())
+                .now_or_never()
+                .unwrap()
+                .unwrap(),
+        ));
+
+        // Create service instances
+        let auth_service = AuthService::new(database_service_arc.clone());
+        let ssh_service = SSHService::new(database_service_arc.clone());
+        let sync_service = SyncService::new(database_service_arc.clone());
+        let terminal_manager = TerminalManager::new(database_service_arc.clone());
+
         Self {
-            database_service: Arc::new(Mutex::new(
-                DatabaseService::new(DatabaseServiceConfig::default())
-                    .now_or_never()
-                    .unwrap()
-                    .unwrap(),
-            )),
+            database_service: database_service_arc,
+            auth_service,
+            ssh_service,
+            sync_service,
+            terminal_manager,
         }
     }
 }

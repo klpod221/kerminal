@@ -49,7 +49,7 @@ impl LocalTerminal {
                 pixel_width: 0,
                 pixel_height: 0,
             })
-            .map_err(|e| AppError::PtyError(e.to_string()))?;
+            .map_err(|e| AppError::pty_error(e.to_string()))?;
 
         // Determine shell to use
         let shell = self
@@ -82,11 +82,11 @@ impl LocalTerminal {
         let child = pty_pair
             .slave
             .spawn_command(cmd)
-            .map_err(|e| AppError::PtyError(e.to_string()))?;
+            .map_err(|e| AppError::pty_error(e.to_string()))?;
         let writer = pty_pair
             .master
             .take_writer()
-            .map_err(|e| AppError::PtyError(e.to_string()))?;
+            .map_err(|e| AppError::pty_error(e.to_string()))?;
 
         self.writer = Some(Arc::new(Mutex::new(writer)));
         self.pty_pair = Some((pty_pair.master, child));
@@ -127,7 +127,7 @@ impl LocalTerminal {
             writer_guard.flush()?;
             Ok(())
         } else {
-            Err(AppError::TerminalError(
+            Err(AppError::terminal_error(
                 "Terminal not connected".to_string(),
             ))
         }
@@ -144,10 +144,10 @@ impl LocalTerminal {
             };
             pty_master
                 .resize(size)
-                .map_err(|e| AppError::PtyError(e.to_string()))?;
+                .map_err(|e| AppError::pty_error(e.to_string()))?;
             Ok(())
         } else {
-            Err(AppError::TerminalError(
+            Err(AppError::terminal_error(
                 "Terminal not connected".to_string(),
             ))
         }
@@ -183,7 +183,7 @@ impl LocalTerminal {
         if let Some((pty_master, _)) = &mut self.pty_pair {
             let mut reader = pty_master
                 .try_clone_reader()
-                .map_err(|e| AppError::PtyError(e.to_string()))?;
+                .map_err(|e| AppError::pty_error(e.to_string()))?;
 
             // Move title detector to the spawned task
             let mut title_detector = std::mem::take(&mut self.title_detector);
@@ -199,7 +199,7 @@ impl LocalTerminal {
                             if let Some(ref exit_sender) = exit_sender {
                                 let exit_event = TerminalExited {
                                     terminal_id: terminal_id.clone(),
-                                    exit_code: None, // We don't have access to exit code here
+                                    exit_code: None::<i32>, // Explicitly type the None
                                 };
                                 if let Err(_) = exit_sender.send(exit_event) {
                                     // Channel closed, receiver has been dropped
@@ -248,7 +248,7 @@ impl LocalTerminal {
 
             Ok(())
         } else {
-            Err(AppError::TerminalError(
+            Err(AppError::terminal_error(
                 "Terminal not connected".to_string(),
             ))
         }

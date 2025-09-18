@@ -13,11 +13,14 @@ import type {
  */
 export async function setup(setup: MasterPasswordSetup): Promise<void> {
   return await invoke<void>("setup_master_password", {
-    password: setup.password,
-    confirmPassword: setup.confirmPassword,
-    deviceName: setup.deviceName,
-    autoUnlock: setup.autoUnlock,
-    autoLockTimeout: setup.autoLockTimeout,
+    request: {
+      device_name: setup.deviceName,
+      password: setup.password,
+      confirm_password: setup.confirmPassword,
+      auto_unlock: setup.autoUnlock,
+      use_keychain: setup.useKeychain || false,
+      auto_lock_timeout: setup.autoLockTimeout,
+    },
   });
 }
 
@@ -54,10 +57,9 @@ export async function lock(): Promise<void> {
  * @param change - Master password change request
  */
 export async function change(change: MasterPasswordChange): Promise<void> {
-  // Note: Backend implementation is incomplete (TODO)
   return await invoke<void>("change_master_password", {
-    oldPassword: change.oldPassword,
-    newPassword: change.newPassword,
+    old_password: change.oldPassword,
+    new_password: change.newPassword,
   });
 }
 
@@ -84,8 +86,7 @@ export async function reset(): Promise<void> {
 export async function updateConfig(
   config: Partial<MasterPasswordConfig>,
 ): Promise<void> {
-  // Note: Backend command not yet implemented
-  return await invoke<void>("update_master_password_config", { config });
+  return await invoke<void>("update_master_password_config", config);
 }
 
 /**

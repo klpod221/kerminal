@@ -7,7 +7,7 @@ import type { SSHProfile } from "../types/ssh";
  * @returns The created SSH profile
  */
 export async function createSSHProfile(profile: SSHProfile) {
-  return await invoke("create_ssh_profile", { ...profile });
+  return await invoke("create_ssh_profile", { request: profile });
 }
 
 
