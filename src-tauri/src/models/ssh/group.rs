@@ -11,6 +11,7 @@ use crate::{
 
 /// SSH Group để organize profiles
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SSHGroup {
     /// Base model với sync metadata
     #[serde(flatten)]
@@ -121,6 +122,7 @@ impl Encryptable for SSHGroup {
 
 /// Request để tạo SSH group mới
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateSSHGroupRequest {
     pub name: String,
     pub description: Option<String>,
@@ -146,6 +148,7 @@ impl CreateSSHGroupRequest {
 
 /// Request để update SSH group
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateSSHGroupRequest {
     pub name: Option<String>,
     pub description: Option<Option<String>>,  // Some(None) = clear description

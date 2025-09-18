@@ -43,6 +43,9 @@ export const useAuthStore = defineStore("auth", () => {
   // Auto-lock timer
   let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Session validity check interval
+  let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
+
   // Computed properties
   const isAuthenticated = computed(() => status.value.isUnlocked);
   const requiresSetup = computed(() => !status.value.isSetup);
@@ -50,7 +53,7 @@ export const useAuthStore = defineStore("auth", () => {
     () => status.value.isSetup && !status.value.isUnlocked,
   );
 
-    /**
+  /**
    * Check master password status from backend
    */
   const checkStatus = async (): Promise<void> => {
@@ -62,14 +65,10 @@ export const useAuthStore = defineStore("auth", () => {
    * Load security settings from backend
    */
   const loadSecuritySettings = async (): Promise<void> => {
-    try {
-      // Get master password config from backend
-      const config = await masterPasswordService.getConfig();
-      if (config && config.sessionTimeoutMinutes !== undefined) {
-        securitySettings.value.autoLockTimeout = config.sessionTimeoutMinutes || 0;
-      }
-    } catch (error) {
-      console.error("Failed to load security settings:", error);
+    const config = await masterPasswordService.getConfig();
+    if (config && config.sessionTimeoutMinutes !== undefined) {
+      securitySettings.value.autoLockTimeout =
+        config.sessionTimeoutMinutes || 0;
     }
   };
 
@@ -77,18 +76,15 @@ export const useAuthStore = defineStore("auth", () => {
    * Check if current session is valid (not expired)
    */
   const checkSessionValidity = async (): Promise<boolean> => {
-    try {
-      const isValid = await masterPasswordService.isSessionValid();
-      if (!isValid && status.value.isUnlocked) {
-        // Session was expired and locked, update local status
-        await checkStatus();
-      }
-      return isValid;
-    } catch (error) {
-      console.error("Failed to check session validity:", error);
-      return false;
+    const isValid = await masterPasswordService.isSessionValid();
+    if (!isValid && status.value.isUnlocked) {
+      // Session was expired and locked, update local status
+      await checkStatus();
     }
-  };  /**
+    return isValid;
+  };
+
+  /**
    * Setup master password for the first time
    * @param setup - Master password setup configuration
    */
@@ -111,6 +107,10 @@ export const useAuthStore = defineStore("auth", () => {
 
     // Setup auto-lock timer if enabled
     setupAutoLockTimer();
+
+    // Start session validity check
+    startSessionValidityCheck();
+
     return true;
   };
 
@@ -130,6 +130,9 @@ export const useAuthStore = defineStore("auth", () => {
       // Setup auto-lock timer
       setupAutoLockTimer();
 
+      // Start session validity check
+      startSessionValidityCheck();
+
       return true;
     } else {
       return false;
@@ -140,8 +143,9 @@ export const useAuthStore = defineStore("auth", () => {
    * Lock the application
    */
   const lock = async (): Promise<void> => {
-    // Clear auto-lock timer
+    // Clear auto-lock timer and session check
     clearAutoLockTimer();
+    stopSessionValidityCheck();
 
     await masterPasswordService.lock();
 
@@ -191,6 +195,9 @@ export const useAuthStore = defineStore("auth", () => {
     // Restart auto-lock timer with new settings
     setupAutoLockTimer();
 
+    // Restart session validity check with new settings
+    startSessionValidityCheck();
+
     return true;
   };
 
@@ -204,6 +211,7 @@ export const useAuthStore = defineStore("auth", () => {
 
     if (status.value.isUnlocked) {
       setupAutoLockTimer();
+      startSessionValidityCheck();
     }
 
     return success;
@@ -219,30 +227,39 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   /**
-   * Setup auto-lock timer based on current settings
-   */
-  const setupAutoLockTimer = (): void => {
-    clearAutoLockTimer();
-
-    const timeoutMinutes = securitySettings.value.autoLockTimeout;
-    if (timeoutMinutes > 0 && status.value.isUnlocked) {
-      autoLockTimer = setTimeout(
-        () => {
-          console.log("Auto-lock triggered");
-          lock();
-        },
-        timeoutMinutes * 60 * 1000,
-      );
-    }
-  };
-
-  /**
    * Clear auto-lock timer
    */
   const clearAutoLockTimer = (): void => {
     if (autoLockTimer) {
       clearTimeout(autoLockTimer);
       autoLockTimer = null;
+    }
+  };
+
+  /**
+   * Start periodic session validity check
+   */
+  const startSessionValidityCheck = (): void => {
+    // Clear existing interval if any
+    stopSessionValidityCheck();
+
+    // Only start if authenticated
+    if (status.value.isUnlocked) {
+      sessionCheckInterval = setInterval(async () => {
+        if (status.value.isUnlocked) {
+          await checkSessionValidity();
+        }
+      }, 30000); // Check every 30 seconds
+    }
+  };
+
+  /**
+   * Stop periodic session validity check
+   */
+  const stopSessionValidityCheck = (): void => {
+    if (sessionCheckInterval) {
+      clearInterval(sessionCheckInterval);
+      sessionCheckInterval = null;
     }
   };
 
@@ -275,9 +292,28 @@ export const useAuthStore = defineStore("auth", () => {
     await loadSecuritySettings();
     await getCurrentDevice();
 
-    // If already unlocked, setup auto-lock timer
+    // If already unlocked, setup auto-lock timer and session check
     if (status.value.isUnlocked) {
       setupAutoLockTimer();
+      startSessionValidityCheck();
+    }
+  };
+
+  /**
+   * Setup auto-lock timer based on current settings
+   */
+  const setupAutoLockTimer = (): void => {
+    clearAutoLockTimer();
+
+    const timeoutMinutes = securitySettings.value.autoLockTimeout;
+    if (timeoutMinutes > 0 && status.value.isUnlocked) {
+      autoLockTimer = setTimeout(
+        () => {
+          console.log("Auto-lock triggered");
+          lock();
+        },
+        timeoutMinutes * 60 * 1000,
+      );
     }
   };
 
@@ -294,6 +330,7 @@ export const useAuthStore = defineStore("auth", () => {
    */
   const cleanup = (): void => {
     clearAutoLockTimer();
+    stopSessionValidityCheck();
   };
 
   return {

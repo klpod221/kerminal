@@ -145,6 +145,7 @@ pub async fn duplicate_ssh_profile(
 
 /// DTO for delete group action from frontend
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeleteGroupActionDto {
     pub action_type: String,
     pub target_group_id: Option<String>,
@@ -153,11 +154,11 @@ pub struct DeleteGroupActionDto {
 impl From<DeleteGroupActionDto> for DeleteGroupAction {
     fn from(dto: DeleteGroupActionDto) -> Self {
         match dto.action_type.as_str() {
-            "move_to_group" => {
+            "moveToGroup" => {
                 DeleteGroupAction::MoveToGroup(dto.target_group_id.unwrap_or_default())
             }
-            "move_to_ungrouped" => DeleteGroupAction::MoveToUngrouped,
-            "delete_profiles" => DeleteGroupAction::DeleteProfiles,
+            "moveToUngrouped" => DeleteGroupAction::MoveToUngrouped,
+            "deleteProfiles" => DeleteGroupAction::DeleteProfiles,
             _ => DeleteGroupAction::MoveToUngrouped,
         }
     }

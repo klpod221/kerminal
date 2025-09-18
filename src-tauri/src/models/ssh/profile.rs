@@ -12,6 +12,7 @@ use crate::{
 
 /// SSH Profile với flexible authentication methods
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SSHProfile {
     /// Base model với sync metadata
     #[serde(flatten)]
@@ -50,6 +51,7 @@ pub struct SSHProfile {
 
 /// Authentication methods supported
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "PascalCase")]
 pub enum AuthMethod {
     /// Password authentication
     Password,
@@ -69,6 +71,7 @@ pub enum AuthMethod {
 
 /// Proxy configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProxyConfig {
     pub proxy_type: ProxyType,
     pub host: String,
@@ -435,6 +438,7 @@ impl Encryptable for SSHProfile {
 
 /// Request để tạo SSH profile mới
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateSSHProfileRequest {
     pub name: String,
     pub host: String,
@@ -480,6 +484,7 @@ impl CreateSSHProfileRequest {
 
 /// Request để update SSH profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateSSHProfileRequest {
     pub name: Option<String>,
     pub host: Option<String>,

@@ -70,27 +70,10 @@ onMounted(async () => {
   } catch (error) {
     console.error("Failed to initialize auth:", error);
   }
-
-  // Start periodic session validity check (every 30 seconds)
-  sessionCheckInterval = setInterval(async () => {
-    if (authStore.isAuthenticated) {
-      const isValid = await authStore.checkSessionValidity();
-      if (!isValid) {
-        console.log("Session expired, showing unlock overlay");
-        openOverlay("master-password-unlock");
-      }
-    }
-  }, 30000); // Check every 30 seconds
 });
-
-// Session check interval
-let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
 
 // Cleanup when app unmounts
 onUnmounted(() => {
-  if (sessionCheckInterval) {
-    clearInterval(sessionCheckInterval);
-  }
   authStore.cleanup();
 });
 

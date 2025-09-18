@@ -7,6 +7,7 @@ use crate::database::traits::SyncStatus;
 
 /// Base model that provides common fields for all syncable models
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BaseModel {
     pub id: String,
     pub created_at: DateTime<Utc>,
