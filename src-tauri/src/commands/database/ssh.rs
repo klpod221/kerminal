@@ -14,19 +14,8 @@ use super::common::app_result;
 #[tauri::command]
 pub async fn create_ssh_group(
     state: State<'_, AppState>,
-    name: String,
-    description: Option<String>,
-    color: Option<String>,
-    icon: Option<String>,
+    request: CreateSSHGroupRequest,
 ) -> Result<SSHGroup, String> {
-    let request = CreateSSHGroupRequest {
-        name,
-        description,
-        color,
-        icon,
-        sort_order: None,
-        default_auth_method: None,
-    };
     app_result!(state.ssh_service.create_ssh_group(request).await)
 }
 
@@ -50,20 +39,8 @@ pub async fn get_ssh_group(
 pub async fn update_ssh_group(
     state: State<'_, AppState>,
     id: String,
-    name: Option<String>,
-    description: Option<String>,
-    color: Option<String>,
-    icon: Option<String>,
+    request: UpdateSSHGroupRequest
 ) -> Result<SSHGroup, String> {
-    let request = UpdateSSHGroupRequest {
-        name,
-        description: description.map(Some),
-        color: color.map(Some),
-        icon: icon.map(Some),
-        sort_order: None,
-        is_expanded: None,
-        default_auth_method: None,
-    };
     app_result!(state.ssh_service.update_ssh_group(&id, request).await)
 }
 

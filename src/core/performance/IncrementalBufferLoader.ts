@@ -4,6 +4,7 @@
  */
 
 import { api } from "../../services/api";
+import { message } from "../../utils/message";
 
 /**
  * Buffer chunk interface matching Rust backend
@@ -140,9 +141,8 @@ export class IncrementalBufferLoader {
 
       return true;
     } catch (error) {
-      console.error(
-        `Failed to load buffer incrementally for terminal ${terminalId}:`,
-        error,
+      message.error(
+        `Failed to load buffer incrementally for terminal ${terminalId}: ${error}`,
       );
       return false;
     }
@@ -164,7 +164,7 @@ export class IncrementalBufferLoader {
 
     // Show loading message
     terminal.clear();
-    terminal.write("\r\n\x1b[36mRestoring terminal buffer...\x1b[0m\r\n");
+    console.log("Restoring terminal buffer...");
 
     let lastProgressUpdate = 0;
     const progressThrottle = 100; // Update progress every 100ms
@@ -176,8 +176,8 @@ export class IncrementalBufferLoader {
         if (now - lastProgressUpdate > progressThrottle) {
           // Update loading message with progress
           const progressBar = this.createProgressBar(progress.percentage);
-          const message = `\r\x1b[36mLoading... ${progressBar} ${progress.percentage.toFixed(1)}% (${progress.loadedLines}/${progress.totalLines} lines)\x1b[0m`;
-          terminal.write(message);
+          const logMessage = `Loading... ${progressBar} ${progress.percentage.toFixed(1)}% (${progress.loadedLines}/${progress.totalLines} lines)`;
+          console.log(logMessage);
           lastProgressUpdate = now;
         }
 
@@ -190,11 +190,9 @@ export class IncrementalBufferLoader {
 
     if (result) {
       const loadTime = Date.now() - startTime;
-      terminal.write(
-        `\r\n\x1b[32mBuffer restored successfully in ${loadTime}ms\x1b[0m\r\n\r\n`,
-      );
+      console.log(`Buffer restored successfully in ${loadTime}ms`);
     } else {
-      terminal.write("\r\n\x1b[33mNo buffer to restore\x1b[0m\r\n\r\n");
+      console.log("No buffer to restore");
     }
 
     return result;
@@ -218,9 +216,8 @@ export class IncrementalBufferLoader {
       const chunk = await this.loadChunk(terminalId, 0, 1);
       return { totalLines: chunk.totalLines };
     } catch (error) {
-      console.error(
-        `Failed to get buffer info for terminal ${terminalId}:`,
-        error,
+      message.error(
+        `Failed to get buffer info for terminal ${terminalId}: ${error}`,
       );
       return null;
     }
@@ -257,7 +254,7 @@ export class IncrementalBufferLoader {
         hasMore: chunk.hasMore || false,
       };
     } catch (error) {
-      console.error(`Failed to load chunk for terminal ${terminalId}:`, error);
+      message.error(`Failed to load chunk for terminal ${terminalId}: ${error}`);
       // Return empty chunk on error
       return {
         terminalId,
@@ -281,9 +278,8 @@ export class IncrementalBufferLoader {
         terminalId: terminalId,
       });
     } catch (error) {
-      console.error(
-        `Failed to check buffer for terminal ${terminalId}:`,
-        error,
+      message.error(
+        `Failed to check buffer for terminal ${terminalId}: ${error}`,
       );
       return false;
     }

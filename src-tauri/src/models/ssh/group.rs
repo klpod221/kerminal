@@ -79,7 +79,7 @@ impl SSHGroup {
     /// Toggle expansion state
     pub fn toggle_expanded(&mut self) {
         self.is_expanded = !self.is_expanded;
-        // Note: không call touch() vì đây chỉ là UI state, không cần sync
+        // Note: UI state - no need to sync
     }
 
     /// Set default authentication method for new profiles
@@ -120,7 +120,7 @@ impl Encryptable for SSHGroup {
     }
 }
 
-/// Request để tạo SSH group mới
+/// Request to create new SSH group
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSSHGroupRequest {
@@ -128,7 +128,9 @@ pub struct CreateSSHGroupRequest {
     pub description: Option<String>,
     pub color: Option<String>,
     pub icon: Option<String>,
+    #[serde(rename = "sortOrder")]
     pub sort_order: Option<i32>,
+    #[serde(rename = "defaultAuthMethod")]
     pub default_auth_method: Option<String>,
 }
 
@@ -146,7 +148,7 @@ impl CreateSSHGroupRequest {
     }
 }
 
-/// Request để update SSH group
+/// Request to update SSH group
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSSHGroupRequest {
@@ -154,8 +156,11 @@ pub struct UpdateSSHGroupRequest {
     pub description: Option<Option<String>>,  // Some(None) = clear description
     pub color: Option<Option<String>>,
     pub icon: Option<Option<String>>,
+    #[serde(rename = "sortOrder")]
     pub sort_order: Option<i32>,
+    #[serde(rename = "isExpanded")]
     pub is_expanded: Option<bool>,
+    #[serde(rename = "defaultAuthMethod")]
     pub default_auth_method: Option<Option<String>>,
 }
 
@@ -198,7 +203,7 @@ impl UpdateSSHGroupRequest {
     }
 }
 
-/// Group với thống kê về số profiles
+/// Group with profile statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SSHGroupWithStats {
     #[serde(flatten)]
@@ -217,7 +222,7 @@ impl SSHGroupWithStats {
     }
 }
 
-/// Enum để xử lý profiles khi delete group
+/// Enum to handle profiles when deleting a group
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum DeleteGroupAction {
     /// Move profiles to another group

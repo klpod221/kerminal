@@ -6,6 +6,8 @@ import type {
   CreateSSHProfileRequest,
   UpdateSSHProfileRequest,
   DeleteGroupAction,
+  CreateSSHGroupRequest,
+  UpdateSSHGroupRequest,
 } from "../types/ssh";
 import * as sshService from "../services/sshProfile";
 
@@ -77,14 +79,14 @@ export const useSSHStore = defineStore("ssh", () => {
    * Find profile by ID
    */
   const findProfileById = computed(() => {
-    return (id: string) => profiles.value.find(p => p.base.id === id);
+    return (id: string) => profiles.value.find(p => p.id === id);
   });
 
   /**
    * Find group by ID
    */
   const findGroupById = computed(() => {
-    return (id: string) => groups.value.find(g => g.base.id === id);
+    return (id: string) => groups.value.find(g => g.id === id);
   });
 
   /**
@@ -118,7 +120,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const updateProfile = async (id: string, request: UpdateSSHProfileRequest): Promise<SSHProfile> => {
     const updatedProfile = await sshService.updateSSHProfile(id, request);
-    const index = profiles.value.findIndex(p => p.base.id === id);
+    const index = profiles.value.findIndex(p => p.id === id);
 
     if (index !== -1) {
       profiles.value[index] = updatedProfile;
@@ -132,7 +134,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const deleteProfile = async (id: string): Promise<void> => {
     await sshService.deleteSSHProfile(id);
-    profiles.value = profiles.value.filter(p => p.base.id !== id);
+    profiles.value = profiles.value.filter(p => p.id !== id);
   };
 
   /**
@@ -171,12 +173,9 @@ export const useSSHStore = defineStore("ssh", () => {
    * Create new SSH group
    */
   const createGroup = async (
-    name: string,
-    description?: string,
-    color?: string,
-    icon?: string
+    request: CreateSSHGroupRequest
   ): Promise<SSHGroup> => {
-    const newGroup = await sshService.createSSHGroup(name, description, color, icon);
+    const newGroup = await sshService.createSSHGroup(request);
     groups.value.push(newGroup);
     return newGroup;
   };
@@ -186,13 +185,10 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const updateGroup = async (
     id: string,
-    name?: string,
-    description?: string,
-    color?: string,
-    icon?: string
+    request: UpdateSSHGroupRequest
   ): Promise<SSHGroup> => {
-    const updatedGroup = await sshService.updateSSHGroup(id, name, description, color, icon);
-    const index = groups.value.findIndex(g => g.base.id === id);
+    const updatedGroup = await sshService.updateSSHGroup(id, request);
+    const index = groups.value.findIndex(g => g.id === id);
 
     if (index !== -1) {
       groups.value[index] = updatedGroup;
@@ -208,7 +204,7 @@ export const useSSHStore = defineStore("ssh", () => {
     await sshService.deleteSSHGroup(id, action);
 
     // Update local state
-    groups.value = groups.value.filter(g => g.base.id !== id);
+    groups.value = groups.value.filter(g => g.id !== id);
 
     // Update profiles based on action
     if (action.actionType === "moveToGroup" && action.targetGroupId) {

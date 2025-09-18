@@ -5,6 +5,8 @@ import type {
   CreateSSHProfileRequest,
   UpdateSSHProfileRequest,
   DeleteGroupAction,
+  CreateSSHGroupRequest,
+  UpdateSSHGroupRequest,
 } from "../types/ssh";
 
 // === SSH Profile Services ===
@@ -76,19 +78,11 @@ export async function duplicateSSHProfile(id: string, newName: string): Promise<
 
 /**
  * Create a new SSH group
- * @param name - Group name
- * @param description - Group description
- * @param color - Group color
- * @param icon - Group icon
+ * @param request - SSH group creation request
  * @returns The created SSH group
  */
-export async function createSSHGroup(
-  name: string,
-  description?: string,
-  color?: string,
-  icon?: string
-): Promise<SSHGroup> {
-  return await api.call("create_ssh_group", { name, description, color, icon });
+export async function createSSHGroup(request: CreateSSHGroupRequest): Promise<SSHGroup> {
+  return await api.call("create_ssh_group", { request });
 }
 
 /**
@@ -110,21 +104,14 @@ export async function getSSHGroup(id: string): Promise<SSHGroup> {
 
 /**
  * Update SSH group
- * @param id - Group ID
- * @param name - New name
- * @param description - New description
- * @param color - New color
- * @param icon - New icon
+ * @param request - Update request
  * @returns Updated SSH group
  */
 export async function updateSSHGroup(
   id: string,
-  name?: string,
-  description?: string,
-  color?: string,
-  icon?: string
+  request: UpdateSSHGroupRequest
 ): Promise<SSHGroup> {
-  return await api.call("update_ssh_group", { id, name, description, color, icon });
+  return await api.call("update_ssh_group", { id, request });
 }
 
 /**

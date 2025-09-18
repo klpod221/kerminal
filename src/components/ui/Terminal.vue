@@ -38,6 +38,7 @@ import { onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
 import { debounce } from "../../utils/helpers";
 import { resizeTerminal } from "../../services/terminal";
 import { TerminalBufferManager, InputBatcher } from "../../core";
+import { openUrl } from '@tauri-apps/plugin-opener';
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -104,6 +105,28 @@ const handleTerminalResize = async (): Promise<void> => {
     }
   } catch (error) {
     console.error("Failed to resize terminal:", error);
+  }
+};
+
+const handleCopy = async (): Promise<void> => {
+  if (term && term.hasSelection()) {
+    const selection = term.getSelection();
+    try {
+      await navigator.clipboard.writeText(selection);
+    } catch (err) {
+      console.warn('Failed to copy to clipboard:', err);
+    }
+  }
+};
+
+const handlePaste = async (): Promise<void> => {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (term) {
+      term.paste(text);
+    }
+  } catch (err) {
+    console.warn('Failed to read clipboard:', err);
   }
 };
 
@@ -199,8 +222,13 @@ onMounted(async () => {
     theme: {
       background: "#171717",
       foreground: "#d4d4d4",
+      cursor: "#ffffff",
     },
     allowProposedApi: true,
+    // Enable right-click context menu for copy/paste
+    rightClickSelectsWord: true,
+    // Allow clipboard operations
+    allowTransparency: false,
   });
 
   // --- Load terminal addons ---
@@ -213,13 +241,19 @@ onMounted(async () => {
   fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
 
-  // 3. Web Links Addon (enable clickable links)
-  term.loadAddon(
-    new WebLinksAddon((event, _uri) => {
-      event.preventDefault();
-      // window.api.send('open-external-link', uri)
-    }),
-  );
+  // 3. Web Links Addon (enable clickable links with proper handler)
+  const webLinksAddon = new WebLinksAddon(async (event: MouseEvent, uri: string) => {
+    event.preventDefault();
+    try {
+      // Use Tauri's opener plugin for better security in desktop app
+      await openUrl(uri);
+    } catch (error) {
+      console.warn('Failed to open link with Tauri opener, falling back to window.open:', error);
+      // Fallback to window.open if Tauri opener fails
+      window.open(uri, '_blank');
+    }
+  });
+  term.loadAddon(webLinksAddon);
 
   // 4. Search Addon (enable text search)
   const searchAddon = new SearchAddon();
@@ -230,6 +264,39 @@ onMounted(async () => {
   term.loadAddon(unicode11Addon);
   // Activate Unicode 11 addon after loading
   term.unicode.activeVersion = "11";
+
+  // Add custom keyboard shortcuts for copy/paste
+  term.attachCustomKeyEventHandler((event: KeyboardEvent): boolean => {
+    // Ctrl+Shift+C for copy
+    if (event.ctrlKey && event.shiftKey && event.key === 'C' && event.type === 'keydown') {
+      event.preventDefault();
+      handleCopy();
+      return false;
+    }
+
+    // CMD+C for copy on Mac
+    if (event.metaKey && event.key === 'c' && event.type === 'keydown') {
+      event.preventDefault();
+      handleCopy();
+      return false;
+    }
+
+    // Ctrl+Shift+V for paste
+    if (event.ctrlKey && event.shiftKey && event.key === 'V' && event.type === 'keydown') {
+      event.preventDefault();
+      handlePaste();
+      return false;
+    }
+
+    // CMD+V for paste on Mac
+    if (event.metaKey && event.key === 'v' && event.type === 'keydown') {
+      event.preventDefault();
+      handlePaste();
+      return false;
+    }
+
+    return true;
+  });
 
   // Open terminal in DOM
   term.open(terminalRef.value);
@@ -306,5 +373,42 @@ onBeforeUnmount(async () => {
   100% {
     opacity: 0;
   }
+}
+
+/* Context menu styles */
+:deep(.terminal-context-menu) {
+  background: #2d2d2d;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 4px 0;
+  min-width: 120px;
+  z-index: 1000;
+}
+
+:deep(.terminal-context-menu-item) {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #d4d4d4;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+:deep(.terminal-context-menu-item:hover) {
+  background-color: #404040;
+}
+
+:deep(.terminal-context-menu-item:active) {
+  background-color: #505050;
+}
+
+/* Terminal selection styling */
+:deep(.xterm-selection) {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Ensure terminal text is selectable */
+:deep(.xterm-screen) {
+  user-select: text;
 }
 </style>

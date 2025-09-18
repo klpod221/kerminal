@@ -51,7 +51,7 @@ impl LocalTerminal {
             })
             .map_err(|e| AppError::pty_error(e.to_string()))?;
 
-        // Determine shell to use
+        // Determine shell to use with better detection
         let shell = self
             .local_config
             .shell
@@ -61,18 +61,44 @@ impl LocalTerminal {
                 if cfg!(windows) {
                     "cmd.exe".to_string()
                 } else {
-                    "/bin/bash".to_string()
+                    // Try to find available shells in order of preference
+                    let preferred_shells = ["/bin/zsh", "/usr/bin/zsh", "/bin/bash", "/usr/bin/bash"];
+                    for shell_path in &preferred_shells {
+                        if std::path::Path::new(shell_path).exists() {
+                            return shell_path.to_string();
+                        }
+                    }
+                    "/bin/sh".to_string()
                 }
             });
 
         let mut cmd = CommandBuilder::new(&shell);
+
+        // For interactive shells, add appropriate flags to load user configuration
+        if shell.contains("zsh") {
+            // Use login shell to load .zshrc and all configurations
+            cmd.arg("-l");
+        } else if shell.contains("bash") {
+            // Use interactive login shell
+            cmd.arg("-l");
+        }
 
         // Set working directory if specified
         if let Some(working_dir) = &self.local_config.working_dir {
             cmd.cwd(working_dir);
         }
 
-        // Set environment variables if specified
+        // Set essential environment variables for proper terminal operation
+        cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+
+        // Inherit ALL environment variables from current process
+        // This ensures compatibility with all shell configurations and plugins
+        for (key, value) in std::env::vars() {
+            cmd.env(&key, &value);
+        }
+
+        // Set custom environment variables if specified (these can override inherited ones)
         if let Some(env_vars) = &self.local_config.env_vars {
             for (key, value) in env_vars {
                 cmd.env(key, value);

@@ -63,8 +63,7 @@ export type AuthData =
 /**
  * SSH Group interface - matches backend SSHGroup
  */
-export interface SSHGroup {
-  base: BaseModel;
+export interface SSHGroup extends BaseModel {
   name: string;
   description?: string;
   color?: string;
@@ -77,8 +76,7 @@ export interface SSHGroup {
 /**
  * SSH Profile interface - matches backend SSHProfile
  */
-export interface SSHProfile {
-  base: BaseModel;
+export interface SSHProfile extends BaseModel {
   name: string;
   host: string;
   port: number;
@@ -171,23 +169,3 @@ export type DeleteGroupAction =
   | { actionType: "moveToGroup"; targetGroupId: string }
   | { actionType: "moveToUngrouped" }
   | { actionType: "deleteProfiles" };
-
-/**
- * Interface for SSH Tunnel configuration (future feature)
- */
-export interface SSHTunnel {
-  id: string;
-  name: string;
-  description?: string;
-  profileId: string;
-  type: "local" | "remote" | "dynamic";
-  localPort: number;
-  remoteHost?: string;
-  remotePort?: number;
-  autoStart: boolean;
-  status: "stopped" | "starting" | "running" | "error" | "reconnecting";
-  created: Date;
-  updated: Date;
-  lastStarted?: Date;
-  lastError?: string;
-}
