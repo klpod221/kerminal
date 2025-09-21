@@ -323,6 +323,7 @@ import { Save, TestTube } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useOverlay } from "../../composables/useOverlay";
 import type { SSHProfile, AuthMethod, KeyType, AuthData } from "../../types/ssh";
+import { invoke } from "@tauri-apps/api/core";
 
 // Props (for direct usage)
 const props = defineProps<{
@@ -507,8 +508,7 @@ const testConnection = async () => {
 
   isTesting.value = true;
   try {
-    // TODO: Implement test connection API call
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+    await invoke("test_ssh_connection", { profile: sshProfile.value });
     message.success("Connection test successful!");
   } catch (error) {
     console.error("Error testing connection:", error);

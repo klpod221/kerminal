@@ -1,7 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, nextTick } from "vue";
 import { debounce } from "../utils/helpers";
-import type { PanelLayout, TerminalInstance, Panel, Tab } from "../types/panel";
 import { useViewStateStore } from "./viewState";
 import {
   createLocalTerminal,
@@ -10,7 +9,14 @@ import {
   listenToTerminalTitleChanged,
   listenToTerminalExit,
 } from "../services/terminal";
-import type { TerminalTitleChanged, TerminalExited } from "../types/panel";
+import type {
+  TerminalTitleChanged,
+  TerminalExited,
+  PanelLayout,
+  TerminalInstance,
+  Panel,
+  Tab,
+} from "../types/panel";
 
 /**
  * Workspace Store
@@ -80,7 +86,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (layout.type === "split" && layout.children) {
       const filteredChildren = layout.children
         .map((child) => removePanelFromLayout(child, panelId))
-        .filter((child) => child !== null) as PanelLayout[];
+        .filter((child) => child !== null);
 
       if (filteredChildren.length === 0) {
         return null;
@@ -211,6 +217,90 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   };
 
   /**
+   * Add a new SSH terminal tab to a panel
+   * @param panelId - The panel ID to add the tab to
+   * @param profileId - The SSH profile ID to connect with
+   * @param profileName - The SSH profile name for the tab title
+   */
+  const addSSHTab = async (
+    panelId: string,
+    profileId: string,
+    profileName: string,
+  ): Promise<void> => {
+    const panel = findPanelInLayout(panelLayout.value, panelId);
+    if (!panel) return;
+
+    const newTabId = tabCounter.toString();
+
+    const newTab: Tab = {
+      id: newTabId,
+      title: profileName,
+      profileId: profileId, // Store SSH profile ID in the tab
+    };
+
+    const newTerminal: TerminalInstance = {
+      id: newTabId,
+      ready: false,
+      shouldFocusOnReady: true,
+      isSSHConnecting: true, // Mark as SSH connecting
+    };
+
+    // Add tab to panel
+    panel.tabs.push(newTab);
+    panel.activeTabId = newTabId;
+
+    // Add terminal instance
+    terminals.value.push(newTerminal);
+
+    // Switch to workspace
+    viewState.setActiveView("workspace");
+
+    tabCounter++;
+  };
+
+  /**
+   * Helper: Remove terminal instance and close backend terminal if needed
+   */
+  const removeTerminalInstance = async (terminalId: string): Promise<void> => {
+    const terminalIndex = terminals.value.findIndex(
+      (terminal) => terminal.id === terminalId,
+    );
+    if (terminalIndex === -1) return;
+    const terminal = terminals.value[terminalIndex];
+    if (terminal?.isClosing) return;
+    if (terminal) terminal.isClosing = true;
+    if (terminal?.backendTerminalId) {
+      try {
+        await closeTerminal(terminal.backendTerminalId);
+      } catch (error) {
+        console.error("Failed to close backend terminal:", error);
+      }
+    }
+    terminals.value.splice(terminalIndex, 1);
+  };
+
+  /**
+   * Helper: Update active tab after closing
+   */
+  const updateActiveTabAfterClose = (
+    panel: Panel,
+    tabId: string,
+    tabIndex: number,
+    panelId: string,
+  ): boolean => {
+    if (panel.activeTabId !== tabId) return false;
+    if (panel.tabs.length > 0) {
+      let newActiveIndex =
+        tabIndex < panel.tabs.length ? tabIndex : panel.tabs.length - 1;
+      panel.activeTabId = panel.tabs[newActiveIndex].id;
+      return false;
+    } else {
+      autoClosePanel(panelId);
+      return true;
+    }
+  };
+
+  /**
    * Close a tab in a panel
    * @param panelId - The panel ID
    * @param tabId - The tab ID to close
@@ -218,63 +308,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const closeTab = async (panelId: string, tabId: string): Promise<void> => {
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
-
     const tabIndex = panel.tabs.findIndex((tab) => tab.id === tabId);
-    const terminalIndex = terminals.value.findIndex(
-      (terminal) => terminal.id === tabId,
-    );
+    if (tabIndex === -1) return;
 
-    if (tabIndex !== -1) {
-      // Check if terminal is already being closed to prevent double close
-      const terminal = terminals.value[terminalIndex];
-      if (terminal?.isClosing) {
-        return; // Already being closed, skip
-      }
+    await removeTerminalInstance(tabId);
+    panel.tabs.splice(tabIndex, 1);
 
-      // Close backend terminal if it has one
-      if (terminalIndex !== -1) {
-        const backendTerminalId = terminal.backendTerminalId;
-
-        // Mark terminal as closing to prevent race conditions
-        if (terminal) {
-          terminal.isClosing = true;
-        }
-
-        if (backendTerminalId) {
-          try {
-            await closeTerminal(backendTerminalId);
-          } catch (error) {
-            console.error("Failed to close backend terminal:", error);
-          }
-        }
-
-        // Remove terminal instance
-        terminals.value.splice(terminalIndex, 1);
-      }
-
-      // Remove tab from panel
-      panel.tabs.splice(tabIndex, 1);
-
-      // If closed tab was active, set new active tab
-      if (panel.activeTabId === tabId) {
-        if (panel.tabs.length > 0) {
-          // Choose the next tab or previous if closing the last tab
-          let newActiveIndex;
-          if (tabIndex < panel.tabs.length) {
-            // If there's a tab after the closed one, select it
-            newActiveIndex = tabIndex;
-          } else {
-            // If closing the last tab, select the previous one
-            newActiveIndex = panel.tabs.length - 1;
-          }
-          panel.activeTabId = panel.tabs[newActiveIndex].id;
-        } else {
-          // No tabs left, close the panel
-          autoClosePanel(panelId);
-          return;
-        }
-      }
-    }
+    // If closed tab was active, set new active tab or close panel
+    if (updateActiveTabAfterClose(panel, tabId, tabIndex, panelId)) return;
   };
 
   /**
@@ -1144,6 +1185,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     setActivePanel,
     selectTab,
     addTab,
+    addSSHTab,
     closeTab,
     splitVertical,
     splitHorizontal,

@@ -67,6 +67,7 @@ async fn main() {
             commands::database::ssh::delete_ssh_profile,
             commands::database::ssh::move_profile_to_group,
             commands::database::ssh::duplicate_ssh_profile,
+            commands::database::ssh::test_ssh_connection,
             // Database commands - System
             commands::database::system::get_database_stats
         ])

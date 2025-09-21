@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use anyhow;
 
 use crate::database::{
     error::DatabaseResult,
@@ -115,5 +116,31 @@ impl SSHService {
     ) -> DatabaseResult<SSHProfile> {
         let db_service = self.database_service.lock().await;
         db_service.duplicate_ssh_profile(id, new_name).await
+    }
+
+    /// Test SSH connection with a profile
+    pub async fn test_ssh_connection(&self, profile: &SSHProfile) -> DatabaseResult<()> {
+        use crate::core::terminal::ssh::SSHTerminal;
+        use crate::models::terminal::{TerminalConfig, TerminalType};
+
+        // Create a temporary terminal config for testing
+        let config = TerminalConfig {
+            terminal_type: TerminalType::SSH,
+            local_config: None,
+            ssh_profile_id: Some(profile.base.id.clone()),
+        };
+
+        // Create SSH terminal instance for testing
+        let mut ssh_terminal = SSHTerminal::new(
+            "test".to_string(),
+            config,
+            profile.clone(),
+        ).map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
+
+        // Attempt to connect (this will test the credentials)
+        ssh_terminal.connect().await
+            .map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
+
+        Ok(())
     }
 }

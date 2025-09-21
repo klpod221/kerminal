@@ -118,6 +118,15 @@ pub async fn duplicate_ssh_profile(
     app_result!(state.ssh_service.duplicate_ssh_profile(&id, new_name).await)
 }
 
+/// Test SSH connection with a profile
+#[tauri::command]
+pub async fn test_ssh_connection(
+    state: State<'_, AppState>,
+    profile: SSHProfile,
+) -> Result<(), String> {
+    app_result!(state.ssh_service.test_ssh_connection(&profile).await)
+}
+
 // === DTOs for Frontend ===
 
 /// DTO for delete group action from frontend

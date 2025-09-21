@@ -73,7 +73,7 @@
               variant="ghost"
               size="sm"
               :icon="Trash2"
-              @click="deleteGroup(groupData.group)"
+              @click="confirmDeleteGroup(groupData.group)"
             />
           </div>
         </div>
@@ -130,20 +130,110 @@
         />
       </div>
     </template>
+
+    <!-- Delete Group Confirmation Modal -->
+    <Modal
+      v-if="deleteGroupState.isVisible"
+      id="delete-group-modal"
+      :title="`Delete Group '${deleteGroupState.group?.name}'`"
+      size="md"
+      @close="cancelDeleteGroup"
+    >
+      <div class="space-y-4">
+        <p class="text-gray-300">
+          This group contains <strong>{{ deleteGroupState.profileCount }}</strong> profile(s).
+          What would you like to do with them?
+        </p>
+
+        <div class="space-y-3">
+          <label class="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              v-model="deleteGroupState.action"
+              value="moveToUngrouped"
+              class="w-4 h-4 text-blue-500"
+            />
+            <span class="text-gray-200">Move profiles to "Ungrouped"</span>
+          </label>
+
+          <label class="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              v-model="deleteGroupState.action"
+              value="moveToGroup"
+              class="w-4 h-4 text-blue-500"
+            />
+            <span class="text-gray-200">Move profiles to another group:</span>
+          </label>
+
+          <div v-if="deleteGroupState.action === 'moveToGroup'" class="ml-7">
+            <select
+              v-model="deleteGroupState.targetGroupId"
+              class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-200"
+            >
+              <option value="">Select a group...</option>
+              <option
+                v-for="group in availableGroupsForMove"
+                :key="group.id"
+                :value="group.id"
+              >
+                {{ group.name }}
+              </option>
+            </select>
+          </div>
+
+          <label class="flex items-center space-x-3 cursor-pointer">
+            <input
+              type="radio"
+              v-model="deleteGroupState.action"
+              value="deleteProfiles"
+              class="w-4 h-4 text-red-500"
+            />
+            <span class="text-red-400">Delete all profiles in this group</span>
+          </label>
+        </div>
+
+        <div class="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+          <p class="text-yellow-400 text-sm">
+            <strong>Warning:</strong> This action cannot be undone.
+          </p>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end space-x-2">
+          <Button
+            variant="secondary"
+            @click="cancelDeleteGroup"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="danger"
+            :disabled="deleteGroupState.action === 'moveToGroup' && !deleteGroupState.targetGroupId"
+            :loading="deleteGroupState.isDeleting"
+            @click="confirmDeleteGroupAction"
+          >
+            Delete Group
+          </Button>
+        </div>
+      </template>
+    </Modal>
   </Drawer>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import type { SSHProfile, SSHGroup } from "../../types/ssh";
+import type { SSHProfile, SSHGroup, DeleteGroupAction } from "../../types/ssh";
 import Drawer from "../ui/Drawer.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
+import Modal from "../ui/Modal.vue";
 import SSHProfileItem from "./SSHProfileItem.vue";
 import {
-  Server,
   Search,
+  Server,
   FolderPlus,
   Plus,
   Edit3,
@@ -151,6 +241,7 @@ import {
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
+import { useWorkspaceStore } from "../../stores/workspace";
 
 // State
 const searchQuery = ref("");
@@ -158,6 +249,17 @@ const searchQuery = ref("");
 // Composables and store
 const { openOverlay } = useOverlay();
 const sshStore = useSSHStore();
+const workspaceStore = useWorkspaceStore();
+
+// Delete group confirmation state
+const deleteGroupState = ref({
+  isVisible: false,
+  group: null as SSHGroup | null,
+  profileCount: 0,
+  action: "moveToUngrouped" as "moveToUngrouped" | "moveToGroup" | "deleteProfiles",
+  targetGroupId: "",
+  isDeleting: false,
+});
 
 /**
  * Filter groups and profiles based on search query
@@ -234,7 +336,12 @@ const createNewProfile = () => {
 
 const connectToProfile = (profile: SSHProfile) => {
   console.log('Connecting to:', profile.name);
-  // TODO: Implement SSH connection
+  
+  // Get the active panel ID from workspace store
+  const activePanelId = workspaceStore.activePanelId || "panel-1";
+  
+  // Add SSH terminal tab
+  workspaceStore.addSSHTab(activePanelId, profile.id, profile.name);
 };
 
 const editProfile = (profile: SSHProfile) => {
@@ -244,7 +351,6 @@ const editProfile = (profile: SSHProfile) => {
 
 const deleteProfile = async (profile: SSHProfile) => {
   console.log('Deleting profile:', profile.name);
-  // TODO: Add confirmation dialog
   try {
     await sshStore.deleteProfile(profile.id);
     // Note: No need to manually update state as store handles it
@@ -264,13 +370,65 @@ const editGroup = (group: SSHGroup) => {
   openOverlay('ssh-group-modal', { sshGroupId: group.id });
 };
 
-const deleteGroup = async (group: SSHGroup) => {
-  console.log('Deleting group:', group.name);
-  // TODO: Add confirmation dialog with options for existing profiles
+// Available groups for moving profiles (exclude the group being deleted)
+const availableGroupsForMove = computed(() => {
+  return sshStore.groups.filter(group => group.id !== deleteGroupState.value.group?.id);
+});
+
+// Delete group confirmation functions
+const confirmDeleteGroup = (group: SSHGroup) => {
+  const groupData = sshStore.groupsWithProfiles.getGroupWithProfiles(group.id);
+  const profileCount = groupData?.profileCount || 0;
+  
+  deleteGroupState.value = {
+    isVisible: true,
+    group,
+    profileCount,
+    action: "moveToUngrouped",
+    targetGroupId: "",
+    isDeleting: false,
+  };
+};
+
+const cancelDeleteGroup = () => {
+  deleteGroupState.value.isVisible = false;
+  deleteGroupState.value.group = null;
+  deleteGroupState.value.action = "moveToUngrouped";
+  deleteGroupState.value.targetGroupId = "";
+  deleteGroupState.value.isDeleting = false;
+};
+
+const confirmDeleteGroupAction = async () => {
+  if (!deleteGroupState.value.group) return;
+
+  deleteGroupState.value.isDeleting = true;
   try {
-    await sshStore.deleteGroup(group.id, { actionType: "moveToUngrouped" });
+    let action: DeleteGroupAction;
+    
+    switch (deleteGroupState.value.action) {
+      case "moveToUngrouped":
+        action = { actionType: "moveToUngrouped" };
+        break;
+      case "moveToGroup":
+        if (!deleteGroupState.value.targetGroupId) {
+          console.error('Target group ID is required for moveToGroup action');
+          return;
+        }
+        action = { actionType: "moveToGroup", targetGroupId: deleteGroupState.value.targetGroupId };
+        break;
+      case "deleteProfiles":
+        action = { actionType: "deleteProfiles" };
+        break;
+      default:
+        action = { actionType: "moveToUngrouped" };
+    }
+
+    await sshStore.deleteGroup(deleteGroupState.value.group.id, action);
+    cancelDeleteGroup();
   } catch (error) {
     console.error('Failed to delete group:', error);
+  } finally {
+    deleteGroupState.value.isDeleting = false;
   }
 };
 </script>
