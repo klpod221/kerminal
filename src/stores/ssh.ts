@@ -23,22 +23,60 @@ export const useSSHStore = defineStore("ssh", () => {
   // === Computed ===
 
   /**
-   * Get profiles grouped by groupId
+   * Optimized data structure containing group info with profiles and fast lookup indices
+   * Returns an object with complete group info, profiles, and lookup maps for fast access
    */
-  const profilesByGroup = computed(() => {
-    const grouped = new Map<string | null, SSHProfile[]>();
+  const groupsWithProfiles = computed(() => {
+    const groupMap = new Map<string, SSHGroup>();
+    const profileMap = new Map<string, SSHProfile>();
 
-    profiles.value.forEach(profile => {
-      const groupId = profile.groupId || null;
-      if (!grouped.has(groupId)) {
-        grouped.set(groupId, []);
-      }
-      grouped.get(groupId)!.push(profile);
+    // Create lookup maps
+    groups.value.forEach(group => groupMap.set(group.id, group));
+    profiles.value.forEach(profile => profileMap.set(profile.id, profile));
+
+    // Build grouped structure with full group information
+    const groupedData = new Map<string | null, {
+      group: SSHGroup | null;
+      profiles: SSHProfile[];
+      profileCount: number;
+    }>();
+
+    // Initialize all groups
+    groups.value.forEach(group => {
+      groupedData.set(group.id, {
+        group,
+        profiles: [],
+        profileCount: 0
+      });
     });
 
-    // Sort profiles within each group by sortOrder and name
-    grouped.forEach(profileList => {
-      profileList.sort((a, b) => {
+    // Initialize ungrouped section
+    groupedData.set(null, {
+      group: null,
+      profiles: [],
+      profileCount: 0
+    });
+
+    // Distribute profiles
+    profiles.value.forEach(profile => {
+      const groupId = profile.groupId || null;
+      if (!groupedData.has(groupId)) {
+        const group = groupId ? groupMap.get(groupId) || null : null;
+        groupedData.set(groupId, {
+          group,
+          profiles: [],
+          profileCount: 0
+        });
+      }
+
+      const groupData = groupedData.get(groupId)!;
+      groupData.profiles.push(profile);
+      groupData.profileCount++;
+    });
+
+    // Sort profiles within each group
+    groupedData.forEach(groupData => {
+      groupData.profiles.sort((a, b) => {
         if (a.sortOrder !== b.sortOrder) {
           return a.sortOrder - b.sortOrder;
         }
@@ -46,21 +84,30 @@ export const useSSHStore = defineStore("ssh", () => {
       });
     });
 
-    return grouped;
+    return {
+      groupedData,
+      groupMap,
+      profileMap,
+      // Helper methods for quick access
+      getGroup: (id: string) => groupMap.get(id),
+      getProfile: (id: string) => profileMap.get(id),
+      getGroupWithProfiles: (id: string | null) => groupedData.get(id),
+      getUngroupedData: () => groupedData.get(null)!
+    };
   });
 
   /**
    * Get ungrouped profiles
    */
   const ungroupedProfiles = computed(() => {
-    return profilesByGroup.value.get(null) || [];
+    return groupsWithProfiles.value.getUngroupedData().profiles;
   });
 
   /**
    * Get profiles by group ID
    */
   const getProfilesByGroupId = computed(() => {
-    return (groupId: string) => profilesByGroup.value.get(groupId) || [];
+    return (groupId: string) => groupsWithProfiles.value.getGroupWithProfiles(groupId)?.profiles || [];
   });
 
   /**
@@ -79,14 +126,14 @@ export const useSSHStore = defineStore("ssh", () => {
    * Find profile by ID
    */
   const findProfileById = computed(() => {
-    return (id: string) => profiles.value.find(p => p.id === id);
+    return (id: string) => groupsWithProfiles.value.getProfile(id);
   });
 
   /**
    * Find group by ID
    */
   const findGroupById = computed(() => {
-    return (id: string) => groups.value.find(g => g.id === id);
+    return (id: string) => groupsWithProfiles.value.getGroup(id);
   });
 
   /**
@@ -254,7 +301,7 @@ export const useSSHStore = defineStore("ssh", () => {
     groups,
 
     // Computed
-    profilesByGroup,
+    groupsWithProfiles,
     ungroupedProfiles,
     getProfilesByGroupId,
     sortedGroups,

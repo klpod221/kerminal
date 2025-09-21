@@ -82,7 +82,7 @@ export async function duplicateSSHProfile(id: string, newName: string): Promise<
  * @returns The created SSH group
  */
 export async function createSSHGroup(request: CreateSSHGroupRequest): Promise<SSHGroup> {
-  return await api.call("create_ssh_group", { request });
+  return await api.call("create_ssh_group", request);
 }
 
 /**

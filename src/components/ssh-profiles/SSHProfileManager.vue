@@ -1,9 +1,15 @@
 <template>
   <SSHProfileDrawer />
+
+  <SSHGroupModal @saved="loadAllData" />
+  <SSHProfileModal @saved="loadAllData" />
 </template>
 
 <script setup lang="ts">
 import SSHProfileDrawer from "./SSHProfileDrawer.vue";
+import SSHGroupModal from "./SSHGroupModal.vue";
+import SSHProfileModal from "./SSHProfileModal.vue";
+
 import { useSSHStore } from "../../stores/ssh";
 
 // Store

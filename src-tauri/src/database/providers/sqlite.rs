@@ -498,9 +498,9 @@ impl Database for SQLiteProvider {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO ssh_groups (
-                id, name, description, color, parent_id, sort_order,
+                id, name, description, color, sort_order,
                 created_at, updated_at, device_id, version, sync_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         )
         .bind(&model.base.id)

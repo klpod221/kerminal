@@ -25,7 +25,7 @@
         :readonly="readonly"
         :autocomplete="autocomplete"
         :class="[
-          'block w-full rounded-lg border transition-all duration-200',
+          'block px-3 w-full rounded-lg border transition-all duration-200 resize-y',
           'focus:outline-none',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'readonly:bg-gray-700 readonly:cursor-default',

@@ -98,6 +98,7 @@ export const useOverlayStore = defineStore("overlay", () => {
       type: overlay.config.type,
       parent: overlay.config.parentId,
       history: history.value,
+      props: overlay.config.props,
     });
   };
 

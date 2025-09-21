@@ -26,11 +26,10 @@
         :disabled="disabled"
         :readonly="readonly"
         :class="[
-          'block w-10 h-10 p-0 border rounded-lg cursor-pointer transition-all duration-200',
+          'block w-10 h-10 overflow-hidden border rounded-lg cursor-pointer transition-all duration-200',
           'focus:outline-none',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'readonly:bg-gray-700 readonly:cursor-default',
-          sizeClasses,
           stateClasses,
         ]"
         @blur="handleBlur"
