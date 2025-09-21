@@ -30,7 +30,7 @@ gethostname = "0.4"
 dirs = "5.0"
 
 # Database dependencies
-sqlx = { version = "0.7", features = [
+sqlx = { version = "0.8", features = [
     "runtime-tokio-rustls",
     "sqlite",
     "mysql",

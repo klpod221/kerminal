@@ -57,10 +57,10 @@
         :icon="Server"
         :class="
           isOverlayVisible('ssh-profile-drawer')
-            ? 'text-gray-400 hover:text-white'
+            ? 'bg-gray-800 text-gray-400 hover:text-white'
             : ''
         "
-        @click="openOverlay('ssh-profile-drawer')"
+        @click="toggleOverlay('ssh-profile-drawer')"
       />
     </div>
 
@@ -77,10 +77,10 @@
         :icon="Shield"
         :class="
           isOverlayVisible('master-password-settings')
-            ? 'text-gray-400 hover:text-white'
+            ? 'bg-gray-800 text-gray-400 hover:text-white'
             : ''
         "
-        @click="openOverlay('master-password-settings')"
+        @click="toggleOverlay('master-password-settings')"
       />
     </div>
   </div>
@@ -89,17 +89,24 @@
 <script setup lang="ts">
 import { LayoutGrid, Server, Shield } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
-// import Clock from "./ui/Clock.vue";
 
 import { useViewStateStore } from "../stores/viewState";
 import { useOverlay } from "../composables/useOverlay";
 
 const viewState = useViewStateStore();
-const { openOverlay, isOverlayVisible } = useOverlay();
+const { openOverlay, closeOverlay, isOverlayVisible } = useOverlay();
 
 const setActiveView = (view: "dashboard" | "workspace" | "fileManager") => {
   if (!viewState.isTopBarActive || viewState.activeView === view) return;
 
   viewState.setActiveView(view);
+};
+
+const toggleOverlay = (overlayName: string) => {
+  if (isOverlayVisible(overlayName)) {
+    closeOverlay(overlayName);
+  } else {
+    openOverlay(overlayName);
+  }
 };
 </script>

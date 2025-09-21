@@ -73,9 +73,12 @@ export const useOverlayStore = defineStore("overlay", () => {
       return;
     }
 
+    // Clear existing props first, then set new ones
+    overlay.config.props = {};
+
     // Update props if provided
     if (props) {
-      overlay.config.props = { ...overlay.config.props, ...props };
+      overlay.config.props = { ...props };
     }
 
     // Close current overlay if exists
@@ -108,6 +111,9 @@ export const useOverlayStore = defineStore("overlay", () => {
 
     const overlay = overlays.value.get(targetId);
     if (!overlay) return;
+
+    // Clear props when closing overlay to prevent stale data
+    overlay.config.props = {};
 
     // Hide the overlay
     overlay.visible = false;
@@ -152,6 +158,8 @@ export const useOverlayStore = defineStore("overlay", () => {
   const closeAll = (): void => {
     overlays.value.forEach((overlay) => {
       overlay.visible = false;
+      // Clear props when closing all overlays
+      overlay.config.props = {};
     });
     activeOverlayId.value = null;
     history.value = [];

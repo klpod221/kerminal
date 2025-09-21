@@ -277,6 +277,11 @@
     <template #footer>
       <div class="flex justify-between">
         <div>
+          <Button type="button" variant="secondary" @click="closeOverlay('ssh-profile-modal')">
+            Cancel
+          </Button>
+        </div>
+        <div class="flex gap-2">
           <Button
             v-if="sshProfileId"
             type="button"
@@ -286,11 +291,6 @@
             @click="testConnection"
             :loading="isTesting"
           />
-        </div>
-        <div class="flex gap-2">
-          <Button type="button" variant="secondary" @click="closeOverlay('ssh-profile-modal')">
-            Cancel
-          </Button>
           <Button
             type="submit"
             variant="primary"
@@ -338,6 +338,7 @@ const sshStore = useSSHStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
 
 // Use composable to automatically merge props
+// Use overlay prop with fallback to direct prop
 const sshProfileId = getOverlayProp("ssh-profile-modal", "sshProfileId", props.sshProfileId, null);
 const groupId = getOverlayProp("ssh-profile-modal", "groupId", props.groupId, null);
 

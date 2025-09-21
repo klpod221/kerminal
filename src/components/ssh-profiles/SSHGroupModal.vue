@@ -70,8 +70,8 @@
     </Form>
 
     <template #footer>
-      <div class="flex justify-end gap-2">
-        <Button type="button" variant="secondary" @click="closeOverlay('ssh-group-modal')">
+      <div class="flex justify-between w-full">
+        <Button type="button" variant="ghost" @click="closeOverlay('ssh-group-modal')">
           Cancel
         </Button>
         <Button

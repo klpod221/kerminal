@@ -34,7 +34,7 @@ export async function getSSHProfiles(): Promise<SSHProfile[]> {
  * @returns SSH profile
  */
 export async function getSSHProfile(id: string): Promise<SSHProfile> {
-  return await api.call("get_ssh_profile", { id });
+  return await api.callRaw("get_ssh_profile", id);
 }
 
 /**
@@ -44,7 +44,7 @@ export async function getSSHProfile(id: string): Promise<SSHProfile> {
  * @returns Updated SSH profile
  */
 export async function updateSSHProfile(id: string, request: UpdateSSHProfileRequest): Promise<SSHProfile> {
-  return await api.call("update_ssh_profile", { id, request });
+  return await api.callRaw("update_ssh_profile", id, request);
 }
 
 /**
@@ -52,7 +52,7 @@ export async function updateSSHProfile(id: string, request: UpdateSSHProfileRequ
  * @param id - Profile ID
  */
 export async function deleteSSHProfile(id: string): Promise<void> {
-  return await api.call("delete_ssh_profile", { id });
+  return await api.callRaw("delete_ssh_profile", id);
 }
 
 /**
@@ -61,7 +61,7 @@ export async function deleteSSHProfile(id: string): Promise<void> {
  * @param groupId - Target group ID (null for ungrouped)
  */
 export async function moveProfileToGroup(profileId: string, groupId: string | null): Promise<void> {
-  return await api.call("move_profile_to_group", { profile_id: profileId, group_id: groupId });
+  return await api.callRaw("move_profile_to_group", profileId, groupId);
 }
 
 /**
@@ -71,7 +71,7 @@ export async function moveProfileToGroup(profileId: string, groupId: string | nu
  * @returns Duplicated SSH profile
  */
 export async function duplicateSSHProfile(id: string, newName: string): Promise<SSHProfile> {
-  return await api.call("duplicate_ssh_profile", { id, new_name: newName });
+  return await api.callRaw("duplicate_ssh_profile", id, newName);
 }
 
 // === SSH Group Services ===
@@ -99,11 +99,12 @@ export async function getSSHGroups(): Promise<SSHGroup[]> {
  * @returns SSH group
  */
 export async function getSSHGroup(id: string): Promise<SSHGroup> {
-  return await api.call("get_ssh_group", { id });
+  return await api.callRaw("get_ssh_group", id);
 }
 
 /**
  * Update SSH group
+ * @param id - Group ID
  * @param request - Update request
  * @returns Updated SSH group
  */
@@ -111,7 +112,7 @@ export async function updateSSHGroup(
   id: string,
   request: UpdateSSHGroupRequest
 ): Promise<SSHGroup> {
-  return await api.call("update_ssh_group", { id, request });
+  return await api.callRaw("update_ssh_group", id, request);
 }
 
 /**
@@ -120,5 +121,5 @@ export async function updateSSHGroup(
  * @param action - Action for existing profiles
  */
 export async function deleteSSHGroup(id: string, action: DeleteGroupAction): Promise<void> {
-  return await api.call("delete_ssh_group", { id, action });
+  return await api.callRaw("delete_ssh_group", id, action);
 }

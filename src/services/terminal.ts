@@ -1,7 +1,8 @@
-import type { TerminalTitleChanged, TerminalExited } from "../types/panel";
 import { api } from "./api";
 import { terminalCache } from "../core/performance";
 import type {
+  TerminalTitleChanged,
+  TerminalExited,
   CreateTerminalResponse,
   WriteTerminalRequest,
   ResizeTerminalRequest,

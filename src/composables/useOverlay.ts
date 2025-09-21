@@ -34,6 +34,18 @@ export function useOverlay() {
   };
 
   /**
+   * Clear props for a specific overlay
+   * @param id - The overlay ID to clear props for
+   */
+  const clearOverlayProps = (id: string) => {
+    const overlay = overlayStore.getOverlayById(id);
+    if (overlay) {
+      overlay.config.props = {};
+      console.log(`🧹 Cleared props for overlay: ${id}`);
+    }
+  };
+
+  /**
    * Get specific prop value with overlay precedence
    *
    * @param overlayId - The ID of the overlay to get props from
@@ -126,6 +138,7 @@ export function useOverlay() {
     closeOverlay,
     closeAllOverlays,
     isOverlayVisible,
+    clearOverlayProps,
 
     // Props helpers
     getOverlayProp,
