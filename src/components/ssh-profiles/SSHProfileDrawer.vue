@@ -79,7 +79,7 @@
         </div>
 
         <!-- Group Profiles -->
-        <div class="space-y-1" :class="groupData.group ? 'ml-5' : ''">
+        <div class="space-y-1">
           <!-- Show message for empty groups -->
           <div
             v-if="groupData.profileCount === 0 && !searchQuery"
@@ -104,7 +104,7 @@
       <!-- No search results -->
       <div
         v-if="searchQuery && filteredGroupsData.length === 0"
-        class="p-4 text-center text-gray-500"
+        class="p-3 text-gray-500 text-sm italic text-center border border-dashed border-gray-600 rounded-lg wrap-anywhere"
       >
         <p class="text-sm">No profiles found matching "{{ searchQuery }}"</p>
       </div>

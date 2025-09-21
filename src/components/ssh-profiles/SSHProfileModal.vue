@@ -6,142 +6,148 @@
   >
     <Form ref="sshProfileForm" @submit="handleSubmit">
       <!-- Basic Information -->
-      <div class="space-y-4">
-        <h4 class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2">
-          Basic Information
-        </h4>
+      <h4
+        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2"
+      >
+        Basic Information
+      </h4>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            id="profile-name"
-            v-model="sshProfile.name"
-            label="Profile Name"
-            placeholder="My Server"
-            rules="required|min:3|max:50"
-            :autofocus="true"
-          />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Input
+          id="profile-name"
+          v-model="sshProfile.name"
+          label="Profile Name"
+          placeholder="My Server"
+          rules="required|min:3|max:50"
+          :autofocus="true"
+        />
 
-          <Select
-            id="profile-group"
-            v-model="sshProfile.groupId"
-            label="Group (Optional)"
-            placeholder="Select a group"
-            :options="groupOptions"
-          />
-        </div>
-
-        <Textarea
-          id="profile-description"
-          v-model="sshProfile.description"
-          label="Description (Optional)"
-          placeholder="A brief description of the server"
-          :rows="2"
+        <Select
+          id="profile-group"
+          v-model="sshProfile.groupId"
+          label="Group (Optional)"
+          placeholder="Select a group"
+          :options="groupOptions"
         />
       </div>
 
+      <Textarea
+        id="profile-description"
+        v-model="sshProfile.description"
+        label="Description (Optional)"
+        placeholder="A brief description of the server"
+        :rows="2"
+      />
+
       <!-- Connection Details -->
-      <div class="space-y-4">
-        <h4 class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2">
-          Connection Details
-        </h4>
+      <h4
+        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2"
+      >
+        Connection Details
+      </h4>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="md:col-span-2">
-            <Input
-              id="profile-host"
-              v-model="sshProfile.host"
-              label="Host"
-              placeholder="example.com or 192.168.1.100"
-              rules="required"
-            />
-          </div>
-
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-2">
           <Input
-            id="profile-port"
-            v-model.number="sshProfile.port"
-            label="Port"
-            type="number"
-            placeholder="22"
-            :min="1"
-            :max="65535"
-            rules="required|min_value:1|max_value:65535"
+            id="profile-host"
+            v-model="sshProfile.host"
+            label="Host"
+            placeholder="example.com or 192.168.1.100"
+            rules="required"
           />
         </div>
 
         <Input
-          id="profile-username"
-          v-model="sshProfile.username"
-          label="Username"
-          placeholder="root"
-          rules="required|min:1|max:32"
+          id="profile-port"
+          v-model.number="sshProfile.port"
+          label="Port"
+          type="number"
+          placeholder="22"
+          :min="1"
+          :max="65535"
+          rules="required|min_value:1|max_value:65535"
         />
       </div>
 
-      <!-- Authentication -->
-      <div class="space-y-4">
-        <h4 class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2">
-          Authentication
-        </h4>
+      <Input
+        id="profile-username"
+        v-model="sshProfile.username"
+        label="Username"
+        placeholder="root"
+        rules="required|min:1|max:32"
+      />
 
+      <!-- Authentication -->
+      <h4
+        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2"
+      >
+        Authentication
+      </h4>
+
+      <Select
+        id="profile-auth-method"
+        v-model="sshProfile.authMethod"
+        label="Authentication Method"
+        placeholder="Select authentication method"
+        :options="authMethodOptions"
+        rules="required"
+      />
+
+      <!-- Password Authentication -->
+      <div v-if="sshProfile.authMethod === 'Password'" class="space-y-4">
+        <Input
+          id="profile-password"
+          v-model="authPassword"
+          label="Password"
+          type="password"
+          placeholder="Enter password"
+          rules="required"
+        />
+      </div>
+
+      <!-- Private Key Authentication -->
+      <div
+        v-else-if="
+          sshProfile.authMethod === 'PrivateKey' ||
+          sshProfile.authMethod === 'PrivateKeyWithPassphrase'
+        "
+        class="space-y-4"
+      >
         <Select
-          id="profile-auth-method"
-          v-model="sshProfile.authMethod"
-          label="Authentication Method"
-          placeholder="Select authentication method"
-          :options="authMethodOptions"
+          id="profile-key-type"
+          v-model="authKeyType"
+          label="Key Type"
+          placeholder="Select key type"
+          :options="keyTypeOptions"
           rules="required"
         />
 
-        <!-- Password Authentication -->
-        <div v-if="sshProfile.authMethod === 'Password'" class="space-y-4">
-          <Input
-            id="profile-password"
-            v-model="authPassword"
-            label="Password"
-            type="password"
-            placeholder="Enter password"
-            rules="required"
-          />
-        </div>
+        <Textarea
+          id="profile-private-key"
+          v-model="authPrivateKey"
+          label="Private Key"
+          placeholder="-----BEGIN PRIVATE KEY-----"
+          :rows="6"
+          rules="required"
+        />
 
-        <!-- Private Key Authentication -->
-        <div v-else-if="sshProfile.authMethod === 'PrivateKey' || sshProfile.authMethod === 'PrivateKeyWithPassphrase'" class="space-y-4">
-          <Select
-            id="profile-key-type"
-            v-model="authKeyType"
-            label="Key Type"
-            placeholder="Select key type"
-            :options="keyTypeOptions"
-            rules="required"
-          />
+        <Textarea
+          id="profile-public-key"
+          v-model="authPublicKey"
+          label="Public Key (Optional)"
+          placeholder="ssh-rsa AAAAB3NzaC1yc2E..."
+          :rows="2"
+        />
 
-          <Textarea
-            id="profile-private-key"
-            v-model="authPrivateKey"
-            label="Private Key"
-            placeholder="-----BEGIN PRIVATE KEY-----"
-            :rows="6"
-            rules="required"
-          />
-
-          <Textarea
-            id="profile-public-key"
-            v-model="authPublicKey"
-            label="Public Key (Optional)"
-            placeholder="ssh-rsa AAAAB3NzaC1yc2E..."
-            :rows="2"
-          />
-
-          <Input
-            v-if="sshProfile.authMethod === 'PrivateKeyWithPassphrase'"
-            id="profile-passphrase"
-            v-model="authPassphrase"
-            label="Passphrase"
-            type="password"
-            placeholder="Enter passphrase"
-            rules="required"
-          />
-        </div>
+        <Input
+          v-if="sshProfile.authMethod === 'PrivateKeyWithPassphrase'"
+          id="profile-passphrase"
+          v-model="authPassphrase"
+          label="Passphrase"
+          type="password"
+          placeholder="Enter passphrase"
+          rules="required"
+        />
       </div>
 
       <!-- Advanced Settings -->
@@ -221,7 +227,7 @@
           />
         </div>
 
-        <div v-if="enableProxy" class="space-y-4">
+        <div v-if="enableProxy">
           <Select
             id="proxy-type"
             v-model="proxyConfig.proxyType"
@@ -277,7 +283,11 @@
     <template #footer>
       <div class="flex justify-between">
         <div>
-          <Button type="button" variant="secondary" @click="closeOverlay('ssh-profile-modal')">
+          <Button
+            type="button"
+            variant="secondary"
+            @click="closeOverlay('ssh-profile-modal')"
+          >
             Cancel
           </Button>
         </div>
@@ -322,7 +332,12 @@ import { getErrorMessage } from "../../utils/helpers";
 import { Save, TestTube } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useOverlay } from "../../composables/useOverlay";
-import type { SSHProfile, AuthMethod, KeyType, AuthData } from "../../types/ssh";
+import type {
+  SSHProfile,
+  AuthMethod,
+  KeyType,
+  AuthData,
+} from "../../types/ssh";
 import { invoke } from "@tauri-apps/api/core";
 
 // Props (for direct usage)
@@ -337,8 +352,18 @@ const { closeOverlay, getOverlayProp } = useOverlay();
 
 // Use composable to automatically merge props
 // Use overlay prop with fallback to direct prop
-const sshProfileId = getOverlayProp("ssh-profile-modal", "sshProfileId", props.sshProfileId, null);
-const groupId = getOverlayProp("ssh-profile-modal", "groupId", props.groupId, null);
+const sshProfileId = getOverlayProp(
+  "ssh-profile-modal",
+  "sshProfileId",
+  props.sshProfileId,
+  null,
+);
+const groupId = getOverlayProp(
+  "ssh-profile-modal",
+  "groupId",
+  props.groupId,
+  null,
+);
 
 // State
 const sshProfileForm = ref<InstanceType<typeof Form> | null>(null);
@@ -403,10 +428,10 @@ const proxyTypeOptions = [
 
 const groupOptions = computed(() => [
   { value: "", label: "No Group" },
-  ...sshStore.sortedGroups.map(group => ({
+  ...sshStore.sortedGroups.map((group) => ({
     value: group.id,
-    label: group.name
-  }))
+    label: group.name,
+  })),
 ]);
 
 // Functions
@@ -428,9 +453,12 @@ const loadProfile = async () => {
           authPublicKey.value = profile.authData.PrivateKey.publicKey || "";
           authKeyType.value = profile.authData.PrivateKey.keyType;
         } else if ("PrivateKeyWithPassphrase" in profile.authData) {
-          authPrivateKey.value = profile.authData.PrivateKeyWithPassphrase.privateKey;
-          authPublicKey.value = profile.authData.PrivateKeyWithPassphrase.publicKey || "";
-          authPassphrase.value = profile.authData.PrivateKeyWithPassphrase.passphrase;
+          authPrivateKey.value =
+            profile.authData.PrivateKeyWithPassphrase.privateKey;
+          authPublicKey.value =
+            profile.authData.PrivateKeyWithPassphrase.publicKey || "";
+          authPassphrase.value =
+            profile.authData.PrivateKeyWithPassphrase.passphrase;
           authKeyType.value = profile.authData.PrivateKeyWithPassphrase.keyType;
         }
       }
@@ -477,7 +505,7 @@ const buildAuthData = (): AuthData => {
           privateKey: authPrivateKey.value,
           keyType: authKeyType.value,
           publicKey: authPublicKey.value || undefined,
-        }
+        },
       };
 
     case "PrivateKeyWithPassphrase":
@@ -487,14 +515,14 @@ const buildAuthData = (): AuthData => {
           passphrase: authPassphrase.value,
           keyType: authKeyType.value,
           publicKey: authPublicKey.value || undefined,
-        }
+        },
       };
 
     case "Agent":
       return {
         Agent: {
           publicKey: authPublicKey.value || undefined,
-        }
+        },
       };
 
     default:
@@ -528,15 +556,20 @@ const handleSubmit = async () => {
     const profileData = {
       ...sshProfile.value,
       authData: buildAuthData(),
-      tags: tagsInput.value.split(",").map(tag => tag.trim()).filter(Boolean),
+      tags: tagsInput.value
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
       groupId: sshProfile.value.groupId || undefined,
-      proxy: enableProxy.value ? {
-        proxyType: proxyConfig.value.proxyType,
-        host: proxyConfig.value.host,
-        port: proxyConfig.value.port,
-        username: proxyConfig.value.username || undefined,
-        password: proxyConfig.value.password || undefined,
-      } : undefined,
+      proxy: enableProxy.value
+        ? {
+            proxyType: proxyConfig.value.proxyType,
+            host: proxyConfig.value.host,
+            port: proxyConfig.value.port,
+            username: proxyConfig.value.username || undefined,
+            password: proxyConfig.value.password || undefined,
+          }
+        : undefined,
     } as any; // Type assertion to handle the complexity
 
     if (sshProfileId.value) {
@@ -560,10 +593,10 @@ const handleSubmit = async () => {
 watch(
   () => [sshProfileId.value, groupId.value],
   ([newId, newGroupId]) => {
-    console.log('🔍 SSHProfileModal props changed:', {
+    console.log("🔍 SSHProfileModal props changed:", {
       sshProfileId: newId,
       groupId: newGroupId,
-      fromProps: { sshProfileId: props.sshProfileId, groupId: props.groupId }
+      fromProps: { sshProfileId: props.sshProfileId, groupId: props.groupId },
     });
 
     if (newId) {
