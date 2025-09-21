@@ -330,9 +330,6 @@ const props = defineProps<{
   groupId?: string | null;
 }>();
 
-// Emits
-const emit = defineEmits<(e: "saved") => void>();
-
 // Store and composables
 const sshStore = useSSHStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
@@ -551,7 +548,6 @@ const handleSubmit = async () => {
     }
 
     closeOverlay("ssh-profile-modal");
-    emit("saved");
   } catch (error) {
     console.error("Error saving SSH profile:", error);
     message.error(getErrorMessage(error, "Failed to save SSH profile."));

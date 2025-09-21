@@ -158,7 +158,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const createProfile = async (request: CreateSSHProfileRequest): Promise<SSHProfile> => {
     const newProfile = await sshService.createSSHProfile(request);
-    profiles.value.push(newProfile);
+    await loadProfiles(); // Reload to ensure data consistency
     return newProfile;
   };
 
@@ -167,12 +167,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const updateProfile = async (id: string, request: UpdateSSHProfileRequest): Promise<SSHProfile> => {
     const updatedProfile = await sshService.updateSSHProfile(id, request);
-    const index = profiles.value.findIndex(p => p.id === id);
-
-    if (index !== -1) {
-      profiles.value[index] = updatedProfile;
-    }
-
+    await loadProfiles(); // Reload to ensure data consistency
     return updatedProfile;
   };
 
@@ -181,7 +176,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const deleteProfile = async (id: string): Promise<void> => {
     await sshService.deleteSSHProfile(id);
-    profiles.value = profiles.value.filter(p => p.id !== id);
+    await loadProfiles(); // Reload to ensure data consistency
   };
 
   /**
@@ -189,12 +184,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const moveProfileToGroup = async (profileId: string, groupId: string | null): Promise<void> => {
     await sshService.moveProfileToGroup(profileId, groupId);
-
-    // Update local state
-    const profile = findProfileById.value(profileId);
-    if (profile) {
-      profile.groupId = groupId || undefined;
-    }
+    await loadProfiles(); // Reload to ensure data consistency
   };
 
   /**
@@ -202,7 +192,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const duplicateProfile = async (id: string, newName: string): Promise<SSHProfile> => {
     const duplicatedProfile = await sshService.duplicateSSHProfile(id, newName);
-    profiles.value.push(duplicatedProfile);
+    await loadProfiles(); // Reload to ensure data consistency
     return duplicatedProfile;
   };
 
@@ -223,7 +213,7 @@ export const useSSHStore = defineStore("ssh", () => {
     request: CreateSSHGroupRequest
   ): Promise<SSHGroup> => {
     const newGroup = await sshService.createSSHGroup(request);
-    groups.value.push(newGroup);
+    await loadGroups(); // Reload to ensure data consistency
     return newGroup;
   };
 
@@ -235,12 +225,7 @@ export const useSSHStore = defineStore("ssh", () => {
     request: UpdateSSHGroupRequest
   ): Promise<SSHGroup> => {
     const updatedGroup = await sshService.updateSSHGroup(id, request);
-    const index = groups.value.findIndex(g => g.id === id);
-
-    if (index !== -1) {
-      groups.value[index] = updatedGroup;
-    }
-
+    await loadGroups(); // Reload to ensure data consistency
     return updatedGroup;
   };
 
@@ -249,26 +234,8 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const deleteGroup = async (id: string, action: DeleteGroupAction): Promise<void> => {
     await sshService.deleteSSHGroup(id, action);
-
-    // Update local state
-    groups.value = groups.value.filter(g => g.id !== id);
-
-    // Update profiles based on action
-    if (action.actionType === "moveToGroup" && action.targetGroupId) {
-      profiles.value.forEach(profile => {
-        if (profile.groupId === id) {
-          profile.groupId = action.targetGroupId;
-        }
-      });
-    } else if (action.actionType === "moveToUngrouped") {
-      profiles.value.forEach(profile => {
-        if (profile.groupId === id) {
-          profile.groupId = undefined;
-        }
-      });
-    } else if (action.actionType === "deleteProfiles") {
-      profiles.value = profiles.value.filter(p => p.groupId !== id);
-    }
+    // Backend handles all profile movements/deletions, just reload all data
+    await loadAll();
   };
 
   // === Utility Actions ===

@@ -1,8 +1,8 @@
 <template>
   <SSHProfileDrawer />
 
-  <SSHGroupModal @saved="loadAllData" />
-  <SSHProfileModal @saved="loadAllData" />
+  <SSHGroupModal />
+  <SSHProfileModal />
 </template>
 
 <script setup lang="ts">

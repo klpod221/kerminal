@@ -111,9 +111,6 @@ const props = defineProps<{
   sshGroupId?: string | null;
 }>();
 
-// Emits
-const emit = defineEmits<(e: "saved") => void>();
-
 // Store and composables
 const sshStore = useSSHStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
@@ -181,7 +178,6 @@ const handleSubmit = async () => {
       message.success("SSH group created successfully.");
     }
     closeOverlay("ssh-group-modal");
-    emit("saved");
   } catch (error) {
     console.error("Error saving SSH group:", error);
     message.error(getErrorMessage(error, "Failed to save SSH group."));
