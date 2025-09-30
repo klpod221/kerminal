@@ -41,8 +41,6 @@ pub struct SSHProfile {
 
     /// UI customization
     pub color: Option<String>, // Hex color
-    pub icon: Option<String>, // Icon name
-    pub sort_order: i32,
 
     /// Notes
     pub description: Option<String>,
@@ -172,8 +170,6 @@ impl SSHProfile {
             compression: false,
             proxy: None,
             color: None,
-            icon: None,
-            sort_order: 0,
             description: None,
             tags: Vec::new(),
         }
@@ -452,7 +448,6 @@ pub struct CreateSSHProfileRequest {
     pub compression: Option<bool>,
     pub proxy: Option<ProxyConfig>,
     pub color: Option<String>,
-    pub icon: Option<String>,
     pub description: Option<String>,
     pub tags: Option<Vec<String>>,
 }
@@ -474,7 +469,6 @@ impl CreateSSHProfileRequest {
         profile.keep_alive = self.keep_alive.unwrap_or(true);
         profile.compression = self.compression.unwrap_or(false);
         profile.color = self.color;
-        profile.icon = self.icon;
         profile.description = self.description;
         profile.tags = self.tags.unwrap_or_default();
 
@@ -497,7 +491,6 @@ pub struct UpdateSSHProfileRequest {
     pub keep_alive: Option<bool>,
     pub compression: Option<bool>,
     pub color: Option<Option<String>>,
-    pub icon: Option<Option<String>>,
     pub description: Option<Option<String>>,
     pub tags: Option<Vec<String>>,
 }
@@ -536,9 +529,6 @@ impl UpdateSSHProfileRequest {
         }
         if let Some(color) = self.color {
             profile.color = color;
-        }
-        if let Some(icon) = self.icon {
-            profile.icon = icon;
         }
         if let Some(description) = self.description {
             profile.description = description;

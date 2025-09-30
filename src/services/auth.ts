@@ -14,6 +14,7 @@ import type {
 export async function setup(setup: MasterPasswordSetup): Promise<void> {
   return await api.call<void>("setup_master_password", {
     ...setup,
+    autoLockTimeout: Number(setup.autoLockTimeout),
     useKeychain: setup.useKeychain || false,
   });
 }

@@ -74,16 +74,6 @@ export const useSSHStore = defineStore("ssh", () => {
       groupData.profileCount++;
     });
 
-    // Sort profiles within each group
-    groupedData.forEach(groupData => {
-      groupData.profiles.sort((a, b) => {
-        if (a.sortOrder !== b.sortOrder) {
-          return a.sortOrder - b.sortOrder;
-        }
-        return a.name.localeCompare(b.name);
-      });
-    });
-
     return {
       groupedData,
       groupMap,

@@ -89,8 +89,6 @@ export interface SSHProfile extends BaseModel {
   compression: boolean;
   proxy?: ProxyConfig;
   color?: string;
-  icon?: string;
-  sortOrder: number;
   description?: string;
   tags: string[];
 }

@@ -159,19 +159,33 @@ const handleSubmit = async () => {
   try {
     isLoading.value = true;
 
-    await setupMasterPassword(setupForm.value);
+    const success = await setupMasterPassword(setupForm.value);
 
-    setupForm.value = {
-      deviceName: "",
-      password: "",
-      confirmPassword: "",
-      useKeychain: true,
-      autoUnlock: false,
-      autoLockTimeout: 0,
-    };
+    if (success) {
+      const wasAutoUnlock = setupForm.value.autoUnlock && setupForm.value.useKeychain;
 
-    message.success("Master password setup successfully!");
-    closeOverlay("master-password-setup");
+      setupForm.value = {
+        deviceName: "",
+        password: "",
+        confirmPassword: "",
+        useKeychain: true,
+        autoUnlock: false,
+        autoLockTimeout: 0,
+      };
+
+      message.success("Master password setup successfully!");
+
+      // Always close setup overlay
+      closeOverlay("master-password-setup");
+
+      // If auto unlock was not enabled, the App.vue watch will handle showing unlock modal
+      if (!wasAutoUnlock) {
+        // Give a small delay to allow auth store to update status
+        setTimeout(() => {
+          // The watch in App.vue will automatically open unlock modal if needed
+        }, 100);
+      }
+    }
   } catch (error) {
     console.error("Error during master password setup:", error);
     message.error(

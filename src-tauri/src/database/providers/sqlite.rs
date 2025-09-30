@@ -87,7 +87,6 @@ impl Database for SQLiteProvider {
                 timeout INTEGER,
                 keep_alive BOOLEAN NOT NULL DEFAULT true,
                 compression BOOLEAN NOT NULL DEFAULT false,
-                sort_order INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 device_id TEXT NOT NULL,
@@ -108,8 +107,6 @@ impl Database for SQLiteProvider {
                 name TEXT NOT NULL,
                 description TEXT,
                 color TEXT,
-                icon TEXT,
-                sort_order INTEGER NOT NULL DEFAULT 0,
                 is_expanded BOOLEAN NOT NULL DEFAULT true,
                 default_auth_method TEXT,
                 created_at TEXT NOT NULL,
@@ -333,9 +330,9 @@ impl Database for SQLiteProvider {
             r#"
             INSERT OR REPLACE INTO ssh_profiles (
                 id, name, host, port, username, group_id, auth_method, auth_data,
-                tags, notes, color, is_favorite, created_at, updated_at,
+                tags, description, color, created_at, updated_at,
                 device_id, version, sync_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         )
         .bind(&model.base.id)
@@ -405,11 +402,9 @@ impl Database for SQLiteProvider {
                 keep_alive: row.get("keep_alive"),
                 compression: row.get("compression"),
                 color: row.get("color"),
-                icon: None, // Not stored in current schema
-                sort_order: row.get::<i32, _>("sort_order"),
                 description: row.get("description"),
                 tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
-                proxy: None, // TODO: Implement proxy support in database
+                proxy: None,
             };
             Ok(Some(profile))
         } else {
@@ -461,8 +456,6 @@ impl Database for SQLiteProvider {
                 keep_alive: row.get("keep_alive"),
                 compression: row.get("compression"),
                 color: row.get("color"),
-                icon: None, // Not stored in current schema
-                sort_order: row.get::<i32, _>("sort_order"),
                 description: row.get("description"),
                 tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
                 proxy: None, // TODO: Implement proxy support in database
@@ -498,16 +491,15 @@ impl Database for SQLiteProvider {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO ssh_groups (
-                id, name, description, color, sort_order,
+                id, name, description, color,
                 created_at, updated_at, device_id, version, sync_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         )
         .bind(&model.base.id)
         .bind(&model.name)
         .bind(&model.description)
         .bind(&model.color)
-        .bind(model.sort_order as i32)
         .bind(model.base.created_at)
         .bind(model.base.updated_at)
         .bind(&model.base.device_id)
@@ -554,8 +546,6 @@ impl Database for SQLiteProvider {
                 name: row.get("name"),
                 description: row.get("description"),
                 color: row.get("color"),
-                icon: row.get("icon"),
-                sort_order: row.get::<i32, _>("sort_order"),
                 is_expanded: row.get("is_expanded"),
                 default_auth_method: row.get("default_auth_method"),
             };
@@ -599,8 +589,6 @@ impl Database for SQLiteProvider {
                 name: row.get("name"),
                 description: row.get("description"),
                 color: row.get("color"),
-                icon: row.get("icon"),
-                sort_order: row.get::<i32, _>("sort_order"),
                 is_expanded: row.get("is_expanded"),
                 default_auth_method: row.get("default_auth_method"),
             };

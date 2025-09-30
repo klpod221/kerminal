@@ -66,10 +66,15 @@ const handleSubmit = async () => {
 
   try {
     isLoading.value = true;
-    await unlock(verificationForm.value);
-    verificationForm.value.password = "";
-    message.success("Master password unlocked successfully!");
-    closeOverlay("master-password-unlock");
+    const success = await unlock(verificationForm.value);
+
+    if (success) {
+      verificationForm.value.password = "";
+      message.success("Master password unlocked successfully!");
+      closeOverlay("master-password-unlock");
+    } else {
+      message.error("Invalid master password. Please try again.");
+    }
   } catch (error) {
     console.error("Error during master password unlock:", error);
     message.error(

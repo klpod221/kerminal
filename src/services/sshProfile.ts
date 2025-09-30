@@ -17,7 +17,8 @@ import type {
  * @returns The created SSH profile
  */
 export async function createSSHProfile(request: CreateSSHProfileRequest): Promise<SSHProfile> {
-  return await api.call("create_ssh_profile", { request });
+  console.log("Creating SSH profile with request:", request);
+  return await api.call("create_ssh_profile", request );
 }
 
 /**

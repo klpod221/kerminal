@@ -173,23 +173,7 @@
             label="Profile Color"
             placeholder="Pick a color for the profile"
           />
-
-          <Input
-            id="profile-sort-order"
-            v-model.number="sshProfile.sortOrder"
-            label="Sort Order"
-            type="number"
-            placeholder="0"
-            :min="0"
-          />
         </div>
-
-        <Input
-          id="profile-icon"
-          v-model="sshProfile.icon"
-          label="Icon (Optional)"
-          placeholder="server, database, cloud"
-        />
 
         <div class="flex gap-4">
           <Checkbox
@@ -281,26 +265,23 @@
     </Form>
 
     <template #footer>
-      <div class="flex justify-between">
-        <div>
-          <Button
-            type="button"
-            variant="secondary"
-            @click="closeOverlay('ssh-profile-modal')"
-          >
-            Cancel
-          </Button>
-        </div>
+      <div class="flex justify-between w-full">
+        <Button
+          type="button"
+          variant="secondary"
+          @click="closeOverlay('ssh-profile-modal')"
+        >
+          Cancel
+        </Button>
         <div class="flex gap-2">
           <Button
-            v-if="sshProfileId"
             type="button"
-            variant="ghost"
-            :icon="TestTube"
-            text="Test Connection"
+            variant="outline"
             @click="testConnection"
             :loading="isTesting"
-          />
+          >
+            Test Connection
+          </Button>
           <Button
             type="submit"
             variant="primary"
@@ -329,7 +310,7 @@ import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
-import { Save, TestTube } from "lucide-vue-next";
+import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useOverlay } from "../../composables/useOverlay";
 import type {
@@ -383,8 +364,6 @@ const sshProfile = ref({
   compression: false,
   color: "#3b82f6",
   description: "",
-  icon: "",
-  sortOrder: 0,
 } as Partial<SSHProfile>);
 
 // Auth-specific data
@@ -615,8 +594,6 @@ watch(
         compression: false,
         color: "#3b82f6",
         description: "",
-        icon: "",
-        sortOrder: 0,
       };
       authPassword.value = "";
       authPrivateKey.value = "";

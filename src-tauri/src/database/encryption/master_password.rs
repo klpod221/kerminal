@@ -2,6 +2,7 @@ use base64::{engine::general_purpose, Engine as _};
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use serde::{Deserialize, Serialize};
 
 use crate::database::{
     config::MasterPasswordConfig,
@@ -20,7 +21,7 @@ pub struct MasterPasswordManager {
 }
 
 /// Master password setup request
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetupMasterPasswordRequest {
     #[serde(rename = "deviceName")]
     pub device_name: String,
@@ -90,8 +91,22 @@ impl MasterPasswordManager {
         let entry =
             manager.create_master_password(request.device_name, &request.password, &self.config)?;
 
-        // Start session immediately after setup
-        self.session_start = Some(Utc::now());        Ok(entry)
+        // Only start session if auto unlock is enabled
+        if request.auto_unlock && request.use_keychain {
+            self.session_start = Some(Utc::now());
+        }
+
+        // Try to store in keychain if requested
+        if request.use_keychain && request.auto_unlock {
+            if let Err(e) = self.keychain_manager.store_master_password(
+                &self.current_device_id,
+                &request.password,
+            ) {
+                eprintln!("Warning: Failed to store password in keychain: {}", e);
+            }
+        }
+
+        Ok(entry)
     }
 
     /// Verify master password
@@ -216,7 +231,9 @@ impl MasterPasswordManager {
             None
         };
 
-        let is_unlocked = self.session_start.is_some() && !self.is_session_expired();        MasterPasswordStatus {
+        let is_unlocked = self.session_start.is_some() && !self.is_session_expired();
+
+        MasterPasswordStatus {
             is_setup: false, // Sẽ được set từ database check
             is_unlocked,
             auto_unlock_enabled: self.config.auto_unlock,

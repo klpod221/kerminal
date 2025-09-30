@@ -54,23 +54,44 @@ onMounted(async () => {
     ) {
       console.log("Attempting auto-unlock...");
       await authStore.tryAutoUnlock();
+
+      // Check status again after auto-unlock attempt
+      await authStore.checkStatus();
+      console.log("Auth status after auto-unlock:", authStore.isAuthenticated, authStore.status);
     }
 
     // if setup is not completed, ensure the setup view is shown
     if (authStore.requiresSetup) {
+      console.log("Opening setup overlay");
       openOverlay("master-password-setup");
       return;
     }
 
     // If app is locked, show the unlock overlay
     if (authStore.requiresUnlock) {
+      console.log("Opening unlock overlay");
       openOverlay("master-password-unlock");
       return;
     }
+
+    console.log("App is authenticated, no overlay needed");
   } catch (error) {
     console.error("Failed to initialize auth:", error);
   }
 });
+
+// Watch for auth status changes to show unlock modal when needed
+watch(
+  () => [authStore.requiresSetup, authStore.requiresUnlock],
+  ([requiresSetup, requiresUnlock]) => {
+    if (requiresSetup) {
+      openOverlay("master-password-setup");
+    } else if (requiresUnlock) {
+      openOverlay("master-password-unlock");
+    }
+  },
+  { immediate: false }
+);
 
 // Cleanup when app unmounts
 onUnmounted(() => {

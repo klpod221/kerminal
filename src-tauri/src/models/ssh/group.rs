@@ -23,8 +23,6 @@ pub struct SSHGroup {
 
     /// UI customization
     pub color: Option<String>,       // Hex color
-    pub icon: Option<String>,        // Icon name
-    pub sort_order: i32,
 
     /// Group settings
     pub is_expanded: bool,           // UI state - expanded/collapsed
@@ -39,8 +37,6 @@ impl SSHGroup {
             name,
             description: None,
             color: None,
-            icon: None,
-            sort_order: 0,
             is_expanded: true,
             default_auth_method: None,
         }
@@ -66,12 +62,6 @@ impl SSHGroup {
     ) {
         if let Some(color) = color {
             self.color = Some(color);
-        }
-        if let Some(icon) = icon {
-            self.icon = Some(icon);
-        }
-        if let Some(sort_order) = sort_order {
-            self.sort_order = sort_order;
         }
         self.base.touch();
     }
@@ -140,8 +130,6 @@ impl CreateSSHGroupRequest {
 
         group.description = self.description;
         group.color = self.color;
-        group.icon = self.icon;
-        group.sort_order = self.sort_order.unwrap_or(0);
         group.default_auth_method = self.default_auth_method;
 
         group
@@ -178,14 +166,6 @@ impl UpdateSSHGroupRequest {
         }
         if let Some(color) = self.color {
             group.color = color;
-            needs_touch = true;
-        }
-        if let Some(icon) = self.icon {
-            group.icon = icon;
-            needs_touch = true;
-        }
-        if let Some(sort_order) = self.sort_order {
-            group.sort_order = sort_order;
             needs_touch = true;
         }
         if let Some(is_expanded) = self.is_expanded {

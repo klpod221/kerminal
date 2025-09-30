@@ -219,6 +219,8 @@ onMounted(async () => {
     fontFamily: "'Fira Code', monospace",
     fontSize: 14,
     lineHeight: 1,
+    cols: 110,
+    rows: 28,
     theme: {
       background: "#171717",
       foreground: "#d4d4d4",

@@ -91,13 +91,7 @@ export const useAuthStore = defineStore("auth", () => {
   const setupMasterPassword = async (
     setup: MasterPasswordSetup,
   ): Promise<boolean> => {
-    // Ensure autoLockTimeout is a number
-    const setupData = {
-      ...setup,
-      autoLockTimeout: Number(setup.autoLockTimeout),
-    };
-
-    await masterPasswordService.setup(setupData);
+    await masterPasswordService.setup(setup);
 
     // Refresh status after setup
     await checkStatus();
@@ -105,11 +99,20 @@ export const useAuthStore = defineStore("auth", () => {
     // Load current device information
     await getCurrentDevice();
 
-    // Setup auto-lock timer if enabled
-    setupAutoLockTimer();
+    // If auto-unlock is enabled, try to unlock
+    if (setup.autoUnlock && setup.useKeychain) {
+      await tryAutoUnlock();
 
-    // Start session validity check
-    startSessionValidityCheck();
+      // Setup auto-lock timer and session check if unlocked
+      if (status.value.isUnlocked) {
+        setupAutoLockTimer();
+        startSessionValidityCheck();
+      }
+    } else {
+      // If auto-unlock is not enabled, lock the session
+      // User will need to manually unlock
+      await lock();
+    }
 
     return true;
   };
@@ -121,21 +124,27 @@ export const useAuthStore = defineStore("auth", () => {
   const unlock = async (
     verification: MasterPasswordVerification,
   ): Promise<boolean> => {
-    const isValid = await masterPasswordService.verify(verification);
+    try {
+      const isValid = await masterPasswordService.verify(verification);
 
-    if (isValid) {
-      // Refresh status after successful unlock
+      // Always refresh status after verify attempt
       await checkStatus();
 
-      // Setup auto-lock timer
-      setupAutoLockTimer();
+      if (isValid) {
+        // Setup auto-lock timer
+        setupAutoLockTimer();
 
-      // Start session validity check
-      startSessionValidityCheck();
+        // Start session validity check
+        startSessionValidityCheck();
 
-      return true;
-    } else {
-      return false;
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      // Refresh status even on error to get current state
+      await checkStatus();
+      throw error;
     }
   };
 
