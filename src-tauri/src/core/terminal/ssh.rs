@@ -38,79 +38,125 @@ impl SSHTerminal {
 
     /// Connect to the SSH terminal
     pub async fn connect(&mut self) -> Result<(), AppError> {
+        println!("🔌 SSH Terminal {}: Starting connection to {}@{}:{}",
+                 self.id, self.ssh_profile.username, self.ssh_profile.host, self.ssh_profile.port);
+
         self.state = TerminalState::Connecting;
 
-        // Create TCP connection (with proxy support if configured)
-        let tcp = if let Some(proxy) = &self.ssh_profile.proxy {
-            self.connect_via_proxy(proxy).await?
-        } else {
-            TcpStream::connect(format!(
-                "{}:{}",
-                self.ssh_profile.host, self.ssh_profile.port
-            ))
-            .map_err(|e| {
-                AppError::connection_failed(format!(
-                    "Failed to connect to {}:{}: {}",
-                    self.ssh_profile.host, self.ssh_profile.port, e
-                ))
-            })?
-        };
+        // Use tokio::time::timeout to enforce a connection timeout
+        let connection_timeout = Duration::from_secs(
+            self.ssh_profile.timeout.map(|t| t as u64).unwrap_or(30)
+        );
 
-        // Create SSH session
-        let mut session = Session::new().map_err(|e| {
-            AppError::connection_failed(format!("Failed to create SSH session: {}", e))
-        })?;
+        println!("⏰ SSH Terminal {}: Connection timeout set to {} seconds", self.id, connection_timeout.as_secs());
 
-        // Set connection timeout if specified
-        if let Some(timeout) = self.ssh_profile.timeout {
-            session.set_timeout(timeout * 1000); // Convert to milliseconds
+        let result = tokio::time::timeout(connection_timeout, async {
+            // Create TCP connection (with proxy support if configured)
+            let tcp = if let Some(proxy) = &self.ssh_profile.proxy {
+                self.connect_via_proxy(proxy).await?
+            } else {
+                // Use blocking task for TCP connection to avoid blocking the async runtime
+                let host = self.ssh_profile.host.clone();
+                let port = self.ssh_profile.port;
+
+                tokio::task::spawn_blocking(move || {
+                    TcpStream::connect(format!("{}:{}", host, port))
+                }).await
+                .map_err(|e| AppError::connection_failed(format!("Task join error: {}", e)))?
+                .map_err(|e| {
+                    AppError::connection_failed(format!(
+                        "Failed to connect to {}:{}: {}",
+                        self.ssh_profile.host, self.ssh_profile.port, e
+                    ))
+                })?
+            };
+
+            // All SSH operations need to be done in a blocking task since ssh2 is synchronous
+            let ssh_profile = self.ssh_profile.clone();
+            let (session, channel) = tokio::task::spawn_blocking(move || -> Result<(Session, Channel), AppError> {
+                // Create SSH session
+                let mut session = Session::new().map_err(|e| {
+                    AppError::connection_failed(format!("Failed to create SSH session: {}", e))
+                })?;
+
+                // Set connection timeout if specified
+                if let Some(timeout) = ssh_profile.timeout {
+                    session.set_timeout(timeout * 1000); // Convert to milliseconds
+                } else {
+                    session.set_timeout(30000); // Default 30 seconds
+                }
+
+                // Enable compression if configured
+                if ssh_profile.compression {
+                    session.set_compress(true);
+                }
+
+                // Set TCP stream and perform handshake
+                session.set_tcp_stream(tcp);
+                session
+                    .handshake()
+                    .map_err(|e| AppError::connection_failed(format!("SSH handshake failed: {}", e)))?;
+
+                // Authenticate (we need to pass the session by reference, so we can't move ssh_profile)
+                Self::authenticate_sync(&ssh_profile, &mut session)?;
+
+                // Create channel
+                let mut channel = session.channel_session().map_err(|e| {
+                    AppError::connection_failed(format!("Failed to create SSH channel: {}", e))
+                })?;
+
+                // Request a pseudo-terminal with better terminal settings
+                channel
+                    .request_pty("xterm-256color", None, Some((120, 30, 0, 0)))
+                    .map_err(|e| AppError::terminal_error(format!("Failed to request PTY: {}", e)))?;
+
+                // Start shell
+                channel
+                    .shell()
+                    .map_err(|e| AppError::terminal_error(format!("Failed to start shell: {}", e)))?;
+
+                Ok((session, channel))
+            }).await
+            .map_err(|e| AppError::connection_failed(format!("SSH setup task failed: {}", e)))??;
+
+            self.session = Some(Arc::new(Mutex::new(session)));
+            self.channel = Some(Arc::new(Mutex::new(channel)));
+            self.state = TerminalState::Connected;
+
+            Ok::<(), AppError>(())
+        }).await;
+
+        match result {
+            Ok(Ok(())) => {
+                println!("SSH connection established successfully for terminal {}", self.id);
+                Ok(())
+            }
+            Ok(Err(e)) => {
+                self.state = TerminalState::Disconnected;
+                Err(e)
+            }
+            Err(_) => {
+                self.state = TerminalState::Disconnected;
+                Err(AppError::connection_failed(format!(
+                    "SSH connection to {}:{} timed out after {} seconds",
+                    self.ssh_profile.host,
+                    self.ssh_profile.port,
+                    connection_timeout.as_secs()
+                )))
+            }
         }
-
-        // Enable compression if configured
-        if self.ssh_profile.compression {
-            session.set_compress(true);
-        }
-
-        session.set_tcp_stream(tcp);
-        session
-            .handshake()
-            .map_err(|e| AppError::connection_failed(format!("SSH handshake failed: {}", e)))?;
-
-        // Authenticate
-        self.authenticate(&mut session).await?;
-
-        // Create channel
-        let mut channel = session.channel_session().map_err(|e| {
-            AppError::connection_failed(format!("Failed to create SSH channel: {}", e))
-        })?;
-
-        // Request a pseudo-terminal
-        channel
-            .request_pty("xterm", None, Some((80, 24, 0, 0)))
-            .map_err(|e| AppError::terminal_error(format!("Failed to request PTY: {}", e)))?;
-
-        // Start shell
-        channel
-            .shell()
-            .map_err(|e| AppError::terminal_error(format!("Failed to start shell: {}", e)))?;
-
-        self.session = Some(Arc::new(Mutex::new(session)));
-        self.channel = Some(Arc::new(Mutex::new(channel)));
-        self.state = TerminalState::Connected;
-
-        Ok(())
     }
 
-    /// Authenticate with the SSH server
-    async fn authenticate(&self, session: &mut Session) -> Result<(), AppError> {
-        match &self.ssh_profile.auth_data {
+    /// Synchronous authentication helper (for use in blocking context)
+    fn authenticate_sync(ssh_profile: &SSHProfile, session: &mut Session) -> Result<(), AppError> {
+        match &ssh_profile.auth_data {
             AuthData::Password { password } => {
                 session
-                    .userauth_password(&self.ssh_profile.username, password)
+                    .userauth_password(&ssh_profile.username, password)
                     .map_err(|e| {
                         AppError::authentication_failed(format!(
-                            "Password authentication failed: {}",
-                            e
+                            "Password authentication failed for user '{}': {}",
+                            ssh_profile.username, e
                         ))
                     })?;
             }
@@ -118,7 +164,7 @@ impl SSHTerminal {
                 // For now, assume private_key is a file path
                 // TODO: Handle in-memory private keys
                 match session.userauth_pubkey_file(
-                    &self.ssh_profile.username,
+                    &ssh_profile.username,
                     None,
                     std::path::Path::new(private_key),
                     None,
@@ -126,8 +172,8 @@ impl SSHTerminal {
                     Ok(_) => {}
                     Err(e) => {
                         return Err(AppError::authentication_failed(format!(
-                            "Private key authentication failed: {}",
-                            e
+                            "Private key authentication failed for user '{}' with key '{}': {}",
+                            ssh_profile.username, private_key, e
                         )))
                     }
                 }
@@ -138,7 +184,7 @@ impl SSHTerminal {
                 ..
             } => {
                 match session.userauth_pubkey_file(
-                    &self.ssh_profile.username,
+                    &ssh_profile.username,
                     None,
                     std::path::Path::new(private_key),
                     Some(passphrase.as_str()),
@@ -146,8 +192,8 @@ impl SSHTerminal {
                     Ok(_) => {}
                     Err(e) => {
                         return Err(AppError::authentication_failed(format!(
-                            "Private key with passphrase authentication failed: {}",
-                            e
+                            "Private key with passphrase authentication failed for user '{}' with key '{}': {}",
+                            ssh_profile.username, private_key, e
                         )))
                     }
                 }
@@ -155,29 +201,33 @@ impl SSHTerminal {
             AuthData::Agent { .. } => {
                 // Try SSH agent authentication
                 session
-                    .userauth_agent(&self.ssh_profile.username)
+                    .userauth_agent(&ssh_profile.username)
                     .map_err(|e| {
                         AppError::authentication_failed(format!(
-                            "SSH agent authentication failed: {}",
-                            e
+                            "SSH agent authentication failed for user '{}': {}",
+                            ssh_profile.username, e
                         ))
                     })?;
             }
             _ => {
-                return Err(AppError::authentication_failed(
-                    "Unsupported authentication method".to_string(),
-                ));
+                return Err(AppError::authentication_failed(format!(
+                    "Unsupported authentication method for user '{}'",
+                    ssh_profile.username
+                )));
             }
         }
 
         if !session.authenticated() {
-            return Err(AppError::authentication_failed(
-                "Authentication failed".to_string(),
-            ));
+            return Err(AppError::authentication_failed(format!(
+                "Authentication verification failed for user '{}'",
+                ssh_profile.username
+            )));
         }
 
         Ok(())
     }
+
+
 
     /// Connect via proxy
     async fn connect_via_proxy(&self, proxy: &ProxyConfig) -> Result<TcpStream, AppError> {
@@ -292,49 +342,99 @@ impl SSHTerminal {
         sender: mpsc::UnboundedSender<Vec<u8>>,
     ) -> Result<(), AppError> {
         if let Some(channel) = self.channel.clone() {
+            let terminal_id = self.id.clone();
+
             // Spawn a blocking task to read from SSH channel
             tokio::task::spawn_blocking(move || {
                 let mut buffer = [0u8; 8192];
+                let mut consecutive_errors = 0;
+                const MAX_CONSECUTIVE_ERRORS: u32 = 10;
+
                 loop {
-                    if let Ok(mut channel_guard) = channel.try_lock() {
-                        match channel_guard.read(&mut buffer) {
-                            Ok(0) => {
-                                // EOF reached, SSH channel has closed
-                                break;
-                            }
-                            Ok(n) => {
-                                let data = buffer[..n].to_vec();
-                                if sender.send(data).is_err() {
-                                    // Channel closed, stop reading
+                    // Check if we should exit due to too many consecutive errors
+                    if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                        eprintln!("SSH terminal {}: Too many consecutive read errors, stopping", terminal_id);
+                        let error_msg = "SSH connection unstable - too many read errors".to_string().into_bytes();
+                        let _ = sender.send(error_msg);
+                        break;
+                    }
+
+                    match channel.try_lock() {
+                        Ok(mut channel_guard) => {
+                            match channel_guard.read(&mut buffer) {
+                                Ok(0) => {
+                                    // EOF reached, SSH channel has closed normally
+                                    eprintln!("SSH terminal {}: Connection closed by remote host", terminal_id);
                                     break;
                                 }
-                            }
-                            Err(e) => {
-                                if e.kind() == std::io::ErrorKind::WouldBlock {
-                                    // No data available, continue
-                                    thread::sleep(Duration::from_millis(10));
-                                    continue;
+                                Ok(n) => {
+                                    let data = buffer[..n].to_vec();
+                                    if sender.send(data).is_err() {
+                                        // Channel closed, stop reading
+                                        eprintln!("SSH terminal {}: Output channel closed", terminal_id);
+                                        break;
+                                    }
+                                    consecutive_errors = 0; // Reset error count on successful read
                                 }
+                                Err(e) => {
+                                    match e.kind() {
+                                        std::io::ErrorKind::WouldBlock |
+                                    std::io::ErrorKind::TimedOut => {
+                                        // No data available or timeout, this is normal
+                                        thread::sleep(Duration::from_millis(10));
+                                        continue;
+                                    }
+                                        std::io::ErrorKind::ConnectionAborted |
+                                        std::io::ErrorKind::ConnectionReset |
+                                        std::io::ErrorKind::BrokenPipe => {
+                                            // Connection terminated
+                                            eprintln!("SSH terminal {}: Connection terminated: {}", terminal_id, e);
+                                            let error_msg = format!("SSH connection terminated: {}", e).into_bytes();
+                                            let _ = sender.send(error_msg);
+                                            break;
+                                        }
+                                        _ => {
+                                            consecutive_errors += 1;
 
-                                eprintln!("Failed to read from SSH channel: {}", e);
-                                // Send error through channel if possible
-                                let error_msg = format!("SSH read error: {}", e).into_bytes();
-                                if let Err(_) = sender.send(error_msg) {
-                                    // Channel closed, receiver has been dropped
-                                    eprintln!("Data channel closed for SSH terminal");
+                                            // Only log non-timeout errors or every 10th timeout
+                                            let should_log = !e.to_string().contains("Timed out") || consecutive_errors % 10 == 1;
+                                            if should_log {
+                                                eprintln!("SSH terminal {}: Read error #{}: {}", terminal_id, consecutive_errors, e);
+                                            }
+
+                                            // Send error through channel if it's a significant non-timeout error
+                                            if !e.to_string().contains("Timed out") && consecutive_errors % 5 == 1 {
+                                                let error_msg = format!("SSH read error: {}", e).into_bytes();
+                                                if sender.send(error_msg).is_err() {
+                                                    eprintln!("SSH terminal {}: Output channel closed during error reporting", terminal_id);
+                                                    break;
+                                                }
+                                            }
+
+                                            // Shorter delay for timeout errors, longer for others
+                                            let delay = if e.to_string().contains("Timed out") {
+                                                50 // Short delay for timeouts
+                                            } else {
+                                                std::cmp::min(consecutive_errors * 100, 2000)
+                                            };
+                                            thread::sleep(Duration::from_millis(delay as u64));
+                                        }
+                                    }
                                 }
-                                break;
                             }
                         }
-                    } else {
-                        // Could not acquire lock, wait a bit and try again
-                        thread::sleep(Duration::from_millis(10));
-                        continue;
+                        Err(_) => {
+                            // Could not acquire lock, wait a bit and try again
+                            thread::sleep(Duration::from_millis(10));
+                            continue;
+                        }
                     }
 
                     // Small delay to prevent overwhelming the channel
                     thread::sleep(Duration::from_millis(1));
                 }
+
+                eprintln!("SSH terminal {}: Read loop terminated", terminal_id);
             });
 
             Ok(())

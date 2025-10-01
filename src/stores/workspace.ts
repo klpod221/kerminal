@@ -4,11 +4,13 @@ import { debounce } from "../utils/helpers";
 import { useViewStateStore } from "./viewState";
 import {
   createLocalTerminal,
+  createSSHTerminal,
   closeTerminal,
   getUserHostname,
   listenToTerminalTitleChanged,
   listenToTerminalExit,
 } from "../services/terminal";
+import { api } from "../services/api";
 import type {
   TerminalTitleChanged,
   TerminalExited,
@@ -43,11 +45,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   let tabCounter = 1;
   let panelCounter = 2; // Start from 2 since panel-1 is already created
 
-  // Event listener cleanup functions
-  let unlistenTitleChanges: (() => void) | null = null;
-  let unlistenTerminalExits: (() => void) | null = null;
-
-  /**
+// Event listener cleanup functions
+let unlistenTitleChanges: (() => void) | null = null;
+let unlistenTerminalExits: (() => void) | null = null;
+let unlistenSSHConnected: (() => void) | null = null;  /**
    * Find a panel in the layout tree by ID
    * @param layout - The layout to search in
    * @param panelId - The panel ID to find
@@ -256,6 +257,58 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     viewState.setActiveView("workspace");
 
     tabCounter++;
+  };
+
+  /**
+   * Handle SSH connection error for a terminal
+   * @param terminalId - The terminal ID that failed to connect
+   * @param error - The error message
+   */
+  const handleSSHConnectionError = async (terminalId: string, _error: string): Promise<void> => {
+    // Find and update terminal state
+    const terminal = terminals.value.find(t => t.id === terminalId);
+    if (terminal) {
+      terminal.isSSHConnecting = false;
+    }
+
+    // Find the tab that corresponds to this terminal
+    const findTabByTerminalId = (layout: PanelLayout): { panel: Panel; tab: Tab } | undefined => {
+      if (layout.type === "panel" && layout.panel) {
+        for (const tab of layout.panel.tabs) {
+          if (tab.id === terminalId) {
+            return { panel: layout.panel, tab };
+          }
+        }
+      } else if (layout.type === "split" && layout.children) {
+        for (const child of layout.children) {
+          const found = findTabByTerminalId(child);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+
+    const result = findTabByTerminalId(panelLayout.value);
+    if (result) {
+      // Update tab title to show error
+      result.tab.title = `${result.tab.title} (Connection Failed)`;
+
+      // Optionally auto-close the failed tab after a delay
+      setTimeout(() => {
+        closeTab(result.panel.id, result.tab.id);
+      }, 3000); // Close after 3 seconds
+    }
+  };
+
+  /**
+   * Handle SSH connection success for a terminal
+   * @param terminalId - The terminal ID that successfully connected
+   */
+  const handleSSHConnectionSuccess = (terminalId: string): void => {
+    const terminal = terminals.value.find(t => t.id === terminalId);
+    if (terminal) {
+      terminal.isSSHConnecting = false;
+    }
   };
 
   /**
@@ -994,8 +1047,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    * @param terminalId - The terminal ID that is ready
    */
   const terminalReady = async (terminalId: string): Promise<void> => {
+    console.log("🎯 Workspace: Terminal ready event for ID:", terminalId);
     const terminal = terminals.value.find((t) => t.id === terminalId);
     if (terminal) {
+      console.log("✅ Workspace: Found terminal instance, setting ready state");
       terminal.ready = true;
 
       // Clear the shouldFocusOnReady flag after use
@@ -1006,8 +1061,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       // Create backend terminal now that the frontend is ready
       if (!terminal.backendTerminalId) {
         try {
-          // Find the tab to get the title
+          // Find the tab to get the title and profile info
           let title = "Terminal";
+          let profileId: string | undefined;
 
           const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
             if (layout.type === "panel" && layout.panel) {
@@ -1024,20 +1080,39 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           const tab = findTabInLayout(panelLayout.value);
           if (tab) {
             title = tab.title;
+            profileId = tab.profileId;
           }
 
-          const response = await createLocalTerminal(
-            undefined,
-            undefined,
-            title,
-          );
+          console.log("🔧 Workspace: Creating backend terminal...", { title, profileId, isSSH: !!profileId });
+
+          let response;
+          if (profileId) {
+            // This is an SSH terminal
+            console.log("🔐 Workspace: Creating SSH terminal with profile ID:", profileId);
+            response = await createSSHTerminal(profileId);
+          } else {
+            // This is a local terminal
+            console.log("🖥️ Workspace: Creating local terminal");
+            response = await createLocalTerminal(
+              undefined,
+              undefined,
+              title,
+            );
+          }
 
           // Store the backend terminal ID
           terminal.backendTerminalId = response.terminalId;
+          console.log("✅ Workspace: Backend terminal created with ID:", response.terminalId);
         } catch (error) {
-          console.error("Failed to create terminal:", error);
+          console.error("❌ Workspace: Failed to create terminal:", error);
+          // Clear the connecting state if it was an SSH connection
+          if (terminal.isSSHConnecting) {
+            terminal.isSSHConnecting = false;
+          }
         }
       }
+    } else {
+      console.warn("⚠️ Workspace: Terminal not found for ready event:", terminalId);
     }
   };
 
@@ -1139,6 +1214,43 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           }
         },
       );
+
+      // Setup SSH connected listener
+      try {
+        unlistenSSHConnected = await api.listen<{ terminalId: string }>(
+          "ssh-connected",
+          (data: { terminalId: string }) => {
+            console.log("🎉 SSH Connected event received for terminal:", data.terminalId);
+
+            // Find the terminal by backend ID or by connecting state if ID not yet set
+            let terminal = terminals.value.find((t) => t.backendTerminalId === data.terminalId);
+
+            if (!terminal) {
+              // If not found by backend ID, look for SSH connecting terminals without backend ID
+              terminal = terminals.value.find((t) => t.isSSHConnecting && !t.backendTerminalId);
+              if (terminal) {
+                console.log("🔗 Linking SSH terminal frontend ID", terminal.id, "with backend ID", data.terminalId);
+                terminal.backendTerminalId = data.terminalId;
+              }
+            }
+
+            if (terminal) {
+              console.log("✅ Clearing SSH connecting state for terminal:", terminal.id);
+              terminal.isSSHConnecting = false;
+              handleSSHConnectionSuccess(terminal.id);
+            } else {
+              console.warn("⚠️ Terminal not found for SSH connected event:", data.terminalId);
+              console.log("📋 Current terminals:", terminals.value.map(t => ({
+                id: t.id,
+                backendId: t.backendTerminalId,
+                isSSHConnecting: t.isSSHConnecting
+              })));
+            }
+          },
+        );
+      } catch (error) {
+        console.error("Failed to setup SSH connected listener:", error);
+      }
     } catch (error) {
       console.error("Failed to setup title change listener:", error);
     }
@@ -1173,6 +1285,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       unlistenTerminalExits();
       unlistenTerminalExits = null;
     }
+    if (unlistenSSHConnected) {
+      unlistenSSHConnected();
+      unlistenSSHConnected = null;
+    }
   };
 
   return {
@@ -1199,6 +1315,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     updateLayout,
     initialize,
     cleanup,
+    handleSSHConnectionError,
+    handleSSHConnectionSuccess,
 
     // Getters/Computed
     findPanelInLayout: (panelId: string) =>

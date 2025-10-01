@@ -111,8 +111,11 @@ impl TerminalFactory {
         config: TerminalConfig,
         database_service: Option<Arc<Mutex<DatabaseService>>>,
     ) -> Result<TerminalWrapper, AppError> {
+        println!("🏭 TerminalFactory: Creating terminal type: {:?}", config.terminal_type);
+
         match config.terminal_type {
             TerminalType::Local => {
+                println!("🖥️ TerminalFactory: Creating local terminal");
                 let local_config = config.local_config.clone().unwrap_or_default();
                 Ok(TerminalWrapper::Local(local::LocalTerminal::new(
                     id,
@@ -121,33 +124,48 @@ impl TerminalFactory {
                 )?))
             }
             TerminalType::SSH => {
+                println!("🔐 TerminalFactory: Creating SSH terminal");
+
                 let ssh_profile_id = config.ssh_profile_id.clone().ok_or_else(|| {
+                    eprintln!("❌ TerminalFactory: No SSH profile ID provided");
                     AppError::invalid_config(
                         "SSH profile ID is required for SSH terminal".to_string(),
                     )
                 })?;
 
+                println!("🔍 TerminalFactory: Looking up SSH profile ID: {}", ssh_profile_id);
+
                 let database_service = database_service.ok_or_else(|| {
+                    eprintln!("❌ TerminalFactory: No database service provided");
                     AppError::invalid_config(
                         "Database service is required for SSH terminal".to_string(),
                     )
                 })?;
 
                 let ssh_profile = {
+                    println!("📚 TerminalFactory: Accessing database service...");
                     let db_service = database_service.lock().await;
                     db_service
                         .get_ssh_profile(&ssh_profile_id)
                         .await
                         .map_err(|e| {
+                            eprintln!("❌ TerminalFactory: Failed to get SSH profile from DB: {}", e);
                             AppError::Database(e.to_string())
                         })?
                 };
 
+                println!("✅ TerminalFactory: SSH profile loaded: {}@{}:{}",
+                        ssh_profile.username, ssh_profile.host, ssh_profile.port);
+
+                println!("🛠️ TerminalFactory: Creating SSH terminal instance...");
                 Ok(TerminalWrapper::SSH(ssh::SSHTerminal::new(
                     id,
                     config,
                     ssh_profile,
-                )?))
+                ).map_err(|e| {
+                    eprintln!("❌ TerminalFactory: Failed to create SSH terminal instance: {}", e);
+                    e
+                })?))
             }
         }
     }

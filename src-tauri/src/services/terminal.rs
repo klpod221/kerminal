@@ -41,15 +41,49 @@ impl TerminalManager {
         app_handle: Option<AppHandle>,
     ) -> Result<CreateTerminalResponse, AppError> {
         let terminal_id = Uuid::new_v4().to_string();
+        println!("🎯 TerminalManager: Creating terminal with ID: {}", terminal_id);
 
+        println!("🏗️ TerminalManager: Calling TerminalFactory...");
         let mut terminal = TerminalFactory::create_terminal(
             terminal_id.clone(),
             request.config.clone(),
             Some(self.database_service.clone()),
         )
-        .await?;
+        .await
+        .map_err(|e| {
+            eprintln!("❌ TerminalManager: Failed to create terminal instance: {}", e);
+            e
+        })?;
 
-        terminal.connect().await?;
+        println!("✅ TerminalManager: Terminal instance created, attempting connection...");
+
+        // Attempt connection with better error handling
+        if let Err(e) = terminal.connect().await {
+            // Log the connection error for debugging
+            eprintln!("Failed to connect terminal {}: {}", terminal_id, e);
+
+            // Send error event to frontend if we have an app handle
+            if let Some(handle) = &app_handle {
+                let error_event = TerminalExited {
+                    terminal_id: terminal_id.clone(),
+                    exit_code: Some(1),
+                };
+                let _ = handle.emit("terminal-exited", &error_event);
+            }
+
+            return Err(e);
+        } else {
+            // Connection successful - emit success event for SSH terminals
+            if matches!(request.config.terminal_type, crate::models::terminal::TerminalType::SSH) {
+                println!("✅ SSH Terminal connection established, emitting ssh-connected event");
+                if let Some(handle) = &app_handle {
+                    let success_event = serde_json::json!({
+                        "terminalId": terminal_id
+                    });
+                    let _ = handle.emit("ssh-connected", &success_event);
+                }
+            }
+        }
 
         let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
         let (title_tx, mut title_rx) = mpsc::unbounded_channel::<String>();

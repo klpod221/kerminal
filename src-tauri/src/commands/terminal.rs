@@ -37,11 +37,19 @@ pub async fn create_ssh_terminal(
     app_state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<CreateTerminalResponse, AppError> {
+    println!("🚀 Starting SSH terminal creation for profile ID: {}", request.profile_id);
+
     // Get SSH profile from database
+    println!("📖 Fetching SSH profile from database...");
     let ssh_profile = app_state.ssh_service
         .get_ssh_profile(&request.profile_id)
         .await
-        .map_err(|e| AppError::Database(e.to_string()))?;
+        .map_err(|e| {
+            eprintln!("❌ Failed to get SSH profile: {}", e);
+            AppError::Database(e.to_string())
+        })?;
+
+    println!("✅ SSH profile loaded: {}@{}:{}", ssh_profile.username, ssh_profile.host, ssh_profile.port);
 
     // Create terminal config with SSH profile ID
     let config = TerminalConfig {
@@ -55,9 +63,21 @@ pub async fn create_ssh_terminal(
         title: Some(ssh_profile.display_name()),
     };
 
-    app_state.terminal_manager
+    println!("🔧 Creating terminal with config...");
+    let result = app_state.terminal_manager
         .create_terminal(terminal_request, Some(app_handle))
-        .await
+        .await;
+
+    match &result {
+        Ok(response) => {
+            println!("✅ SSH terminal created successfully with ID: {}", response.terminal_id);
+        }
+        Err(e) => {
+            eprintln!("❌ Failed to create SSH terminal: {}", e);
+        }
+    }
+
+    result
 }
 
 /// Write data to a terminal
