@@ -82,29 +82,21 @@ onMounted(async () => {
       return;
     }
   } catch (error) {
-    console.error("Failed to initialize auth:", error);
+    // Handle auth initialization error silently
   }
 });
 
-// Watch for auth status changes to show unlock modal when needed
 watch(
   () => [authStore.requiresSetup, authStore.requiresUnlock, authStore.isAuthenticated],
   ([requiresSetup, requiresUnlock, isAuthenticated]) => {
-    console.log("Auth status changed:", { requiresSetup, requiresUnlock, isAuthenticated });
-
-    // If authenticated, close all overlays
     if (isAuthenticated) {
-      console.log("User is authenticated, closing all overlays");
       closeAllOverlays();
       return;
     }
 
-    // If not authenticated, show appropriate overlay
     if (requiresSetup) {
-      console.log("Setup required, opening setup overlay");
       openOverlay("master-password-setup");
     } else if (requiresUnlock) {
-      console.log("Unlock required, opening unlock overlay");
       openOverlay("master-password-unlock");
     }
   },

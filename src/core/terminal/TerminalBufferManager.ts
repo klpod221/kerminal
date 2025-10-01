@@ -1,10 +1,7 @@
-/**
- * Terminal Buffer Manager for Tauri Application
- * Manages terminal output buffers and synchronizes with Rust backend
- */
 import * as bufferService from "../../services/buffer";
 import type { BufferStats } from "../../services/buffer";
 import { IncrementalBufferLoader } from "../performance/IncrementalBufferLoader";
+import type { SimpleTerminal } from "../performance/IncrementalBufferLoader";
 
 export class TerminalBufferManager {
   private static instance: TerminalBufferManager;
@@ -12,9 +9,6 @@ export class TerminalBufferManager {
   private readonly MAX_LOCAL_BUFFER_LINES = 500;
   private readonly incrementalLoader = new IncrementalBufferLoader();
 
-  /**
-   * Get singleton instance
-   */
   static getInstance(): TerminalBufferManager {
     if (!TerminalBufferManager.instance) {
       TerminalBufferManager.instance = new TerminalBufferManager();
@@ -22,11 +16,6 @@ export class TerminalBufferManager {
     return TerminalBufferManager.instance;
   }
 
-  /**
-   * Save data to local buffer
-   * @param terminalId - Terminal identifier
-   * @param data - Terminal output data
-   */
   saveToLocalBuffer(terminalId: string, data: string): void {
     try {
       if (!data || typeof data !== "string") {
@@ -55,10 +44,7 @@ export class TerminalBufferManager {
       // Trim buffer to prevent memory overflow
       this.trimLocalBuffer(buffer);
     } catch (error) {
-      console.error(
-        `Failed to save to local buffer for terminal ${terminalId}:`,
-        error,
-      );
+      // Handle error silently
     }
   }
 
@@ -71,10 +57,6 @@ export class TerminalBufferManager {
     try {
       return await bufferService.getTerminalBuffer(terminalId);
     } catch (error) {
-      console.error(
-        `Failed to get buffer string from backend for terminal ${terminalId}:`,
-        error,
-      );
       return "";
     }
   }
@@ -104,7 +86,6 @@ export class TerminalBufferManager {
     try {
       return await bufferService.getBufferStats();
     } catch (error) {
-      console.error("Failed to get buffer stats from backend:", error);
       return { totalTerminals: 0, totalLines: 0, memoryUsage: 0 };
     }
   }
@@ -126,27 +107,14 @@ export class TerminalBufferManager {
    */
   async restoreBuffer(
     terminalId: string,
-    terminal: { clear: () => void; write: (data: string) => void },
-    showProgress: boolean = true,
+    terminal: SimpleTerminal,
   ): Promise<boolean> {
     try {
-      if (showProgress) {
-        // Use incremental loader with user feedback
-        return await this.incrementalLoader.loadBufferWithFeedback(
-          terminalId,
-          terminal,
-          {
-            chunkSize: 100, // Load 100 lines at a time
-            delayBetweenChunks: 5, // 5ms delay between chunks
-          },
-        );
-      } else {
         // Use incremental loader without feedback (faster)
         return await this.incrementalLoader.loadBuffer(terminalId, terminal, {
           chunkSize: 200, // Larger chunks when no progress feedback needed
           delayBetweenChunks: 1, // Minimal delay
         });
-      }
     } catch (error) {
       console.error(
         `Failed to restore buffer for terminal ${terminalId}:`,
@@ -164,7 +132,7 @@ export class TerminalBufferManager {
    */
   async restoreBufferLegacy(
     terminalId: string,
-    terminal: { clear: () => void; write: (data: string) => void },
+    terminal: SimpleTerminal,
   ): Promise<boolean> {
     try {
       // Check if buffer exists in backend

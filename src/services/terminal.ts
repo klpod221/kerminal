@@ -30,7 +30,6 @@ export async function createTerminal(
       title,
     });
   } catch (error) {
-    console.error("Failed to create terminal:", error);
     throw error;
   }
 }
@@ -51,7 +50,6 @@ export async function createSSHTerminal(
       profileId,
     });
   } catch (error) {
-    console.error("Failed to create SSH terminal:", error);
     throw error;
   }
 }
@@ -65,7 +63,6 @@ export async function writeToTerminal(
   try {
     return await api.call<void>("write_to_terminal", request);
   } catch (error) {
-    console.error("Failed to write to terminal:", error);
     throw error;
   }
 }

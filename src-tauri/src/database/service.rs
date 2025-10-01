@@ -261,11 +261,8 @@ impl DatabaseService {
     ) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
 
-        // Re-encrypt SSH Profiles (only profiles have encrypted data)
         match self.re_encrypt_ssh_profiles(&*local_db, new_entry).await {
-            Ok(count) => {
-                println!("Successfully re-encrypted {} SSH profiles", count);
-            }
+            Ok(_) => {}
             Err(e) => {
                 return Err(crate::database::error::DatabaseError::Internal(
                     anyhow::anyhow!("Failed to re-encrypt SSH profiles: {}", e)

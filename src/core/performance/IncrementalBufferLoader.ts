@@ -1,10 +1,13 @@
-/**
- * Incremental Buffer Loader
- * Loads terminal buffers in chunks to improve memory usage and perceived performance
- */
-
 import { api } from "../../services/api";
 import { message } from "../../utils/message";
+
+/**
+ * Simple terminal interface for buffer loading
+ */
+export interface SimpleTerminal {
+  clear: () => void;
+  write: (data: string) => void;
+}
 
 /**
  * Buffer chunk interface matching Rust backend
@@ -47,15 +50,15 @@ export class IncrementalBufferLoader {
   private readonly DEFAULT_DELAY = 5; // ms between chunks
 
   /**
-   * Load buffer incrementally using chunking
+   * Load buffer incrementally with progress feedback
    * @param terminalId - Terminal identifier
-   * @param terminal - xterm.js Terminal instance
-   * @param options - Loading options
-   * @returns Promise of success boolean
+   * @param terminal - Simple terminal instance with clear() and write() methods
+   * @param options - Load options
+   * @returns Promise resolving to success status
    */
   async loadBuffer(
     terminalId: string,
-    terminal: { clear: () => void; write: (data: string) => void },
+    terminal: SimpleTerminal,
     options: LoadOptions = {},
   ): Promise<boolean> {
     const {
@@ -149,56 +152,6 @@ export class IncrementalBufferLoader {
   }
 
   /**
-   * Load buffer with user feedback (shows loading state)
-   * @param terminalId - Terminal identifier
-   * @param terminal - xterm.js Terminal instance
-   * @param options - Loading options
-   * @returns Promise of success boolean
-   */
-  async loadBufferWithFeedback(
-    terminalId: string,
-    terminal: { clear: () => void; write: (data: string) => void },
-    options: LoadOptions = {},
-  ): Promise<boolean> {
-    const startTime = Date.now();
-
-    // Show loading message
-    terminal.clear();
-    console.log("Restoring terminal buffer...");
-
-    let lastProgressUpdate = 0;
-    const progressThrottle = 100; // Update progress every 100ms
-
-    const result = await this.loadBuffer(terminalId, terminal, {
-      ...options,
-      onProgress: (progress) => {
-        const now = Date.now();
-        if (now - lastProgressUpdate > progressThrottle) {
-          // Update loading message with progress
-          const progressBar = this.createProgressBar(progress.percentage);
-          const logMessage = `Loading... ${progressBar} ${progress.percentage.toFixed(1)}% (${progress.loadedLines}/${progress.totalLines} lines)`;
-          console.log(logMessage);
-          lastProgressUpdate = now;
-        }
-
-        // Call original callback if provided
-        if (options.onProgress) {
-          options.onProgress(progress);
-        }
-      },
-    });
-
-    if (result) {
-      const loadTime = Date.now() - startTime;
-      console.log(`Buffer restored successfully in ${loadTime}ms`);
-    } else {
-      console.log("No buffer to restore");
-    }
-
-    return result;
-  }
-
-  /**
    * Get buffer size information without loading
    * @param terminalId - Terminal identifier
    * @returns Buffer size info or null
@@ -286,21 +239,7 @@ export class IncrementalBufferLoader {
   }
 
   /**
-   * Create a visual progress bar
-   * @param percentage - Progress percentage (0-100)
-   * @returns Progress bar string
-   */
-  private createProgressBar(percentage: number): string {
-    const barLength = 20;
-    const filledLength = Math.round((percentage / 100) * barLength);
-    const bar = "█".repeat(filledLength) + "░".repeat(barLength - filledLength);
-    return `[${bar}]`;
-  }
-
-  /**
    * Delay execution for specified milliseconds
-   * @param ms - Milliseconds to delay
-   * @returns Promise that resolves after delay
    */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));

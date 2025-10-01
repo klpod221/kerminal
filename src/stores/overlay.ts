@@ -34,7 +34,7 @@ export const useOverlayStore = defineStore("overlay", () => {
   // Actions
   const register = (config: OverlayConfig): void => {
     if (overlays.value.has(config.id)) {
-      console.warn(`Overlay with id "${config.id}" already exists`);
+
       return;
     }
 
@@ -46,7 +46,7 @@ export const useOverlayStore = defineStore("overlay", () => {
     };
 
     overlays.value.set(config.id, state);
-    console.log(`🔧 Registered overlay: ${config.id} (${config.type})`);
+
   };
 
   const unregister = (id: string): void => {
@@ -63,13 +63,13 @@ export const useOverlayStore = defineStore("overlay", () => {
 
     // Remove from overlays
     overlays.value.delete(id);
-    console.log(`🗑️ Unregistered overlay: ${id}`);
+
   };
 
   const open = (id: string, props?: Record<string, any>): void => {
     const overlay = overlays.value.get(id);
     if (!overlay) {
-      console.error(`Overlay with id "${id}" not found`);
+
       return;
     }
 
@@ -97,12 +97,7 @@ export const useOverlayStore = defineStore("overlay", () => {
     overlay.visible = true;
     activeOverlayId.value = id;
 
-    console.log(`🔓 Opened overlay: ${id}`, {
-      type: overlay.config.type,
-      parent: overlay.config.parentId,
-      history: history.value,
-      props: overlay.config.props,
-    });
+
   };
 
   const close = (id?: string): void => {
@@ -129,7 +124,7 @@ export const useOverlayStore = defineStore("overlay", () => {
         const parentOverlay = overlays.value.get(parentId)!;
         parentOverlay.visible = true;
         activeOverlayId.value = parentId;
-        console.log(`⬆️ Opened parent overlay: ${parentId}`);
+
       } else {
         // No parent, check history
         let nextId: string | undefined;
@@ -141,7 +136,7 @@ export const useOverlayStore = defineStore("overlay", () => {
           const nextOverlay = overlays.value.get(nextId)!;
           nextOverlay.visible = true;
           activeOverlayId.value = nextId;
-          console.log(`📖 Opened from history: ${nextId}`);
+
         }
       }
     }
@@ -163,7 +158,7 @@ export const useOverlayStore = defineStore("overlay", () => {
     });
     activeOverlayId.value = null;
     history.value = [];
-    console.log("🔒 Closed all overlays");
+
   };
 
   const isVisible = (id: string): boolean => {

@@ -22,7 +22,6 @@ class ApiClient {
       const params = { request: data };
       return await invoke<T>(command, params);
     } catch (error) {
-      console.error(`API call failed for command "${command}":`, error);
       throw error;
     }
   }
@@ -47,7 +46,7 @@ class ApiClient {
         // For multiple arguments, we need to map them to Tauri command parameters
         // Tauri expects named parameters, so we'll create an object
         const params: Record<string, any> = {};
-        
+
         // Map arguments to parameter names based on command
         // This is a simple mapping - you might want to make this more sophisticated
         const paramNames = this.getParameterNames(command);
@@ -55,11 +54,10 @@ class ApiClient {
           const paramName = paramNames[index] || `arg${index}`;
           params[paramName] = arg;
         });
-        
+
         return await invoke<T>(command, params);
       }
     } catch (error) {
-      console.error(`Raw API call failed for command "${command}":`, error);
       throw error;
     }
   }
@@ -82,7 +80,7 @@ class ApiClient {
       'duplicate_ssh_profile': ['id', 'new_name'],
       // Add more commands as needed
     };
-    
+
     return commandParams[command] || [];
   }
 
@@ -102,7 +100,6 @@ class ApiClient {
       });
       return unlisten;
     } catch (error) {
-      console.error(`Failed to listen to event "${eventName}":`, error);
       throw error;
     }
   }

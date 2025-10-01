@@ -3,3 +3,4 @@ pub mod dashboard;
 pub mod database;
 pub mod system;
 pub mod terminal;
+pub mod auth_events;

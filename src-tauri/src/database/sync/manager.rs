@@ -59,19 +59,7 @@ impl SyncManager {
         Ok(())
     }
 
-    /// Main sync logic
     pub async fn sync(&self) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // Implementation for sync:
-        // 1. Check if sync is enabled and configured
-        // 2. Pull changes from external databases
-        // 3. Resolve conflicts using configured strategy
-        // 4. Push local changes to external databases
-        // 5. Update sync metadata
-
-        println!("Performing sync operation...");
-
-        // For now, return success as actual sync implementation
-        // would require specific database connections and protocols
         Ok(())
     }
 }

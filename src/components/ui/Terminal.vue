@@ -38,6 +38,7 @@ import { onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
 import { debounce } from "../../utils/helpers";
 import { resizeTerminal } from "../../services/terminal";
 import { TerminalBufferManager, InputBatcher } from "../../core";
+import type { SimpleTerminal } from "../../core";
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 import { Terminal } from "@xterm/xterm";
@@ -169,10 +170,11 @@ const restoreBuffer = async (): Promise<boolean> => {
   if (!term || !props.backendTerminalId) return false;
 
   try {
-    return await bufferManager.restoreBuffer(props.backendTerminalId, {
+    const simpleTerminal: SimpleTerminal = {
       clear: () => term.clear(),
       write: (data: string) => term.write(data),
-    });
+    };
+    return await bufferManager.restoreBuffer(props.backendTerminalId, simpleTerminal);
   } catch (error) {
     console.error("Failed to restore buffer:", error);
     return false;
