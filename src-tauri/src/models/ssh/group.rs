@@ -41,47 +41,6 @@ impl SSHGroup {
             default_auth_method: None,
         }
     }
-
-    /// Update group information
-    pub fn update_info(&mut self, name: Option<String>, description: Option<String>) {
-        if let Some(name) = name {
-            self.name = name;
-        }
-        if let Some(description) = description {
-            self.description = Some(description);
-        }
-        self.base.touch();
-    }
-
-    /// Update UI customization
-    pub fn update_appearance(
-        &mut self,
-        color: Option<String>,
-        icon: Option<String>,
-        sort_order: Option<i32>,
-    ) {
-        if let Some(color) = color {
-            self.color = Some(color);
-        }
-        self.base.touch();
-    }
-
-    /// Toggle expansion state
-    pub fn toggle_expanded(&mut self) {
-        self.is_expanded = !self.is_expanded;
-        // Note: UI state - no need to sync
-    }
-
-    /// Set default authentication method for new profiles
-    pub fn set_default_auth_method(&mut self, auth_method: Option<String>) {
-        self.default_auth_method = auth_method;
-        self.base.touch();
-    }
-
-    /// Get display name
-    pub fn display_name(&self) -> &str {
-        &self.name
-    }
 }
 
 // Implement Syncable trait using macro
@@ -118,8 +77,6 @@ pub struct CreateSSHGroupRequest {
     pub description: Option<String>,
     pub color: Option<String>,
     pub icon: Option<String>,
-    #[serde(rename = "sortOrder")]
-    pub sort_order: Option<i32>,
     #[serde(rename = "defaultAuthMethod")]
     pub default_auth_method: Option<String>,
 }
@@ -144,8 +101,6 @@ pub struct UpdateSSHGroupRequest {
     pub description: Option<Option<String>>,  // Some(None) = clear description
     pub color: Option<Option<String>>,
     pub icon: Option<Option<String>>,
-    #[serde(rename = "sortOrder")]
-    pub sort_order: Option<i32>,
     #[serde(rename = "isExpanded")]
     pub is_expanded: Option<bool>,
     #[serde(rename = "defaultAuthMethod")]

@@ -35,24 +35,6 @@
         subtitle="Optional group configuration"
         :default-expanded="false"
       >
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            id="group-icon"
-            v-model="sshGroup.icon"
-            label="Icon (Optional)"
-            placeholder="server, database, cloud"
-          />
-
-          <Input
-            id="group-sort-order"
-            v-model.number="sshGroup.sortOrder"
-            label="Sort Order"
-            type="number"
-            placeholder="0"
-            :min="0"
-          />
-        </div>
-
         <Select
           id="group-default-auth"
           v-model="sshGroup.defaultAuthMethod"
@@ -125,8 +107,6 @@ const sshGroup = ref({
   name: "",
   description: "",
   color: "#000000",
-  icon: "",
-  sortOrder: 0,
   isExpanded: true,
   defaultAuthMethod: "",
 } as Partial<SSHGroup>);
@@ -165,8 +145,6 @@ const handleSubmit = async () => {
       name: sshGroup.value.name!,
       description: sshGroup.value.description,
       color: sshGroup.value.color,
-      icon: sshGroup.value.icon,
-      sortOrder: sshGroup.value.sortOrder,
       defaultAuthMethod: sshGroup.value.defaultAuthMethod,
     } as any; // Type assertion for create request
 
@@ -198,8 +176,6 @@ watch(
         name: "",
         description: "",
         color: "#000000",
-        icon: "",
-        sortOrder: 0,
         isExpanded: true,
         defaultAuthMethod: "",
       } as Partial<SSHGroup>;

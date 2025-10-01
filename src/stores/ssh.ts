@@ -101,18 +101,6 @@ export const useSSHStore = defineStore("ssh", () => {
   });
 
   /**
-   * Get sorted groups by sortOrder and name
-   */
-  const sortedGroups = computed(() => {
-    return [...groups.value].sort((a, b) => {
-      if (a.sortOrder !== b.sortOrder) {
-        return a.sortOrder - b.sortOrder;
-      }
-      return a.name.localeCompare(b.name);
-    });
-  });
-
-  /**
    * Find profile by ID
    */
   const findProfileById = computed(() => {
@@ -261,7 +249,6 @@ export const useSSHStore = defineStore("ssh", () => {
     groupsWithProfiles,
     ungroupedProfiles,
     getProfilesByGroupId,
-    sortedGroups,
     findProfileById,
     findGroupById,
     hasData,

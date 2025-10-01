@@ -89,7 +89,7 @@ impl MasterPasswordManager {
         // Create master password entry
         let mut manager = self.device_key_manager.write().await;
         let entry =
-            manager.create_master_password(request.device_name, &request.password, &self.config)?;
+            manager.create_master_password(&request.password, &self.config)?;
 
         // Only start session if auto unlock is enabled
         if request.auto_unlock && request.use_keychain {
@@ -98,11 +98,17 @@ impl MasterPasswordManager {
 
         // Try to store in keychain if requested
         if request.use_keychain && request.auto_unlock {
-            if let Err(e) = self.keychain_manager.store_master_password(
+            println!("MasterPasswordManager: Attempting to store password in keychain...");
+            match self.keychain_manager.store_master_password(
                 &self.current_device_id,
                 &request.password,
             ) {
-                eprintln!("Warning: Failed to store password in keychain: {}", e);
+                Ok(()) => {
+                    println!("MasterPasswordManager: Successfully stored password in keychain");
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to store password in keychain: {}", e);
+                }
             }
         }
 
@@ -149,6 +155,32 @@ impl MasterPasswordManager {
 
         if success {
             self.session_start = Some(Utc::now());
+        }
+
+        Ok(success)
+    }
+
+    /// Try auto-unlock với stored password entry từ database
+    pub async fn try_auto_unlock_with_entry(&mut self, entry: &crate::database::encryption::device_keys::MasterPasswordEntry) -> EncryptionResult<bool> {
+        println!("MasterPasswordManager: Checking auto-unlock config:");
+        println!("  - config.auto_unlock: {}", self.config.auto_unlock);
+        println!("  - config.use_keychain: {}", self.config.use_keychain);
+        println!("  - keychain_available: {}", self.keychain_manager.is_available());
+
+        if !self.config.auto_unlock || !self.config.use_keychain {
+            println!("MasterPasswordManager: Auto-unlock disabled in config");
+            return Ok(false);
+        }
+
+        println!("MasterPasswordManager: Attempting auto-unlock with device key manager...");
+        let mut manager = self.device_key_manager.write().await;
+        let success = manager.try_auto_unlock_with_password(&self.current_device_id, entry)?;
+
+        if success {
+            println!("MasterPasswordManager: Auto-unlock successful, starting session");
+            self.session_start = Some(Utc::now());
+        } else {
+            println!("MasterPasswordManager: Auto-unlock failed");
         }
 
         Ok(success)
@@ -260,6 +292,7 @@ impl MasterPasswordManager {
 
         if !auto_unlock {
             // Remove từ keychain nếu tắt auto-unlock
+            println!("Auto-unlock disabled, removing credentials from keychain");
             if let Err(e) = self
                 .keychain_manager
                 .delete_master_password(&self.current_device_id)
@@ -272,6 +305,65 @@ impl MasterPasswordManager {
                 .delete_device_key(&self.current_device_id)
             {
                 eprintln!("Warning: Failed to remove device key from keychain: {}", e);
+            }
+        } else {
+            println!("Auto-unlock enabled, but password needs to be provided separately to store in keychain");
+        }
+
+        Ok(())
+    }
+
+    /// Update master password configuration with keychain update
+    pub async fn update_config_with_keychain(
+        &mut self,
+        auto_unlock: bool,
+        auto_lock_timeout: Option<u32>,
+        password: Option<String>
+    ) -> EncryptionResult<()> {
+        self.config.auto_unlock = auto_unlock;
+        self.config.require_on_startup = !auto_unlock;
+
+        // Update session timeout if provided
+        if let Some(timeout) = auto_lock_timeout {
+            self.config.session_timeout_minutes = if timeout == 0 { None } else { Some(timeout) };
+        }
+
+        if !auto_unlock {
+            // Remove từ keychain nếu tắt auto-unlock
+            println!("Auto-unlock disabled, removing credentials from keychain");
+            if let Err(e) = self
+                .keychain_manager
+                .delete_master_password(&self.current_device_id)
+            {
+                eprintln!("Warning: Failed to remove password from keychain: {}", e);
+            }
+
+            if let Err(e) = self
+                .keychain_manager
+                .delete_device_key(&self.current_device_id)
+            {
+                eprintln!("Warning: Failed to remove device key from keychain: {}", e);
+            }
+        } else if let Some(pwd) = password {
+            // Store password in keychain when enabling auto-unlock
+            println!("Auto-unlock enabled, storing password in keychain");
+            if let Err(e) = self
+                .keychain_manager
+                .store_master_password(&self.current_device_id, &pwd)
+            {
+                eprintln!("Warning: Failed to store password in keychain: {}", e);
+                return Err(EncryptionError::KeychainError(format!("Failed to store password: {}", e)));
+            }
+
+            // Also store device key if we have an active session
+            let mut device_key_manager = self.device_key_manager.write().await;
+            if let Some(device_key) = device_key_manager.get_device_key(&self.current_device_id) {
+                if let Err(e) = self
+                    .keychain_manager
+                    .store_device_key(&self.current_device_id, &device_key.encryption_key)
+                {
+                    eprintln!("Warning: Failed to store device key in keychain: {}", e);
+                }
             }
         }
 

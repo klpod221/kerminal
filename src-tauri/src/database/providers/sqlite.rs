@@ -126,7 +126,6 @@ impl Database for SQLiteProvider {
             r#"
             CREATE TABLE IF NOT EXISTS master_passwords (
                 device_id TEXT PRIMARY KEY,
-                device_name TEXT NOT NULL,
                 password_salt BLOB NOT NULL,
                 verification_hash TEXT NOT NULL,
                 auto_unlock BOOLEAN NOT NULL DEFAULT false,
@@ -274,40 +273,16 @@ impl Database for SQLiteProvider {
     }
 
     async fn migrate(&self, version: u32) -> DatabaseResult<()> {
-        // Basic migration system - for now just ensure tables exist
+        // Simple migration system - version 1 includes all necessary tables
         match version {
             1 => {
-                // Version 1: Create initial tables (already done in create_tables)
+                // Version 1: Create all tables with final schema
                 self.create_tables().await?;
                 Ok(())
             }
-            2 => {
-                // Version 2: Add auto_lock_timeout column to master_passwords table
-                let pool_arc = self.get_pool()?;
-                let pool = pool_arc.read().await;
-
-                // Check if column exists first
-                let columns_result = sqlx::query("PRAGMA table_info(master_passwords)")
-                    .fetch_all(&*pool)
-                    .await
-                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-                let has_auto_lock_timeout = columns_result.iter().any(|row| {
-                    let name: String = row.get("name");
-                    name == "auto_lock_timeout"
-                });
-
-                if !has_auto_lock_timeout {
-                    sqlx::query("ALTER TABLE master_passwords ADD COLUMN auto_lock_timeout INTEGER")
-                        .execute(&*pool)
-                        .await
-                        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-                }
-
-                Ok(())
-            }
             _ => {
-                // Unknown version - do nothing for now
+                // For backward compatibility, default to version 1
+                self.create_tables().await?;
                 Ok(())
             }
         }
@@ -363,7 +338,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let row = sqlx::query(
-            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, tags, description, color, timeout, keep_alive, compression, sort_order, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
+            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, tags, description, color, timeout, keep_alive, compression, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&*pool)
@@ -417,7 +392,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let rows = sqlx::query(
-            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, tags, description, color, timeout, keep_alive, compression, sort_order, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY sort_order, name"
+            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, tags, description, color, timeout, keep_alive, compression, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY name"
         )
         .fetch_all(&*pool)
         .await
@@ -517,7 +492,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let row = sqlx::query(
-            "SELECT id, name, description, color, icon, sort_order, is_expanded, default_auth_method, created_at, updated_at, device_id, version, sync_status FROM ssh_groups WHERE id = ?"
+            "SELECT id, name, description, color, icon, is_expanded, default_auth_method, created_at, updated_at, device_id, version, sync_status FROM ssh_groups WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&*pool)
@@ -560,7 +535,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let rows = sqlx::query(
-            "SELECT id, name, description, color, icon, sort_order, is_expanded, default_auth_method, created_at, updated_at, device_id, version, sync_status FROM ssh_groups ORDER BY sort_order, name"
+            "SELECT id, name, description, color, is_expanded, default_auth_method, created_at, updated_at, device_id, version, sync_status FROM ssh_groups ORDER BY name"
         )
         .fetch_all(&*pool)
         .await
@@ -629,13 +604,12 @@ impl SQLiteProvider {
         sqlx::query(
             r#"
             INSERT OR REPLACE INTO master_passwords (
-                device_id, device_name, password_salt, verification_hash, auto_unlock,
+                device_id, password_salt, verification_hash, auto_unlock,
                 auto_lock_timeout, created_at, last_verified_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
         "#,
         )
         .bind(&entry.device_id)
-        .bind(&entry.device_name)
         .bind(&entry.password_salt.to_vec())
         .bind(&entry.verification_hash)
         .bind(entry.auto_unlock)
@@ -670,7 +644,6 @@ impl SQLiteProvider {
 
             let entry = MasterPasswordEntry {
                 device_id: row.get("device_id"),
-                device_name: row.get("device_name"),
                 password_salt: salt_array,
                 verification_hash: row.get("verification_hash"),
                 auto_unlock: row.get("auto_unlock"),

@@ -36,7 +36,7 @@ import { useAuthStore } from "./stores/auth";
 const viewState = useViewStateStore();
 const authStore = useAuthStore();
 
-const { openOverlay } = useOverlay();
+const { openOverlay, closeAllOverlays } = useOverlay();
 
 // Initialize auth store when app starts
 onMounted(async () => {
@@ -49,15 +49,40 @@ onMounted(async () => {
     // Try auto-unlock if setup is completed and auto-unlock is enabled
     if (
       !authStore.requiresSetup &&
-      !authStore.status.isUnlocked &&
-      authStore.status.autoUnlockEnabled
+      !authStore.status.isUnlocked
     ) {
-      console.log("Attempting auto-unlock...");
-      await authStore.tryAutoUnlock();
+      console.log("Checking auto-unlock conditions:");
+      console.log("- Setup completed:", !authStore.requiresSetup);
+      console.log("- Currently unlocked:", authStore.status.isUnlocked);
+      console.log("- Auto-unlock enabled:", authStore.status.autoUnlockEnabled);
+      console.log("- Keychain available:", authStore.status.keychainAvailable);
 
-      // Check status again after auto-unlock attempt
-      await authStore.checkStatus();
-      console.log("Auth status after auto-unlock:", authStore.isAuthenticated, authStore.status);
+      if (authStore.status.autoUnlockEnabled) {
+        console.log("Attempting auto-unlock...");
+        const success = await authStore.tryAutoUnlock();
+        console.log("Auto-unlock result:", success);
+
+        // Check status again after auto-unlock attempt
+        await authStore.checkStatus();
+        console.log("Auth status after auto-unlock:", authStore.isAuthenticated, authStore.status);
+
+        // If auto-unlock was successful, we should be authenticated now
+        if (success && authStore.isAuthenticated) {
+          console.log("Auto-unlock successful, app is now authenticated");
+          return; // Exit early, don't open any overlays
+        }
+      } else {
+        console.log("Auto-unlock is disabled, skipping...");
+      }
+    }
+
+    // Wait a bit to ensure status is fully updated
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Re-check status after potential auto-unlock
+    if (authStore.isAuthenticated) {
+      console.log("App is authenticated, no overlay needed");
+      return;
     }
 
     // if setup is not completed, ensure the setup view is shown
@@ -82,11 +107,23 @@ onMounted(async () => {
 
 // Watch for auth status changes to show unlock modal when needed
 watch(
-  () => [authStore.requiresSetup, authStore.requiresUnlock],
-  ([requiresSetup, requiresUnlock]) => {
+  () => [authStore.requiresSetup, authStore.requiresUnlock, authStore.isAuthenticated],
+  ([requiresSetup, requiresUnlock, isAuthenticated]) => {
+    console.log("Auth status changed:", { requiresSetup, requiresUnlock, isAuthenticated });
+
+    // If authenticated, close all overlays
+    if (isAuthenticated) {
+      console.log("User is authenticated, closing all overlays");
+      closeAllOverlays();
+      return;
+    }
+
+    // If not authenticated, show appropriate overlay
     if (requiresSetup) {
+      console.log("Setup required, opening setup overlay");
       openOverlay("master-password-setup");
     } else if (requiresUnlock) {
+      console.log("Unlock required, opening unlock overlay");
       openOverlay("master-password-unlock");
     }
   },
@@ -103,9 +140,12 @@ watch(
   () => authStore.isAuthenticated,
   (isAuthenticated) => {
     if (!isAuthenticated) {
-      openOverlay("master-password-unlock");
+      // Don't automatically open unlock overlay here - let the main watch handle it
       viewState.toggleTopBar(false);
     } else {
+      // When authenticated, ensure all overlays are closed and top bar is shown
+      console.log("Authentication status changed to true, closing overlays and showing top bar");
+      closeAllOverlays();
       viewState.toggleTopBar(true);
     }
   },

@@ -55,6 +55,13 @@ export interface MasterPasswordConfig {
 }
 
 /**
+ * Master password configuration update request
+ */
+export interface MasterPasswordConfigUpdate extends MasterPasswordConfig {
+  password?: string; // Required when enabling auto-unlock
+}
+
+/**
  * Device information for master password
  */
 export interface CurrentDevice {

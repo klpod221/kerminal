@@ -33,7 +33,6 @@ pub struct DeviceEncryptionKey {
 #[derive(Debug, Clone)]
 pub struct MasterPasswordEntry {
     pub device_id: String,
-    pub device_name: String,
     pub password_salt: [u8; 32],
     pub verification_hash: String,
     pub auto_unlock: bool,
@@ -56,7 +55,6 @@ impl DeviceKeyManager {
     /// Create master password entry cho current device
     pub fn create_master_password(
         &mut self,
-        device_name: String,
         password: &str,
         config: &MasterPasswordConfig,
     ) -> EncryptionResult<MasterPasswordEntry> {
@@ -77,18 +75,30 @@ impl DeviceKeyManager {
 
         // Store in keychain if auto_unlock enabled
         if config.use_keychain && config.auto_unlock {
-            if let Err(e) = self
+            println!("DeviceKeyManager: Attempting to store password in keychain...");
+            match self
                 .keychain
                 .store_master_password(&self.current_device_id, password)
             {
-                eprintln!("Warning: Failed to store password in keychain: {}", e);
+                Ok(()) => {
+                    println!("DeviceKeyManager: Successfully stored password in keychain");
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to store password in keychain: {}", e);
+                }
             }
 
-            if let Err(e) = self
+            println!("DeviceKeyManager: Attempting to store device key in keychain...");
+            match self
                 .keychain
                 .store_device_key(&self.current_device_id, &device_key.encryption_key)
             {
-                eprintln!("Warning: Failed to store device key in keychain: {}", e);
+                Ok(()) => {
+                    println!("DeviceKeyManager: Successfully stored device key in keychain");
+                }
+                Err(e) => {
+                    eprintln!("Warning: Failed to store device key in keychain: {}", e);
+                }
             }
         }
 
@@ -98,7 +108,6 @@ impl DeviceKeyManager {
 
         Ok(MasterPasswordEntry {
             device_id: self.current_device_id.clone(),
-            device_name,
             password_salt: salt_bytes,
             verification_hash: password_hash,
             auto_unlock: config.auto_unlock && config.use_keychain,
@@ -132,7 +141,78 @@ impl DeviceKeyManager {
         Ok(is_valid)
     }
 
-    /// Try to auto-unlock using keychain
+    /// Try to auto-unlock using keychain with stored password
+    pub fn try_auto_unlock_with_password(&mut self, device_id: &str, entry: &MasterPasswordEntry) -> EncryptionResult<bool> {
+        println!("DeviceKeyManager: Checking keychain availability...");
+        if !self.keychain.is_available() {
+            println!("DeviceKeyManager: Keychain not available");
+            return Ok(false);
+        }
+
+        println!("DeviceKeyManager: Attempting to retrieve password from keychain...");
+        // First try to get password from keychain and verify with stored entry
+        match self.keychain.get_master_password(device_id) {
+            Ok(Some(password)) => {
+                println!("DeviceKeyManager: Found password in keychain, verifying...");
+                // Verify the password against the stored entry
+                if self.verify_password_for_device(&password, entry)? {
+                    println!("DeviceKeyManager: Password verification successful, deriving device key...");
+                    // Derive and store device key in memory
+                    let device_key = self.derive_device_key(&password, &entry.password_salt)?;
+                    self.device_keys.insert(device_id.to_string(), device_key);
+                    println!("DeviceKeyManager: Device key stored, auto-unlock successful");
+                    return Ok(true);
+                } else {
+                    println!("DeviceKeyManager: Password verification failed");
+                }
+            }
+            Ok(None) => {
+                println!("DeviceKeyManager: No password found in keychain");
+            }
+            Err(e) => {
+                println!("DeviceKeyManager: Error retrieving password from keychain: {}", e);
+            }
+        }
+
+        println!("DeviceKeyManager: Trying fallback - direct device key from keychain...");
+        // Fallback: try to get device key directly from keychain (legacy)
+        match self.keychain.get_device_key(device_id) {
+            Ok(Some(key_bytes)) => {
+                if key_bytes.len() == 32 {
+                    println!("DeviceKeyManager: Found valid device key in keychain");
+                    let mut key_array = [0u8; 32];
+                    key_array.copy_from_slice(&key_bytes);
+
+                    let device_key = DeviceEncryptionKey {
+                        device_id: device_id.to_string(),
+                        device_name: "Auto-unlocked".to_string(),
+                        encryption_key: key_array,
+                        key_salt: [0u8; 32], // Not needed for direct key
+                        key_version: 1,
+                        created_at: Utc::now(),
+                        last_used_at: Utc::now(),
+                    };
+
+                    self.device_keys.insert(device_id.to_string(), device_key);
+                    println!("DeviceKeyManager: Legacy device key loaded, auto-unlock successful");
+                    return Ok(true);
+                } else {
+                    println!("DeviceKeyManager: Device key found but invalid length: {}", key_bytes.len());
+                }
+            }
+            Ok(None) => {
+                println!("DeviceKeyManager: No device key found in keychain");
+            }
+            Err(e) => {
+                println!("DeviceKeyManager: Error retrieving device key from keychain: {}", e);
+            }
+        }
+
+        println!("DeviceKeyManager: All auto-unlock methods failed");
+        Ok(false)
+    }
+
+    /// Try to auto-unlock using keychain (legacy method - kept for compatibility)
     pub fn try_auto_unlock(&mut self, device_id: &str) -> EncryptionResult<bool> {
         if !self.keychain.is_available() {
             return Ok(false);
@@ -157,13 +237,6 @@ impl DeviceKeyManager {
                 self.device_keys.insert(device_id.to_string(), device_key);
                 return Ok(true);
             }
-        }
-
-        // Fallback: try to get password from keychain
-        if let Some(_password) = self.keychain.get_master_password(device_id)? {
-            // Need master password entry to verify - this should be loaded from database
-            // For now, return false and require manual unlock
-            return Ok(false);
         }
 
         Ok(false)
@@ -272,7 +345,7 @@ impl DeviceKeyManager {
         }
 
         // Create new master password entry
-        self.create_master_password(entry.device_name.clone(), new_password, config)
+        self.create_master_password(new_password, config)
     }
 
     /// Clear all device keys từ memory

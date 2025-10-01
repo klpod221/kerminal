@@ -407,7 +407,7 @@ const proxyTypeOptions = [
 
 const groupOptions = computed(() => [
   { value: "", label: "No Group" },
-  ...sshStore.sortedGroups.map((group) => ({
+  ...sshStore.groups.map((group) => ({
     value: group.id,
     label: group.name,
   })),

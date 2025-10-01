@@ -23,7 +23,7 @@ impl AuthService {
         &self,
         request: SetupMasterPasswordRequest,
     ) -> DatabaseResult<()> {
-        let db_service = self.database_service.lock().await;
+        let mut db_service = self.database_service.lock().await;
         db_service.setup_master_password(request).await
     }
 
@@ -35,8 +35,16 @@ impl AuthService {
 
     /// Try auto unlock with keychain
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
+        println!("AuthService: Attempting auto-unlock...");
         let db_service = self.database_service.lock().await;
-        db_service.try_auto_unlock().await
+        let result = db_service.try_auto_unlock().await;
+
+        match &result {
+            Ok(success) => println!("AuthService: Auto-unlock result: {}", success),
+            Err(e) => println!("AuthService: Auto-unlock error: {}", e),
+        }
+
+        result
     }
 
     /// Lock current session
@@ -133,6 +141,17 @@ impl AuthService {
     ) -> DatabaseResult<()> {
         let db_service = self.database_service.lock().await;
         db_service.update_master_password_config(auto_unlock, auto_lock_timeout).await
+    }
+
+    /// Update master password configuration with keychain management
+    pub async fn update_master_password_config_with_keychain(
+        &self,
+        auto_unlock: bool,
+        auto_lock_timeout: Option<u32>,
+        password: Option<String>,
+    ) -> DatabaseResult<()> {
+        let db_service = self.database_service.lock().await;
+        db_service.update_master_password_config_with_keychain(auto_unlock, auto_lock_timeout, password).await
     }
 
     /// Get master password configuration

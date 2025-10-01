@@ -6,6 +6,7 @@ import type {
   MasterPasswordVerification,
   MasterPasswordChange,
   MasterPasswordConfig,
+  MasterPasswordConfigUpdate,
   SecuritySettings,
   CurrentDevice,
 } from "../types/auth";
@@ -185,7 +186,7 @@ export const useAuthStore = defineStore("auth", () => {
    * @param config - New configuration values
    */
   const updateMasterPasswordConfig = async (
-    config: MasterPasswordConfig,
+    config: MasterPasswordConfig | MasterPasswordConfigUpdate,
   ): Promise<boolean> => {
     // Ensure autoLockTimeout is a number if provided
     const configData = {
@@ -214,16 +215,17 @@ export const useAuthStore = defineStore("auth", () => {
    * Try auto-unlock using keychain
    */
   const tryAutoUnlock = async (): Promise<boolean> => {
-    const success = await masterPasswordService.tryAutoUnlock();
+    await masterPasswordService.tryAutoUnlock();
 
     await checkStatus();
 
     if (status.value.isUnlocked) {
       setupAutoLockTimer();
       startSessionValidityCheck();
+      return true; // Return true if we are actually unlocked
     }
 
-    return success;
+    return false; // Return false if we are still locked
   };
 
   /**

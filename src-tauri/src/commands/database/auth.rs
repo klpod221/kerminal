@@ -33,7 +33,18 @@ pub async fn verify_master_password(
 /// Try auto unlock with keychain
 #[tauri::command]
 pub async fn try_auto_unlock(state: State<'_, AppState>) -> Result<bool, String> {
-    app_result!(state.auth_service.try_auto_unlock().await)
+    println!("Auto-unlock attempt started...");
+
+    match state.auth_service.try_auto_unlock().await {
+        Ok(success) => {
+            println!("Auto-unlock result: {}", success);
+            Ok(success)
+        }
+        Err(e) => {
+            println!("Auto-unlock failed: {}", e);
+            Err(e.to_string())
+        }
+    }
 }
 
 /// Lock current session
@@ -137,5 +148,15 @@ pub async fn update_master_password_config(
         .and_then(|v| v.as_u64())
         .map(|v| v as u32);
 
-    app_result!(state.auth_service.update_master_password_config(auto_unlock, auto_lock_timeout).await)
+    let password = config
+        .get("password")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    // If password is provided, use the keychain-aware method
+    if password.is_some() {
+        app_result!(state.auth_service.update_master_password_config_with_keychain(auto_unlock, auto_lock_timeout, password).await)
+    } else {
+        app_result!(state.auth_service.update_master_password_config(auto_unlock, auto_lock_timeout).await)
+    }
 }

@@ -67,8 +67,6 @@ export interface SSHGroup extends BaseModel {
   name: string;
   description?: string;
   color?: string;
-  icon?: string;
-  sortOrder: number;
   isExpanded: boolean;
   defaultAuthMethod?: string;
 }
@@ -100,8 +98,6 @@ export interface CreateSSHGroupRequest {
   name: string;
   description?: string;
   color?: string;
-  icon?: string;
-  sortOrder?: number;
   defaultAuthMethod?: string;
 }
 
@@ -112,8 +108,6 @@ export interface UpdateSSHGroupRequest {
   name?: string;
   description?: string | null;
   color?: string | null;
-  icon?: string | null;
-  sortOrder?: number;
   isExpanded?: boolean;
   defaultAuthMethod?: string | null;
 }

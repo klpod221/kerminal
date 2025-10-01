@@ -213,12 +213,29 @@ const { openOverlay, closeOverlay } = useOverlay();
 
 // Event handlers
 const handleAutoUnlockToggle = async () => {
+  let password = null;
+
+  // If enabling auto-unlock, we need to confirm with password first
+  if (autoUnlockEnabled.value) {
+    // Show confirmation modal with password input
+    const result = await showPasswordConfirmationModal();
+    if (!result.confirmed) {
+      // Revert the toggle if user cancels
+      autoUnlockEnabled.value = false;
+      return;
+    }
+    password = result.password;
+  }
+
   isLoading.value = true;
   try {
-    await authStore.updateMasterPasswordConfig({
+    const config = {
       autoUnlock: autoUnlockEnabled.value,
       autoLockTimeout: autoLockTimeout.value,
-    });
+      ...(password && { password }),
+    };
+
+    await authStore.updateMasterPasswordConfig(config);
     message.success(
       `Auto-unlock has been ${
         autoUnlockEnabled.value ? "enabled" : "disabled"
@@ -233,6 +250,35 @@ const handleAutoUnlockToggle = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+// Show password confirmation modal for enabling auto-unlock
+const showPasswordConfirmationModal = (): Promise<{ confirmed: boolean; password?: string }> => {
+  return new Promise((resolve) => {
+    const password = prompt(
+      "To enable auto-unlock, please confirm your master password:"
+    );
+
+    if (!password) {
+      resolve({ confirmed: false });
+      return;
+    }
+
+    // Verify password by attempting unlock (this won't change auth state if already unlocked)
+    authStore.unlock({ password })
+      .then((isValid: boolean) => {
+        if (isValid) {
+          resolve({ confirmed: true, password });
+        } else {
+          message.error("Invalid master password. Auto-unlock not enabled.");
+          resolve({ confirmed: false });
+        }
+      })
+      .catch((error: any) => {
+        message.error(getErrorMessage(error, "Failed to verify password."));
+        resolve({ confirmed: false });
+      });
+  });
 };
 
 const handleLock = async () => {

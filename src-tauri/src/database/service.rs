@@ -58,7 +58,7 @@ impl DatabaseService {
         let mut local_db = SQLiteProvider::new(config.local_db_path.clone());
         local_db.connect().await?;
 
-        // Try to get existing current device, or create new one
+        // Check if device exists, but don't create one until master password is setup
         let current_device = if let Some(device) = local_db.get_current_device().await? {
             // Update last seen timestamp
             let mut updated_device = device;
@@ -66,10 +66,8 @@ impl DatabaseService {
             local_db.save_device(&updated_device).await?;
             updated_device
         } else {
-            // Create new device and save to database
-            let new_device = Device::new_current("Current Device".to_string());
-            local_db.save_device(&new_device).await?;
-            new_device
+            // Create a temporary device that will be replaced during master password setup
+            Device::new_current("Temporary Device".to_string())
         };
 
         // Load master password config from database
@@ -111,21 +109,29 @@ impl DatabaseService {
 
     /// Setup master password (first time)
     pub async fn setup_master_password(
-        &self,
+        &mut self,
         request: SetupMasterPasswordRequest,
     ) -> DatabaseResult<()> {
-        let mut mp_manager = self.master_password_manager.write().await;
-        let entry = mp_manager.setup_master_password(request.clone()).await?;
-
-        // Save to local database
+        // Create new device record first with the provided device name
+        let new_device = Device::new_current(request.device_name.clone());
         let local_db = self.local_db.read().await;
+        local_db.save_device(&new_device).await?;
+
+        // Update current device in service
+        self.current_device = new_device.clone();
+
+        // Create new master password manager with the new device_id
+        let master_password_config = self.config.master_password_config.clone();
+        let mut new_mp_manager = MasterPasswordManager::new(new_device.device_id.clone(), master_password_config);
+
+        // Setup master password with new manager
+        let entry = new_mp_manager.setup_master_password(request).await?;
+
+        // Save master password entry to database
         local_db.save_master_password_entry(&entry).await?;
 
-        // Update current device with the new device name and last_seen_at
-        let mut updated_device = self.current_device.clone();
-        updated_device.device_name = request.device_name;
-        updated_device.update_last_seen();
-        local_db.save_device(&updated_device).await?;
+        // Replace the old manager with new one
+        *self.master_password_manager.write().await = new_mp_manager;
 
         Ok(())
     }
@@ -169,29 +175,57 @@ impl DatabaseService {
 
     /// Try auto-unlock
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
+        println!("DatabaseService: Starting auto-unlock for device: {}", self.current_device.device_id);
+        let local_db = self.local_db.read().await;
+        println!("DatabaseService: Database connection acquired, checking for master password entry...");
+
+        // First get the master password entry from database
+        let entry = match local_db
+            .get_master_password_entry(&self.current_device.device_id)
+            .await?
+        {
+            Some(entry) => {
+                println!("DatabaseService: Found master password entry:");
+                println!("  - device_id: {}", entry.device_id);
+                println!("  - auto_unlock: {}", entry.auto_unlock);
+                println!("  - created_at: {}", entry.created_at);
+                println!("  - last_verified_at: {:?}", entry.last_verified_at);
+                entry
+            }
+            None => {
+                println!("DatabaseService: No master password entry found for device: {}", self.current_device.device_id);
+                // No master password entry found - auto-unlock not possible
+                return Ok(false);
+            }
+        };
+
+        // Check if auto-unlock is enabled for this entry
+        if !entry.auto_unlock {
+            println!("DatabaseService: Auto-unlock is disabled for this entry");
+            return Ok(false);
+        }
+
+        println!("DatabaseService: Attempting auto-unlock with master password manager...");
         let mut mp_manager = self.master_password_manager.write().await;
         let success = mp_manager
-            .try_auto_unlock()
+            .try_auto_unlock_with_entry(&entry)
             .await
             .map_err(DatabaseError::from)?;
 
+        println!("DatabaseService: Auto-unlock result: {}", success);
+
         // Update device last_seen_at and last_verified_at on successful auto-unlock
         if success {
-            let local_db = self.local_db.read().await;
-
+            println!("DatabaseService: Updating device and entry timestamps...");
             // Update device last_seen_at
             let mut updated_device = self.current_device.clone();
             updated_device.update_last_seen();
             local_db.save_device(&updated_device).await?;
 
             // Update last_verified_at in master password entry
-            if let Some(mut entry) = local_db
-                .get_master_password_entry(&self.current_device.device_id)
-                .await?
-            {
-                entry.last_verified_at = Some(Utc::now());
-                local_db.save_master_password_entry(&entry).await?;
-            }
+            let mut updated_entry = entry;
+            updated_entry.last_verified_at = Some(Utc::now());
+            local_db.save_master_password_entry(&updated_entry).await?;
         }
 
         Ok(success)
@@ -401,6 +435,75 @@ impl DatabaseService {
 
         println!(
             "Master password config updated: auto_unlock={}, auto_lock_timeout={:?}",
+            auto_unlock, auto_lock_timeout
+        );
+
+        Ok(())
+    }
+
+    /// Update master password config with keychain management
+    pub async fn update_master_password_config_with_keychain(
+        &self,
+        auto_unlock: bool,
+        auto_lock_timeout: Option<u32>,
+        password: Option<String>
+    ) -> DatabaseResult<()> {
+        // Update the config in the manager
+        let mut mp_manager = self.master_password_manager.write().await;
+
+        // If enabling auto-unlock, we need the password to store in keychain
+        if auto_unlock {
+            if let Some(ref pwd) = password {
+                // Verify password first to ensure it's correct
+                let local_db = self.local_db.read().await;
+                if let Some(entry) = local_db
+                    .get_master_password_entry(&self.current_device.device_id)
+                    .await?
+                {
+                    // Create a temporary verification request
+                    let verification_req = crate::database::encryption::master_password::VerifyMasterPasswordRequest {
+                        password: pwd.clone(),
+                        device_id: None,
+                    };
+
+                    let is_valid = mp_manager.verify_master_password(verification_req, &entry).await
+                        .map_err(|e| crate::database::error::DatabaseError::from(e))?;
+
+                    if !is_valid {
+                        return Err(crate::database::error::DatabaseError::AuthenticationFailed(
+                            "Invalid master password".to_string()
+                        ));
+                    }
+
+                    println!("Password verified successfully, updating keychain...");
+                } else {
+                    return Err(crate::database::error::DatabaseError::MasterPasswordRequired);
+                }
+            } else {
+                println!("Warning: Enabling auto-unlock without password - keychain may not be updated");
+            }
+        }
+
+        // Handle keychain operations by calling the appropriate method
+        if password.is_some() {
+            mp_manager.update_config_with_keychain(auto_unlock, auto_lock_timeout, password).await?;
+        } else {
+            mp_manager.update_config(auto_unlock, auto_lock_timeout).await?;
+        }
+
+        // Update the database entry
+        let local_db = self.local_db.read().await;
+        if let Some(mut entry) = local_db
+            .get_master_password_entry(&self.current_device.device_id)
+            .await?
+        {
+            entry.auto_unlock = auto_unlock;
+            entry.auto_lock_timeout = auto_lock_timeout;
+            local_db.save_master_password_entry(&entry).await?;
+        }
+
+        println!(
+            "Master password config updated with keychain: auto_unlock={}, auto_lock_timeout={:?}",
             auto_unlock, auto_lock_timeout
         );
 
