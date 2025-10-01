@@ -143,43 +143,29 @@ impl DeviceKeyManager {
 
     /// Try to auto-unlock using keychain with stored password
     pub fn try_auto_unlock_with_password(&mut self, device_id: &str, entry: &MasterPasswordEntry) -> EncryptionResult<bool> {
-        println!("DeviceKeyManager: Checking keychain availability...");
         if !self.keychain.is_available() {
-            println!("DeviceKeyManager: Keychain not available");
             return Ok(false);
         }
 
-        println!("DeviceKeyManager: Attempting to retrieve password from keychain...");
         // First try to get password from keychain and verify with stored entry
         match self.keychain.get_master_password(device_id) {
             Ok(Some(password)) => {
-                println!("DeviceKeyManager: Found password in keychain, verifying...");
                 // Verify the password against the stored entry
                 if self.verify_password_for_device(&password, entry)? {
-                    println!("DeviceKeyManager: Password verification successful, deriving device key...");
                     // Derive and store device key in memory
                     let device_key = self.derive_device_key(&password, &entry.password_salt)?;
                     self.device_keys.insert(device_id.to_string(), device_key);
-                    println!("DeviceKeyManager: Device key stored, auto-unlock successful");
                     return Ok(true);
-                } else {
-                    println!("DeviceKeyManager: Password verification failed");
                 }
             }
-            Ok(None) => {
-                println!("DeviceKeyManager: No password found in keychain");
-            }
-            Err(e) => {
-                println!("DeviceKeyManager: Error retrieving password from keychain: {}", e);
-            }
+            Ok(None) => {}
+            Err(_) => {}
         }
 
-        println!("DeviceKeyManager: Trying fallback - direct device key from keychain...");
         // Fallback: try to get device key directly from keychain (legacy)
         match self.keychain.get_device_key(device_id) {
             Ok(Some(key_bytes)) => {
                 if key_bytes.len() == 32 {
-                    println!("DeviceKeyManager: Found valid device key in keychain");
                     let mut key_array = [0u8; 32];
                     key_array.copy_from_slice(&key_bytes);
 
@@ -208,7 +194,6 @@ impl DeviceKeyManager {
             }
         }
 
-        println!("DeviceKeyManager: All auto-unlock methods failed");
         Ok(false)
     }
 

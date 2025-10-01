@@ -17,53 +17,28 @@ impl KeychainManager {
     /// Store master password trong keychain
     pub fn store_master_password(&self, device_id: &str, password: &str) -> EncryptionResult<()> {
         let service = format!("{}_master_password", self.app_name);
-        println!("KeychainManager: Storing password with service: {}, device_id: {}", service, device_id);
 
         let entry = Entry::new(&service, device_id)
-            .map_err(|e| {
-                let error = EncryptionError::KeychainError(e.to_string());
-                println!("KeychainManager: Failed to create entry: {}", error);
-                error
-            })?;
+            .map_err(|e| EncryptionError::KeychainError(e.to_string()))?;
 
         entry
             .set_password(password)
-            .map_err(|e| {
-                let error = EncryptionError::KeychainError(e.to_string());
-                println!("KeychainManager: Failed to set password: {}", error);
-                error
-            })?;
+            .map_err(|e| EncryptionError::KeychainError(e.to_string()))?;
 
-        println!("KeychainManager: Successfully stored password in keychain");
         Ok(())
     }
 
     /// Retrieve master password từ keychain
     pub fn get_master_password(&self, device_id: &str) -> EncryptionResult<Option<String>> {
         let service = format!("{}_master_password", self.app_name);
-        println!("KeychainManager: Retrieving password with service: {}, device_id: {}", service, device_id);
 
         let entry = Entry::new(&service, device_id)
-            .map_err(|e| {
-                let error = EncryptionError::KeychainError(e.to_string());
-                println!("KeychainManager: Failed to create entry for retrieval: {}", error);
-                error
-            })?;
+            .map_err(|e| EncryptionError::KeychainError(e.to_string()))?;
 
         match entry.get_password() {
-            Ok(password) => {
-                println!("KeychainManager: Successfully retrieved password from keychain");
-                Ok(Some(password))
-            }
-            Err(KeyringError::NoEntry) => {
-                println!("KeychainManager: No entry found in keychain");
-                Ok(None)
-            }
-            Err(e) => {
-                let error = EncryptionError::KeychainError(e.to_string());
-                println!("KeychainManager: Error retrieving password: {}", error);
-                Err(error)
-            }
+            Ok(password) => Ok(Some(password)),
+            Err(KeyringError::NoEntry) => Ok(None),
+            Err(e) => Err(EncryptionError::KeychainError(e.to_string())),
         }
     }
 

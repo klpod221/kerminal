@@ -162,25 +162,15 @@ impl MasterPasswordManager {
 
     /// Try auto-unlock với stored password entry từ database
     pub async fn try_auto_unlock_with_entry(&mut self, entry: &crate::database::encryption::device_keys::MasterPasswordEntry) -> EncryptionResult<bool> {
-        println!("MasterPasswordManager: Checking auto-unlock config:");
-        println!("  - config.auto_unlock: {}", self.config.auto_unlock);
-        println!("  - config.use_keychain: {}", self.config.use_keychain);
-        println!("  - keychain_available: {}", self.keychain_manager.is_available());
-
         if !self.config.auto_unlock || !self.config.use_keychain {
-            println!("MasterPasswordManager: Auto-unlock disabled in config");
             return Ok(false);
         }
 
-        println!("MasterPasswordManager: Attempting auto-unlock with device key manager...");
         let mut manager = self.device_key_manager.write().await;
         let success = manager.try_auto_unlock_with_password(&self.current_device_id, entry)?;
 
         if success {
-            println!("MasterPasswordManager: Auto-unlock successful, starting session");
             self.session_start = Some(Utc::now());
-        } else {
-            println!("MasterPasswordManager: Auto-unlock failed");
         }
 
         Ok(success)
@@ -346,7 +336,6 @@ impl MasterPasswordManager {
             }
         } else if let Some(pwd) = password {
             // Store password in keychain when enabling auto-unlock
-            println!("Auto-unlock enabled, storing password in keychain");
             if let Err(e) = self
                 .keychain_manager
                 .store_master_password(&self.current_device_id, &pwd)

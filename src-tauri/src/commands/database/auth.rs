@@ -33,21 +33,11 @@ pub async fn verify_master_password(
 /// Try auto unlock with keychain
 #[tauri::command]
 pub async fn try_auto_unlock(state: State<'_, AppState>) -> Result<bool, String> {
-    println!("Auto-unlock attempt started...");
-
     match state.auth_service.try_auto_unlock().await {
-        Ok(success) => {
-            println!("Auto-unlock result: {}", success);
-            Ok(success)
-        }
-        Err(e) => {
-            println!("Auto-unlock failed: {}", e);
-            Err(e.to_string())
-        }
+        Ok(success) => Ok(success),
+        Err(e) => Err(e.to_string())
     }
-}
-
-/// Lock current session
+}/// Lock current session
 #[tauri::command]
 pub async fn lock_session(state: State<'_, AppState>) -> Result<(), String> {
     state.auth_service.lock_session().await;

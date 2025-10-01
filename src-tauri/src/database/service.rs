@@ -175,48 +175,30 @@ impl DatabaseService {
 
     /// Try auto-unlock
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
-        println!("DatabaseService: Starting auto-unlock for device: {}", self.current_device.device_id);
         let local_db = self.local_db.read().await;
-        println!("DatabaseService: Database connection acquired, checking for master password entry...");
 
         // First get the master password entry from database
         let entry = match local_db
             .get_master_password_entry(&self.current_device.device_id)
             .await?
         {
-            Some(entry) => {
-                println!("DatabaseService: Found master password entry:");
-                println!("  - device_id: {}", entry.device_id);
-                println!("  - auto_unlock: {}", entry.auto_unlock);
-                println!("  - created_at: {}", entry.created_at);
-                println!("  - last_verified_at: {:?}", entry.last_verified_at);
-                entry
-            }
-            None => {
-                println!("DatabaseService: No master password entry found for device: {}", self.current_device.device_id);
-                // No master password entry found - auto-unlock not possible
-                return Ok(false);
-            }
+            Some(entry) => entry,
+            None => return Ok(false),
         };
 
         // Check if auto-unlock is enabled for this entry
         if !entry.auto_unlock {
-            println!("DatabaseService: Auto-unlock is disabled for this entry");
             return Ok(false);
         }
 
-        println!("DatabaseService: Attempting auto-unlock with master password manager...");
         let mut mp_manager = self.master_password_manager.write().await;
         let success = mp_manager
             .try_auto_unlock_with_entry(&entry)
             .await
             .map_err(DatabaseError::from)?;
 
-        println!("DatabaseService: Auto-unlock result: {}", success);
-
         // Update device last_seen_at and last_verified_at on successful auto-unlock
         if success {
-            println!("DatabaseService: Updating device and entry timestamps...");
             // Update device last_seen_at
             let mut updated_device = self.current_device.clone();
             updated_device.update_last_seen();
@@ -291,7 +273,7 @@ impl DatabaseService {
             }
         }
 
-        println!("All encrypted data has been successfully re-encrypted with the new master password");
+
         Ok(())
     }
 
@@ -342,7 +324,7 @@ impl DatabaseService {
             ));
         }
 
-        println!("Re-encrypted {} SSH profiles with new master password", re_encrypted_count);
+
         Ok(re_encrypted_count)
     }
 
@@ -480,7 +462,7 @@ impl DatabaseService {
                     return Err(crate::database::error::DatabaseError::MasterPasswordRequired);
                 }
             } else {
-                println!("Warning: Enabling auto-unlock without password - keychain may not be updated");
+
             }
         }
 

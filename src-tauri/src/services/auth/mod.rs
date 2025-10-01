@@ -35,19 +35,9 @@ impl AuthService {
 
     /// Try auto unlock with keychain
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
-        println!("AuthService: Attempting auto-unlock...");
         let db_service = self.database_service.lock().await;
-        let result = db_service.try_auto_unlock().await;
-
-        match &result {
-            Ok(success) => println!("AuthService: Auto-unlock result: {}", success),
-            Err(e) => println!("AuthService: Auto-unlock error: {}", e),
-        }
-
-        result
-    }
-
-    /// Lock current session
+        db_service.try_auto_unlock().await
+    }    /// Lock current session
     pub async fn lock_session(&self) {
         let db_service = self.database_service.lock().await;
         db_service.lock_session().await;

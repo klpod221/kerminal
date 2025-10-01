@@ -174,6 +174,19 @@
       </Form>
     </div>
   </Modal>
+
+  <!-- Password Confirmation Modal -->
+  <PasswordConfirmModal
+    message="To enable auto-unlock, please confirm your master password:"
+    @confirm="onPasswordConfirmed"
+    @cancel="onPasswordCancelled"
+  />
+
+  <!-- Reset Confirmation Modal -->
+  <ResetConfirmModal
+    @confirm="onResetConfirmed"
+    @cancel="onResetCancelled"
+  />
 </template>
 
 <script setup lang="ts">
@@ -190,6 +203,8 @@ import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Select from "../ui/Select.vue";
 import Card from "../ui/Card.vue";
+import PasswordConfirmModal from "./PasswordConfirmModal.vue";
+import ResetConfirmModal from "./ResetConfirmModal.vue";
 
 // State
 const isLoading = ref(false);
@@ -252,33 +267,30 @@ const handleAutoUnlockToggle = async () => {
   }
 };
 
+// Password confirmation state
+let passwordConfirmResolver: ((result: { confirmed: boolean; password?: string }) => void) | null = null;
+
 // Show password confirmation modal for enabling auto-unlock
 const showPasswordConfirmationModal = (): Promise<{ confirmed: boolean; password?: string }> => {
   return new Promise((resolve) => {
-    const password = prompt(
-      "To enable auto-unlock, please confirm your master password:"
-    );
-
-    if (!password) {
-      resolve({ confirmed: false });
-      return;
-    }
-
-    // Verify password by attempting unlock (this won't change auth state if already unlocked)
-    authStore.unlock({ password })
-      .then((isValid: boolean) => {
-        if (isValid) {
-          resolve({ confirmed: true, password });
-        } else {
-          message.error("Invalid master password. Auto-unlock not enabled.");
-          resolve({ confirmed: false });
-        }
-      })
-      .catch((error: any) => {
-        message.error(getErrorMessage(error, "Failed to verify password."));
-        resolve({ confirmed: false });
-      });
+    passwordConfirmResolver = resolve;
+    openOverlay("password-confirm-modal");
   });
+};
+
+// Handle password confirmation events
+const onPasswordConfirmed = (password: string) => {
+  if (passwordConfirmResolver) {
+    passwordConfirmResolver({ confirmed: true, password });
+    passwordConfirmResolver = null;
+  }
+};
+
+const onPasswordCancelled = () => {
+  if (passwordConfirmResolver) {
+    passwordConfirmResolver({ confirmed: false });
+    passwordConfirmResolver = null;
+  }
 };
 
 const handleLock = async () => {
@@ -298,17 +310,12 @@ const openChangePasswordModal = () => {
   openOverlay("master-password-change");
 };
 
-const handleResetPassword = async () => {
-  // Show confirmation dialog
-  const confirmed = confirm(
-    "Are you sure you want to reset your master password?\n\n" +
-      "This will permanently delete:\n" +
-      "• All SSH profiles and connections\n" +
-      "• All SSH groups and configurations\n" +
-      "• Your master password and encryption keys\n\n" +
-      "This action cannot be undone!",
-  );
+// Reset confirmation state
+let resetConfirmResolver: ((confirmed: boolean) => void) | null = null;
 
+const handleResetPassword = async () => {
+  // Show custom confirmation modal
+  const confirmed = await showResetConfirmationModal();
   if (!confirmed) return;
 
   isLoading.value = true;
@@ -328,6 +335,29 @@ const handleResetPassword = async () => {
     );
   } finally {
     isLoading.value = false;
+  }
+};
+
+// Show reset confirmation modal
+const showResetConfirmationModal = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    resetConfirmResolver = resolve;
+    openOverlay("reset-confirm-modal");
+  });
+};
+
+// Handle reset confirmation events
+const onResetConfirmed = () => {
+  if (resetConfirmResolver) {
+    resetConfirmResolver(true);
+    resetConfirmResolver = null;
+  }
+};
+
+const onResetCancelled = () => {
+  if (resetConfirmResolver) {
+    resetConfirmResolver(false);
+    resetConfirmResolver = null;
   }
 };
 

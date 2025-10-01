@@ -43,36 +43,22 @@ onMounted(async () => {
   try {
     await authStore.initialize();
 
-    // current status
-    console.log("Auth status:", authStore.isAuthenticated, authStore.status);
-
     // Try auto-unlock if setup is completed and auto-unlock is enabled
     if (
       !authStore.requiresSetup &&
       !authStore.status.isUnlocked
     ) {
-      console.log("Checking auto-unlock conditions:");
-      console.log("- Setup completed:", !authStore.requiresSetup);
-      console.log("- Currently unlocked:", authStore.status.isUnlocked);
-      console.log("- Auto-unlock enabled:", authStore.status.autoUnlockEnabled);
-      console.log("- Keychain available:", authStore.status.keychainAvailable);
-
       if (authStore.status.autoUnlockEnabled) {
-        console.log("Attempting auto-unlock...");
         const success = await authStore.tryAutoUnlock();
-        console.log("Auto-unlock result:", success);
 
         // Check status again after auto-unlock attempt
         await authStore.checkStatus();
-        console.log("Auth status after auto-unlock:", authStore.isAuthenticated, authStore.status);
 
         // If auto-unlock was successful, we should be authenticated now
         if (success && authStore.isAuthenticated) {
-          console.log("Auto-unlock successful, app is now authenticated");
           return; // Exit early, don't open any overlays
         }
       } else {
-        console.log("Auto-unlock is disabled, skipping...");
       }
     }
 
@@ -81,25 +67,20 @@ onMounted(async () => {
 
     // Re-check status after potential auto-unlock
     if (authStore.isAuthenticated) {
-      console.log("App is authenticated, no overlay needed");
       return;
     }
 
     // if setup is not completed, ensure the setup view is shown
     if (authStore.requiresSetup) {
-      console.log("Opening setup overlay");
       openOverlay("master-password-setup");
       return;
     }
 
     // If app is locked, show the unlock overlay
     if (authStore.requiresUnlock) {
-      console.log("Opening unlock overlay");
       openOverlay("master-password-unlock");
       return;
     }
-
-    console.log("App is authenticated, no overlay needed");
   } catch (error) {
     console.error("Failed to initialize auth:", error);
   }
@@ -144,7 +125,6 @@ watch(
       viewState.toggleTopBar(false);
     } else {
       // When authenticated, ensure all overlays are closed and top bar is shown
-      console.log("Authentication status changed to true, closing overlays and showing top bar");
       closeAllOverlays();
       viewState.toggleTopBar(true);
     }
