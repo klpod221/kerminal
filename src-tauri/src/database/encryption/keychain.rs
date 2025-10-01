@@ -28,7 +28,7 @@ impl KeychainManager {
         Ok(())
     }
 
-    /// Retrieve master password từ keychain
+    /// Retrieve master password from keychain
     pub fn get_master_password(&self, device_id: &str) -> EncryptionResult<Option<String>> {
         let service = format!("{}_master_password", self.app_name);
 
@@ -42,7 +42,7 @@ impl KeychainManager {
         }
     }
 
-    /// Delete master password từ keychain
+    /// Delete master password from keychain
     pub fn delete_master_password(&self, device_id: &str) -> EncryptionResult<()> {
         let service = format!("{}_master_password", self.app_name);
         let entry = Entry::new(&service, device_id)
@@ -70,7 +70,7 @@ impl KeychainManager {
         Ok(())
     }
 
-    /// Retrieve device encryption key từ keychain
+    /// Retrieve device encryption key from keychain
     pub fn get_device_key(&self, device_id: &str) -> EncryptionResult<Option<Vec<u8>>> {
         let service = format!("{}_device_key", self.app_name);
         let entry = Entry::new(&service, device_id)
@@ -88,7 +88,7 @@ impl KeychainManager {
         }
     }
 
-    /// Delete device encryption key từ keychain
+    /// Delete device encryption key from keychain
     pub fn delete_device_key(&self, device_id: &str) -> EncryptionResult<()> {
         let service = format!("{}_device_key", self.app_name);
         let entry = Entry::new(&service, device_id)

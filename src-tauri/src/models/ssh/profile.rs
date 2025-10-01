@@ -10,11 +10,11 @@ use crate::{
     models::base::BaseModel,
 };
 
-/// SSH Profile với flexible authentication methods
+/// SSH Profile with flexible authentication methods
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SSHProfile {
-    /// Base model với sync metadata
+    /// Base model with sync metadata
     #[serde(flatten)]
     pub base: BaseModel,
 
@@ -27,7 +27,7 @@ pub struct SSHProfile {
     /// Group association (None = ungrouped)
     pub group_id: Option<String>,
 
-    /// Authentication method và data
+    /// Authentication method and data
     pub auth_method: AuthMethod,
     pub auth_data: AuthData,
 
@@ -186,7 +186,7 @@ impl SSHProfile {
         self.base.touch();
     }
 
-    /// Set authentication method và data
+    /// Set authentication method and data
     pub fn set_authentication(&mut self, method: AuthMethod, data: AuthData) {
         self.auth_method = method;
         self.auth_data = data;
@@ -432,7 +432,7 @@ impl Encryptable for SSHProfile {
     }
 }
 
-/// Request để tạo SSH profile mới
+/// Request to create new SSH profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateSSHProfileRequest {
@@ -476,7 +476,7 @@ impl CreateSSHProfileRequest {
     }
 }
 
-/// Request để update SSH profile
+/// Request to update SSH profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSSHProfileRequest {
@@ -541,7 +541,7 @@ impl UpdateSSHProfileRequest {
     }
 }
 
-/// Module để handle encrypted string serialization
+/// Module to handle encrypted string serialization
 mod encrypted_string {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 

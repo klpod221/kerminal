@@ -117,7 +117,7 @@ impl DeviceKeyManager {
         })
     }
 
-    /// Verify master password và load device key
+    /// Verify master password and load device key
     pub fn verify_master_password(
         &mut self,
         password: &str,
@@ -133,7 +133,7 @@ impl DeviceKeyManager {
             .is_ok();
 
         if is_valid {
-            // Derive device key và store in memory
+            // Derive device key and store in memory
             let device_key = self.derive_device_key(password, &entry.password_salt)?;
             self.device_keys.insert(entry.device_id.clone(), device_key);
         }
@@ -227,7 +227,7 @@ impl DeviceKeyManager {
         Ok(false)
     }
 
-    /// Add device key từ sync (khi gặp encrypted data từ device khác)
+    /// Add device key from sync (when encountering encrypted data from other device)
     pub fn add_device_key(
         &mut self,
         device_id: String,
@@ -268,7 +268,7 @@ impl DeviceKeyManager {
         }
     }
 
-    /// Encrypt data với device key
+    /// Encrypt data with device key
     pub fn encrypt_with_device(
         &mut self,
         data: &[u8],
@@ -283,7 +283,7 @@ impl DeviceKeyManager {
         AESEncryption::encrypt(&device_key.encryption_key, data)
     }
 
-    /// Decrypt data với device key
+    /// Decrypt data with device key
     pub fn decrypt_with_device(
         &mut self,
         encrypted_data: &[u8],
@@ -298,7 +298,7 @@ impl DeviceKeyManager {
         AESEncryption::decrypt(&device_key.encryption_key, encrypted_data)
     }
 
-    /// Try to decrypt với tất cả known device keys
+    /// Try to decrypt with all known device keys
     pub fn try_decrypt_with_any_device(
         &mut self,
         encrypted_data: &[u8],
@@ -333,7 +333,7 @@ impl DeviceKeyManager {
         self.create_master_password(new_password, config)
     }
 
-    /// Clear all device keys từ memory
+    /// Clear all device keys from memory
     pub fn clear_all_keys(&mut self) {
         self.device_keys.clear();
     }
@@ -343,7 +343,7 @@ impl DeviceKeyManager {
         self.device_keys.keys().cloned().collect()
     }
 
-    /// Derive device encryption key từ master password
+    /// Derive device encryption key from master password
     fn derive_device_key(
         &self,
         password: &str,
@@ -362,7 +362,7 @@ impl DeviceKeyManager {
         })
     }
 
-    /// Derive encryption key từ password và salt
+    /// Derive encryption key from password and salt
     fn derive_key_from_password(
         &self,
         password: &str,
@@ -370,7 +370,7 @@ impl DeviceKeyManager {
     ) -> EncryptionResult<[u8; 32]> {
         let mut key = [0u8; 32];
 
-        // Use PBKDF2 để derive key
+        // Use PBKDF2 to derive key
         let _ = pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
             password.as_bytes(),
             salt,

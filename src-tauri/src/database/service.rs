@@ -23,7 +23,7 @@ use crate::models::{
     sync::SyncStats,
 };
 
-// Đã import ở trên, không cần lặp lại
+// Already imported above, no need to repeat
 /// Main database service - orchestrates all database operations
 pub struct DatabaseService {
     /// Local SQLite database (always available)

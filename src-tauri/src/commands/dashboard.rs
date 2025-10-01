@@ -38,7 +38,7 @@ pub fn get_system_info() -> SystemInfo {
         })
         .collect();
 
-    // 3. Lấy thông tin đĩa
+    // 3. Get disk information
     let disks = Disks::new_with_refreshed_list();
     let disks_info: Vec<DiskInfo> = disks
         .iter()
@@ -62,7 +62,7 @@ pub fn get_system_info() -> SystemInfo {
         })
         .collect();
 
-    // 5. Tổng hợp và trả về
+    // 5. Aggregate and return
     let load_avg = System::load_average();
 
     SystemInfo {

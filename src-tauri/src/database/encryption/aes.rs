@@ -44,7 +44,7 @@ impl AESEncryption {
         let cipher = Aes256Gcm::new_from_slice(key)
             .map_err(|e| EncryptionError::InvalidKey(e.to_string()))?;
 
-        // Extract nonce và ciphertext
+        // Extract nonce and ciphertext
         let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
         let nonce = Nonce::from_slice(nonce_bytes);
 
@@ -56,7 +56,7 @@ impl AESEncryption {
         Ok(plaintext)
     }
 
-    /// Encrypt string và return base64 encoded result
+    /// Encrypt string and return base64 encoded result
     pub fn encrypt_string(key: &[u8; 32], data: &str) -> EncryptionResult<String> {
         let encrypted = Self::encrypt(key, data.as_bytes())?;
         Ok(general_purpose::STANDARD.encode(encrypted))

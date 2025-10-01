@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Device information cho tracking và encryption
+/// Device information for tracking and encryption
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Device {
     pub device_id: String,
@@ -33,7 +33,7 @@ pub struct OsInfo {
 }
 
 impl Device {
-    /// Create new device với current system info
+    /// Create new device with current system info
     pub fn new_current(device_name: String) -> Self {
         let now = Utc::now();
 
@@ -82,9 +82,9 @@ impl Device {
         (Utc::now() - self.last_seen) < threshold
     }
 
-    /// Detect device type từ system info
+    /// Detect device type from system info
     fn detect_device_type() -> DeviceType {
-        // Simple detection logic - có thể cải thiện
+        // Simple detection logic - can be improved
         match std::env::consts::OS {
             "linux" => {
                 // Check if running on server (no GUI)
@@ -111,7 +111,7 @@ impl Device {
 
     /// Get OS version (simplified)
     fn get_os_version() -> String {
-        // This is a simplified version - có thể sử dụng sysinfo crate cho chi tiết hơn
+        // This is a simplified version - could use sysinfo crate for more details
         match std::env::consts::OS {
             "linux" => {
                 // Try to read from /etc/os-release

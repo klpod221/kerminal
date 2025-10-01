@@ -9,11 +9,11 @@ use crate::{
     models::base::BaseModel,
 };
 
-/// SSH Group để organize profiles
+/// SSH Group to organize profiles
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SSHGroup {
-    /// Base model với sync metadata
+    /// Base model with sync metadata
     #[serde(flatten)]
     pub base: BaseModel,
 
@@ -46,7 +46,7 @@ impl SSHGroup {
 // Implement Syncable trait using macro
 impl_syncable!(SSHGroup, "ssh_groups");
 
-// SSH Groups không có encrypted data
+// SSH Groups have no encrypted data
 impl Encryptable for SSHGroup {
     fn encrypted_fields() -> Vec<&'static str> {
         vec![]
@@ -125,7 +125,7 @@ impl UpdateSSHGroupRequest {
         }
         if let Some(is_expanded) = self.is_expanded {
             group.is_expanded = is_expanded;
-            // UI state - không cần sync
+            // UI state - no sync needed
         }
         if let Some(default_auth_method) = self.default_auth_method {
             group.default_auth_method = default_auth_method;

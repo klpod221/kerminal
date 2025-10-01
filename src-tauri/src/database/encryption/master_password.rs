@@ -11,7 +11,7 @@ use crate::database::{
     traits::EncryptionService,
 };
 
-/// Master password manager - orchestrates tất cả master password operations
+/// Master password manager - orchestrates all master password operations
 pub struct MasterPasswordManager {
     device_key_manager: Arc<RwLock<DeviceKeyManager>>,
     keychain_manager: KeychainManager,
@@ -73,7 +73,7 @@ impl MasterPasswordManager {
         }
     }
 
-    /// Setup master password lần đầu tiên
+    /// Setup master password for the first time
     pub async fn setup_master_password(
         &mut self,
         request: SetupMasterPasswordRequest,
@@ -144,7 +144,7 @@ impl MasterPasswordManager {
         Ok(is_valid)
     }
 
-    /// Try auto-unlock từ keychain
+    /// Try auto-unlock from keychain
     pub async fn try_auto_unlock(&mut self) -> EncryptionResult<bool> {
         if !self.config.auto_unlock || !self.config.use_keychain {
             return Ok(false);
@@ -160,7 +160,7 @@ impl MasterPasswordManager {
         Ok(success)
     }
 
-    /// Try auto-unlock với stored password entry từ database
+    /// Try auto-unlock with stored password entry from database
     pub async fn try_auto_unlock_with_entry(&mut self, entry: &crate::database::encryption::device_keys::MasterPasswordEntry) -> EncryptionResult<bool> {
         if !self.config.auto_unlock || !self.config.use_keychain {
             return Ok(false);
@@ -209,7 +209,7 @@ impl MasterPasswordManager {
         Ok(new_entry)
     }
 
-    /// Lock session (clear keys từ memory)
+    /// Lock session (clear keys from memory)
     pub async fn lock_session(&mut self) {
         let mut manager = self.device_key_manager.write().await;
         manager.clear_all_keys();
@@ -256,7 +256,7 @@ impl MasterPasswordManager {
         let is_unlocked = self.session_start.is_some() && !self.is_session_expired();
 
         MasterPasswordStatus {
-            is_setup: false, // Sẽ được set từ database check
+            is_setup: false, // Will be set from database check
             is_unlocked,
             auto_unlock_enabled: self.config.auto_unlock,
             keychain_available: self.keychain_manager.is_available(),
@@ -281,7 +281,7 @@ impl MasterPasswordManager {
         }
 
         if !auto_unlock {
-            // Remove từ keychain nếu tắt auto-unlock
+            // Remove from keychain if auto-unlock is disabled
             println!("Auto-unlock disabled, removing credentials from keychain");
             if let Err(e) = self
                 .keychain_manager
@@ -319,7 +319,7 @@ impl MasterPasswordManager {
         }
 
         if !auto_unlock {
-            // Remove từ keychain nếu tắt auto-unlock
+            // Remove from keychain if auto-unlock is disabled
             println!("Auto-unlock disabled, removing credentials from keychain");
             if let Err(e) = self
                 .keychain_manager
@@ -366,7 +366,7 @@ impl MasterPasswordManager {
 
     /// Reset master password (removes all encrypted data)
     pub async fn reset_master_password(&mut self) -> EncryptionResult<()> {
-        // Clear tất cả device keys
+        // Clear all device keys
         let mut manager = self.device_key_manager.write().await;
         let loaded_devices = manager.get_loaded_device_ids();
         manager.clear_all_keys();

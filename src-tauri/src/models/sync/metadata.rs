@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Sync metadata cho tracking sync operations
+/// Sync metadata for tracking sync operations
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncMetadata {
     pub id: String,
@@ -33,7 +33,7 @@ pub enum SyncOperationStatus {
     PartialSuccess, // Some records synced, some failed
 }
 
-/// Conflict record cho tracking và resolution
+/// Conflict record for tracking and resolution
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConflictRecord {
     pub id: String,
@@ -175,7 +175,7 @@ impl ConflictRecord {
     }
 }
 
-/// Sync statistics để hiển thị trong UI
+/// Sync statistics to display in UI
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncStats {
     pub total_records: u32,
