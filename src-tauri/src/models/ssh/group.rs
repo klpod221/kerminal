@@ -23,10 +23,6 @@ pub struct SSHGroup {
 
     /// UI customization
     pub color: Option<String>,       // Hex color
-
-    /// Group settings
-    pub is_expanded: bool,           // UI state - expanded/collapsed
-    pub default_auth_method: Option<String>,  // Default auth for new profiles in group
 }
 
 impl SSHGroup {
@@ -37,8 +33,6 @@ impl SSHGroup {
             name,
             description: None,
             color: None,
-            is_expanded: true,
-            default_auth_method: None,
         }
     }
 }
@@ -77,8 +71,6 @@ pub struct CreateSSHGroupRequest {
     pub description: Option<String>,
     pub color: Option<String>,
     pub icon: Option<String>,
-    #[serde(rename = "defaultAuthMethod")]
-    pub default_auth_method: Option<String>,
 }
 
 impl CreateSSHGroupRequest {
@@ -87,7 +79,6 @@ impl CreateSSHGroupRequest {
 
         group.description = self.description;
         group.color = self.color;
-        group.default_auth_method = self.default_auth_method;
 
         group
     }
@@ -101,10 +92,6 @@ pub struct UpdateSSHGroupRequest {
     pub description: Option<Option<String>>,  // Some(None) = clear description
     pub color: Option<Option<String>>,
     pub icon: Option<Option<String>>,
-    #[serde(rename = "isExpanded")]
-    pub is_expanded: Option<bool>,
-    #[serde(rename = "defaultAuthMethod")]
-    pub default_auth_method: Option<Option<String>>,
 }
 
 impl UpdateSSHGroupRequest {
@@ -121,14 +108,6 @@ impl UpdateSSHGroupRequest {
         }
         if let Some(color) = self.color {
             group.color = color;
-            needs_touch = true;
-        }
-        if let Some(is_expanded) = self.is_expanded {
-            group.is_expanded = is_expanded;
-            // UI state - no sync needed
-        }
-        if let Some(default_auth_method) = self.default_auth_method {
-            group.default_auth_method = default_auth_method;
             needs_touch = true;
         }
 

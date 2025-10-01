@@ -107,8 +107,6 @@ impl Database for SQLiteProvider {
                 name TEXT NOT NULL,
                 description TEXT,
                 color TEXT,
-                is_expanded BOOLEAN NOT NULL DEFAULT true,
-                default_auth_method TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 device_id TEXT NOT NULL,
@@ -492,7 +490,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let row = sqlx::query(
-            "SELECT id, name, description, color, icon, is_expanded, default_auth_method, created_at, updated_at, device_id, version, sync_status FROM ssh_groups WHERE id = ?"
+            "SELECT id, name, description, color, created_at, updated_at, device_id, version, sync_status FROM ssh_groups WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&*pool)
@@ -521,8 +519,6 @@ impl Database for SQLiteProvider {
                 name: row.get("name"),
                 description: row.get("description"),
                 color: row.get("color"),
-                is_expanded: row.get("is_expanded"),
-                default_auth_method: row.get("default_auth_method"),
             };
             Ok(Some(group))
         } else {
@@ -535,7 +531,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let rows = sqlx::query(
-            "SELECT id, name, description, color, is_expanded, default_auth_method, created_at, updated_at, device_id, version, sync_status FROM ssh_groups ORDER BY name"
+            "SELECT id, name, description, color, created_at, updated_at, device_id, version, sync_status FROM ssh_groups ORDER BY name"
         )
         .fetch_all(&*pool)
         .await
@@ -564,8 +560,6 @@ impl Database for SQLiteProvider {
                 name: row.get("name"),
                 description: row.get("description"),
                 color: row.get("color"),
-                is_expanded: row.get("is_expanded"),
-                default_auth_method: row.get("default_auth_method"),
             };
             groups.push(group);
         }

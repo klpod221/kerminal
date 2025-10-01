@@ -28,27 +28,6 @@
         label="Group Color"
         placeholder="Pick a color for the group"
       />
-
-      <!-- Advanced Settings -->
-      <Collapsible
-        title="Advanced Settings"
-        subtitle="Optional group configuration"
-        :default-expanded="false"
-      >
-        <Select
-          id="group-default-auth"
-          v-model="sshGroup.defaultAuthMethod"
-          label="Default Auth Method (Optional)"
-          placeholder="Select default authentication method"
-          :options="authMethodOptions"
-        />
-
-        <Checkbox
-          id="group-expanded"
-          v-model="sshGroup.isExpanded"
-          label="Expanded by default"
-        />
-      </Collapsible>
     </Form>
 
     <template #footer>
@@ -77,10 +56,7 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Textarea from "../ui/Textarea.vue";
 import ColorPicker from "../ui/ColorPicker.vue";
-import Select from "../ui/Select.vue";
-import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
-import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { Save } from "lucide-vue-next";
@@ -107,18 +83,9 @@ const sshGroup = ref({
   name: "",
   description: "",
   color: "#000000",
-  isExpanded: true,
-  defaultAuthMethod: "",
 } as Partial<SSHGroup>);
 
-// Options
-const authMethodOptions = [
-  { value: "", label: "No Default" },
-  { value: "Password", label: "Password" },
-  { value: "PrivateKey", label: "Private Key" },
-  { value: "PrivateKeyWithPassphrase", label: "Private Key with Passphrase" },
-  { value: "Agent", label: "SSH Agent" },
-];
+
 
 // Functions
 const loadGroup = () => {
@@ -145,7 +112,6 @@ const handleSubmit = async () => {
       name: sshGroup.value.name!,
       description: sshGroup.value.description,
       color: sshGroup.value.color,
-      defaultAuthMethod: sshGroup.value.defaultAuthMethod,
     } as any; // Type assertion for create request
 
     if (sshGroupId.value) {
@@ -176,8 +142,6 @@ watch(
         name: "",
         description: "",
         color: "#000000",
-        isExpanded: true,
-        defaultAuthMethod: "",
       } as Partial<SSHGroup>;
     }
   },
