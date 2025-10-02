@@ -132,7 +132,7 @@ impl LocalTerminal {
             // Wait for the process to exit
             match child.wait() {
                 Ok(exit_status) => {
-                    println!("Terminal process exited with status: {:?}", exit_status);
+
                 }
                 Err(e) => {
                     eprintln!("Failed to wait for child process: {}", e);

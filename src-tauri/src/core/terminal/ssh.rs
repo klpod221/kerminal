@@ -38,19 +38,12 @@ impl SSHTerminal {
 
     /// Connect to the SSH terminal
     pub async fn connect(&mut self) -> Result<(), AppError> {
-        println!("🔌 SSH Terminal {}: Starting connection to {}@{}:{}",
-                 self.id, self.ssh_profile.username, self.ssh_profile.host, self.ssh_profile.port);
-
         self.state = TerminalState::Connecting;
 
         // Use tokio::time::timeout to enforce a connection timeout
         let connection_timeout = Duration::from_secs(
             self.ssh_profile.timeout.map(|t| t as u64).unwrap_or(30)
-        );
-
-        println!("⏰ SSH Terminal {}: Connection timeout set to {} seconds", self.id, connection_timeout.as_secs());
-
-        let result = tokio::time::timeout(connection_timeout, async {
+        );        let result = tokio::time::timeout(connection_timeout, async {
             // Create TCP connection (with proxy support if configured)
             let tcp = if let Some(proxy) = &self.ssh_profile.proxy {
                 self.connect_via_proxy(proxy).await?
@@ -127,10 +120,7 @@ impl SSHTerminal {
         }).await;
 
         match result {
-            Ok(Ok(())) => {
-                println!("SSH connection established successfully for terminal {}", self.id);
-                Ok(())
-            }
+            Ok(Ok(())) => Ok(()),
             Ok(Err(e)) => {
                 self.state = TerminalState::Disconnected;
                 Err(e)
@@ -434,7 +424,7 @@ impl SSHTerminal {
                     thread::sleep(Duration::from_millis(1));
                 }
 
-                eprintln!("SSH terminal {}: Read loop terminated", terminal_id);
+
             });
 
             Ok(())

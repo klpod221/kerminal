@@ -46,14 +46,10 @@ export async function createSSHTerminal(
   profileId: string,
 ): Promise<CreateTerminalResponse> {
   try {
-    console.log("🚀 Frontend: Creating SSH terminal with profile ID:", profileId);
-    const result = await api.call<CreateTerminalResponse>("create_ssh_terminal", {
+    return await api.call<CreateTerminalResponse>("create_ssh_terminal", {
       profileId,
     });
-    console.log("✅ Frontend: SSH terminal created successfully:", result);
-    return result;
   } catch (error) {
-    console.error("❌ Frontend: Failed to create SSH terminal:", error);
     throw error;
   }
 }

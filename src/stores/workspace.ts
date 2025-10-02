@@ -1047,10 +1047,8 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    * @param terminalId - The terminal ID that is ready
    */
   const terminalReady = async (terminalId: string): Promise<void> => {
-    console.log("🎯 Workspace: Terminal ready event for ID:", terminalId);
     const terminal = terminals.value.find((t) => t.id === terminalId);
     if (terminal) {
-      console.log("✅ Workspace: Found terminal instance, setting ready state");
       terminal.ready = true;
 
       // Clear the shouldFocusOnReady flag after use
@@ -1083,16 +1081,12 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
             profileId = tab.profileId;
           }
 
-          console.log("🔧 Workspace: Creating backend terminal...", { title, profileId, isSSH: !!profileId });
-
           let response;
           if (profileId) {
             // This is an SSH terminal
-            console.log("🔐 Workspace: Creating SSH terminal with profile ID:", profileId);
             response = await createSSHTerminal(profileId);
           } else {
             // This is a local terminal
-            console.log("🖥️ Workspace: Creating local terminal");
             response = await createLocalTerminal(
               undefined,
               undefined,
@@ -1102,17 +1096,14 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
           // Store the backend terminal ID
           terminal.backendTerminalId = response.terminalId;
-          console.log("✅ Workspace: Backend terminal created with ID:", response.terminalId);
         } catch (error) {
-          console.error("❌ Workspace: Failed to create terminal:", error);
+          console.error("Failed to create terminal:", error);
           // Clear the connecting state if it was an SSH connection
           if (terminal.isSSHConnecting) {
             terminal.isSSHConnecting = false;
           }
         }
       }
-    } else {
-      console.warn("⚠️ Workspace: Terminal not found for ready event:", terminalId);
     }
   };
 
