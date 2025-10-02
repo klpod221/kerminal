@@ -3,6 +3,6 @@ pub mod profile;
 
 pub use group::{CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest};
 pub use profile::{
-    AuthData, CreateSSHProfileRequest, ProxyConfig, ProxyType, SSHProfile,
+    AuthData, CreateSSHProfileRequest, SSHProfile,
     UpdateSSHProfileRequest,
 };
