@@ -1,18 +1,34 @@
 use crate::database::encryption::master_password::SetupMasterPasswordRequest;
 use crate::models::auth::{VerifyMasterPasswordRequest, ChangeMasterPasswordRequest};
 use crate::state::AppState;
-use tauri::State;
+use tauri::{State, AppHandle};
 
 use super::common::app_result;
 
 /// Setup master password for first time
 #[tauri::command]
 pub async fn setup_master_password(
+    app: AppHandle,
     state: State<'_, AppState>,
     request: SetupMasterPasswordRequest,
 ) -> Result<(), String> {
     let auth_service = &state.auth_service;
-    app_result!(auth_service.setup_master_password(request).await)
+
+    // Setup master password first
+    let result = auth_service.setup_master_password(request).await;
+
+    match result {
+        Ok(()) => {
+            // If setup successful, restart the app after a small delay
+            let app_clone = app.clone();
+            tokio::spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                let _ = app_clone.restart();
+            });
+            Ok(())
+        }
+        Err(e) => Err(e.to_string())
+    }
 }
 
 /// Verify master password

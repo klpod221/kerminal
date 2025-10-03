@@ -19,6 +19,7 @@ async fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             // Dashboard commands
