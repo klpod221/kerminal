@@ -318,7 +318,7 @@ onMounted(async () => {
     fontSize: 14,
     lineHeight: 1,
     cols: 110,
-    rows: 28,
+    rows: 30,
     theme: {
       background: "#171717",
       foreground: "#d4d4d4",
