@@ -88,7 +88,6 @@ export interface SSHProfile extends BaseModel {
   proxy?: ProxyConfig;
   color?: string;
   description?: string;
-  tags: string[];
 }
 
 /**
@@ -145,7 +144,6 @@ export interface CreateSSHProfileRequest {
   color?: string;
   icon?: string;
   description?: string;
-  tags?: string[];
 }
 
 /**
@@ -166,7 +164,6 @@ export interface UpdateSSHProfileRequest {
   color?: string | null;
   icon?: string | null;
   description?: string | null;
-  tags?: string[];
 }
 
 /**

@@ -141,7 +141,7 @@
           <Input
             id="profile-timeout"
             v-model.number="sshProfile.timeout"
-            label="Timeout (seconds)"
+            label="Timeout (s)"
             type="number"
             placeholder="30"
             :min="1"
@@ -170,12 +170,7 @@
           />
         </div>
 
-        <Input
-          id="profile-tags"
-          v-model="tagsInput"
-          label="Tags (Optional)"
-          placeholder="server, production, database (separated by commas)"
-        />
+
       </Collapsible>
 
       <!-- Proxy Configuration -->
@@ -351,7 +346,7 @@ const sshProfile = ref({
 // Auth-specific data
 const authPassword = ref("");
 const authKeyId = ref("");
-const tagsInput = ref("");
+
 
 // Proxy-specific data
 const enableProxy = ref(false);
@@ -415,8 +410,7 @@ const loadProfile = async () => {
         }
       }
 
-      // Parse tags
-      tagsInput.value = profile.tags?.join(", ") || "";
+
 
       // Parse proxy config
       if (profile.proxy) {
@@ -504,10 +498,6 @@ const handleSubmit = async () => {
     const profileData = {
       ...sshProfile.value,
       authData: buildAuthData(),
-      tags: tagsInput.value
-        .split(",")
-        .map((tag) => tag.trim())
-        .filter(Boolean),
       groupId: sshProfile.value.groupId || undefined,
       proxy: enableProxy.value
         ? {
@@ -566,7 +556,7 @@ watch(
       };
       authPassword.value = "";
       authKeyId.value = "";
-      tagsInput.value = "";
+
 
       // Reset proxy config
       enableProxy.value = false;

@@ -43,7 +43,6 @@ pub struct SSHProfile {
 
     /// Notes
     pub description: Option<String>,
-    pub tags: Vec<String>,
 }
 
 /// Authentication methods supported
@@ -119,7 +118,6 @@ impl SSHProfile {
             proxy: None,
             color: None,
             description: None,
-            tags: Vec::new(),
         }
     }
 
@@ -160,21 +158,7 @@ impl SSHProfile {
         self.base.touch();
     }
 
-    /// Add tag
-    pub fn add_tag(&mut self, tag: String) {
-        if !self.tags.contains(&tag) {
-            self.tags.push(tag);
-            self.base.touch();
-        }
-    }
 
-    /// Remove tag
-    pub fn remove_tag(&mut self, tag: &str) {
-        if let Some(pos) = self.tags.iter().position(|t| t == tag) {
-            self.tags.remove(pos);
-            self.base.touch();
-        }
-    }
 
     /// Static method to get profile by ID (will be implemented in service layer)
     pub async fn get_by_id(
@@ -296,7 +280,6 @@ pub struct CreateSSHProfileRequest {
     pub proxy: Option<ProxyConfig>,
     pub color: Option<String>,
     pub description: Option<String>,
-    pub tags: Option<Vec<String>>,
 }
 
 impl CreateSSHProfileRequest {
@@ -317,7 +300,6 @@ impl CreateSSHProfileRequest {
         profile.compression = self.compression.unwrap_or(false);
         profile.color = self.color;
         profile.description = self.description;
-        profile.tags = self.tags.unwrap_or_default();
 
         profile
     }
@@ -339,7 +321,6 @@ pub struct UpdateSSHProfileRequest {
     pub compression: Option<bool>,
     pub color: Option<Option<String>>,
     pub description: Option<Option<String>>,
-    pub tags: Option<Vec<String>>,
 }
 
 /// Request to test SSH connection (minimal required fields)
@@ -375,7 +356,6 @@ impl TestSSHConnectionRequest {
             proxy: self.proxy,
             color: None,
             description: None,
-            tags: Vec::new(),
         }
     }
 }
@@ -417,9 +397,6 @@ impl UpdateSSHProfileRequest {
         }
         if let Some(description) = self.description {
             profile.description = description;
-        }
-        if let Some(tags) = self.tags {
-            profile.tags = tags;
         }
 
         profile.base.touch();

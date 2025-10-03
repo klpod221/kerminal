@@ -125,3 +125,27 @@ export function formatFrequency(frequency: number): string {
   }
   return `${frequency} MHz`;
 }
+
+/**
+ * Format SSH key fingerprint for display (truncate if too long)
+ * @param {string} fingerprint - SSH key fingerprint
+ * @param {number} maxLength - Maximum length before truncation
+ * @returns {string}
+ */
+export function formatFingerprint(fingerprint: string, maxLength: number = 60): string {
+  if (!fingerprint) return "";
+  // Format: SHA256:ab:cd:ef:12:34:56...
+  return fingerprint.length > maxLength
+    ? fingerprint.substring(0, maxLength) + "..."
+    : fingerprint;
+}
+
+/**
+ * Format date string to relative time, with "Never" fallback
+ * @param {string | null | undefined} dateString - Date string to format
+ * @returns {string}
+ */
+export function formatDateOrNever(dateString: string | null | undefined): string {
+  if (!dateString) return "Never";
+  return formatRelativeTime(new Date(dateString));
+}

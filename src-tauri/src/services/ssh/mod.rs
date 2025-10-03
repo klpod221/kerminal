@@ -163,6 +163,7 @@ impl SSHService {
             "test-connection".to_string(),
             config,
             profile,
+            Some(self.database_service.clone()),
         ).map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
 
         // Attempt to connect with resolved data

@@ -4,7 +4,6 @@ pub mod ssh;
 use crate::database::service::DatabaseService;
 use crate::error::AppError;
 use crate::models::terminal::{TerminalConfig, TerminalExited, TerminalState, TerminalType};
-use crate::services::ssh::SSHKeyService;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
@@ -115,21 +114,11 @@ impl TerminalWrapper {
 pub struct TerminalFactory;
 
 impl TerminalFactory {
-    /// Create a new terminal instance based on configuration
+    /// Create a new terminal instance with SSH key service for key resolution
     pub async fn create_terminal(
         id: String,
         config: TerminalConfig,
-        database_service: Option<Arc<Mutex<DatabaseService>>>,
-    ) -> Result<TerminalWrapper, AppError> {
-        Self::create_terminal_with_key_service(id, config, database_service, None).await
-    }
-
-    /// Create a new terminal instance with SSH key service for key resolution
-    pub async fn create_terminal_with_key_service(
-        id: String,
-        config: TerminalConfig,
-        database_service: Option<Arc<Mutex<DatabaseService>>>,
-        ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
+        database_service: Option<Arc<Mutex<DatabaseService>>>
     ) -> Result<TerminalWrapper, AppError> {
         match config.terminal_type {
             TerminalType::Local => {
@@ -167,6 +156,7 @@ impl TerminalFactory {
                     id,
                     config,
                     ssh_profile,
+                    Some(database_service),
                 )?))
             }
         }

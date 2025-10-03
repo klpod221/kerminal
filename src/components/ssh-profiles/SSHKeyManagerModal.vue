@@ -101,10 +101,15 @@
             <!-- Footer -->
             <div class="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
               <div>
-                Created: {{ formatDate(key.createdAt) }}
+                Created: {{ formatDateOrNever(key.createdAt) }}
               </div>
-              <div v-if="key.lastUsed">
-                Last used: {{ formatDate(key.lastUsed) }}
+              <div class="flex items-center gap-2">
+                <div v-if="key.lastUsed" class="text-green-400">
+                  Last used: {{ formatDateOrNever(key.lastUsed) }}
+                </div>
+                <div v-else class="text-gray-500">
+                  Never used
+                </div>
               </div>
             </div>
           </div>
@@ -163,6 +168,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import Modal from "../ui/Modal.vue";
+import { formatFingerprint, formatDateOrNever } from "../../utils/formatter";
 import Card from "../ui/Card.vue";
 import Button from "../ui/Button.vue";
 import { Key, Plus, Edit3, Trash2, AlertTriangle } from "lucide-vue-next";
@@ -175,6 +181,7 @@ const sshKeyStore = useSshKeyStore();
 const { openOverlay, isOverlayVisible } = useOverlay();
 
 // State
+// Reactive state
 const deleteState = ref({
   isVisible: false,
   key: null as SSHKey | null,
@@ -226,31 +233,6 @@ const getKeyTypeColor = (keyType: string): string => {
     DSA: "bg-orange-500/20 text-orange-400",
   };
   return colors[keyType] || "bg-gray-500/20 text-gray-400";
-};
-
-const formatFingerprint = (fingerprint: string): string => {
-  if (!fingerprint) return "";
-  // Format: SHA256:ab:cd:ef:12:34:56...
-  return fingerprint.length > 60
-    ? fingerprint.substring(0, 60) + "..."
-    : fingerprint;
-};
-
-const formatDate = (dateString: string): string => {
-  if (!dateString) return "Never";
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-
-  return date.toLocaleDateString();
 };
 
 // Load keys on mount

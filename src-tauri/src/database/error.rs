@@ -116,6 +116,3 @@ pub type DatabaseResult<T> = Result<T, DatabaseError>;
 
 /// Convenient Result type for encryption operations
 pub type EncryptionResult<T> = Result<T, EncryptionError>;
-
-/// Convenient Result type for SSH operations
-pub type SSHResult<T> = Result<T, SSHError>;

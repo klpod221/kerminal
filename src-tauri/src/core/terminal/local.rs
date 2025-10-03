@@ -131,7 +131,7 @@ impl LocalTerminal {
 
             // Wait for the process to exit
             match child.wait() {
-                Ok(exit_status) => {
+                Ok(_) => {
 
                 }
                 Err(e) => {

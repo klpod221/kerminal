@@ -1,19 +1,18 @@
-use crate::models::ssh::{AuthData, SSHProfile};
-use crate::models::ssh::key::ResolvedSSHKey;
 use crate::error::AppError;
+use crate::models::ssh::key::ResolvedSSHKey;
+use crate::models::ssh::{AuthData, SSHProfile};
 use crate::models::terminal::{TerminalConfig, TerminalState};
+use async_trait::async_trait;
 use russh::client::{Handle, Handler, Session};
-use russh::{ChannelId, Disconnect, Channel, client::Msg};
+use russh::{client::Msg, Channel, ChannelId, Disconnect};
 use russh_keys::key::PublicKey;
+use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
-use std::path::Path;
-use async_trait::async_trait;
-
 
 /// SSH client handler implementation
 #[derive(Clone)]
-struct ClientHandler {
+pub struct ClientHandler {
     output_sender: Arc<Mutex<Option<mpsc::UnboundedSender<Vec<u8>>>>>,
     exit_sender: Arc<Mutex<Option<mpsc::UnboundedSender<crate::models::terminal::TerminalExited>>>>,
     terminal_id: Arc<Mutex<String>>,
@@ -32,7 +31,10 @@ impl ClientHandler {
         *self.output_sender.lock().await = Some(sender);
     }
 
-    async fn set_exit_sender(&self, sender: mpsc::UnboundedSender<crate::models::terminal::TerminalExited>) {
+    async fn set_exit_sender(
+        &self,
+        sender: mpsc::UnboundedSender<crate::models::terminal::TerminalExited>,
+    ) {
         *self.exit_sender.lock().await = Some(sender);
     }
 }
@@ -119,6 +121,7 @@ pub struct SSHTerminal {
     session: Option<Handle<ClientHandler>>,
     channel: Option<Channel<Msg>>,
     handler: Arc<ClientHandler>,
+    database_service: Option<Arc<tokio::sync::Mutex<crate::database::service::DatabaseService>>>,
 }
 
 impl SSHTerminal {
@@ -127,6 +130,7 @@ impl SSHTerminal {
         id: String,
         config: TerminalConfig,
         ssh_profile: SSHProfile,
+        database_service: Option<Arc<tokio::sync::Mutex<crate::database::service::DatabaseService>>>,
     ) -> Result<Self, AppError> {
         let handler = Arc::new(ClientHandler::new(id.clone()));
         Ok(SSHTerminal {
@@ -137,10 +141,9 @@ impl SSHTerminal {
             session: None,
             channel: None,
             handler,
+            database_service,
         })
     }
-
-
 
     /// Connect to the SSH server
     pub async fn connect(&mut self) -> Result<(), AppError> {
@@ -148,8 +151,14 @@ impl SSHTerminal {
     }
 
     /// Connect to the SSH server with optionally resolved key data
-    pub async fn connect_with_resolved_data(&mut self, resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>) -> Result<(), AppError> {
-        println!("Connecting to SSH server {}:{}", self.ssh_profile.host, self.ssh_profile.port);
+    pub async fn connect_with_resolved_data(
+        &mut self,
+        resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>,
+    ) -> Result<(), AppError> {
+        println!(
+            "Connecting to SSH server {}:{}",
+            self.ssh_profile.host, self.ssh_profile.port
+        );
 
         self.state = TerminalState::Connecting;
 
@@ -161,27 +170,29 @@ impl SSHTerminal {
 
         // Connect to the server
         let handler = (*self.handler).clone();
-        let mut session = russh::client::connect(config, (self.ssh_profile.host.as_str(), self.ssh_profile.port), handler)
-            .await
-            .map_err(|e| {
-                self.state = TerminalState::Disconnected;
-                AppError::connection_failed(format!(
-                    "Failed to connect to SSH server {}:{}: {}",
-                    self.ssh_profile.host, self.ssh_profile.port, e
-                ))
-            })?;
+        let mut session = russh::client::connect(
+            config,
+            (self.ssh_profile.host.as_str(), self.ssh_profile.port),
+            handler,
+        )
+        .await
+        .map_err(|e| {
+            self.state = TerminalState::Disconnected;
+            AppError::connection_failed(format!(
+                "Failed to connect to SSH server {}:{}: {}",
+                self.ssh_profile.host, self.ssh_profile.port, e
+            ))
+        })?;
 
         // Authenticate with resolved data
-        self.authenticate_with_resolved_data(&mut session, resolved_key).await?;
+        self.authenticate_with_resolved_data(&mut session, resolved_key)
+            .await?;
 
         // Create a channel
-        let channel = session
-            .channel_open_session()
-            .await
-            .map_err(|e| {
-                self.state = TerminalState::Disconnected;
-                AppError::terminal_error(format!("Failed to open SSH channel: {}", e))
-            })?;
+        let channel = session.channel_open_session().await.map_err(|e| {
+            self.state = TerminalState::Disconnected;
+            AppError::terminal_error(format!("Failed to open SSH channel: {}", e))
+        })?;
 
         // Request PTY
         let _ = channel
@@ -192,7 +203,10 @@ impl SSHTerminal {
                 24,
                 0,
                 0,
-                &[(russh::Pty::TTY_OP_ISPEED, 38400), (russh::Pty::TTY_OP_OSPEED, 38400)],
+                &[
+                    (russh::Pty::TTY_OP_ISPEED, 38400),
+                    (russh::Pty::TTY_OP_OSPEED, 38400),
+                ],
             )
             .await;
 
@@ -211,7 +225,7 @@ impl SSHTerminal {
     pub async fn authenticate_with_resolved_data(
         &mut self,
         session: &mut Handle<ClientHandler>,
-        resolved_key: Option<ResolvedSSHKey>
+        resolved_key: Option<ResolvedSSHKey>,
     ) -> Result<(), AppError> {
         let username = &self.ssh_profile.username;
 
@@ -243,21 +257,21 @@ impl SSHTerminal {
                 })?;
 
                 let key = if Path::new(&key_data.private_key).exists() {
-                    russh_keys::load_secret_key(&key_data.private_key, key_data.passphrase.as_deref())
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!(
-                                "Failed to load SSH key: {}",
-                                e
-                            ))
-                        })?
+                    russh_keys::load_secret_key(
+                        &key_data.private_key,
+                        key_data.passphrase.as_deref(),
+                    )
+                    .map_err(|e| {
+                        AppError::authentication_failed(format!("Failed to load SSH key: {}", e))
+                    })?
                 } else {
-                    russh_keys::decode_secret_key(&key_data.private_key, key_data.passphrase.as_deref())
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!(
-                                "Failed to parse SSH key: {}",
-                                e
-                            ))
-                        })?
+                    russh_keys::decode_secret_key(
+                        &key_data.private_key,
+                        key_data.passphrase.as_deref(),
+                    )
+                    .map_err(|e| {
+                        AppError::authentication_failed(format!("Failed to parse SSH key: {}", e))
+                    })?
                 };
 
                 let result = session
@@ -276,15 +290,19 @@ impl SSHTerminal {
                         username
                     )));
                 }
+
+                // Mark SSH key as used after successful authentication
+                if let Some(db_service) = &self.database_service {
+                    let db = db_service.lock().await;
+                    if let Err(e) = db.mark_key_used(key_id).await {
+                        // Log error but don't fail the connection
+                        eprintln!("Warning: Failed to mark SSH key {} as used: {}", key_id, e);
+                    }
+                }
             }
         }
 
         Ok(())
-    }
-
-    /// Legacy authenticate method (for backward compatibility)
-    async fn authenticate(&mut self, session: &mut Handle<ClientHandler>) -> Result<(), AppError> {
-        self.authenticate_with_resolved_data(session, None).await
     }
 
     /// Disconnect from the SSH terminal
@@ -295,7 +313,9 @@ impl SSHTerminal {
         }
 
         if let Some(session) = self.session.take() {
-            let _ = session.disconnect(Disconnect::ByApplication, "", "en").await;
+            let _ = session
+                .disconnect(Disconnect::ByApplication, "", "en")
+                .await;
         }
 
         self.state = TerminalState::Disconnected;
@@ -308,7 +328,9 @@ impl SSHTerminal {
         if let Some(session) = &self.session {
             if session.is_closed() {
                 self.state = TerminalState::Disconnected;
-                return Err(AppError::terminal_error("SSH session is closed".to_string()));
+                return Err(AppError::terminal_error(
+                    "SSH session is closed".to_string(),
+                ));
             }
         }
 
@@ -323,7 +345,8 @@ impl SSHTerminal {
                 "SSH terminal not connected".to_string(),
             ))
         }
-    }    /// Resize the SSH terminal
+    }
+    /// Resize the SSH terminal
     pub async fn resize(&mut self, cols: u16, rows: u16) -> Result<(), AppError> {
         if let Some(channel) = &mut self.channel {
             channel

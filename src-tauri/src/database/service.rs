@@ -18,9 +18,11 @@ use crate::database::{
 };
 use crate::models::{
     auth::{Device, DeviceInfo},
-    ssh::{CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
-          SSHGroup, SSHKey, SSHProfile, UpdateSSHGroupRequest, UpdateSSHKeyRequest,
-          UpdateSSHProfileRequest},
+    ssh::{
+        CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
+        SSHGroup, SSHKey, SSHProfile, UpdateSSHGroupRequest, UpdateSSHKeyRequest,
+        UpdateSSHProfileRequest,
+    },
     sync::SyncStats,
 };
 
@@ -128,7 +130,8 @@ impl DatabaseService {
 
         // Create new master password manager with the new device_id
         let master_password_config = self.config.master_password_config.clone();
-        let mut new_mp_manager = MasterPasswordManager::new(new_device.device_id.clone(), master_password_config);
+        let mut new_mp_manager =
+            MasterPasswordManager::new(new_device.device_id.clone(), master_password_config);
 
         // Setup master password with new manager
         let entry = new_mp_manager.setup_master_password(request).await?;
@@ -261,21 +264,17 @@ impl DatabaseService {
     }
 
     /// Re-encrypt all sensitive data after password change
-    async fn re_encrypt_all_data(
-        &self,
-        new_entry: &MasterPasswordEntry,
-    ) -> DatabaseResult<()> {
+    async fn re_encrypt_all_data(&self, new_entry: &MasterPasswordEntry) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
 
         match self.re_encrypt_ssh_profiles(&*local_db, new_entry).await {
             Ok(_) => {}
             Err(e) => {
                 return Err(crate::database::error::DatabaseError::Internal(
-                    anyhow::anyhow!("Failed to re-encrypt SSH profiles: {}", e)
+                    anyhow::anyhow!("Failed to re-encrypt SSH profiles: {}", e),
                 ));
             }
         }
-
 
         Ok(())
     }
@@ -323,10 +322,12 @@ impl DatabaseService {
 
         if !errors.is_empty() {
             return Err(crate::database::error::DatabaseError::Internal(
-                anyhow::anyhow!("Failed to re-encrypt some SSH profiles: {}", errors.join("; "))
+                anyhow::anyhow!(
+                    "Failed to re-encrypt some SSH profiles: {}",
+                    errors.join("; ")
+                ),
             ));
         }
-
 
         Ok(re_encrypted_count)
     }
@@ -337,11 +338,16 @@ impl DatabaseService {
         let mut mp_manager = self.master_password_manager.write().await;
 
         // 1. Clear all memory and keychain data
-        mp_manager.reset_master_password().await
+        mp_manager
+            .reset_master_password()
+            .await
             .map_err(DatabaseError::from)?;
 
         // 2. Delete master password entry from database
-        if let Err(e) = local_db.delete_master_password_entry(&self.current_device.device_id).await {
+        if let Err(e) = local_db
+            .delete_master_password_entry(&self.current_device.device_id)
+            .await
+        {
             eprintln!("Warning: Failed to delete master password entry: {}", e);
         }
 
@@ -349,7 +355,10 @@ impl DatabaseService {
         let profiles = local_db.find_all_ssh_profiles().await?;
         for profile in profiles {
             if let Err(e) = local_db.delete_ssh_profile(&profile.base.id).await {
-                eprintln!("Warning: Failed to delete SSH profile {}: {}", profile.name, e);
+                eprintln!(
+                    "Warning: Failed to delete SSH profile {}: {}",
+                    profile.name, e
+                );
             }
         }
 
@@ -401,11 +410,13 @@ impl DatabaseService {
     pub async fn update_master_password_config(
         &self,
         auto_unlock: bool,
-        auto_lock_timeout: Option<u32>
+        auto_lock_timeout: Option<u32>,
     ) -> DatabaseResult<()> {
         // Update the config in the manager
         let mut mp_manager = self.master_password_manager.write().await;
-        mp_manager.update_config(auto_unlock, auto_lock_timeout).await?;
+        mp_manager
+            .update_config(auto_unlock, auto_lock_timeout)
+            .await?;
 
         // Update the database entry
         let local_db = self.local_db.read().await;
@@ -431,7 +442,7 @@ impl DatabaseService {
         &self,
         auto_unlock: bool,
         auto_lock_timeout: Option<u32>,
-        password: Option<String>
+        password: Option<String>,
     ) -> DatabaseResult<()> {
         // Update the config in the manager
         let mut mp_manager = self.master_password_manager.write().await;
@@ -446,17 +457,20 @@ impl DatabaseService {
                     .await?
                 {
                     // Create a temporary verification request
-                    let verification_req = crate::database::encryption::master_password::VerifyMasterPasswordRequest {
-                        password: pwd.clone(),
-                        device_id: None,
-                    };
+                    let verification_req =
+                        crate::database::encryption::master_password::VerifyMasterPasswordRequest {
+                            password: pwd.clone(),
+                            device_id: None,
+                        };
 
-                    let is_valid = mp_manager.verify_master_password(verification_req, &entry).await
+                    let is_valid = mp_manager
+                        .verify_master_password(verification_req, &entry)
+                        .await
                         .map_err(|e| crate::database::error::DatabaseError::from(e))?;
 
                     if !is_valid {
                         return Err(crate::database::error::DatabaseError::AuthenticationFailed(
-                            "Invalid master password".to_string()
+                            "Invalid master password".to_string(),
                         ));
                     }
 
@@ -465,15 +479,18 @@ impl DatabaseService {
                     return Err(crate::database::error::DatabaseError::MasterPasswordRequired);
                 }
             } else {
-
             }
         }
 
         // Handle keychain operations by calling the appropriate method
         if password.is_some() {
-            mp_manager.update_config_with_keychain(auto_unlock, auto_lock_timeout, password).await?;
+            mp_manager
+                .update_config_with_keychain(auto_unlock, auto_lock_timeout, password)
+                .await?;
         } else {
-            mp_manager.update_config(auto_unlock, auto_lock_timeout).await?;
+            mp_manager
+                .update_config(auto_unlock, auto_lock_timeout)
+                .await?;
         }
 
         // Update the database entry
@@ -496,7 +513,9 @@ impl DatabaseService {
     }
 
     /// Get master password configuration
-    pub async fn get_master_password_config(&self) -> DatabaseResult<crate::database::config::MasterPasswordConfig> {
+    pub async fn get_master_password_config(
+        &self,
+    ) -> DatabaseResult<crate::database::config::MasterPasswordConfig> {
         let mp_manager = self.master_password_manager.read().await;
         Ok(mp_manager.get_config().clone())
     }

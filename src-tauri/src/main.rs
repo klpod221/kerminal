@@ -21,7 +21,9 @@ async fn main() {
         .plugin(tauri_plugin_opener::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
+            // Dashboard commands
             commands::dashboard::get_system_info,
+            // Terminal commands
             commands::terminal::create_terminal,
             commands::terminal::create_ssh_terminal,
             commands::terminal::write_to_terminal,
@@ -30,12 +32,19 @@ async fn main() {
             commands::terminal::close_terminal,
             commands::terminal::get_terminal_info,
             commands::terminal::list_terminals,
+            // Terminal Buffer commands
             commands::buffer::get_terminal_buffer,
             commands::buffer::get_terminal_buffer_chunk,
             commands::buffer::has_terminal_buffer,
             commands::buffer::get_buffer_stats,
             commands::buffer::cleanup_terminal_buffers,
+            // System commands
             commands::system::get_user_hostname,
+            // Auth event commands
+            commands::auth_events::notify_session_unlocked,
+            commands::auth_events::notify_session_locked,
+            commands::auth_events::get_auth_session_status,
+            // Database commands
             commands::database::auth::setup_master_password,
             commands::database::auth::verify_master_password,
             commands::database::auth::try_auto_unlock,
@@ -47,9 +56,6 @@ async fn main() {
             commands::database::auth::get_master_password_config,
             commands::database::auth::get_current_device,
             commands::database::auth::update_master_password_config,
-            commands::auth_events::notify_session_unlocked,
-            commands::auth_events::notify_session_locked,
-            commands::auth_events::get_auth_session_status,
             commands::database::ssh::create_ssh_group,
             commands::database::ssh::get_ssh_groups,
             commands::database::ssh::get_ssh_group,

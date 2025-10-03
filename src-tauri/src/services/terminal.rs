@@ -62,30 +62,40 @@ impl TerminalManager {
     ) -> Result<CreateTerminalResponse, AppError> {
         let terminal_id = Uuid::new_v4().to_string();
 
-        let mut terminal = TerminalFactory::create_terminal_with_key_service(
+        let mut terminal = TerminalFactory::create_terminal(
             terminal_id.clone(),
             request.config.clone(),
             Some(self.database_service.clone()),
-            self.ssh_key_service.clone(),
         )
         .await?;
 
         // Resolve SSH key if needed
-        let resolved_key = if matches!(request.config.terminal_type, crate::models::terminal::TerminalType::SSH) {
+        let resolved_key = if matches!(
+            request.config.terminal_type,
+            crate::models::terminal::TerminalType::SSH
+        ) {
             if let Some(ssh_key_service) = &self.ssh_key_service {
                 if let Some(ssh_profile_id) = &request.config.ssh_profile_id {
                     // Get SSH profile to check auth data
                     let ssh_profile = {
                         let db_service = self.database_service.lock().await;
-                        db_service.get_ssh_profile(ssh_profile_id).await
+                        db_service
+                            .get_ssh_profile(ssh_profile_id)
+                            .await
                             .map_err(|e| AppError::Database(e.to_string()))?
                     };
 
                     // Resolve key if it's a KeyReference
-                    if let crate::models::ssh::profile::AuthData::KeyReference { key_id } = &ssh_profile.auth_data {
+                    if let crate::models::ssh::profile::AuthData::KeyReference { key_id } =
+                        &ssh_profile.auth_data
+                    {
                         let key_service = ssh_key_service.lock().await;
-                        Some(key_service.resolve_key_for_auth(key_id).await
-                            .map_err(|e| AppError::Database(e.to_string()))?)
+                        Some(
+                            key_service
+                                .resolve_key_for_auth(key_id)
+                                .await
+                                .map_err(|e| AppError::Database(e.to_string()))?,
+                        )
                     } else {
                         None
                     }
@@ -101,7 +111,9 @@ impl TerminalManager {
 
         // Attempt connection with error handling
         let connect_result = if let Some(resolved_key) = resolved_key {
-            terminal.connect_with_resolved_data(Some(resolved_key)).await
+            terminal
+                .connect_with_resolved_data(Some(resolved_key))
+                .await
         } else {
             terminal.connect().await
         };
@@ -120,7 +132,10 @@ impl TerminalManager {
             return Err(e);
         } else {
             // Connection successful - emit success event for SSH terminals
-            if matches!(request.config.terminal_type, crate::models::terminal::TerminalType::SSH) {
+            if matches!(
+                request.config.terminal_type,
+                crate::models::terminal::TerminalType::SSH
+            ) {
                 if let Some(handle) = &app_handle {
                     let success_event = serde_json::json!({
                         "terminalId": terminal_id
@@ -128,7 +143,8 @@ impl TerminalManager {
                     let _ = handle.emit("ssh-connected", &success_event);
                 }
             }
-        }        let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
+        }
+        let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
         let (title_tx, mut title_rx) = mpsc::unbounded_channel::<String>();
         let (exit_tx, mut exit_rx) = mpsc::unbounded_channel::<TerminalExited>();
 

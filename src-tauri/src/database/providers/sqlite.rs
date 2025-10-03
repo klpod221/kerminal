@@ -81,7 +81,6 @@ impl Database for SQLiteProvider {
                 group_id TEXT,
                 auth_method TEXT NOT NULL,
                 auth_data TEXT NOT NULL,
-                tags TEXT NOT NULL DEFAULT '[]',
                 description TEXT,
                 color TEXT,
                 timeout INTEGER,
@@ -339,7 +338,7 @@ impl Database for SQLiteProvider {
             r#"
             INSERT OR REPLACE INTO ssh_profiles (
                 id, name, host, port, username, group_id, auth_method, auth_data,
-                tags, description, color, created_at, updated_at,
+                description, color, created_at, updated_at,
                 device_id, version, sync_status
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
@@ -352,7 +351,7 @@ impl Database for SQLiteProvider {
         .bind(&model.group_id)
         .bind(serde_json::to_string(&model.auth_method).unwrap_or_default())
         .bind(serde_json::to_string(&model.auth_data).unwrap_or_default())
-        .bind(serde_json::to_string(&model.tags).unwrap_or_default())
+
         .bind(&model.description)
         .bind(&model.color)
         .bind(model.base.created_at)
@@ -372,7 +371,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let row = sqlx::query(
-            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, tags, description, color, timeout, keep_alive, compression, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
+            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, description, color, timeout, keep_alive, compression, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&*pool)
@@ -412,7 +411,6 @@ impl Database for SQLiteProvider {
                 compression: row.get("compression"),
                 color: row.get("color"),
                 description: row.get("description"),
-                tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
                 proxy: None,
             };
             Ok(Some(profile))
@@ -426,7 +424,7 @@ impl Database for SQLiteProvider {
         let pool = pool.read().await;
 
         let rows = sqlx::query(
-            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, tags, description, color, timeout, keep_alive, compression, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY name"
+            "SELECT id, name, host, port, username, group_id, auth_method, auth_data, description, color, timeout, keep_alive, compression, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY name"
         )
         .fetch_all(&*pool)
         .await
@@ -466,7 +464,6 @@ impl Database for SQLiteProvider {
                 compression: row.get("compression"),
                 color: row.get("color"),
                 description: row.get("description"),
-                tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
                 proxy: None, // TODO: Implement proxy support in database
             };
             profiles.push(profile);
