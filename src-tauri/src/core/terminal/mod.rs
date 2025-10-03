@@ -94,8 +94,9 @@ impl TerminalWrapper {
                     .await
             }
             TerminalWrapper::SSH(terminal) => {
-                // SSH doesn't support title detection and exit events yet
-                terminal.start_read_loop(sender).await
+                terminal
+                    .start_read_loop(sender, title_sender, exit_sender)
+                    .await
             }
         }
     }

@@ -30,16 +30,68 @@
         </div>
       </div>
     </div>
+
+    <!-- Connection Lost Overlay with Reconnect -->
+    <div
+      v-if="showDisconnectedOverlay"
+      class="absolute inset-0 bg-[#171717]/95 flex items-center justify-center z-50"
+    >
+      <div class="flex flex-col items-center space-y-6 max-w-md px-4">
+        <!-- Error icon -->
+        <div class="relative">
+          <div
+            class="rounded-full h-16 w-16 border-2 border-red-500/50 bg-red-500/10 flex items-center justify-center"
+          >
+            <component
+              :is="XCircle"
+              class="h-8 w-8 text-red-400"
+            />
+          </div>
+        </div>
+
+        <!-- Message text -->
+        <div class="text-center">
+          <p class="text-lg font-medium text-white mb-2">
+            Connection Lost
+          </p>
+          <p class="text-sm text-gray-400">
+            The terminal connection was unexpectedly closed
+          </p>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex gap-3">
+          <Button
+            v-if="canReconnect"
+            variant="primary"
+            size="md"
+            :icon="RefreshCw"
+            text="Reconnect"
+            @click="handleReconnect"
+          />
+          <Button
+            variant="secondary"
+            size="md"
+            :icon="X"
+            text="Close Tab"
+            @click="handleCloseTab"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, nextTick, onBeforeUnmount, watch } from "vue";
+import { onMounted, ref, nextTick, onBeforeUnmount, watch, computed } from "vue";
 import { debounce } from "../../utils/helpers";
 import { resizeTerminal } from "../../services/terminal";
 import { TerminalBufferManager, InputBatcher } from "../../core";
 import type { SimpleTerminal } from "../../core";
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { useWorkspaceStore } from "../../stores/workspace";
+import { XCircle, RefreshCw, X } from "lucide-vue-next";
+import Button from "./Button.vue";
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -72,6 +124,50 @@ const emit = defineEmits<{
 const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
+
+// Get workspace store for terminal state
+const workspaceStore = useWorkspaceStore();
+
+// Computed properties for overlay display
+const currentTerminal = computed(() =>
+  workspaceStore.terminals.find(t => t.id === props.terminalId)
+);
+
+const showDisconnectedOverlay = computed(() =>
+  currentTerminal.value?.disconnectReason === "connection-lost"
+);
+
+const canReconnect = computed(() =>
+  currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId
+);
+
+// Handler functions for overlay actions
+const handleReconnect = () => {
+  if (currentTerminal.value?.sshProfileId) {
+    workspaceStore.reconnectSSH(props.terminalId, currentTerminal.value.sshProfileId);
+  }
+};
+
+const handleCloseTab = () => {
+  // Find panel containing this terminal
+  const findPanelWithTab = (layout: any): string | null => {
+    if (layout.type === "panel" && layout.panel) {
+      const hasTab = layout.panel.tabs.some((t: any) => t.id === props.terminalId);
+      if (hasTab) return layout.panel.id;
+    } else if (layout.type === "split" && layout.children) {
+      for (const child of layout.children) {
+        const found = findPanelWithTab(child);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const panelId = findPanelWithTab(workspaceStore.panelLayout);
+  if (panelId) {
+    workspaceStore.closeTab(panelId, props.terminalId);
+  }
+};
 
 // Get buffer manager instance
 const bufferManager = TerminalBufferManager.getInstance();

@@ -244,6 +244,8 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       ready: false,
       shouldFocusOnReady: true,
       isSSHConnecting: true, // Mark as SSH connecting
+      sshProfileId: profileId, // Store SSH profile ID for reconnection
+      canReconnect: true, // SSH terminals can reconnect
     };
 
     // Add tab to panel
@@ -300,7 +302,7 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     }
   };
 
-  /**
+    /**
    * Handle SSH connection success for a terminal
    * @param terminalId - The terminal ID that successfully connected
    */
@@ -308,6 +310,33 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     const terminal = terminals.value.find(t => t.id === terminalId);
     if (terminal) {
       terminal.isSSHConnecting = false;
+      terminal.disconnectReason = undefined; // Clear any previous disconnect reason
+    }
+  };
+
+  /**
+   * Reconnect SSH terminal
+   * @param terminalId - The terminal ID to reconnect
+   * @param profileId - The SSH profile ID to use (currently not used but may be needed for validation)
+   */
+  const reconnectSSH = async (terminalId: string, _profileId: string): Promise<void> => {
+    const terminal = terminals.value.find(t => t.id === terminalId);
+    if (!terminal) return;
+
+    // Clear disconnected state and mark as connecting
+    terminal.disconnectReason = undefined;
+    terminal.isSSHConnecting = true;
+    terminal.backendTerminalId = undefined;
+
+    // Trigger terminal ready to recreate backend connection
+    try {
+      // The terminalReady handler will automatically create the backend terminal
+      // because backendTerminalId is now undefined
+      await terminalReady(terminalId);
+    } catch (error) {
+      console.error("Failed to reconnect SSH:", error);
+      terminal.isSSHConnecting = false;
+      terminal.disconnectReason = "connection-lost";
     }
   };
 
@@ -321,7 +350,10 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     if (terminalIndex === -1) return;
     const terminal = terminals.value[terminalIndex];
     if (terminal?.isClosing) return;
-    if (terminal) terminal.isClosing = true;
+    if (terminal) {
+      terminal.isClosing = true;
+      terminal.disconnectReason = "user-closed"; // Mark as user-closed
+    }
     if (terminal?.backendTerminalId) {
       try {
         await closeTerminal(terminal.backendTerminalId);
@@ -1166,7 +1198,7 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       unlistenTerminalExits = await listenToTerminalExit(
         (exitEvent: TerminalExited) => {
           console.log("Terminal exited:", exitEvent);
-          // Find the tab that corresponds to this terminal and close it
+          // Find the tab that corresponds to this terminal
           const findTabByBackendId = (
             layout: PanelLayout,
           ): { panel: Panel; tab: Tab } | undefined => {
@@ -1198,10 +1230,23 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
               return; // Already being closed, skip
             }
 
-            console.log(
-              `Auto-closing tab ${result.tab.id} due to terminal exit`,
-            );
-            closeTab(result.panel.id, result.tab.id);
+            // If reason is user-closed, auto-close the tab
+            if (exitEvent.reason === "user-closed" || terminal?.disconnectReason === "user-closed") {
+              console.log(
+                `Auto-closing tab ${result.tab.id} due to user-initiated close`,
+              );
+              closeTab(result.panel.id, result.tab.id);
+            } else {
+              // Connection lost - show reconnect UI
+              console.log(
+                `Connection lost for tab ${result.tab.id}, showing reconnect UI`,
+              );
+              if (terminal) {
+                terminal.disconnectReason = "connection-lost";
+                terminal.isSSHConnecting = false;
+                terminal.backendTerminalId = undefined; // Clear backend ID for reconnect
+              }
+            }
           }
         },
       );
@@ -1308,6 +1353,7 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     cleanup,
     handleSSHConnectionError,
     handleSSHConnectionSuccess,
+    reconnectSSH,
 
     // Getters/Computed
     findPanelInLayout: (panelId: string) =>

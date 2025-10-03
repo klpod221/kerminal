@@ -247,7 +247,7 @@ import { useWorkspaceStore } from "../../stores/workspace";
 const searchQuery = ref("");
 
 // Composables and store
-const { openOverlay } = useOverlay();
+const { openOverlay, closeOverlay } = useOverlay();
 const sshStore = useSSHStore();
 const workspaceStore = useWorkspaceStore();
 
@@ -336,12 +336,15 @@ const createNewProfile = () => {
 
 const connectToProfile = (profile: SSHProfile) => {
   console.log('Connecting to:', profile.name);
-  
+
   // Get the active panel ID from workspace store
   const activePanelId = workspaceStore.activePanelId || "panel-1";
-  
+
   // Add SSH terminal tab
   workspaceStore.addSSHTab(activePanelId, profile.id, profile.name);
+
+  // Close the drawer after connecting
+  closeOverlay('ssh-profile-drawer');
 };
 
 const editProfile = (profile: SSHProfile) => {
@@ -379,7 +382,7 @@ const availableGroupsForMove = computed(() => {
 const confirmDeleteGroup = (group: SSHGroup) => {
   const groupData = sshStore.groupsWithProfiles.getGroupWithProfiles(group.id);
   const profileCount = groupData?.profileCount || 0;
-  
+
   deleteGroupState.value = {
     isVisible: true,
     group,
@@ -404,7 +407,7 @@ const confirmDeleteGroupAction = async () => {
   deleteGroupState.value.isDeleting = true;
   try {
     let action: DeleteGroupAction;
-    
+
     switch (deleteGroupState.value.action) {
       case "moveToUngrouped":
         action = { actionType: "moveToUngrouped" };

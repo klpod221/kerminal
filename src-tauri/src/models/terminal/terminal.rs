@@ -119,4 +119,6 @@ pub struct TerminalExited {
     pub terminal_id: String,
     #[serde(rename = "exitCode")]
     pub exit_code: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }

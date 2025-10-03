@@ -226,6 +226,7 @@ impl LocalTerminal {
                                 let exit_event = TerminalExited {
                                     terminal_id: terminal_id.clone(),
                                     exit_code: None::<i32>, // Explicitly type the None
+                                    reason: Some("user-closed".to_string()),
                                 };
                                 if let Err(_) = exit_sender.send(exit_event) {
                                     // Channel closed, receiver has been dropped

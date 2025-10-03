@@ -8,7 +8,7 @@ use crate::database::{
 };
 use crate::models::ssh::{
     CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest,
-    CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest,
+    CreateSSHProfileRequest, SSHProfile, TestSSHConnectionRequest, UpdateSSHProfileRequest,
 };
 
 /// SSH service for handling SSH profiles and groups
@@ -119,9 +119,18 @@ impl SSHService {
     }
 
     /// Test SSH connection with a profile
-    pub async fn test_ssh_connection(&self, profile: &SSHProfile) -> DatabaseResult<()> {
+    pub async fn test_ssh_connection(&self, request: TestSSHConnectionRequest) -> DatabaseResult<()> {
         use crate::core::terminal::ssh::SSHTerminal;
         use crate::models::terminal::{TerminalConfig, TerminalType};
+
+        // Get device_id from database service
+        let device_id = {
+            let db_service = self.database_service.lock().await;
+            db_service.get_device_id().to_string()
+        };
+
+        // Convert request to temporary profile
+        let profile = request.to_profile(device_id);
 
         // Create a temporary terminal config for testing
         let config = TerminalConfig {
@@ -132,13 +141,19 @@ impl SSHService {
 
         // Create SSH terminal instance for testing
         let mut ssh_terminal = SSHTerminal::new(
-            "test".to_string(),
+            "test-connection".to_string(),
             config,
-            profile.clone(),
+            profile,
         ).map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
 
         // Attempt to connect (this will test the credentials)
-        ssh_terminal.connect().await
+        let connect_result = ssh_terminal.connect().await;
+
+        // Always disconnect after test, even if connection failed
+        let _ = ssh_terminal.disconnect().await;
+
+        // Return the connection result
+        connect_result
             .map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
 
         Ok(())

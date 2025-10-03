@@ -29,6 +29,9 @@ export interface TerminalInstance {
   backendTerminalId?: string; // ID of the terminal in the backend
   shouldFocusOnReady?: boolean; // Flag to focus terminal when it becomes ready
   isClosing?: boolean; // Flag to prevent double close operations
+  disconnectReason?: "user-closed" | "connection-lost"; // Reason for disconnect
+  canReconnect?: boolean; // Whether reconnect is available (for SSH)
+  sshProfileId?: string; // SSH profile ID for reconnection
 }
 
 // Backend terminal types
@@ -103,4 +106,5 @@ export interface TerminalTitleChanged {
 export interface TerminalExited {
   terminalId: string;
   exitCode?: number;
+  reason?: "user-closed" | "connection-lost" | "error";
 }

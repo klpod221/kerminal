@@ -1,6 +1,6 @@
 use crate::models::ssh::{
     CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest,
-    CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest,
+    CreateSSHProfileRequest, SSHProfile, TestSSHConnectionRequest, UpdateSSHProfileRequest,
 };
 use crate::state::AppState;
 use serde::Deserialize;
@@ -122,9 +122,9 @@ pub async fn duplicate_ssh_profile(
 #[tauri::command]
 pub async fn test_ssh_connection(
     state: State<'_, AppState>,
-    profile: SSHProfile,
+    request: TestSSHConnectionRequest,
 ) -> Result<(), String> {
-    app_result!(state.ssh_service.test_ssh_connection(&profile).await)
+    app_result!(state.ssh_service.test_ssh_connection(request).await)
 }
 
 // === DTOs for Frontend ===

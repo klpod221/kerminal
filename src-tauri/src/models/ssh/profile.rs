@@ -495,6 +495,44 @@ pub struct UpdateSSHProfileRequest {
     pub tags: Option<Vec<String>>,
 }
 
+/// Request to test SSH connection (minimal required fields)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestSSHConnectionRequest {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub auth_method: AuthMethod,
+    pub auth_data: AuthData,
+    pub timeout: Option<u32>,
+    pub keep_alive: bool,
+    pub compression: bool,
+    pub proxy: Option<ProxyConfig>,
+}
+
+impl TestSSHConnectionRequest {
+    /// Convert to a temporary SSHProfile for testing
+    pub fn to_profile(self, device_id: String) -> SSHProfile {
+        SSHProfile {
+            base: BaseModel::new(device_id),
+            name: format!("test-{}", self.host),
+            host: self.host,
+            port: self.port,
+            username: self.username,
+            group_id: None,
+            auth_method: self.auth_method,
+            auth_data: self.auth_data,
+            timeout: self.timeout,
+            keep_alive: self.keep_alive,
+            compression: self.compression,
+            proxy: self.proxy,
+            color: None,
+            description: None,
+            tags: Vec::new(),
+        }
+    }
+}
+
 impl UpdateSSHProfileRequest {
     pub fn apply_to_profile(self, profile: &mut SSHProfile) {
         if let Some(name) = self.name {

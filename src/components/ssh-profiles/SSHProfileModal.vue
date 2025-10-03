@@ -515,7 +515,26 @@ const testConnection = async () => {
 
   isTesting.value = true;
   try {
-    await invoke("test_ssh_connection", { profile: sshProfile.value });
+    // Build test request with only necessary fields
+    const testRequest = {
+      host: sshProfile.value.host,
+      port: sshProfile.value.port,
+      username: sshProfile.value.username,
+      authMethod: sshProfile.value.authMethod,
+      authData: buildAuthData(),
+      timeout: sshProfile.value.timeout || 30,
+      keepAlive: sshProfile.value.keepAlive ?? true,
+      compression: sshProfile.value.compression ?? false,
+      proxy: enableProxy.value ? {
+        proxyType: proxyConfig.value.proxyType,
+        host: proxyConfig.value.host,
+        port: proxyConfig.value.port,
+        username: proxyConfig.value.username || undefined,
+        password: proxyConfig.value.password || undefined,
+      } : undefined,
+    };
+
+    await invoke("test_ssh_connection", { request: testRequest });
     message.success("Connection test successful!");
   } catch (error) {
     console.error("Error testing connection:", error);

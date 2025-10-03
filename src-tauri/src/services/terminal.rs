@@ -56,6 +56,7 @@ impl TerminalManager {
                 let error_event = TerminalExited {
                     terminal_id: terminal_id.clone(),
                     exit_code: Some(1),
+                    reason: Some("error".to_string()),
                 };
                 let _ = handle.emit("terminal-exited", &error_event);
             }

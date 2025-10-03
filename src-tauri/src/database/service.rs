@@ -107,6 +107,11 @@ impl DatabaseService {
         Ok(entry.is_some())
     }
 
+    /// Get current device ID
+    pub fn get_device_id(&self) -> &str {
+        &self.current_device.device_id
+    }
+
     /// Setup master password (first time)
     pub async fn setup_master_password(
         &mut self,
