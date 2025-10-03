@@ -94,6 +94,30 @@ impl Database for MongoDBProvider {
         unimplemented!("MongoDB provider not yet implemented")
     }
 
+    async fn save_ssh_key(&self, _model: &crate::models::ssh::SSHKey) -> DatabaseResult<()> {
+        unimplemented!("MongoDB provider not yet implemented")
+    }
+
+    async fn find_ssh_key_by_id(&self, _id: &str) -> DatabaseResult<Option<crate::models::ssh::SSHKey>> {
+        unimplemented!("MongoDB provider not yet implemented")
+    }
+
+    async fn find_all_ssh_keys(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHKey>> {
+        unimplemented!("MongoDB provider not yet implemented")
+    }
+
+    async fn update_ssh_key(&self, _model: &crate::models::ssh::SSHKey) -> DatabaseResult<()> {
+        unimplemented!("MongoDB provider not yet implemented")
+    }
+
+    async fn delete_ssh_key(&self, _id: &str) -> DatabaseResult<()> {
+        unimplemented!("MongoDB provider not yet implemented")
+    }
+
+    async fn count_profiles_using_key(&self, _key_id: &str) -> DatabaseResult<u32> {
+        unimplemented!("MongoDB provider not yet implemented")
+    }
+
     async fn create_tables(&self) -> DatabaseResult<()> {
         unimplemented!("MongoDB provider not yet implemented")
     }

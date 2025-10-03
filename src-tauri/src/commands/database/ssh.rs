@@ -1,6 +1,7 @@
 use crate::models::ssh::{
-    CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest,
-    CreateSSHProfileRequest, SSHProfile, TestSSHConnectionRequest, UpdateSSHProfileRequest,
+    CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
+    SSHGroup, SSHKey, SSHProfile, TestSSHConnectionRequest, UpdateSSHGroupRequest,
+    UpdateSSHKeyRequest, UpdateSSHProfileRequest,
 };
 use crate::state::AppState;
 use serde::Deserialize;
@@ -148,4 +149,73 @@ impl From<DeleteGroupActionDto> for DeleteGroupAction {
             _ => DeleteGroupAction::MoveToUngrouped,
         }
     }
+}
+
+// === SSH Key Commands ===
+
+/// Create new SSH key
+#[tauri::command]
+pub async fn create_ssh_key(
+    state: State<'_, AppState>,
+    request: CreateSSHKeyRequest,
+) -> Result<SSHKey, String> {
+    app_result!(state.ssh_key_service.create_ssh_key(request).await)
+}
+
+/// Get all SSH keys
+#[tauri::command]
+pub async fn get_ssh_keys(state: State<'_, AppState>) -> Result<Vec<SSHKey>, String> {
+    app_result!(state.ssh_key_service.get_ssh_keys().await)
+}
+
+/// Get SSH key by ID
+#[tauri::command]
+pub async fn get_ssh_key(state: State<'_, AppState>, id: String) -> Result<SSHKey, String> {
+    app_result!(state.ssh_key_service.get_ssh_key(&id).await)
+}
+
+/// Update SSH key (metadata only)
+#[tauri::command]
+pub async fn update_ssh_key(
+    state: State<'_, AppState>,
+    id: String,
+    request: UpdateSSHKeyRequest,
+) -> Result<SSHKey, String> {
+    app_result!(state.ssh_key_service.update_ssh_key(&id, request).await)
+}
+
+/// Delete SSH key
+#[tauri::command]
+pub async fn delete_ssh_key(
+    state: State<'_, AppState>,
+    id: String,
+    force: bool,
+) -> Result<(), String> {
+    app_result!(state.ssh_key_service.delete_ssh_key(&id, force).await)
+}
+
+/// Count profiles using a specific key
+#[tauri::command]
+pub async fn count_profiles_using_key(
+    state: State<'_, AppState>,
+    key_id: String,
+) -> Result<u32, String> {
+    app_result!(state.ssh_key_service.count_profiles_using_key(&key_id).await)
+}
+
+/// Import SSH key from file path
+#[tauri::command]
+pub async fn import_ssh_key_from_file(
+    state: State<'_, AppState>,
+    name: String,
+    file_path: String,
+    passphrase: Option<String>,
+    description: Option<String>,
+) -> Result<SSHKey, String> {
+    app_result!(
+        state
+            .ssh_key_service
+            .import_ssh_key_from_file(name, &file_path, passphrase, description)
+            .await
+    )
 }

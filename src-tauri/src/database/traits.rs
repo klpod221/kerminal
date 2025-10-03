@@ -65,6 +65,24 @@ pub trait Database: Send + Sync {
     ) -> DatabaseResult<()>;
     async fn delete_ssh_group(&self, id: &str) -> DatabaseResult<()>;
 
+    async fn save_ssh_key(
+        &self,
+        model: &crate::models::ssh::SSHKey,
+    ) -> DatabaseResult<()>;
+    async fn find_ssh_key_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHKey>>;
+    async fn find_all_ssh_keys(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHKey>>;
+    async fn update_ssh_key(
+        &self,
+        model: &crate::models::ssh::SSHKey,
+    ) -> DatabaseResult<()>;
+    async fn delete_ssh_key(&self, id: &str) -> DatabaseResult<()>;
+    async fn count_profiles_using_key(&self, key_id: &str) -> DatabaseResult<u32>;
+
     /// Transaction support
 
     /// Schema management

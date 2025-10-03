@@ -18,8 +18,9 @@ use crate::database::{
 };
 use crate::models::{
     auth::{Device, DeviceInfo},
-    ssh::{CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest,
-          CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest},
+    ssh::{CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
+          SSHGroup, SSHKey, SSHProfile, UpdateSSHGroupRequest, UpdateSSHKeyRequest,
+          UpdateSSHProfileRequest},
     sync::SyncStats,
 };
 
@@ -727,6 +728,98 @@ impl DatabaseService {
         local_db.save_ssh_profile(&duplicate).await?;
 
         Ok(duplicate)
+    }
+
+    // === SSH Key Operations ===
+
+    /// Create SSH key
+    pub async fn create_ssh_key(&self, request: CreateSSHKeyRequest) -> DatabaseResult<SSHKey> {
+        let mut key = request.to_key(self.current_device.device_id.clone());
+
+        // Encrypt sensitive fields (private key and passphrase)
+        let mp_manager = self.master_password_manager.read().await;
+        key.encrypt_fields(&*mp_manager)?;
+
+        let local_db = self.local_db.read().await;
+        local_db.save_ssh_key(&key).await?;
+
+        Ok(key)
+    }
+
+    /// Get all SSH keys
+    pub async fn get_ssh_keys(&self) -> DatabaseResult<Vec<SSHKey>> {
+        let local_db = self.local_db.read().await;
+        let keys = local_db.find_all_ssh_keys().await?;
+        Ok(keys)
+    }
+
+    /// Get SSH key by ID
+    pub async fn get_ssh_key(&self, id: &str) -> DatabaseResult<SSHKey> {
+        let local_db = self.local_db.read().await;
+        let mut key = local_db
+            .find_ssh_key_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("SSH key {} not found", id)))?;
+
+        // Decrypt sensitive fields
+        let mp_manager = self.master_password_manager.read().await;
+        key.decrypt_fields(&*mp_manager)?;
+
+        Ok(key)
+    }
+
+    /// Update SSH key (metadata only - name, description)
+    pub async fn update_ssh_key(
+        &self,
+        id: &str,
+        request: UpdateSSHKeyRequest,
+    ) -> DatabaseResult<SSHKey> {
+        let local_db = self.local_db.read().await;
+        let mut key = local_db
+            .find_ssh_key_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("SSH key {} not found", id)))?;
+
+        // Apply updates (only name and description, never key content)
+        request.apply_to_key(&mut key);
+
+        local_db.save_ssh_key(&key).await?;
+
+        Ok(key)
+    }
+
+    /// Delete SSH key
+    pub async fn delete_ssh_key(&self, id: &str, force: bool) -> DatabaseResult<()> {
+        // Check if any profiles are using this key
+        let count = self.count_profiles_using_key(id).await?;
+
+        if count > 0 && !force {
+            return Err(DatabaseError::Conflict(format!(
+                "Cannot delete SSH key: {} profile(s) are using it. Use force=true to delete anyway.",
+                count
+            )));
+        }
+
+        let local_db = self.local_db.read().await;
+        local_db.delete_ssh_key(id).await
+    }
+
+    /// Count profiles using a specific key
+    pub async fn count_profiles_using_key(&self, key_id: &str) -> DatabaseResult<u32> {
+        let local_db = self.local_db.read().await;
+        local_db.count_profiles_using_key(key_id).await
+    }
+
+    /// Mark SSH key as recently used
+    pub async fn mark_key_used(&self, key_id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        let mut key = local_db
+            .find_ssh_key_by_id(key_id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("SSH key {} not found", key_id)))?;
+
+        key.mark_used();
+        local_db.save_ssh_key(&key).await
     }
 
     // === Utility Operations ===

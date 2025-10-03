@@ -45,6 +45,9 @@ pub enum DatabaseError {
     #[error("Conflict resolution required")]
     ConflictResolutionRequired,
 
+    #[error("Resource conflict: {0}")]
+    Conflict(String),
+
     #[error("Master password required")]
     MasterPasswordRequired,
 

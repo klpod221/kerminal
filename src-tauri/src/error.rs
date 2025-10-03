@@ -7,7 +7,7 @@ use crate::database::error::{DatabaseError, EncryptionError, SSHError};
 pub enum AppError {
     /// Database-related errors
     Database(String),
-    /// Encryption-related errors  
+    /// Encryption-related errors
     Encryption(String),
     /// SSH-related errors
     SSH(String),
@@ -25,7 +25,7 @@ pub enum AppError {
     NotFound(String),
     /// General application errors
     General(String),
-    
+
     // Specific error types that need special handling
     ConflictResolutionRequired,
     MasterPasswordRequired,
@@ -84,6 +84,7 @@ impl From<DatabaseError> for AppError {
             DatabaseError::ConfigError(msg) => AppError::Config(msg),
             DatabaseError::MigrationError(msg) => AppError::Database(format!("Migration error: {}", msg)),
             DatabaseError::ConflictResolutionRequired => AppError::ConflictResolutionRequired,
+            DatabaseError::Conflict(msg) => AppError::Validation(format!("Conflict: {}", msg)),
             DatabaseError::MasterPasswordRequired => AppError::MasterPasswordRequired,
             DatabaseError::UnsupportedProvider(msg) => AppError::Config(format!("Unsupported provider: {}", msg)),
             DatabaseError::Internal(err) => AppError::General(format!("Internal database error: {}", err)),
@@ -112,110 +113,110 @@ impl AppError {
     pub fn connection_failed(msg: impl Into<String>) -> Self {
         AppError::Network(format!("Connection failed: {}", msg.into()))
     }
-    
+
     pub fn authentication_failed(msg: impl Into<String>) -> Self {
         AppError::Auth(format!("Authentication failed: {}", msg.into()))
     }
-    
+
     pub fn query_failed(msg: impl Into<String>) -> Self {
         AppError::Database(format!("Query failed: {}", msg.into()))
     }
-    
+
     pub fn transaction_failed(msg: impl Into<String>) -> Self {
         AppError::Database(format!("Transaction failed: {}", msg.into()))
     }
-    
+
     pub fn validation_error(msg: impl Into<String>) -> Self {
         AppError::Validation(msg.into())
     }
-    
+
     pub fn parse_error(msg: impl Into<String>) -> Self {
         AppError::Database(format!("Parse error: {}", msg.into()))
     }
-    
+
     pub fn serialization_error(msg: impl Into<String>) -> Self {
         AppError::Database(format!("Serialization error: {}", msg.into()))
     }
-    
+
     pub fn sync_error(msg: impl Into<String>) -> Self {
         AppError::Database(format!("Sync error: {}", msg.into()))
     }
-    
+
     pub fn config_error(msg: impl Into<String>) -> Self {
         AppError::Config(msg.into())
     }
-    
+
     pub fn migration_error(msg: impl Into<String>) -> Self {
         AppError::Database(format!("Migration error: {}", msg.into()))
     }
-    
+
     pub fn unsupported_provider(msg: impl Into<String>) -> Self {
         AppError::Config(format!("Unsupported provider: {}", msg.into()))
     }
-    
+
     pub fn internal_error(msg: impl Into<String>) -> Self {
         AppError::General(format!("Internal error: {}", msg.into()))
     }
-    
+
     pub fn not_implemented(msg: impl Into<String>) -> Self {
         AppError::General(format!("Not implemented: {}", msg.into()))
     }
-    
+
     // Terminal error constructors
     pub fn pty_error(msg: impl Into<String>) -> Self {
         AppError::Terminal(format!("PTY error: {}", msg.into()))
     }
-    
+
     pub fn terminal_error(msg: impl Into<String>) -> Self {
         AppError::Terminal(msg.into())
     }
-    
+
     pub fn invalid_config(msg: impl Into<String>) -> Self {
         AppError::Config(format!("Invalid configuration: {}", msg.into()))
     }
-    
+
     // SSH error constructors
     pub fn ssh_connection_failed(msg: impl Into<String>) -> Self {
         AppError::Network(format!("SSH connection failed: {}", msg.into()))
     }
-    
+
     pub fn ssh_authentication_failed(msg: impl Into<String>) -> Self {
         AppError::Auth(format!("SSH authentication failed: {}", msg.into()))
     }
-    
+
     pub fn ssh_channel_failed(msg: impl Into<String>) -> Self {
         AppError::SSH(format!("SSH channel failed: {}", msg.into()))
     }
-    
+
     pub fn ssh_command_failed(msg: impl Into<String>) -> Self {
         AppError::SSH(format!("SSH command failed: {}", msg.into()))
     }
-    
+
     pub fn ssh_transfer_failed(msg: impl Into<String>) -> Self {
         AppError::SSH(format!("SSH transfer failed: {}", msg.into()))
     }
-    
+
     pub fn ssh_config_error(msg: impl Into<String>) -> Self {
         AppError::Config(format!("SSH config error: {}", msg.into()))
     }
-    
+
     // Encryption error constructors
     pub fn encryption_failed(msg: impl Into<String>) -> Self {
         AppError::Encryption(format!("Encryption failed: {}", msg.into()))
     }
-    
+
     pub fn decryption_failed(msg: impl Into<String>) -> Self {
         AppError::Encryption(format!("Decryption failed: {}", msg.into()))
     }
-    
+
     pub fn key_derivation_failed(msg: impl Into<String>) -> Self {
         AppError::Encryption(format!("Key derivation failed: {}", msg.into()))
     }
-    
+
     pub fn invalid_key(msg: impl Into<String>) -> Self {
         AppError::Encryption(format!("Invalid key: {}", msg.into()))
     }
-    
+
     pub fn invalid_data(msg: impl Into<String>) -> Self {
         AppError::Encryption(format!("Invalid data: {}", msg.into()))
     }

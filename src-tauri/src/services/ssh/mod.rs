@@ -1,6 +1,10 @@
+pub mod key;
+
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use anyhow;
+
+pub use key::SSHKeyService;
 
 use crate::database::{
     error::DatabaseResult,

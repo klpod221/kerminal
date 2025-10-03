@@ -105,6 +105,30 @@
         />
       </div>
 
+      <!-- SSH Key Reference -->
+      <div v-else-if="sshProfile.authMethod === 'KeyReference'" class="space-y-4">
+        <Select
+          id="profile-key-reference"
+          v-model="authKeyId"
+          label="Select SSH Key"
+          placeholder="Choose a saved SSH key"
+          :options="sshKeyOptions"
+          rules="required"
+        />
+        <div class="text-sm text-gray-400">
+          <p>
+            Don't have any keys?
+            <button
+              type="button"
+              class="text-blue-400 hover:text-blue-300 underline"
+              @click="openKeyManager"
+            >
+              Manage SSH Keys
+            </button>
+          </p>
+        </div>
+      </div>
+
       <!-- Private Key Authentication -->
       <div
         v-else-if="
@@ -298,7 +322,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted } from "vue";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
@@ -312,6 +336,7 @@ import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
+import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import type {
   SSHProfile,
@@ -329,7 +354,8 @@ const props = defineProps<{
 
 // Store and composables
 const sshStore = useSSHStore();
-const { closeOverlay, getOverlayProp } = useOverlay();
+const sshKeyStore = useSshKeyStore();
+const { closeOverlay, getOverlayProp, openOverlay } = useOverlay();
 
 // Use composable to automatically merge props
 // Use overlay prop with fallback to direct prop
@@ -372,6 +398,7 @@ const authPrivateKey = ref("");
 const authPublicKey = ref("");
 const authPassphrase = ref("");
 const authKeyType = ref<KeyType>("RSA");
+const authKeyId = ref("");
 const tagsInput = ref("");
 
 // Proxy-specific data
@@ -387,6 +414,7 @@ const proxyConfig = ref({
 // Options
 const authMethodOptions = [
   { value: "Password", label: "Password" },
+  { value: "KeyReference", label: "SSH Key" },
   { value: "PrivateKey", label: "Private Key" },
   { value: "PrivateKeyWithPassphrase", label: "Private Key with Passphrase" },
   { value: "Agent", label: "SSH Agent" },
@@ -413,7 +441,18 @@ const groupOptions = computed(() => [
   })),
 ]);
 
+const sshKeyOptions = computed(() =>
+  sshKeyStore.keys.map((key) => ({
+    value: key.id,
+    label: `${key.name} (${key.keyType})`,
+  })),
+);
+
 // Functions
+const openKeyManager = () => {
+  openOverlay("ssh-key-manager-modal");
+};
+
 const loadProfile = async () => {
   if (!sshProfileId.value) return;
 
@@ -427,6 +466,8 @@ const loadProfile = async () => {
       if (profile.authData) {
         if ("Password" in profile.authData) {
           authPassword.value = profile.authData.Password.password;
+        } else if ("KeyReference" in profile.authData) {
+          authKeyId.value = profile.authData.KeyReference.keyId;
         } else if ("PrivateKey" in profile.authData) {
           authPrivateKey.value = profile.authData.PrivateKey.privateKey;
           authPublicKey.value = profile.authData.PrivateKey.publicKey || "";
@@ -477,6 +518,9 @@ const buildAuthData = (): AuthData => {
   switch (sshProfile.value.authMethod) {
     case "Password":
       return { Password: { password: authPassword.value } };
+
+    case "KeyReference":
+      return { KeyReference: { keyId: authKeyId.value } };
 
     case "PrivateKey":
       return {
@@ -619,6 +663,7 @@ watch(
       authPublicKey.value = "";
       authPassphrase.value = "";
       authKeyType.value = "RSA";
+      authKeyId.value = "";
       tagsInput.value = "";
 
       // Reset proxy config
@@ -634,4 +679,9 @@ watch(
   },
   { immediate: true },
 );
+
+// Load SSH keys on mount
+onMounted(() => {
+  sshKeyStore.loadKeys();
+});
 </script>

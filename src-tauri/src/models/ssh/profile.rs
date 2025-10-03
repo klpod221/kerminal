@@ -57,6 +57,8 @@ pub enum AuthMethod {
     PrivateKey,
     /// Private key with passphrase
     PrivateKeyWithPassphrase,
+    /// Reference to stored SSH key (centralized key management)
+    KeyReference,
     /// SSH Agent
     Agent,
     /// SSH Certificate
@@ -107,6 +109,10 @@ pub enum AuthData {
         passphrase: String,
         key_type: KeyType,
         public_key: Option<String>, // Not encrypted
+    },
+    /// Reference to a stored SSH key (new centralized key management)
+    KeyReference {
+        key_id: String, // Reference to ssh_keys table
     },
     Agent {
         // No sensitive data - uses system SSH agent
@@ -254,6 +260,7 @@ impl SSHProfile {
                     ..
                 },
             ) => !private_key.is_empty() && !passphrase.is_empty(),
+            (AuthMethod::KeyReference, AuthData::KeyReference { key_id }) => !key_id.is_empty(),
             (AuthMethod::Agent, AuthData::Agent { .. }) => true,
             (
                 AuthMethod::Certificate,
@@ -422,7 +429,7 @@ impl Encryptable for SSHProfile {
             | AuthData::PrivateKey { .. }
             | AuthData::PrivateKeyWithPassphrase { .. }
             | AuthData::Certificate { .. } => true,
-            AuthData::Agent { .. } | AuthData::Kerberos { .. } => false,
+            AuthData::KeyReference { .. } | AuthData::Agent { .. } | AuthData::Kerberos { .. } => false,
             AuthData::PKCS11 { pin, .. } => pin.is_some(),
         }
     }
@@ -645,6 +652,7 @@ impl std::fmt::Display for AuthMethod {
             AuthMethod::Password => write!(f, "Password"),
             AuthMethod::PrivateKey => write!(f, "Private Key"),
             AuthMethod::PrivateKeyWithPassphrase => write!(f, "Private Key with Passphrase"),
+            AuthMethod::KeyReference => write!(f, "SSH Key"),
             AuthMethod::Agent => write!(f, "SSH Agent"),
             AuthMethod::Certificate => write!(f, "Certificate"),
             AuthMethod::Kerberos => write!(f, "Kerberos"),

@@ -112,14 +112,23 @@
 
     <!-- Footer -->
     <template #footer>
-      <div class="flex justify-between items-center">
-        <Button
-          variant="ghost"
-          size="sm"
-          :icon="FolderPlus"
-          text="Create Group"
-          @click="openOverlay('ssh-group-modal')"
-        />
+      <div class="flex justify-between items-center gap-2">
+        <div class="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="FolderPlus"
+            text="New Group"
+            @click="openOverlay('ssh-group-modal')"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="Key"
+            text="SSH Keys"
+            @click="openKeyManager"
+          />
+        </div>
 
         <Button
           variant="warning"
@@ -238,6 +247,7 @@ import {
   Plus,
   Edit3,
   Trash2,
+  Key,
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
@@ -250,6 +260,8 @@ const searchQuery = ref("");
 const { openOverlay, closeOverlay } = useOverlay();
 const sshStore = useSSHStore();
 const workspaceStore = useWorkspaceStore();
+
+
 
 // Delete group confirmation state
 const deleteGroupState = ref({
@@ -332,6 +344,10 @@ const filteredGroupsData = computed(() => {
 const createNewProfile = () => {
   console.log('Creating new profile...');
   openOverlay('ssh-profile-modal');
+};
+
+const openKeyManager = () => {
+  openOverlay("ssh-key-manager-modal");
 };
 
 const connectToProfile = (profile: SSHProfile) => {

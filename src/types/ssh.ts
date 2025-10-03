@@ -28,6 +28,7 @@ export type AuthMethod =
   | "Password"
   | "PrivateKey"
   | "PrivateKeyWithPassphrase"
+  | "KeyReference"
   | "Agent"
   | "Certificate"
   | "Kerberos"
@@ -55,6 +56,7 @@ export type AuthData =
   | { Password: { password: string } }
   | { PrivateKey: { privateKey: string; keyType: KeyType; publicKey?: string } }
   | { PrivateKeyWithPassphrase: { privateKey: string; passphrase: string; keyType: KeyType; publicKey?: string } }
+  | { KeyReference: { keyId: string } }
   | { Agent: { publicKey?: string } }
   | { Certificate: { certificate: string; privateKey: string; keyType: KeyType; validityPeriod?: CertificateValidity } }
   | { Kerberos: { realm: string; principal: string } }
@@ -88,6 +90,24 @@ export interface SSHProfile extends BaseModel {
   description?: string;
   tags: string[];
 }
+
+/**
+ * SSH Key interface - matches backend SSHKey
+ */
+export interface SSHKey extends BaseModel {
+  name: string;
+  keyType: KeyType;
+  privateKey: string;
+  publicKey?: string;
+  passphrase?: string;
+  fingerprint: string;
+  description?: string;
+  lastUsed?: string;
+}
+
+/**
+ * SSH Group interface - matches backend SSHGroup
+ */
 
 /**
  * Create SSH Group Request - matches backend CreateSSHGroupRequest
@@ -156,3 +176,23 @@ export type DeleteGroupAction =
   | { actionType: "moveToGroup"; targetGroupId: string }
   | { actionType: "moveToUngrouped" }
   | { actionType: "deleteProfiles" };
+
+/**
+ * Create SSH Key Request - matches backend CreateSSHKeyRequest
+ */
+export interface CreateSSHKeyRequest {
+  name: string;
+  keyType: KeyType;
+  privateKey: string;
+  publicKey?: string;
+  passphrase?: string;
+  description?: string;
+}
+
+/**
+ * Update SSH Key Request - matches backend UpdateSSHKeyRequest
+ */
+export interface UpdateSSHKeyRequest {
+  name?: string;
+  description?: string | null;
+}

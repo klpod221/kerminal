@@ -119,6 +119,42 @@ impl Database for SQLiteProvider {
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
+        // Create SSH keys table
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS ssh_keys (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                key_type TEXT NOT NULL,
+                private_key TEXT NOT NULL,
+                public_key TEXT,
+                passphrase TEXT,
+                fingerprint TEXT NOT NULL,
+                description TEXT,
+                last_used TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                version INTEGER NOT NULL DEFAULT 1,
+                sync_status TEXT NOT NULL DEFAULT 'Clean'
+            )
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        // Create index on fingerprint for faster lookups
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_ssh_keys_fingerprint
+            ON ssh_keys(fingerprint)
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
         // Create master passwords table
         sqlx::query(
             r#"
@@ -583,6 +619,190 @@ impl Database for SQLiteProvider {
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         Ok(())
+    }
+
+    async fn save_ssh_key(
+        &self,
+        model: &crate::models::ssh::SSHKey,
+    ) -> DatabaseResult<()> {
+        let pool_arc = self.get_pool()?;
+        let pool = pool_arc.read().await;
+
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO ssh_keys (
+                id, name, key_type, private_key, public_key, passphrase,
+                fingerprint, description, last_used, created_at, updated_at,
+                device_id, version, sync_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "#,
+        )
+        .bind(&model.base.id)
+        .bind(&model.name)
+        .bind(serde_json::to_string(&model.key_type).unwrap())
+        .bind(&model.private_key)
+        .bind(&model.public_key)
+        .bind(&model.passphrase)
+        .bind(&model.fingerprint)
+        .bind(&model.description)
+        .bind(model.last_used.map(|dt| dt.to_rfc3339()))
+        .bind(model.base.created_at.to_rfc3339())
+        .bind(model.base.updated_at.to_rfc3339())
+        .bind(&model.base.device_id)
+        .bind(model.base.version as i64)
+        .bind(serde_json::to_string(&model.base.sync_status).unwrap())
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn find_ssh_key_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHKey>> {
+        use crate::models::ssh::SSHKey;
+
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let result = sqlx::query(
+            "SELECT id, name, key_type, private_key, public_key, passphrase, fingerprint, description, last_used, created_at, updated_at, device_id, version, sync_status FROM ssh_keys WHERE id = ?"
+        )
+        .bind(id)
+        .fetch_optional(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        if let Some(row) = result {
+            let key = SSHKey {
+                base: crate::models::base::BaseModel {
+                    id: row.get("id"),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    device_id: row.get("device_id"),
+                    version: row.get::<i64, _>("version") as u64,
+                    sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
+                        .unwrap_or(crate::database::traits::SyncStatus::Synced),
+                },
+                name: row.get("name"),
+                key_type: serde_json::from_str(&row.get::<String, _>("key_type"))
+                    .map_err(|e| DatabaseError::SerializationError(e))?,
+                private_key: row.get("private_key"),
+                public_key: row.get("public_key"),
+                passphrase: row.get("passphrase"),
+                fingerprint: row.get("fingerprint"),
+                description: row.get("description"),
+                last_used: row
+                    .get::<Option<String>, _>("last_used")
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+                    .map(|dt| dt.with_timezone(&chrono::Utc)),
+            };
+            Ok(Some(key))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn find_all_ssh_keys(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHKey>> {
+        use crate::models::ssh::SSHKey;
+
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let rows = sqlx::query(
+            "SELECT id, name, key_type, private_key, public_key, passphrase, fingerprint, description, last_used, created_at, updated_at, device_id, version, sync_status FROM ssh_keys ORDER BY name"
+        )
+        .fetch_all(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut keys = Vec::new();
+        for row in rows {
+            let key = SSHKey {
+                base: crate::models::base::BaseModel {
+                    id: row.get("id"),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                    .with_timezone(&chrono::Utc),
+                    device_id: row.get("device_id"),
+                    version: row.get::<i64, _>("version") as u64,
+                    sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
+                        .unwrap_or(crate::database::traits::SyncStatus::Synced),
+                },
+                name: row.get("name"),
+                key_type: serde_json::from_str(&row.get::<String, _>("key_type"))
+                    .map_err(|e| DatabaseError::SerializationError(e))?,
+                private_key: row.get("private_key"),
+                public_key: row.get("public_key"),
+                passphrase: row.get("passphrase"),
+                fingerprint: row.get("fingerprint"),
+                description: row.get("description"),
+                last_used: row
+                    .get::<Option<String>, _>("last_used")
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+                    .map(|dt| dt.with_timezone(&chrono::Utc)),
+            };
+            keys.push(key);
+        }
+
+        Ok(keys)
+    }
+
+    async fn update_ssh_key(
+        &self,
+        model: &crate::models::ssh::SSHKey,
+    ) -> DatabaseResult<()> {
+        // For now, just call save which does INSERT OR REPLACE
+        self.save_ssh_key(model).await
+    }
+
+    async fn delete_ssh_key(&self, id: &str) -> DatabaseResult<()> {
+        let pool_arc = self.get_pool()?;
+        let pool = pool_arc.read().await;
+
+        sqlx::query("DELETE FROM ssh_keys WHERE id = ?")
+            .bind(id)
+            .execute(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn count_profiles_using_key(&self, key_id: &str) -> DatabaseResult<u32> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        // Search for profiles that have KeyReference auth_data containing this key_id
+        let count = sqlx::query_scalar::<_, i64>(
+            r#"
+            SELECT COUNT(*) FROM ssh_profiles
+            WHERE auth_data LIKE '%"key_id":"' || ? || '"%'
+        "#,
+        )
+        .bind(key_id)
+        .fetch_one(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(count as u32)
     }
 }
 
