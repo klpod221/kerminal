@@ -1,124 +1,79 @@
 <template>
   <Modal id="ssh-key-modal" :title="modalTitle" size="lg">
     <Form ref="keyForm">
-      <!-- Mode Tabs -->
-      <div v-if="!keyId" class="flex gap-2 mb-6 border-b border-gray-700">
-        <button
-          v-for="tab in modes"
-          :key="tab.value"
+      <!-- Edit mode info -->
+      <div v-if="keyId" class="mb-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
+        <p class="text-sm text-blue-300">
+          <strong>Edit Mode:</strong> Key fields are empty for security. Only fill them if you want to update the key data.
+        </p>
+      </div>
+
+      <Input
+        id="key-name"
+        v-model="formData.name"
+        label="Key Name"
+        placeholder="My SSH Key"
+        rules="required"
+      />
+
+      <Textarea
+        id="private-key"
+        v-model="formData.privateKey"
+        label="Private Key"
+        placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+        :rows="8"
+        :rules="keyId ? '' : 'required'"
+      />
+
+      <!-- Import from file button below textarea -->
+      <div class="flex gap-2 mb-2">
+        <Input
+          id="file-path"
+          v-model="selectedFileName"
+          placeholder="No file selected"
+          :disabled="true"
+          class="flex-1"
+        />
+        <Button
           type="button"
-          class="px-4 py-2 text-sm font-medium transition-colors"
-          :class="
-            currentMode === tab.value
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-white'
-          "
-          @click="currentMode = tab.value as 'manual' | 'import'"
+          class="h-fit"
+          variant="secondary"
+          :icon="Upload"
+          @click="selectKeyFile"
         >
-          {{ tab.label }}
-        </button>
+          Import from File
+        </Button>
       </div>
+      <input
+        ref="fileInput"
+        type="file"
+        class="hidden"
+        @change="handleFileSelect"
+      />
 
-      <!-- Manual/Edit Mode -->
-      <div v-if="currentMode === 'manual'" class="space-y-1">
-        <Input
-          id="key-name"
-          v-model="formData.name"
-          label="Key Name"
-          placeholder="My SSH Key"
-          rules="required"
-        />
+      <Textarea
+        id="public-key"
+        v-model="formData.publicKey"
+        label="Public Key (Optional)"
+        placeholder="ssh-rsa AAAAB3NzaC1yc2EA..."
+        :rows="3"
+      />
 
-        <Textarea
-          id="private-key"
-          v-model="formData.privateKey"
-          label="Private Key"
-          placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
-          :rows="8"
-          rules="required"
-        />
+      <Input
+        id="passphrase"
+        v-model="formData.passphrase"
+        label="Passphrase (Optional)"
+        type="password"
+        placeholder="Enter passphrase if key is protected"
+      />
 
-        <Textarea
-          id="public-key"
-          v-model="formData.publicKey"
-          label="Public Key (Optional)"
-          placeholder="ssh-rsa AAAAB3NzaC1yc2EA..."
-          :rows="3"
-        />
-
-        <Input
-          id="passphrase"
-          v-model="formData.passphrase"
-          label="Passphrase (Optional)"
-          type="password"
-          placeholder="Enter passphrase if key is protected"
-        />
-
-        <Textarea
-          id="description"
-          v-model="formData.description"
-          label="Description (Optional)"
-          placeholder="Additional notes about this key"
-          :rows="2"
-        />
-      </div>
-
-      <!-- Import Mode -->
-      <div v-else-if="currentMode === 'import'" class="space-y-1">
-        <Input
-          id="import-key-name"
-          v-model="formData.name"
-          label="Key Name"
-          placeholder="My SSH Key"
-          rules="required"
-        />
-
-        <div class="space-y-2">
-          <label class="block text-sm font-medium text-gray-300">
-            Private Key File
-          </label>
-          <div class="flex gap-2">
-            <Input
-              id="file-path"
-              v-model="selectedFileName"
-              placeholder="No file selected"
-              :disabled="true"
-              class="flex-1"
-            />
-            <Button
-              type="button"
-              class="h-fit"
-              variant="secondary"
-              :icon="Upload"
-              @click="selectKeyFile"
-            >
-              Browse
-            </Button>
-          </div>
-          <input
-            ref="fileInput"
-            type="file"
-            class="hidden"
-            @change="handleFileSelect"
-          />
-        </div>
-
-        <Input
-          id="import-passphrase"
-          v-model="formData.passphrase"
-          label="Passphrase (Optional)"
-          type="password"
-          placeholder="Enter passphrase if key is protected"
-        />
-
-        <Textarea
-          id="import-description"
-          v-model="formData.description"
-          label="Description (Optional)"
-          placeholder="Additional notes about this key"
-          :rows="2"
-        />
-      </div>
+      <Textarea
+        id="description"
+        v-model="formData.description"
+        label="Description (Optional)"
+        placeholder="Additional notes about this key"
+        :rows="2"
+      />
     </Form>
 
     <template #footer>
@@ -166,7 +121,7 @@ const keyId = getOverlayProp("ssh-key-modal", "keyId", props.keyId, null);
 // State
 const keyForm = ref<InstanceType<typeof Form> | null>(null);
 const isLoading = ref(false);
-const currentMode = ref<"manual" | "import">("manual");
+// No more mode switching
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref("");
 
@@ -185,13 +140,10 @@ const modalTitle = computed(() =>
 
 const submitButtonText = computed(() => {
   if (keyId.value) return "Update Key";
-  return currentMode.value === "import" ? "Import Key" : "Add Key";
+  return "Add Key";
 });
 
-const modes = [
-  { value: "manual", label: "Manual Entry" },
-  { value: "import", label: "Import from File" },
-];
+
 
 // Functions
 
@@ -226,24 +178,28 @@ const handleSubmit = async () => {
 
   try {
     if (keyId.value) {
-      // Update existing key
-      await sshKeyStore.updateKey(keyId.value, {
+      // Update existing key - only send fields that have values
+      const updateRequest: any = {
         name: formData.value.name,
         description: formData.value.description || undefined,
-      });
+      };
+
+      // Only include key fields if they have new values
+      if (formData.value.privateKey.trim()) {
+        updateRequest.privateKey = formData.value.privateKey;
+      }
+      if (formData.value.publicKey.trim()) {
+        updateRequest.publicKey = formData.value.publicKey;
+      }
+      if (formData.value.passphrase.trim()) {
+        updateRequest.passphrase = formData.value.passphrase;
+      }
+
+      await sshKeyStore.updateKey(keyId.value, updateRequest);
       message.success("SSH key updated successfully");
       closeOverlay("ssh-key-modal");
-    } else if (currentMode.value === "import") {
-      // Import key from file (keyType auto-detected)
-      await sshKeyStore.importKeyFromFile(
-        formData.value.name,
-        formData.value.privateKey,
-        formData.value.passphrase || undefined,
-      );
-      message.success("SSH key imported successfully");
-      closeOverlay("ssh-key-modal");
     } else {
-      // Create new key (keyType auto-detected)
+      // Always create new key (keyType auto-detected)
       await sshKeyStore.createKey({
         name: formData.value.name,
         privateKey: formData.value.privateKey,
@@ -270,11 +226,12 @@ const loadKey = async () => {
     const key = sshKeyStore.keys.find((k) => k.id === keyId.value);
 
     if (key) {
+      // Only load metadata, keep key fields empty to avoid double encryption
       formData.value = {
         name: key.name,
-        privateKey: key.privateKey,
-        publicKey: key.publicKey || "",
-        passphrase: key.passphrase || "",
+        privateKey: "", // Keep empty to avoid showing encrypted data
+        publicKey: "",  // Keep empty unless user wants to update
+        passphrase: "", // Keep empty unless user wants to update
         description: key.description || "",
       };
     }
@@ -302,7 +259,6 @@ watch(
         description: "",
       };
       selectedFileName.value = "";
-      currentMode.value = "manual";
     }
   },
   { immediate: true },

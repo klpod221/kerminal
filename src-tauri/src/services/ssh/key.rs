@@ -33,7 +33,7 @@ impl SSHKeyService {
         db_service.get_ssh_key(id).await
     }
 
-    /// Update SSH key (name, description only - never update key content)
+    /// Update SSH key (updates all provided fields)
     pub async fn update_ssh_key(
         &self,
         id: &str,

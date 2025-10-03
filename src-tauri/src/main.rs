@@ -77,6 +77,14 @@ async fn main() {
             commands::database::ssh::delete_ssh_key,
             commands::database::ssh::count_profiles_using_key,
             commands::database::ssh::import_ssh_key_from_file,
+            commands::database::tunnel::create_tunnel,
+            commands::database::tunnel::get_tunnels,
+            commands::database::tunnel::get_tunnel,
+            commands::database::tunnel::update_tunnel,
+            commands::database::tunnel::delete_tunnel,
+            commands::database::tunnel::start_tunnel,
+            commands::database::tunnel::stop_tunnel,
+            commands::database::tunnel::get_tunnel_status,
             commands::database::system::get_database_stats
         ])
         .setup(setup::init)

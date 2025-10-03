@@ -154,6 +154,44 @@ impl Database for SQLiteProvider {
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
+        // Create SSH tunnels table
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS ssh_tunnels (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                description TEXT,
+                profile_id TEXT NOT NULL,
+                tunnel_type TEXT NOT NULL,
+                local_host TEXT NOT NULL,
+                local_port INTEGER NOT NULL,
+                remote_host TEXT,
+                remote_port INTEGER,
+                auto_start BOOLEAN NOT NULL DEFAULT false,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                version INTEGER NOT NULL DEFAULT 1,
+                sync_status TEXT NOT NULL DEFAULT 'Clean',
+                FOREIGN KEY (profile_id) REFERENCES ssh_profiles(id) ON DELETE CASCADE
+            )
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        // Create index on profile_id for faster lookups
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_ssh_tunnels_profile_id
+            ON ssh_tunnels(profile_id)
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
         // Create master passwords table
         sqlx::query(
             r#"
@@ -338,9 +376,9 @@ impl Database for SQLiteProvider {
             r#"
             INSERT OR REPLACE INTO ssh_profiles (
                 id, name, host, port, username, group_id, auth_method, auth_data,
-                description, color, created_at, updated_at,
+                description, color, timeout, keep_alive, compression, created_at, updated_at,
                 device_id, version, sync_status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         "#,
         )
         .bind(&model.base.id)
@@ -351,9 +389,11 @@ impl Database for SQLiteProvider {
         .bind(&model.group_id)
         .bind(serde_json::to_string(&model.auth_method).unwrap_or_default())
         .bind(serde_json::to_string(&model.auth_data).unwrap_or_default())
-
         .bind(&model.description)
         .bind(&model.color)
+        .bind(model.timeout.map(|t| t as i32))
+        .bind(model.keep_alive)
+        .bind(model.compression)
         .bind(model.base.created_at)
         .bind(model.base.updated_at)
         .bind(&model.base.device_id)
@@ -800,6 +840,276 @@ impl Database for SQLiteProvider {
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         Ok(count as u32)
+    }
+
+    // === SSH Tunnel Methods ===
+
+    async fn save_ssh_tunnel(&self, model: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO ssh_tunnels (
+                id, name, description, profile_id, tunnel_type, local_host, local_port,
+                remote_host, remote_port, auto_start, created_at, updated_at,
+                device_id, version, sync_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "#,
+        )
+        .bind(&model.base.id)
+        .bind(&model.name)
+        .bind(&model.description)
+        .bind(&model.profile_id)
+        .bind(serde_json::to_string(&model.tunnel_type).unwrap())
+        .bind(&model.local_host)
+        .bind(model.local_port as i32)
+        .bind(&model.remote_host)
+        .bind(model.remote_port.map(|p| p as i32))
+        .bind(model.auto_start)
+        .bind(model.base.created_at.to_rfc3339())
+        .bind(model.base.updated_at.to_rfc3339())
+        .bind(&model.base.device_id)
+        .bind(model.base.version as i64)
+        .bind(serde_json::to_string(&model.base.sync_status).unwrap())
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn find_ssh_tunnel_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHTunnel>> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let row = sqlx::query("SELECT * FROM ssh_tunnels WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        if let Some(row) = row {
+            let tunnel = crate::models::ssh::SSHTunnel {
+                base: crate::models::base::BaseModel {
+                    id: row.get("id"),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    device_id: row.get("device_id"),
+                    version: row.get::<i64, _>("version") as u64,
+                    sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
+                        .unwrap_or(crate::database::traits::SyncStatus::Synced),
+                },
+                name: row.get("name"),
+                description: row.get("description"),
+                profile_id: row.get("profile_id"),
+                tunnel_type: serde_json::from_str(&row.get::<String, _>("tunnel_type"))
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?,
+                local_host: row.get("local_host"),
+                local_port: row.get::<i32, _>("local_port") as u16,
+                remote_host: row.get("remote_host"),
+                remote_port: row.get::<Option<i32>, _>("remote_port").map(|p| p as u16),
+                auto_start: row.get("auto_start"),
+                status: crate::models::ssh::TunnelStatus::default(),
+                error_message: None,
+            };
+            Ok(Some(tunnel))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn find_all_ssh_tunnels(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let rows = sqlx::query("SELECT * FROM ssh_tunnels ORDER BY name")
+            .fetch_all(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut tunnels = Vec::new();
+        for row in rows {
+            let tunnel = crate::models::ssh::SSHTunnel {
+                base: crate::models::base::BaseModel {
+                    id: row.get("id"),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    device_id: row.get("device_id"),
+                    version: row.get::<i64, _>("version") as u64,
+                    sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
+                        .unwrap_or(crate::database::traits::SyncStatus::Synced),
+                },
+                name: row.get("name"),
+                description: row.get("description"),
+                profile_id: row.get("profile_id"),
+                tunnel_type: serde_json::from_str(&row.get::<String, _>("tunnel_type"))
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?,
+                local_host: row.get("local_host"),
+                local_port: row.get::<i32, _>("local_port") as u16,
+                remote_host: row.get("remote_host"),
+                remote_port: row.get::<Option<i32>, _>("remote_port").map(|p| p as u16),
+                auto_start: row.get("auto_start"),
+                status: crate::models::ssh::TunnelStatus::default(),
+                error_message: None,
+            };
+            tunnels.push(tunnel);
+        }
+
+        Ok(tunnels)
+    }
+
+    async fn find_ssh_tunnels_by_profile_id(
+        &self,
+        profile_id: &str,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let rows = sqlx::query("SELECT * FROM ssh_tunnels WHERE profile_id = ? ORDER BY name")
+            .bind(profile_id)
+            .fetch_all(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut tunnels = Vec::new();
+        for row in rows {
+            let tunnel = crate::models::ssh::SSHTunnel {
+                base: crate::models::base::BaseModel {
+                    id: row.get("id"),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    device_id: row.get("device_id"),
+                    version: row.get::<i64, _>("version") as u64,
+                    sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
+                        .unwrap_or(crate::database::traits::SyncStatus::Synced),
+                },
+                name: row.get("name"),
+                description: row.get("description"),
+                profile_id: row.get("profile_id"),
+                tunnel_type: serde_json::from_str(&row.get::<String, _>("tunnel_type"))
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?,
+                local_host: row.get("local_host"),
+                local_port: row.get::<i32, _>("local_port") as u16,
+                remote_host: row.get("remote_host"),
+                remote_port: row.get::<Option<i32>, _>("remote_port").map(|p| p as u16),
+                auto_start: row.get("auto_start"),
+                status: crate::models::ssh::TunnelStatus::default(),
+                error_message: None,
+            };
+            tunnels.push(tunnel);
+        }
+
+        Ok(tunnels)
+    }
+
+    async fn find_auto_start_ssh_tunnels(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let rows = sqlx::query("SELECT * FROM ssh_tunnels WHERE auto_start = true ORDER BY name")
+            .fetch_all(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut tunnels = Vec::new();
+        for row in rows {
+            let tunnel = crate::models::ssh::SSHTunnel {
+                base: crate::models::base::BaseModel {
+                    id: row.get("id"),
+                    created_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("created_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    updated_at: chrono::DateTime::parse_from_rfc3339(
+                        &row.get::<String, _>("updated_at"),
+                    )
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&chrono::Utc),
+                    device_id: row.get("device_id"),
+                    version: row.get::<i64, _>("version") as u64,
+                    sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
+                        .unwrap_or(crate::database::traits::SyncStatus::Synced),
+                },
+                name: row.get("name"),
+                description: row.get("description"),
+                profile_id: row.get("profile_id"),
+                tunnel_type: serde_json::from_str(&row.get::<String, _>("tunnel_type"))
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?,
+                local_host: row.get("local_host"),
+                local_port: row.get::<i32, _>("local_port") as u16,
+                remote_host: row.get("remote_host"),
+                remote_port: row.get::<Option<i32>, _>("remote_port").map(|p| p as u16),
+                auto_start: row.get("auto_start"),
+                status: crate::models::ssh::TunnelStatus::default(),
+                error_message: None,
+            };
+            tunnels.push(tunnel);
+        }
+
+        Ok(tunnels)
+    }
+
+    async fn update_ssh_tunnel(&self, model: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
+        self.save_ssh_tunnel(model).await
+    }
+
+    async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        sqlx::query("DELETE FROM ssh_tunnels WHERE id = ?")
+            .bind(id)
+            .execute(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        sqlx::query("DELETE FROM ssh_tunnels WHERE profile_id = ?")
+            .bind(profile_id)
+            .execute(&*pool)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 }
 

@@ -55,6 +55,12 @@ class ApiClient {
           params[paramName] = arg;
         });
 
+        console.log(`🔍 API Debug - Command: ${command}`, {
+          args,
+          paramNames,
+          params
+        });
+
         return await invoke<T>(command, params);
       }
     } catch (error) {
@@ -78,6 +84,13 @@ class ApiClient {
       'get_ssh_group': ['id'],
       'move_profile_to_group': ['profile_id', 'group_id'],
       'duplicate_ssh_profile': ['id', 'new_name'],
+      // Tunnel commands
+      'get_tunnel': ['id'],
+      'update_tunnel': ['id', 'request'],
+      'delete_tunnel': ['id'],
+      'start_tunnel': ['id'],
+      'stop_tunnel': ['id'],
+      'get_tunnel_status': ['id'],
       // Add more commands as needed
     };
 

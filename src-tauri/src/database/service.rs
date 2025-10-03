@@ -841,6 +841,139 @@ impl DatabaseService {
         local_db.save_ssh_key(&key).await
     }
 
+    // === SSH Tunnel Operations ===
+
+    /// Create SSH tunnel
+    pub async fn create_ssh_tunnel(
+        &self,
+        request: crate::models::ssh::CreateSSHTunnelRequest,
+    ) -> DatabaseResult<crate::models::ssh::SSHTunnel> {
+        // Validate profile exists
+        let _profile = self.get_ssh_profile(&request.profile_id).await?;
+
+        let tunnel = crate::models::ssh::SSHTunnel::new(
+            self.current_device.device_id.clone(),
+            request.name,
+            request.profile_id,
+            request.tunnel_type,
+            request.local_host,
+            request.local_port,
+            request.remote_host,
+            request.remote_port,
+        );
+
+        // Apply optional fields
+        let mut tunnel = tunnel;
+        tunnel.description = request.description;
+        tunnel.auto_start = request.auto_start.unwrap_or(false);
+
+        // Validate tunnel configuration
+        tunnel.validate().map_err(|e| DatabaseError::ValidationError(e))?;
+
+        let local_db = self.local_db.read().await;
+        local_db.save_ssh_tunnel(&tunnel).await?;
+
+        Ok(tunnel)
+    }
+
+    /// Get all SSH tunnels
+    pub async fn get_ssh_tunnels(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        let local_db = self.local_db.read().await;
+        local_db.find_all_ssh_tunnels().await
+    }
+
+    /// Get SSH tunnel by ID
+    pub async fn get_ssh_tunnel(&self, id: &str) -> DatabaseResult<crate::models::ssh::SSHTunnel> {
+        let local_db = self.local_db.read().await;
+        local_db
+            .find_ssh_tunnel_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("SSH tunnel {} not found", id)))
+    }
+
+    /// Get SSH tunnels by profile ID
+    pub async fn get_ssh_tunnels_by_profile_id(
+        &self,
+        profile_id: &str,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        let local_db = self.local_db.read().await;
+        local_db.find_ssh_tunnels_by_profile_id(profile_id).await
+    }
+
+    /// Get SSH tunnels that have auto-start enabled
+    pub async fn get_auto_start_ssh_tunnels(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        let local_db = self.local_db.read().await;
+        local_db.find_auto_start_ssh_tunnels().await
+    }
+
+    /// Update SSH tunnel
+    pub async fn update_ssh_tunnel(
+        &self,
+        id: &str,
+        request: crate::models::ssh::UpdateSSHTunnelRequest,
+    ) -> DatabaseResult<crate::models::ssh::SSHTunnel> {
+        let local_db = self.local_db.read().await;
+        let mut tunnel = local_db
+            .find_ssh_tunnel_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("SSH tunnel {} not found", id)))?;
+
+        // Apply updates
+        if let Some(name) = request.name {
+            tunnel.name = name;
+        }
+        if let Some(description) = request.description {
+            tunnel.description = Some(description);
+        }
+        if let Some(profile_id) = request.profile_id {
+            // Validate profile exists
+            let _profile = self.get_ssh_profile(&profile_id).await?;
+            tunnel.profile_id = profile_id;
+        }
+        if let Some(tunnel_type) = request.tunnel_type {
+            tunnel.tunnel_type = tunnel_type;
+        }
+        if let Some(local_host) = request.local_host {
+            tunnel.local_host = local_host;
+        }
+        if let Some(local_port) = request.local_port {
+            tunnel.local_port = local_port;
+        }
+        if let Some(remote_host) = request.remote_host {
+            tunnel.remote_host = Some(remote_host);
+        }
+        if let Some(remote_port) = request.remote_port {
+            tunnel.remote_port = Some(remote_port);
+        }
+        if let Some(auto_start) = request.auto_start {
+            tunnel.auto_start = auto_start;
+        }
+
+        // Validate updated configuration
+        tunnel.validate().map_err(|e| DatabaseError::ValidationError(e))?;
+
+        // Update timestamp and version
+        tunnel.base.touch();
+
+        local_db.save_ssh_tunnel(&tunnel).await?;
+
+        Ok(tunnel)
+    }
+
+    /// Delete SSH tunnel
+    pub async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        local_db.delete_ssh_tunnel(id).await
+    }
+
+    /// Delete all tunnels for a profile (used when deleting profiles)
+    pub async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        local_db.delete_ssh_tunnels_by_profile_id(profile_id).await
+    }
+
     // === Utility Operations ===
 
     /// Move all profiles from one group to another

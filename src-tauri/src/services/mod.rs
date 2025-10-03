@@ -3,3 +3,4 @@ pub mod buffer_manager;
 pub mod ssh;
 pub mod sync;
 pub mod terminal;
+pub mod tunnel;

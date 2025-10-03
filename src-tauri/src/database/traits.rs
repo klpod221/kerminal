@@ -83,6 +83,31 @@ pub trait Database: Send + Sync {
     async fn delete_ssh_key(&self, id: &str) -> DatabaseResult<()>;
     async fn count_profiles_using_key(&self, key_id: &str) -> DatabaseResult<u32>;
 
+    async fn save_ssh_tunnel(
+        &self,
+        model: &crate::models::ssh::SSHTunnel,
+    ) -> DatabaseResult<()>;
+    async fn find_ssh_tunnel_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHTunnel>>;
+    async fn find_all_ssh_tunnels(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>>;
+    async fn find_ssh_tunnels_by_profile_id(
+        &self,
+        profile_id: &str,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>>;
+    async fn find_auto_start_ssh_tunnels(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>>;
+    async fn update_ssh_tunnel(
+        &self,
+        model: &crate::models::ssh::SSHTunnel,
+    ) -> DatabaseResult<()>;
+    async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()>;
+    async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()>;
+
     /// Transaction support
 
     /// Schema management

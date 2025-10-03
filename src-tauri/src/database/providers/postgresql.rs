@@ -1,3 +1,4 @@
+use crate::database::error::DatabaseError;
 // PostgreSQL database provider implementation
 // Note: This is a placeholder for future PostgreSQL support
 
@@ -136,5 +137,38 @@ impl Database for PostgreSQLProvider {
 
     fn connection_info(&self) -> String {
         format!("PostgreSQL: {}", self.connection_string)
+    }
+
+    // SSH Tunnel methods
+    async fn save_ssh_tunnel(&self, _tunnel: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_ssh_tunnel_by_id(&self, _id: &str) -> DatabaseResult<Option<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_all_ssh_tunnels(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_ssh_tunnels_by_profile_id(&self, _profile_id: &str) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_auto_start_ssh_tunnels(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn update_ssh_tunnel(&self, _tunnel: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn delete_ssh_tunnel(&self, _id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn delete_ssh_tunnels_by_profile_id(&self, _profile_id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("PostgreSQL SSH tunnel operations not implemented".to_string()))
     }
 }

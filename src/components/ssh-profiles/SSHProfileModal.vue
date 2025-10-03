@@ -100,9 +100,12 @@
           v-model="authPassword"
           label="Password"
           type="password"
-          placeholder="Enter password"
-          rules="required"
+          :placeholder="sshProfileId ? 'Leave empty to keep current password' : 'Enter password'"
+          :rules="sshProfileId ? '' : 'required'"
         />
+        <div v-if="sshProfileId" class="text-xs text-gray-400">
+          Leave empty to keep the current password. Enter a new password to change it.
+        </div>
       </div>
 
       <!-- SSH Key Reference -->
@@ -290,6 +293,7 @@ import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
+import * as sshService from "../../services/sshProfile";
 import type {
   SSHProfile,
   AuthMethod,
@@ -404,7 +408,8 @@ const loadProfile = async () => {
       // Parse auth data
       if (profile.authData) {
         if ("Password" in profile.authData) {
-          authPassword.value = profile.authData.Password.password;
+          // Don't show encrypted password in edit mode - keep field empty
+          authPassword.value = "";
         } else if ("KeyReference" in profile.authData) {
           authKeyId.value = profile.authData.KeyReference.keyId;
         }
@@ -440,9 +445,13 @@ const loadProfile = async () => {
   }
 };
 
-const buildAuthData = (): AuthData => {
+const buildAuthData = (): AuthData | null => {
   switch (sshProfile.value.authMethod) {
     case "Password":
+      // If editing and password is empty, return null to indicate no password update
+      if (sshProfileId.value && !authPassword.value.trim()) {
+        return null;
+      }
       return { Password: { password: authPassword.value } };
 
     case "KeyReference":
@@ -459,30 +468,74 @@ const testConnection = async () => {
 
   isTesting.value = true;
   try {
-    // Build test request with only necessary fields
-    const testRequest = {
-      host: sshProfile.value.host,
-      port: sshProfile.value.port,
-      username: sshProfile.value.username,
-      authMethod: sshProfile.value.authMethod,
-      authData: buildAuthData(),
-      timeout: sshProfile.value.timeout || 30,
-      keepAlive: sshProfile.value.keepAlive ?? true,
-      compression: sshProfile.value.compression ?? false,
-      proxy: enableProxy.value ? {
-        proxyType: proxyConfig.value.proxyType,
-        host: proxyConfig.value.host,
-        port: proxyConfig.value.port,
-        username: proxyConfig.value.username || undefined,
-        password: proxyConfig.value.password || undefined,
-      } : undefined,
-    };
+    let testRequest;
 
+    if (sshProfileId.value) {
+      // Edit mode: Check if user provided new auth data or use existing
+      let authData;
+
+      const formAuthData = buildAuthData();
+      if (formAuthData) {
+        // User provided new auth data (e.g., new password), use form data
+        console.log("Edit mode - using new form auth data:", formAuthData);
+        authData = formAuthData;
+      } else {
+        // No new auth data, use existing encrypted data from database
+        const existingProfile = await sshService.getSSHProfile(sshProfileId.value);
+        console.log("Edit mode - using existing auth data:", existingProfile.authData);
+        authData = existingProfile.authData;
+      }
+
+      testRequest = {
+        host: sshProfile.value.host,
+        port: sshProfile.value.port,
+        username: sshProfile.value.username,
+        authMethod: sshProfile.value.authMethod,
+        authData: authData,
+        timeout: sshProfile.value.timeout || 30,
+        keepAlive: sshProfile.value.keepAlive ?? true,
+        compression: sshProfile.value.compression ?? false,
+        proxy: enableProxy.value ? {
+          proxyType: proxyConfig.value.proxyType,
+          host: proxyConfig.value.host,
+          port: proxyConfig.value.port,
+          username: proxyConfig.value.username || undefined,
+          password: proxyConfig.value.password || undefined,
+        } : undefined,
+      };
+    } else {
+      // Create mode: Use form data
+      const authData = buildAuthData();
+      console.log("Create mode - form auth data:", authData);
+      if (!authData) {
+        throw new Error("Cannot test connection without authentication data");
+      }
+
+      testRequest = {
+        host: sshProfile.value.host,
+        port: sshProfile.value.port,
+        username: sshProfile.value.username,
+        authMethod: sshProfile.value.authMethod,
+        authData: authData,
+        timeout: sshProfile.value.timeout || 30,
+        keepAlive: sshProfile.value.keepAlive ?? true,
+        compression: sshProfile.value.compression ?? false,
+        proxy: enableProxy.value ? {
+          proxyType: proxyConfig.value.proxyType,
+          host: proxyConfig.value.host,
+          port: proxyConfig.value.port,
+          username: proxyConfig.value.username || undefined,
+          password: proxyConfig.value.password || undefined,
+        } : undefined,
+      };
+    }
+
+    console.log("Test request:", testRequest);
     await invoke("test_ssh_connection", { request: testRequest });
-    message.success("Connection test successful!");
+    message.success("SSH connection test successful!");
   } catch (error) {
-    console.error("Error testing connection:", error);
-    message.error(getErrorMessage(error, "Connection test failed."));
+    console.error("SSH connection test failed:", error);
+    message.error(`SSH connection test failed: ${getErrorMessage(error as Error, "Unknown error")}`);
   } finally {
     isTesting.value = false;
   }
@@ -495,9 +548,10 @@ const handleSubmit = async () => {
 
   isLoading.value = true;
   try {
+    const authData = buildAuthData();
     const profileData = {
       ...sshProfile.value,
-      authData: buildAuthData(),
+      ...(authData && { authData }), // Only include authData if not null
       groupId: sshProfile.value.groupId || undefined,
       proxy: enableProxy.value
         ? {

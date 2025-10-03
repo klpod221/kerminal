@@ -74,6 +74,20 @@
 
     <!-- Right side buttons -->
     <div class="flex items-center justify-end">
+      <!-- Tunnel Manager -->
+      <Button
+        title="SSH Tunnel Manager"
+        variant="ghost"
+        size="sm"
+        :icon="Route"
+        :class="
+          isOverlayVisible('tunnel-manager-modal')
+            ? 'bg-gray-800 text-gray-400 hover:text-white'
+            : ''
+        "
+        @click="toggleOverlay('tunnel-manager-modal')"
+      />
+
       <!-- SSH Key Manager -->
       <Button
         title="SSH Key Manager"
@@ -106,25 +120,29 @@
 </template>
 
 <script setup lang="ts">
-import { LayoutGrid, Server, Shield, Key } from "lucide-vue-next";
+import { LayoutGrid, Server, Shield, Key, Route } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 
 import { useViewStateStore } from "../stores/viewState";
 import { useOverlay } from "../composables/useOverlay";
 
 const viewState = useViewStateStore();
-const { openOverlay, closeOverlay, isOverlayVisible } = useOverlay();
+const { openOverlay, closeOverlay, closeAllOverlays, isOverlayVisible } = useOverlay();
 
 const setActiveView = (view: "dashboard" | "workspace" | "fileManager") => {
   if (!viewState.isTopBarActive || viewState.activeView === view) return;
+
+  closeAllOverlays();
 
   viewState.setActiveView(view);
 };
 
 const toggleOverlay = (overlayName: string) => {
   if (isOverlayVisible(overlayName)) {
+    closeAllOverlays();
     closeOverlay(overlayName);
   } else {
+    closeAllOverlays();
     openOverlay(overlayName);
   }
 };

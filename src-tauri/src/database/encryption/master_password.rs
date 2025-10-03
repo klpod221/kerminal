@@ -22,17 +22,13 @@ pub struct MasterPasswordManager {
 
 /// Master password setup request
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SetupMasterPasswordRequest {
-    #[serde(rename = "deviceName")]
     pub device_name: String,
     pub password: String,
-    #[serde(rename = "confirmPassword")]
     pub confirm_password: String,
-    #[serde(rename = "autoUnlock")]
     pub auto_unlock: bool,
-    #[serde(rename = "useKeychain")]
     pub use_keychain: bool,
-    #[serde(rename = "autoLockTimeout")]
     pub auto_lock_timeout: Option<u32>, // in minutes
 }
 

@@ -1,3 +1,4 @@
+use crate::database::error::DatabaseError;
 // MySQL database provider implementation
 // Note: This is a placeholder for future MySQL support
 
@@ -136,5 +137,38 @@ impl Database for MySQLProvider {
 
     fn connection_info(&self) -> String {
         format!("MySQL: {}", self.connection_string)
+    }
+
+    // SSH Tunnel methods
+    async fn save_ssh_tunnel(&self, _tunnel: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_ssh_tunnel_by_id(&self, _id: &str) -> DatabaseResult<Option<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_all_ssh_tunnels(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_ssh_tunnels_by_profile_id(&self, _profile_id: &str) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn find_auto_start_ssh_tunnels(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn update_ssh_tunnel(&self, _tunnel: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn delete_ssh_tunnel(&self, _id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
+    }
+
+    async fn delete_ssh_tunnels_by_profile_id(&self, _profile_id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented("MySQL SSH tunnel operations not implemented".to_string()))
     }
 }

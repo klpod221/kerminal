@@ -20,6 +20,7 @@ serde_json = "1"
 thiserror = "1.0"
 sysinfo = "0.37"
 tokio = { version = "1", features = ["full"] }
+tokio-util = "0.7"
 uuid = { version = "1", features = ["v4"] }
 russh = "0.45"
 russh-keys = "0.45"

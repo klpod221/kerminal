@@ -2703,6 +2703,7 @@ dependencies = [
  "tauri-plugin-process",
  "thiserror 1.0.69",
  "tokio",
+ "tokio-util",
  "uuid",
 ]
 

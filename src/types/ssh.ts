@@ -193,4 +193,7 @@ export interface CreateSSHKeyRequest {
 export interface UpdateSSHKeyRequest {
   name?: string;
   description?: string | null;
+  privateKey?: string;
+  publicKey?: string | null;
+  passphrase?: string | null;
 }

@@ -177,7 +177,7 @@ pub async fn get_ssh_key(state: State<'_, AppState>, id: String) -> Result<SSHKe
     app_result!(service.get_ssh_key(&id).await)
 }
 
-/// Update SSH key (metadata only)
+/// Update SSH key (all provided fields)
 #[tauri::command]
 pub async fn update_ssh_key(
     state: State<'_, AppState>,

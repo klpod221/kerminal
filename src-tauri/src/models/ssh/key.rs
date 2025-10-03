@@ -292,6 +292,9 @@ impl CreateSSHKeyRequest {
 pub struct UpdateSSHKeyRequest {
     pub name: Option<String>,
     pub description: Option<Option<String>>,
+    pub private_key: Option<String>,
+    pub public_key: Option<Option<String>>,
+    pub passphrase: Option<Option<String>>,
 }
 
 impl UpdateSSHKeyRequest {
@@ -301,6 +304,15 @@ impl UpdateSSHKeyRequest {
         }
         if let Some(description) = self.description {
             key.description = description;
+        }
+        if let Some(private_key) = self.private_key {
+            key.private_key = private_key;
+        }
+        if let Some(public_key) = self.public_key {
+            key.public_key = public_key;
+        }
+        if let Some(passphrase) = self.passphrase {
+            key.passphrase = passphrase;
         }
         key.base.touch();
     }

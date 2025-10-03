@@ -3,7 +3,8 @@
 
   <SSHGroupModal />
   <SSHProfileModal />
-  <SSHKeyManagerModal />
+
+  <SSHKeyManager />
   <SSHKeyModal />
 </template>
 
@@ -11,7 +12,7 @@
 import SSHProfileDrawer from "./SSHProfileDrawer.vue";
 import SSHGroupModal from "./SSHGroupModal.vue";
 import SSHProfileModal from "./SSHProfileModal.vue";
-import SSHKeyManagerModal from "./SSHKeyManagerModal.vue";
+import SSHKeyManager from "./SSHKeyManager.vue";
 import SSHKeyModal from "./SSHKeyModal.vue";
 
 import { useSSHStore } from "../../stores/ssh";
