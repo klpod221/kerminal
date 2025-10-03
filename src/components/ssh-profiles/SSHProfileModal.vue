@@ -106,7 +106,7 @@
       </div>
 
       <!-- SSH Key Reference -->
-      <div v-else-if="sshProfile.authMethod === 'KeyReference'" class="space-y-4">
+      <div v-else-if="sshProfile.authMethod === 'KeyReference'" class="mb-2">
         <Select
           id="profile-key-reference"
           v-model="authKeyId"
@@ -129,50 +129,7 @@
         </div>
       </div>
 
-      <!-- Private Key Authentication -->
-      <div
-        v-else-if="
-          sshProfile.authMethod === 'PrivateKey' ||
-          sshProfile.authMethod === 'PrivateKeyWithPassphrase'
-        "
-        class="space-y-4"
-      >
-        <Select
-          id="profile-key-type"
-          v-model="authKeyType"
-          label="Key Type"
-          placeholder="Select key type"
-          :options="keyTypeOptions"
-          rules="required"
-        />
 
-        <Textarea
-          id="profile-private-key"
-          v-model="authPrivateKey"
-          label="Private Key"
-          placeholder="-----BEGIN PRIVATE KEY-----"
-          :rows="6"
-          rules="required"
-        />
-
-        <Textarea
-          id="profile-public-key"
-          v-model="authPublicKey"
-          label="Public Key (Optional)"
-          placeholder="ssh-rsa AAAAB3NzaC1yc2E..."
-          :rows="2"
-        />
-
-        <Input
-          v-if="sshProfile.authMethod === 'PrivateKeyWithPassphrase'"
-          id="profile-passphrase"
-          v-model="authPassphrase"
-          label="Passphrase"
-          type="password"
-          placeholder="Enter passphrase"
-          rules="required"
-        />
-      </div>
 
       <!-- Advanced Settings -->
       <Collapsible
@@ -341,7 +298,6 @@ import { useOverlay } from "../../composables/useOverlay";
 import type {
   SSHProfile,
   AuthMethod,
-  KeyType,
   AuthData,
 } from "../../types/ssh";
 import { invoke } from "@tauri-apps/api/core";
@@ -394,10 +350,6 @@ const sshProfile = ref({
 
 // Auth-specific data
 const authPassword = ref("");
-const authPrivateKey = ref("");
-const authPublicKey = ref("");
-const authPassphrase = ref("");
-const authKeyType = ref<KeyType>("RSA");
 const authKeyId = ref("");
 const tagsInput = ref("");
 
@@ -415,17 +367,9 @@ const proxyConfig = ref({
 const authMethodOptions = [
   { value: "Password", label: "Password" },
   { value: "KeyReference", label: "SSH Key" },
-  { value: "PrivateKey", label: "Private Key" },
-  { value: "PrivateKeyWithPassphrase", label: "Private Key with Passphrase" },
-  { value: "Agent", label: "SSH Agent" },
 ];
 
-const keyTypeOptions = [
-  { value: "RSA", label: "RSA" },
-  { value: "Ed25519", label: "Ed25519" },
-  { value: "ECDSA", label: "ECDSA" },
-  { value: "DSA", label: "DSA" },
-];
+
 
 const proxyTypeOptions = [
   { value: "Http", label: "HTTP" },
@@ -468,18 +412,6 @@ const loadProfile = async () => {
           authPassword.value = profile.authData.Password.password;
         } else if ("KeyReference" in profile.authData) {
           authKeyId.value = profile.authData.KeyReference.keyId;
-        } else if ("PrivateKey" in profile.authData) {
-          authPrivateKey.value = profile.authData.PrivateKey.privateKey;
-          authPublicKey.value = profile.authData.PrivateKey.publicKey || "";
-          authKeyType.value = profile.authData.PrivateKey.keyType;
-        } else if ("PrivateKeyWithPassphrase" in profile.authData) {
-          authPrivateKey.value =
-            profile.authData.PrivateKeyWithPassphrase.privateKey;
-          authPublicKey.value =
-            profile.authData.PrivateKeyWithPassphrase.publicKey || "";
-          authPassphrase.value =
-            profile.authData.PrivateKeyWithPassphrase.passphrase;
-          authKeyType.value = profile.authData.PrivateKeyWithPassphrase.keyType;
         }
       }
 
@@ -521,32 +453,6 @@ const buildAuthData = (): AuthData => {
 
     case "KeyReference":
       return { KeyReference: { keyId: authKeyId.value } };
-
-    case "PrivateKey":
-      return {
-        PrivateKey: {
-          privateKey: authPrivateKey.value,
-          keyType: authKeyType.value,
-          publicKey: authPublicKey.value || undefined,
-        },
-      };
-
-    case "PrivateKeyWithPassphrase":
-      return {
-        PrivateKeyWithPassphrase: {
-          privateKey: authPrivateKey.value,
-          passphrase: authPassphrase.value,
-          keyType: authKeyType.value,
-          publicKey: authPublicKey.value || undefined,
-        },
-      };
-
-    case "Agent":
-      return {
-        Agent: {
-          publicKey: authPublicKey.value || undefined,
-        },
-      };
 
     default:
       throw new Error("Unsupported authentication method");
@@ -659,10 +565,6 @@ watch(
         description: "",
       };
       authPassword.value = "";
-      authPrivateKey.value = "";
-      authPublicKey.value = "";
-      authPassphrase.value = "";
-      authKeyType.value = "RSA";
       authKeyId.value = "";
       tagsInput.value = "";
 

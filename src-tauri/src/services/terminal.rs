@@ -6,6 +6,7 @@ use crate::models::terminal::{
     TerminalExited, TerminalInfo, TerminalTitleChanged, WriteTerminalRequest,
 };
 use crate::services::buffer_manager::TerminalBufferManager;
+use crate::services::ssh::SSHKeyService;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter};
@@ -19,6 +20,7 @@ pub struct TerminalManager {
     output_sender: mpsc::UnboundedSender<TerminalData>,
     buffer_manager: Arc<TerminalBufferManager>,
     database_service: Arc<Mutex<DatabaseService>>,
+    ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
 }
 
 impl TerminalManager {
@@ -32,6 +34,24 @@ impl TerminalManager {
             output_sender,
             buffer_manager: Arc::new(TerminalBufferManager::default()),
             database_service,
+            ssh_key_service: None,
+        }
+    }
+
+    pub fn new_with_ssh_key_service(
+        database_service: Arc<Mutex<DatabaseService>>,
+        ssh_key_service: Arc<Mutex<SSHKeyService>>,
+    ) -> Self {
+        let (output_sender, output_receiver) = mpsc::unbounded_channel();
+
+        Self {
+            terminals: Arc::new(RwLock::new(HashMap::new())),
+            output_senders: Arc::new(RwLock::new(HashMap::new())),
+            output_receiver: Arc::new(Mutex::new(Some(output_receiver))),
+            output_sender,
+            buffer_manager: Arc::new(TerminalBufferManager::default()),
+            database_service,
+            ssh_key_service: Some(ssh_key_service),
         }
     }
 
@@ -42,15 +62,51 @@ impl TerminalManager {
     ) -> Result<CreateTerminalResponse, AppError> {
         let terminal_id = Uuid::new_v4().to_string();
 
-        let mut terminal = TerminalFactory::create_terminal(
+        let mut terminal = TerminalFactory::create_terminal_with_key_service(
             terminal_id.clone(),
             request.config.clone(),
             Some(self.database_service.clone()),
+            self.ssh_key_service.clone(),
         )
         .await?;
 
+        // Resolve SSH key if needed
+        let resolved_key = if matches!(request.config.terminal_type, crate::models::terminal::TerminalType::SSH) {
+            if let Some(ssh_key_service) = &self.ssh_key_service {
+                if let Some(ssh_profile_id) = &request.config.ssh_profile_id {
+                    // Get SSH profile to check auth data
+                    let ssh_profile = {
+                        let db_service = self.database_service.lock().await;
+                        db_service.get_ssh_profile(ssh_profile_id).await
+                            .map_err(|e| AppError::Database(e.to_string()))?
+                    };
+
+                    // Resolve key if it's a KeyReference
+                    if let crate::models::ssh::profile::AuthData::KeyReference { key_id } = &ssh_profile.auth_data {
+                        let key_service = ssh_key_service.lock().await;
+                        Some(key_service.resolve_key_for_auth(key_id).await
+                            .map_err(|e| AppError::Database(e.to_string()))?)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
         // Attempt connection with error handling
-        if let Err(e) = terminal.connect().await {
+        let connect_result = if let Some(resolved_key) = resolved_key {
+            terminal.connect_with_resolved_data(Some(resolved_key)).await
+        } else {
+            terminal.connect().await
+        };
+
+        if let Err(e) = connect_result {
             // Send error event to frontend if we have an app handle
             if let Some(handle) = &app_handle {
                 let error_event = TerminalExited {

@@ -13,6 +13,15 @@ use crate::{
 
 use super::profile::KeyType;
 
+/// Resolved SSH key data for authentication (plain text, ready for use)
+#[derive(Debug, Clone)]
+pub struct ResolvedSSHKey {
+    pub private_key: String,
+    pub key_type: KeyType,
+    pub public_key: Option<String>,
+    pub passphrase: Option<String>,
+}
+
 /// SSH Key - Reusable authentication key for SSH connections
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -224,7 +233,8 @@ impl Encryptable for SSHKey {
 #[serde(rename_all = "camelCase")]
 pub struct CreateSSHKeyRequest {
     pub name: String,
-    pub key_type: KeyType,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key_type: Option<KeyType>,
     pub private_key: String,
     pub public_key: Option<String>,
     pub passphrase: Option<String>,
@@ -233,10 +243,15 @@ pub struct CreateSSHKeyRequest {
 
 impl CreateSSHKeyRequest {
     pub fn to_key(self, device_id: String) -> SSHKey {
+        // Auto-detect key type if not provided
+        let key_type = self.key_type.unwrap_or_else(|| {
+            Self::detect_key_type(&self.private_key).unwrap_or(KeyType::RSA)
+        });
+
         let mut key = SSHKey::new(
             device_id,
             self.name,
-            self.key_type,
+            key_type,
             self.private_key,
             self.public_key,
             self.passphrase,
@@ -244,6 +259,30 @@ impl CreateSSHKeyRequest {
 
         key.description = self.description;
         key
+    }
+
+    /// Detect SSH key type from private key content
+    fn detect_key_type(key_content: &str) -> Option<KeyType> {
+        if key_content.contains("BEGIN RSA PRIVATE KEY")
+            || key_content.contains("BEGIN PRIVATE KEY")
+        {
+            Some(KeyType::RSA)
+        } else if key_content.contains("BEGIN OPENSSH PRIVATE KEY") {
+            // OpenSSH format could be Ed25519, ECDSA, or RSA
+            if key_content.contains("ssh-ed25519") {
+                Some(KeyType::Ed25519)
+            } else if key_content.contains("ecdsa") {
+                Some(KeyType::ECDSA)
+            } else {
+                Some(KeyType::RSA)
+            }
+        } else if key_content.contains("BEGIN EC PRIVATE KEY") {
+            Some(KeyType::ECDSA)
+        } else if key_content.contains("BEGIN DSA PRIVATE KEY") {
+            Some(KeyType::DSA)
+        } else {
+            None
+        }
     }
 }
 

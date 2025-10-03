@@ -121,13 +121,6 @@
             text="New Group"
             @click="openOverlay('ssh-group-modal')"
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            :icon="Key"
-            text="SSH Keys"
-            @click="openKeyManager"
-          />
         </div>
 
         <Button
@@ -247,7 +240,6 @@ import {
   Plus,
   Edit3,
   Trash2,
-  Key,
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
@@ -344,10 +336,6 @@ const filteredGroupsData = computed(() => {
 const createNewProfile = () => {
   console.log('Creating new profile...');
   openOverlay('ssh-profile-modal');
-};
-
-const openKeyManager = () => {
-  openOverlay("ssh-key-manager-modal");
 };
 
 const connectToProfile = (profile: SSHProfile) => {

@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -53,20 +52,8 @@ pub struct SSHProfile {
 pub enum AuthMethod {
     /// Password authentication
     Password,
-    /// Private key without passphrase
-    PrivateKey,
-    /// Private key with passphrase
-    PrivateKeyWithPassphrase,
     /// Reference to stored SSH key (centralized key management)
     KeyReference,
-    /// SSH Agent
-    Agent,
-    /// SSH Certificate
-    Certificate,
-    /// Kerberos (future)
-    Kerberos,
-    /// PKCS#11 Hardware tokens (future)
-    PKCS11,
 }
 
 /// Proxy configuration
@@ -96,46 +83,10 @@ pub enum AuthData {
         #[serde(with = "encrypted_string")]
         password: String,
     },
-    PrivateKey {
-        #[serde(with = "encrypted_string")]
-        private_key: String,
-        key_type: KeyType,
-        public_key: Option<String>, // Not encrypted
-    },
-    PrivateKeyWithPassphrase {
-        #[serde(with = "encrypted_string")]
-        private_key: String,
-        #[serde(with = "encrypted_string")]
-        passphrase: String,
-        key_type: KeyType,
-        public_key: Option<String>, // Not encrypted
-    },
-    /// Reference to a stored SSH key (new centralized key management)
+    /// Reference to a stored SSH key (centralized key management)
     KeyReference {
+        #[serde(rename = "keyId")]
         key_id: String, // Reference to ssh_keys table
-    },
-    Agent {
-        // No sensitive data - uses system SSH agent
-        public_key: Option<String>,
-    },
-    Certificate {
-        #[serde(with = "encrypted_string")]
-        certificate: String,
-        #[serde(with = "encrypted_string")]
-        private_key: String,
-        key_type: KeyType,
-        validity_period: Option<CertificateValidity>,
-    },
-    Kerberos {
-        realm: String,
-        principal: String,
-        // Kerberos ticket handled by system
-    },
-    PKCS11 {
-        library_path: String,
-        slot_id: Option<u32>,
-        key_id: String,
-        pin: Option<String>, // May need encryption
     },
 }
 
@@ -146,15 +97,6 @@ pub enum KeyType {
     Ed25519,
     ECDSA,
     DSA,
-}
-
-/// Certificate validity information
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CertificateValidity {
-    pub valid_from: DateTime<Utc>,
-    pub valid_to: DateTime<Utc>,
-    pub serial: Option<String>,
-    pub ca_fingerprint: Option<String>,
 }
 
 impl SSHProfile {
@@ -249,27 +191,7 @@ impl SSHProfile {
     pub fn has_valid_auth(&self) -> bool {
         match (&self.auth_method, &self.auth_data) {
             (AuthMethod::Password, AuthData::Password { password }) => !password.is_empty(),
-            (AuthMethod::PrivateKey, AuthData::PrivateKey { private_key, .. }) => {
-                !private_key.is_empty()
-            }
-            (
-                AuthMethod::PrivateKeyWithPassphrase,
-                AuthData::PrivateKeyWithPassphrase {
-                    private_key,
-                    passphrase,
-                    ..
-                },
-            ) => !private_key.is_empty() && !passphrase.is_empty(),
             (AuthMethod::KeyReference, AuthData::KeyReference { key_id }) => !key_id.is_empty(),
-            (AuthMethod::Agent, AuthData::Agent { .. }) => true,
-            (
-                AuthMethod::Certificate,
-                AuthData::Certificate {
-                    certificate,
-                    private_key,
-                    ..
-                },
-            ) => !certificate.is_empty() && !private_key.is_empty(),
             _ => false,
         }
     }
@@ -316,47 +238,8 @@ impl Encryptable for SSHProfile {
                 })?;
                 *password = encrypted;
             }
-            AuthData::PrivateKey { private_key, key_type: _, public_key: _ } => {
-                // Encrypt private key
-                let encrypted = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.encrypt_string(private_key, Some(&self.base.device_id)).await
-                    })
-                })?;
-                *private_key = encrypted;
-            }
-            AuthData::PrivateKeyWithPassphrase { private_key, passphrase, key_type: _, public_key: _ } => {
-                // Encrypt both private key and passphrase
-                let encrypted_key = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.encrypt_string(private_key, Some(&self.base.device_id)).await
-                    })
-                })?;
-                let encrypted_passphrase = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.encrypt_string(passphrase, Some(&self.base.device_id)).await
-                    })
-                })?;
-                *private_key = encrypted_key;
-                *passphrase = encrypted_passphrase;
-            }
-            AuthData::Certificate { certificate, private_key, key_type: _, validity_period: _ } => {
-                // Encrypt certificate and private key
-                let encrypted_cert = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.encrypt_string(certificate, Some(&self.base.device_id)).await
-                    })
-                })?;
-                let encrypted_key = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.encrypt_string(private_key, Some(&self.base.device_id)).await
-                    })
-                })?;
-                *certificate = encrypted_cert;
-                *private_key = encrypted_key;
-            }
-            _ => {
-                // No encryption needed for other auth methods (Agent, etc.)
+            AuthData::KeyReference { .. } => {
+                // No encryption needed for key references
             }
         }
         Ok(())
@@ -377,47 +260,8 @@ impl Encryptable for SSHProfile {
                 })?;
                 *password = decrypted;
             }
-            AuthData::PrivateKey { private_key, key_type: _, public_key: _ } => {
-                // Decrypt private key
-                let decrypted = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.decrypt_string(private_key, Some(&self.base.device_id)).await
-                    })
-                })?;
-                *private_key = decrypted;
-            }
-            AuthData::PrivateKeyWithPassphrase { private_key, passphrase, key_type: _, public_key: _ } => {
-                // Decrypt both private key and passphrase
-                let decrypted_key = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.decrypt_string(private_key, Some(&self.base.device_id)).await
-                    })
-                })?;
-                let decrypted_passphrase = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.decrypt_string(passphrase, Some(&self.base.device_id)).await
-                    })
-                })?;
-                *private_key = decrypted_key;
-                *passphrase = decrypted_passphrase;
-            }
-            AuthData::Certificate { certificate, private_key, key_type: _, validity_period: _ } => {
-                // Decrypt certificate and private key
-                let decrypted_cert = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.decrypt_string(certificate, Some(&self.base.device_id)).await
-                    })
-                })?;
-                let decrypted_key = tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.decrypt_string(private_key, Some(&self.base.device_id)).await
-                    })
-                })?;
-                *certificate = decrypted_cert;
-                *private_key = decrypted_key;
-            }
-            _ => {
-                // No decryption needed for other auth methods (Agent, etc.)
+            AuthData::KeyReference { .. } => {
+                // No decryption needed for key references
             }
         }
         Ok(())
@@ -425,12 +269,8 @@ impl Encryptable for SSHProfile {
 
     fn has_encrypted_data(&self) -> bool {
         match &self.auth_data {
-            AuthData::Password { .. }
-            | AuthData::PrivateKey { .. }
-            | AuthData::PrivateKeyWithPassphrase { .. }
-            | AuthData::Certificate { .. } => true,
-            AuthData::KeyReference { .. } | AuthData::Agent { .. } | AuthData::Kerberos { .. } => false,
-            AuthData::PKCS11 { pin, .. } => pin.is_some(),
+            AuthData::Password { .. } => true,
+            AuthData::KeyReference { .. } => false,
         }
     }
 
@@ -650,13 +490,7 @@ impl std::fmt::Display for AuthMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AuthMethod::Password => write!(f, "Password"),
-            AuthMethod::PrivateKey => write!(f, "Private Key"),
-            AuthMethod::PrivateKeyWithPassphrase => write!(f, "Private Key with Passphrase"),
             AuthMethod::KeyReference => write!(f, "SSH Key"),
-            AuthMethod::Agent => write!(f, "SSH Agent"),
-            AuthMethod::Certificate => write!(f, "Certificate"),
-            AuthMethod::Kerberos => write!(f, "Kerberos"),
-            AuthMethod::PKCS11 => write!(f, "PKCS#11"),
         }
     }
 }

@@ -80,7 +80,7 @@ impl SSHKeyService {
         // Create request and save
         let request = CreateSSHKeyRequest {
             name,
-            key_type,
+            key_type: Some(key_type),
             private_key,
             public_key,
             passphrase,
@@ -147,5 +147,19 @@ impl SSHKeyService {
     pub async fn mark_key_used(&self, key_id: &str) -> DatabaseResult<()> {
         let db_service = self.database_service.lock().await;
         db_service.mark_key_used(key_id).await
+    }
+
+    /// Resolve SSH key reference to plain text key data for authentication
+    pub async fn resolve_key_for_auth(&self, key_id: &str) -> DatabaseResult<crate::models::ssh::key::ResolvedSSHKey> {
+        // Get the SSH key
+        let ssh_key = self.get_ssh_key(key_id).await?;
+
+        // Return resolved key data
+        Ok(crate::models::ssh::key::ResolvedSSHKey {
+            private_key: ssh_key.private_key,
+            key_type: ssh_key.key_type,
+            public_key: ssh_key.public_key,
+            passphrase: ssh_key.passphrase,
+        })
     }
 }

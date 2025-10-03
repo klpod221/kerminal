@@ -1,14 +1,15 @@
 use crate::models::ssh::{AuthData, SSHProfile};
+use crate::models::ssh::key::ResolvedSSHKey;
 use crate::error::AppError;
 use crate::models::terminal::{TerminalConfig, TerminalState};
 use russh::client::{Handle, Handler, Session};
 use russh::{ChannelId, Disconnect, Channel, client::Msg};
 use russh_keys::key::PublicKey;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::{mpsc, Mutex};
 use std::path::Path;
 use async_trait::async_trait;
+
 
 /// SSH client handler implementation
 #[derive(Clone)]
@@ -139,96 +140,79 @@ impl SSHTerminal {
         })
     }
 
-    /// Connect to the SSH terminal
+
+
+    /// Connect to the SSH server
     pub async fn connect(&mut self) -> Result<(), AppError> {
-        // Check if already connected
-        if matches!(self.state, TerminalState::Connected) {
-            let _ = self.disconnect().await;
-        }
+        self.connect_with_resolved_data(None).await
+    }
+
+    /// Connect to the SSH server with optionally resolved key data
+    pub async fn connect_with_resolved_data(&mut self, resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>) -> Result<(), AppError> {
+        println!("Connecting to SSH server {}:{}", self.ssh_profile.host, self.ssh_profile.port);
 
         self.state = TerminalState::Connecting;
 
-        let connection_timeout = Duration::from_secs(
-            self.ssh_profile.timeout.map(|t| t as u64).unwrap_or(30)
-        );
+        // Create SSH configuration
+        let config = Arc::new(russh::client::Config {
+            inactivity_timeout: Some(std::time::Duration::from_secs(60)),
+            ..<russh::client::Config as Default>::default()
+        });
 
-        let result = tokio::time::timeout(connection_timeout, async {
-            if self.ssh_profile.proxy.is_some() {
-                return Err(AppError::connection_failed(
-                    "Proxy connections not yet implemented with russh".to_string(),
-                ));
-            }
-
-            // Configure SSH client based on profile settings
-            let mut config = russh::client::Config::default();
-            config.inactivity_timeout = Some(Duration::from_secs(300));
-
-            // Enable SSH keep alive if configured in profile
-            // Keep alive helps maintain connection through firewalls/NAT and detect dead connections
-            if self.ssh_profile.keep_alive {
-                config.keepalive_interval = Some(Duration::from_secs(30)); // Send keepalive every 30s
-                config.keepalive_max = 3; // Close connection after 3 failed keepalives (90s total)
-            }
-
-            let config = Arc::new(config);
-
-            let address = format!("{}:{}", self.ssh_profile.host, self.ssh_profile.port);
-            let mut session = russh::client::connect(config, &address, (*self.handler).clone())
-                .await
-                .map_err(|e| {
-                    AppError::connection_failed(format!("SSH handshake failed: {}", e))
-                })?;
-
-            self.authenticate(&mut session).await?;
-
-            let channel = session
-                .channel_open_session()
-                .await
-                .map_err(|e| {
-                    AppError::connection_failed(format!("Failed to create SSH channel: {}", e))
-                })?;
-
-            channel
-                .request_pty(false, "xterm-256color", 120, 30, 0, 0, &[])
-                .await
-                .map_err(|e| {
-                    AppError::terminal_error(format!("Failed to request PTY: {}", e))
-                })?;
-
-            channel
-                .request_shell(false)
-                .await
-                .map_err(|e| {
-                    AppError::terminal_error(format!("Failed to start shell: {}", e))
-                })?;
-
-            self.session = Some(session);
-            self.channel = Some(channel);
-            self.state = TerminalState::Connected;
-
-            Ok::<(), AppError>(())
-        }).await;
-
-        match result {
-            Ok(Ok(())) => Ok(()),
-            Ok(Err(e)) => {
+        // Connect to the server
+        let handler = (*self.handler).clone();
+        let mut session = russh::client::connect(config, (self.ssh_profile.host.as_str(), self.ssh_profile.port), handler)
+            .await
+            .map_err(|e| {
                 self.state = TerminalState::Disconnected;
-                Err(e)
-            }
-            Err(_) => {
+                AppError::connection_failed(format!(
+                    "Failed to connect to SSH server {}:{}: {}",
+                    self.ssh_profile.host, self.ssh_profile.port, e
+                ))
+            })?;
+
+        // Authenticate with resolved data
+        self.authenticate_with_resolved_data(&mut session, resolved_key).await?;
+
+        // Create a channel
+        let channel = session
+            .channel_open_session()
+            .await
+            .map_err(|e| {
                 self.state = TerminalState::Disconnected;
-                Err(AppError::connection_failed(format!(
-                    "SSH connection to {}:{} timed out after {} seconds",
-                    self.ssh_profile.host,
-                    self.ssh_profile.port,
-                    connection_timeout.as_secs()
-                )))
-            }
-        }
+                AppError::terminal_error(format!("Failed to open SSH channel: {}", e))
+            })?;
+
+        // Request PTY
+        let _ = channel
+            .request_pty(
+                false,
+                "xterm-256color",
+                80,
+                24,
+                0,
+                0,
+                &[(russh::Pty::TTY_OP_ISPEED, 38400), (russh::Pty::TTY_OP_OSPEED, 38400)],
+            )
+            .await;
+
+        // Start shell
+        let _ = channel.request_shell(false).await;
+
+        self.session = Some(session);
+        self.channel = Some(channel);
+        self.state = TerminalState::Connected;
+
+        println!("Successfully connected to SSH server");
+        Ok(())
     }
 
     /// Authenticate with the SSH server
-    async fn authenticate(&mut self, session: &mut Handle<ClientHandler>) -> Result<(), AppError> {
+    pub async fn authenticate_with_resolved_data(
+        &mut self,
+        session: &mut Handle<ClientHandler>,
+        resolved_key: Option<ResolvedSSHKey>
+    ) -> Result<(), AppError> {
         let username = &self.ssh_profile.username;
 
         match &self.ssh_profile.auth_data {
@@ -250,20 +234,27 @@ impl SSHTerminal {
                     )));
                 }
             }
-            AuthData::PrivateKey { private_key, .. } => {
-                let key = if Path::new(private_key).exists() {
-                    russh_keys::load_secret_key(private_key, None)
+            AuthData::KeyReference { key_id } => {
+                let key_data = resolved_key.ok_or_else(|| {
+                    AppError::authentication_failed(format!(
+                        "No resolved key data provided for KeyReference {}",
+                        key_id
+                    ))
+                })?;
+
+                let key = if Path::new(&key_data.private_key).exists() {
+                    russh_keys::load_secret_key(&key_data.private_key, key_data.passphrase.as_deref())
                         .map_err(|e| {
                             AppError::authentication_failed(format!(
-                                "Failed to load private key from '{}': {}",
-                                private_key, e
+                                "Failed to load SSH key: {}",
+                                e
                             ))
                         })?
                 } else {
-                    russh_keys::decode_secret_key(private_key, None)
+                    russh_keys::decode_secret_key(&key_data.private_key, key_data.passphrase.as_deref())
                         .map_err(|e| {
                             AppError::authentication_failed(format!(
-                                "Failed to parse private key: {}",
+                                "Failed to parse SSH key: {}",
                                 e
                             ))
                         })?
@@ -274,72 +265,26 @@ impl SSHTerminal {
                     .await
                     .map_err(|e| {
                         AppError::authentication_failed(format!(
-                            "Private key authentication error for user '{}': {}",
+                            "SSH key authentication error for user '{}': {}",
                             username, e
                         ))
                     })?;
 
                 if !result {
                     return Err(AppError::authentication_failed(format!(
-                        "Private key authentication failed for user '{}'",
+                        "SSH key authentication failed for user '{}'",
                         username
                     )));
                 }
-            }
-            AuthData::PrivateKeyWithPassphrase {
-                private_key,
-                passphrase,
-                ..
-            } => {
-                let key = if Path::new(private_key).exists() {
-                    russh_keys::load_secret_key(private_key, Some(passphrase))
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!(
-                                "Failed to load private key from '{}' with passphrase: {}",
-                                private_key, e
-                            ))
-                        })?
-                } else {
-                    russh_keys::decode_secret_key(private_key, Some(passphrase))
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!(
-                                "Failed to parse private key with passphrase: {}",
-                                e
-                            ))
-                        })?
-                };
-
-                let result = session
-                    .authenticate_publickey(username, Arc::new(key))
-                    .await
-                    .map_err(|e| {
-                        AppError::authentication_failed(format!(
-                            "Private key with passphrase authentication error for user '{}': {}",
-                            username, e
-                        ))
-                    })?;
-
-                if !result {
-                    return Err(AppError::authentication_failed(format!(
-                        "Private key with passphrase authentication failed for user '{}'",
-                        username
-                    )));
-                }
-            }
-            AuthData::Agent { .. } => {
-                return Err(AppError::authentication_failed(
-                    "SSH agent authentication not yet fully implemented with russh".to_string(),
-                ));
-            }
-            _ => {
-                return Err(AppError::authentication_failed(format!(
-                    "Unsupported authentication method for user '{}'",
-                    username
-                )));
             }
         }
 
         Ok(())
+    }
+
+    /// Legacy authenticate method (for backward compatibility)
+    async fn authenticate(&mut self, session: &mut Handle<ClientHandler>) -> Result<(), AppError> {
+        self.authenticate_with_resolved_data(session, None).await
     }
 
     /// Disconnect from the SSH terminal

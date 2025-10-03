@@ -18,12 +18,16 @@ use crate::models::ssh::{
 /// SSH service for handling SSH profiles and groups
 pub struct SSHService {
     database_service: Arc<Mutex<DatabaseService>>,
+    ssh_key_service: Arc<Mutex<SSHKeyService>>,
 }
 
 impl SSHService {
     /// Create new SSHService instance
-    pub fn new(database_service: Arc<Mutex<DatabaseService>>) -> Self {
-        Self { database_service }
+    pub fn new(database_service: Arc<Mutex<DatabaseService>>, ssh_key_service: Arc<Mutex<SSHKeyService>>) -> Self {
+        Self {
+            database_service,
+            ssh_key_service,
+        }
     }
 
     // === SSH Group Management ===
@@ -126,6 +130,7 @@ impl SSHService {
     pub async fn test_ssh_connection(&self, request: TestSSHConnectionRequest) -> DatabaseResult<()> {
         use crate::core::terminal::ssh::SSHTerminal;
         use crate::models::terminal::{TerminalConfig, TerminalType};
+        use crate::models::ssh::profile::AuthData;
 
         // Get device_id from database service
         let device_id = {
@@ -134,7 +139,17 @@ impl SSHService {
         };
 
         // Convert request to temporary profile
-        let profile = request.to_profile(device_id);
+        let mut profile = request.to_profile(device_id);
+
+        // Resolve key reference if needed
+        let resolved_key = match &profile.auth_data {
+            AuthData::KeyReference { key_id } => {
+                let key_service = self.ssh_key_service.lock().await;
+                Some(key_service.resolve_key_for_auth(key_id).await
+                    .map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?)
+            }
+            AuthData::Password { .. } => None,
+        };
 
         // Create a temporary terminal config for testing
         let config = TerminalConfig {
@@ -150,8 +165,12 @@ impl SSHService {
             profile,
         ).map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
 
-        // Attempt to connect (this will test the credentials)
-        let connect_result = ssh_terminal.connect().await;
+        // Attempt to connect with resolved data
+        let connect_result = if let Some(resolved_key) = resolved_key {
+            ssh_terminal.connect_with_resolved_data(Some(resolved_key)).await
+        } else {
+            ssh_terminal.connect().await
+        };
 
         // Always disconnect after test, even if connection failed
         let _ = ssh_terminal.disconnect().await;

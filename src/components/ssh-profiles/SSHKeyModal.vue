@@ -1,9 +1,5 @@
 <template>
-  <Modal
-    id="ssh-key-modal"
-    :title="modalTitle"
-    size="lg"
-  >
+  <Modal id="ssh-key-modal" :title="modalTitle" size="lg">
     <Form ref="keyForm">
       <!-- Mode Tabs -->
       <div v-if="!keyId" class="flex gap-2 mb-6 border-b border-gray-700">
@@ -24,21 +20,12 @@
       </div>
 
       <!-- Manual/Edit Mode -->
-      <div v-if="currentMode === 'manual'" class="space-y-4">
+      <div v-if="currentMode === 'manual'" class="space-y-1">
         <Input
           id="key-name"
           v-model="formData.name"
           label="Key Name"
           placeholder="My SSH Key"
-          rules="required"
-        />
-
-        <Select
-          id="key-type"
-          v-model="formData.keyType"
-          label="Key Type"
-          placeholder="Select key type"
-          :options="keyTypeOptions"
           rules="required"
         />
 
@@ -77,21 +64,12 @@
       </div>
 
       <!-- Import Mode -->
-      <div v-else-if="currentMode === 'import'" class="space-y-4">
+      <div v-else-if="currentMode === 'import'" class="space-y-1">
         <Input
           id="import-key-name"
           v-model="formData.name"
           label="Key Name"
           placeholder="My SSH Key"
-          rules="required"
-        />
-
-        <Select
-          id="import-key-type"
-          v-model="formData.keyType"
-          label="Key Type"
-          placeholder="Select key type"
-          :options="keyTypeOptions"
           rules="required"
         />
 
@@ -109,6 +87,7 @@
             />
             <Button
               type="button"
+              class="h-fit"
               variant="secondary"
               :icon="Upload"
               @click="selectKeyFile"
@@ -120,7 +99,6 @@
             ref="fileInput"
             type="file"
             class="hidden"
-            accept=".pem,.key,.pub"
             @change="handleFileSelect"
           />
         </div>
@@ -145,7 +123,9 @@
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button variant="secondary" @click="closeOverlay('ssh-key-modal')">Cancel</Button>
+        <Button variant="secondary" @click="closeOverlay('ssh-key-modal')"
+          >Cancel</Button
+        >
         <Button
           variant="primary"
           :loading="isLoading"
@@ -165,13 +145,11 @@ import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Textarea from "../ui/Textarea.vue";
-import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import { Save, Upload } from "lucide-vue-next";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
-import type { KeyType } from "../../types/ssh";
 
 // Props
 const props = defineProps<{
@@ -194,7 +172,6 @@ const selectedFileName = ref("");
 
 const formData = ref({
   name: "",
-  keyType: "RSA" as KeyType,
   privateKey: "",
   publicKey: "",
   passphrase: "",
@@ -203,7 +180,7 @@ const formData = ref({
 
 // Computed
 const modalTitle = computed(() =>
-  keyId.value ? "Edit SSH Key" : "Add SSH Key"
+  keyId.value ? "Edit SSH Key" : "Add SSH Key",
 );
 
 const submitButtonText = computed(() => {
@@ -214,13 +191,6 @@ const submitButtonText = computed(() => {
 const modes = [
   { value: "manual", label: "Manual Entry" },
   { value: "import", label: "Import from File" },
-];
-
-const keyTypeOptions = [
-  { value: "RSA", label: "RSA" },
-  { value: "Ed25519", label: "Ed25519" },
-  { value: "ECDSA", label: "ECDSA" },
-  { value: "DSA", label: "DSA" },
 ];
 
 // Functions
@@ -264,20 +234,18 @@ const handleSubmit = async () => {
       message.success("SSH key updated successfully");
       closeOverlay("ssh-key-modal");
     } else if (currentMode.value === "import") {
-      // Import key from file
+      // Import key from file (keyType auto-detected)
       await sshKeyStore.importKeyFromFile(
         formData.value.name,
-        formData.value.keyType,
         formData.value.privateKey,
-        formData.value.passphrase || undefined
+        formData.value.passphrase || undefined,
       );
       message.success("SSH key imported successfully");
       closeOverlay("ssh-key-modal");
     } else {
-      // Create new key
+      // Create new key (keyType auto-detected)
       await sshKeyStore.createKey({
         name: formData.value.name,
-        keyType: formData.value.keyType,
         privateKey: formData.value.privateKey,
         publicKey: formData.value.publicKey || undefined,
         passphrase: formData.value.passphrase || undefined,
@@ -304,7 +272,6 @@ const loadKey = async () => {
     if (key) {
       formData.value = {
         name: key.name,
-        keyType: key.keyType,
         privateKey: key.privateKey,
         publicKey: key.publicKey || "",
         passphrase: key.passphrase || "",
@@ -329,7 +296,6 @@ watch(
       // Reset form for new key
       formData.value = {
         name: "",
-        keyType: "RSA",
         privateKey: "",
         publicKey: "",
         passphrase: "",
@@ -339,6 +305,6 @@ watch(
       currentMode.value = "manual";
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 </script>

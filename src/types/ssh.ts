@@ -179,10 +179,11 @@ export type DeleteGroupAction =
 
 /**
  * Create SSH Key Request - matches backend CreateSSHKeyRequest
+ * keyType is optional - backend will auto-detect from private key content
  */
 export interface CreateSSHKeyRequest {
   name: string;
-  keyType: KeyType;
+  keyType?: KeyType;
   privateKey: string;
   publicKey?: string;
   passphrase?: string;

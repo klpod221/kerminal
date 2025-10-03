@@ -10,7 +10,7 @@ pub struct AppState {
     pub database_service: Arc<Mutex<DatabaseService>>,
     pub auth_service: AuthService,
     pub ssh_service: SSHService,
-    pub ssh_key_service: SSHKeyService,
+    pub ssh_key_service: Arc<Mutex<SSHKeyService>>,
     pub sync_service: SyncService,
     pub terminal_manager: TerminalManager,
     pub auth_session_manager: Arc<Mutex<AuthSessionManager>>,
@@ -28,10 +28,10 @@ impl AppState {
 
         // Create service instances
         let auth_service = AuthService::new(database_service_arc.clone());
-        let ssh_service = SSHService::new(database_service_arc.clone());
-        let ssh_key_service = SSHKeyService::new(database_service_arc.clone());
+        let ssh_key_service = Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
+        let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
         let sync_service = SyncService::new(database_service_arc.clone());
-        let terminal_manager = TerminalManager::new(database_service_arc.clone());
+        let terminal_manager = TerminalManager::new_with_ssh_key_service(database_service_arc.clone(), ssh_key_service.clone());
 
         // Create auth session manager
         let auth_session_manager = Arc::new(Mutex::new(
@@ -61,12 +61,12 @@ impl Default for AppState {
                 .unwrap(),
         ));
 
-        // Create service instances
+                // Create service instances
         let auth_service = AuthService::new(database_service_arc.clone());
-        let ssh_service = SSHService::new(database_service_arc.clone());
-        let ssh_key_service = SSHKeyService::new(database_service_arc.clone());
+        let ssh_key_service = Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
+        let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
         let sync_service = SyncService::new(database_service_arc.clone());
-        let terminal_manager = TerminalManager::new(database_service_arc.clone());
+        let terminal_manager = TerminalManager::new_with_ssh_key_service(database_service_arc.clone(), ssh_key_service.clone());
 
         // Create auth session manager
         let auth_session_manager = Arc::new(Mutex::new(

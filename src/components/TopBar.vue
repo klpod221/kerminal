@@ -49,19 +49,24 @@
         />
       </div>
 
-      <!-- SSH Profiles Button -->
-      <Button
-        title="SSH Profiles"
-        variant="ghost"
-        size="sm"
-        :icon="Server"
-        :class="
-          isOverlayVisible('ssh-profile-drawer')
-            ? 'bg-gray-800 text-gray-400 hover:text-white'
-            : ''
-        "
+      <!-- SSH Profiles button -->
+      <div
+        class="flex items-center px-3 h-[30px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer"
+        :class="{
+          'bg-gray-800': isOverlayVisible('ssh-profile-drawer'),
+        }"
         @click="toggleOverlay('ssh-profile-drawer')"
-      />
+      >
+        <Server
+          :size="16"
+          class="transition-opacity duration-200"
+          :class="
+            isOverlayVisible('ssh-profile-drawer')
+              ? 'opacity-100'
+              : 'opacity-60 hover:opacity-100'
+          "
+        />
+      </div>
     </div>
 
     <!-- Center content -->
@@ -69,6 +74,20 @@
 
     <!-- Right side buttons -->
     <div class="flex items-center justify-end">
+      <!-- SSH Key Manager -->
+      <Button
+        title="SSH Key Manager"
+        variant="ghost"
+        size="sm"
+        :icon="Key"
+        :class="
+          isOverlayVisible('ssh-key-manager-modal')
+            ? 'bg-gray-800 text-gray-400 hover:text-white'
+            : ''
+        "
+        @click="toggleOverlay('ssh-key-manager-modal')"
+      />
+
       <!-- Master Password  -->
       <Button
         title="Master Password Settings"
@@ -87,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { LayoutGrid, Server, Shield } from "lucide-vue-next";
+import { LayoutGrid, Server, Shield, Key } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 
 import { useViewStateStore } from "../stores/viewState";

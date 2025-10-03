@@ -100,22 +100,22 @@ export const useSshKeyStore = defineStore("sshKey", () => {
   }
 
   /**
-   * Import SSH key from file
+   * Import SSH key from file (file content, not file path)
+   * keyType will be auto-detected from key content
    */
   async function importKeyFromFile(
     name: string,
-    filePath: string,
-    passphrase?: string,
-    description?: string
+    fileContent: string,
+    passphrase?: string
   ): Promise<SSHKey> {
     loading.value = true;
     try {
-      const key = await sshKeyService.importSSHKeyFromFile(
+      // Create key with file content (keyType auto-detected by backend)
+      const key = await sshKeyService.createSSHKey({
         name,
-        filePath,
+        privateKey: fileContent,
         passphrase,
-        description
-      );
+      });
       keys.value.push(key);
       message.success(`SSH key "${key.name}" imported successfully`);
       return key;

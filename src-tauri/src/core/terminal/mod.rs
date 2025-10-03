@@ -4,6 +4,7 @@ pub mod ssh;
 use crate::database::service::DatabaseService;
 use crate::error::AppError;
 use crate::models::terminal::{TerminalConfig, TerminalExited, TerminalState, TerminalType};
+use crate::services::ssh::SSHKeyService;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
 
@@ -19,6 +20,14 @@ impl TerminalWrapper {
         match self {
             TerminalWrapper::Local(terminal) => terminal.connect().await,
             TerminalWrapper::SSH(terminal) => terminal.connect().await,
+        }
+    }
+
+    /// Connect to the terminal with resolved SSH key data (SSH only)
+    pub async fn connect_with_resolved_data(&mut self, resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>) -> Result<(), AppError> {
+        match self {
+            TerminalWrapper::Local(terminal) => terminal.connect().await,
+            TerminalWrapper::SSH(terminal) => terminal.connect_with_resolved_data(resolved_key).await,
         }
     }
 
@@ -111,6 +120,16 @@ impl TerminalFactory {
         id: String,
         config: TerminalConfig,
         database_service: Option<Arc<Mutex<DatabaseService>>>,
+    ) -> Result<TerminalWrapper, AppError> {
+        Self::create_terminal_with_key_service(id, config, database_service, None).await
+    }
+
+    /// Create a new terminal instance with SSH key service for key resolution
+    pub async fn create_terminal_with_key_service(
+        id: String,
+        config: TerminalConfig,
+        database_service: Option<Arc<Mutex<DatabaseService>>>,
+        ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
     ) -> Result<TerminalWrapper, AppError> {
         match config.terminal_type {
             TerminalType::Local => {
