@@ -21,7 +21,9 @@
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button type="button" variant="danger"> Forgot Password </Button>
+        <Button type="button" variant="danger" @click="handleForgotPassword">
+          Forgot Password
+        </Button>
         <Button
           type="submit"
           variant="primary"
@@ -34,6 +36,9 @@
       </div>
     </template>
   </Modal>
+
+  <!-- Forgot Password Modal -->
+  <ForgotPasswordModal />
 </template>
 
 <script setup lang="ts">
@@ -43,13 +48,14 @@ import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
+import ForgotPasswordModal from "./ForgotPasswordModal.vue";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 
 // Stores and composables
-const { closeOverlay } = useOverlay();
+const { closeOverlay, openOverlay } = useOverlay();
 const { unlock } = useAuthStore();
 
 // Form state
@@ -59,7 +65,9 @@ const verificationForm = ref({
 });
 const isLoading = ref(false);
 
-// Handle form submission
+/**
+ * Handle form submission to unlock master password
+ */
 const handleSubmit = async () => {
   const isValid = await masterPasswordUnlockForm.value?.validate();
   if (!isValid) return;
@@ -86,5 +94,12 @@ const handleSubmit = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+/**
+ * Handle forgot password button click
+ */
+const handleForgotPassword = () => {
+  openOverlay("forgot-password-modal");
 };
 </script>
