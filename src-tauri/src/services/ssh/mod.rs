@@ -139,7 +139,7 @@ impl SSHService {
         };
 
         // Convert request to temporary profile
-        let mut profile = request.to_profile(device_id);
+        let profile = request.to_profile(device_id);
 
         // Resolve key reference if needed
         let resolved_key = match &profile.auth_data {
