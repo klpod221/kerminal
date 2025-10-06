@@ -16,9 +16,11 @@ import type {
  * @param request - SSH profile creation request
  * @returns The created SSH profile
  */
-export async function createSSHProfile(request: CreateSSHProfileRequest): Promise<SSHProfile> {
+export async function createSSHProfile(
+  request: CreateSSHProfileRequest,
+): Promise<SSHProfile> {
   console.log("Creating SSH profile with request:", request);
-  return await api.call("create_ssh_profile", request );
+  return await api.call("create_ssh_profile", request);
 }
 
 /**
@@ -44,7 +46,10 @@ export async function getSSHProfile(id: string): Promise<SSHProfile> {
  * @param request - Update request
  * @returns Updated SSH profile
  */
-export async function updateSSHProfile(id: string, request: UpdateSSHProfileRequest): Promise<SSHProfile> {
+export async function updateSSHProfile(
+  id: string,
+  request: UpdateSSHProfileRequest,
+): Promise<SSHProfile> {
   return await api.callRaw("update_ssh_profile", id, request);
 }
 
@@ -61,7 +66,10 @@ export async function deleteSSHProfile(id: string): Promise<void> {
  * @param profileId - Profile ID
  * @param groupId - Target group ID (null for ungrouped)
  */
-export async function moveProfileToGroup(profileId: string, groupId: string | null): Promise<void> {
+export async function moveProfileToGroup(
+  profileId: string,
+  groupId: string | null,
+): Promise<void> {
   return await api.callRaw("move_profile_to_group", profileId, groupId);
 }
 
@@ -71,7 +79,10 @@ export async function moveProfileToGroup(profileId: string, groupId: string | nu
  * @param newName - New profile name
  * @returns Duplicated SSH profile
  */
-export async function duplicateSSHProfile(id: string, newName: string): Promise<SSHProfile> {
+export async function duplicateSSHProfile(
+  id: string,
+  newName: string,
+): Promise<SSHProfile> {
   return await api.callRaw("duplicate_ssh_profile", id, newName);
 }
 
@@ -82,7 +93,9 @@ export async function duplicateSSHProfile(id: string, newName: string): Promise<
  * @param request - SSH group creation request
  * @returns The created SSH group
  */
-export async function createSSHGroup(request: CreateSSHGroupRequest): Promise<SSHGroup> {
+export async function createSSHGroup(
+  request: CreateSSHGroupRequest,
+): Promise<SSHGroup> {
   return await api.call("create_ssh_group", request);
 }
 
@@ -111,7 +124,7 @@ export async function getSSHGroup(id: string): Promise<SSHGroup> {
  */
 export async function updateSSHGroup(
   id: string,
-  request: UpdateSSHGroupRequest
+  request: UpdateSSHGroupRequest,
 ): Promise<SSHGroup> {
   return await api.callRaw("update_ssh_group", id, request);
 }
@@ -121,6 +134,9 @@ export async function updateSSHGroup(
  * @param id - Group ID
  * @param action - Action for existing profiles
  */
-export async function deleteSSHGroup(id: string, action: DeleteGroupAction): Promise<void> {
+export async function deleteSSHGroup(
+  id: string,
+  action: DeleteGroupAction,
+): Promise<void> {
   return await api.callRaw("delete_ssh_group", id, action);
 }

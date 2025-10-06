@@ -32,6 +32,8 @@ export interface TerminalInstance {
   disconnectReason?: "user-closed" | "connection-lost"; // Reason for disconnect
   canReconnect?: boolean; // Whether reconnect is available (for SSH)
   sshProfileId?: string; // SSH profile ID for reconnection
+  errorMessage?: string; // Error message to display to user
+  hasError?: boolean; // Whether terminal has an error state
 }
 
 // Backend terminal types

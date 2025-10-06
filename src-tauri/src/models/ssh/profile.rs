@@ -62,8 +62,9 @@ pub struct ProxyConfig {
     pub proxy_type: ProxyType,
     pub host: String,
     pub port: u16,
+    #[serde(default)]
     pub username: Option<String>,
-    #[serde(with = "encrypted_option_string")]
+    #[serde(default, with = "encrypted_option_string")]
     pub password: Option<String>,
 }
 
@@ -73,6 +74,16 @@ pub enum ProxyType {
     Http,
     Socks5,
     Socks4,
+}
+
+impl std::fmt::Display for ProxyType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProxyType::Http => write!(f, "HTTP"),
+            ProxyType::Socks4 => write!(f, "SOCKS4"),
+            ProxyType::Socks5 => write!(f, "SOCKS5"),
+        }
+    }
 }
 
 /// Authentication data - encrypted fields marked with [encrypt]

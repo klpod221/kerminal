@@ -79,12 +79,65 @@
         </div>
       </div>
     </div>
+
+    <!-- Error Overlay for SSH Connection Errors -->
+    <div
+      v-if="showErrorOverlay"
+      class="absolute inset-0 bg-[#171717]/95 flex items-center justify-center z-50"
+    >
+      <div class="flex flex-col items-center space-y-6 max-w-lg px-4">
+        <!-- Error icon -->
+        <div class="relative">
+          <div
+            class="rounded-full h-16 w-16 border-2 border-red-500/50 bg-red-500/10 flex items-center justify-center"
+          >
+            <component
+              :is="XCircle"
+              class="h-8 w-8 text-red-400"
+            />
+          </div>
+        </div>
+
+        <!-- Message text -->
+        <div class="text-center">
+          <p class="text-lg font-medium text-white mb-2">
+            Connection Failed
+          </p>
+          <p class="text-sm text-gray-400 mb-4">
+            {{ formattedErrorMessage }}
+          </p>
+          <!-- Show additional error details if available -->
+          <div v-if="currentTerminal?.errorMessage" class="text-xs text-gray-500 bg-gray-800 rounded p-2 font-mono max-w-full overflow-x-auto whitespace-pre-wrap">
+            {{ formattedErrorMessage }}
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex gap-3">
+          <Button
+            v-if="canReconnect"
+            variant="primary"
+            size="md"
+            :icon="RefreshCw"
+            text="Try Again"
+            @click="handleReconnect"
+          />
+          <Button
+            variant="secondary"
+            size="md"
+            :icon="X"
+            text="Close Tab"
+            @click="handleCloseTab"
+          />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref, nextTick, onBeforeUnmount, watch, computed } from "vue";
-import { debounce } from "../../utils/helpers";
+import { debounce, getErrorMessage } from "../../utils/helpers";
 import { resizeTerminal } from "../../services/terminal";
 import { TerminalBufferManager, InputBatcher } from "../../core";
 import type { SimpleTerminal } from "../../core";
@@ -134,8 +187,20 @@ const currentTerminal = computed(() =>
 );
 
 const showDisconnectedOverlay = computed(() =>
-  currentTerminal.value?.disconnectReason === "connection-lost"
+  currentTerminal.value?.disconnectReason === "connection-lost" &&
+  !currentTerminal.value?.hasError
 );
+
+const showErrorOverlay = computed(() =>
+  currentTerminal.value?.hasError &&
+  currentTerminal.value?.errorMessage &&
+  !props.isConnecting
+);
+
+const formattedErrorMessage = computed(() => {
+  const errorMsg = currentTerminal.value?.errorMessage;
+  return getErrorMessage(errorMsg, "Connection error occurred");
+});
 
 const canReconnect = computed(() =>
   currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId
@@ -143,7 +208,13 @@ const canReconnect = computed(() =>
 
 // Handler functions for overlay actions
 const handleReconnect = () => {
+  console.log(currentTerminal);
+
   if (currentTerminal.value?.sshProfileId) {
+    // Clear terminal if it has errors to start fresh
+    if (currentTerminal.value.hasError) {
+      clearTerminal();
+    }
     workspaceStore.reconnectSSH(props.terminalId, currentTerminal.value.sshProfileId);
   }
 };

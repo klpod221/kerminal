@@ -196,7 +196,7 @@
             rules="required|min_value:1|max_value:65535"
           />
         </div>
-        <div class="text-sm text-gray-400 bg-gray-800 p-3 rounded">
+        <div class="text-sm text-gray-400 bg-gray-800 p-3 rounded mb-2">
           <strong>Dynamic Forwarding:</strong> Creates a SOCKS proxy on
           {{ form.localHost }}:{{ form.localPort }}
           that routes traffic through the SSH connection
@@ -433,7 +433,7 @@ watch(
     if (newId) {
       await tunnelStore.loadTunnels();
     }
-    
+
     // Initialize form after tunnels are loaded
     setTimeout(() => {
       initializeForm();
@@ -448,7 +448,7 @@ onMounted(async () => {
     sshStore.loadProfiles(),
     tunnelStore.loadTunnels()
   ]);
-  
+
   initializeForm();
 });
 </script>

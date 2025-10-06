@@ -495,10 +495,10 @@ const testConnection = async () => {
               proxyType: proxyConfig.value.proxyType,
               host: proxyConfig.value.host,
               port: proxyConfig.value.port,
-              username: proxyConfig.value.username || undefined,
-              password: proxyConfig.value.password || undefined,
+              username: proxyConfig.value.username || null,
+              password: proxyConfig.value.password || null,
             }
-          : undefined,
+          : null,
       };
     } else {
       // Create mode: Use form data
@@ -522,10 +522,10 @@ const testConnection = async () => {
               proxyType: proxyConfig.value.proxyType,
               host: proxyConfig.value.host,
               port: proxyConfig.value.port,
-              username: proxyConfig.value.username || undefined,
-              password: proxyConfig.value.password || undefined,
+              username: proxyConfig.value.username || null,
+              password: proxyConfig.value.password || null,
             }
-          : undefined,
+          : null,
       };
     }
 
@@ -559,10 +559,10 @@ const handleSubmit = async () => {
             proxyType: proxyConfig.value.proxyType,
             host: proxyConfig.value.host,
             port: proxyConfig.value.port,
-            username: proxyConfig.value.username || undefined,
-            password: proxyConfig.value.password || undefined,
+            username: proxyConfig.value.username || null,
+            password: proxyConfig.value.password || null,
           }
-        : undefined,
+        : null,
     } as any; // Type assertion to handle the complexity
 
     if (sshProfileId.value) {

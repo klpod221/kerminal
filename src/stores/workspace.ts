@@ -266,11 +266,14 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    * @param terminalId - The terminal ID that failed to connect
    * @param error - The error message
    */
-  const handleSSHConnectionError = async (terminalId: string, _error: string): Promise<void> => {
+  const handleSSHConnectionError = async (terminalId: string, error: string): Promise<void> => {
     // Find and update terminal state
     const terminal = terminals.value.find(t => t.id === terminalId);
     if (terminal) {
       terminal.isSSHConnecting = false;
+      terminal.hasError = true;
+      terminal.errorMessage = error;
+      terminal.canReconnect = true; // Enable reconnect for error cases
     }
 
     // Find the tab that corresponds to this terminal
@@ -293,12 +296,7 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     const result = findTabByTerminalId(panelLayout.value);
     if (result) {
       // Update tab title to show error
-      result.tab.title = `${result.tab.title} (Connection Failed)`;
-
-      // Optionally auto-close the failed tab after a delay
-      setTimeout(() => {
-        closeTab(result.panel.id, result.tab.id);
-      }, 3000); // Close after 3 seconds
+      result.tab.title = `${result.tab.title} (Failed)`;
     }
   };
 
@@ -311,6 +309,8 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     if (terminal) {
       terminal.isSSHConnecting = false;
       terminal.disconnectReason = undefined; // Clear any previous disconnect reason
+      terminal.hasError = false; // Clear any previous error
+      terminal.errorMessage = undefined;
     }
   };
 
@@ -325,6 +325,8 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
     // Clear disconnected state and mark as connecting
     terminal.disconnectReason = undefined;
+    terminal.hasError = false;
+    terminal.errorMessage = undefined;
     terminal.isSSHConnecting = true;
     terminal.backendTerminalId = undefined;
 
@@ -1090,29 +1092,29 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
       // Create backend terminal now that the frontend is ready
       if (!terminal.backendTerminalId) {
-        try {
-          // Find the tab to get the title and profile info
-          let title = "Terminal";
-          let profileId: string | undefined;
+        // Find the tab to get the title and profile info
+        let title = "Terminal";
+        let profileId: string | undefined;
 
-          const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
-            if (layout.type === "panel" && layout.panel) {
-              return layout.panel.tabs.find((t: Tab) => t.id === terminalId);
-            } else if (layout.type === "split" && layout.children) {
-              for (const child of layout.children) {
-                const found = findTabInLayout(child);
-                if (found) return found;
-              }
+        const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
+          if (layout.type === "panel" && layout.panel) {
+            return layout.panel.tabs.find((t: Tab) => t.id === terminalId);
+          } else if (layout.type === "split" && layout.children) {
+            for (const child of layout.children) {
+              const found = findTabInLayout(child);
+              if (found) return found;
             }
-            return undefined;
-          };
-
-          const tab = findTabInLayout(panelLayout.value);
-          if (tab) {
-            title = tab.title;
-            profileId = tab.profileId;
           }
+          return undefined;
+        };
 
+        const tab = findTabInLayout(panelLayout.value);
+        if (tab) {
+          title = tab.title;
+          profileId = tab.profileId;
+        }
+
+        try {
           let response;
           if (profileId) {
             // This is an SSH terminal
@@ -1131,7 +1133,21 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
         } catch (error) {
           console.error("Failed to create terminal:", error);
           // Clear the connecting state if it was an SSH connection
-          if (terminal.isSSHConnecting) {
+          if (terminal.isSSHConnecting && profileId) {
+            // Handle SSH connection error - properly format error message
+            let errorMessage: string;
+            if (error instanceof Error) {
+              errorMessage = error.message;
+            } else if (typeof error === 'string') {
+              errorMessage = error;
+            } else if (error && typeof error === 'object') {
+              // Handle object errors by stringifying or extracting message
+              errorMessage = (error as any).message || JSON.stringify(error, null, 2);
+            } else {
+              errorMessage = 'Unknown connection error occurred';
+            }
+            await handleSSHConnectionError(terminalId, errorMessage);
+          } else if (terminal.isSSHConnecting) {
             terminal.isSSHConnecting = false;
           }
         }
