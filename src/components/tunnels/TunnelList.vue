@@ -150,42 +150,11 @@
 
 
 
-    <!-- Delete Confirmation Modal -->
-    <Modal
-      v-if="tunnelToDelete"
-      id="delete-tunnel-modal"
-      title="Delete Tunnel"
-      size="md"
-      @close="cancelDelete"
-    >
-      <div class="space-y-4">
-        <div class="flex items-start gap-3">
-          <AlertTriangle class="text-red-500 mt-1" :size="20" />
-          <div>
-            <p class="text-white font-medium">
-              Are you sure you want to delete "{{ tunnelToDelete.name }}"?
-            </p>
-            <p class="text-gray-400 text-sm mt-1">
-              This action cannot be undone. The tunnel will be permanently removed.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex justify-end gap-3 pt-4">
-          <Button variant="ghost" @click="cancelDelete">
-            Cancel
-          </Button>
-          <Button variant="danger" :icon="Trash2" @click="confirmDeleteAction">
-            Delete Tunnel
-          </Button>
-        </div>
-      </div>
-    </Modal>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useTunnelStore } from '../../stores/tunnel';
 import { useSSHStore } from '../../stores/ssh';
 import { useOverlay } from '../../composables/useOverlay';
@@ -202,15 +171,12 @@ import {
   Copy,
   Play,
   Square,
-  AlertTriangle
 } from 'lucide-vue-next';
 
 const tunnelStore = useTunnelStore();
 const sshStore = useSSHStore();
 const { openOverlay } = useOverlay();
 
-// State
-const tunnelToDelete = ref<TunnelWithStatus | null>(null);
 
 // Computed
 const validTunnels = computed(() => {
@@ -280,19 +246,12 @@ const duplicateTunnel = async (tunnel: TunnelWithStatus) => {
   }
 };
 
-const confirmDelete = (tunnel: TunnelWithStatus) => {
-  tunnelToDelete.value = tunnel;
-};
+const confirmDelete = async (tunnel: TunnelWithStatus) => {
+  const confirmed = confirm(`Are you sure you want to delete "${tunnel.name}"?\n\nThis action cannot be undone. The tunnel will be permanently removed.`);
 
-const cancelDelete = () => {
-  tunnelToDelete.value = null;
-};
-
-const confirmDeleteAction = async () => {
-  if (tunnelToDelete.value?.id) {
+  if (confirmed && tunnel.id) {
     try {
-      await tunnelStore.deleteTunnel(tunnelToDelete.value.id);
-      tunnelToDelete.value = null;
+      await tunnelStore.deleteTunnel(tunnel.id);
     } catch (error) {
       console.error('Failed to delete tunnel:', error);
     }

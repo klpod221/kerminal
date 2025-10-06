@@ -117,61 +117,17 @@
       </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <Modal
-      v-if="deleteState.isVisible"
-      id="delete-key-confirm"
-      title="Delete SSH Key"
-      size="md"
-      @close="cancelDelete"
-    >
-      <div class="space-y-4">
-        <p class="text-gray-300">
-          Are you sure you want to delete the SSH key
-          <strong class="text-white">{{ deleteState.key?.name }}</strong>?
-        </p>
 
-        <div
-          v-if="deleteState.usageCount > 0"
-          class="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg"
-        >
-          <div class="flex items-start gap-2">
-            <AlertTriangle class="text-yellow-400 flex-shrink-0 mt-1" :size="20" />
-            <div>
-              <p class="text-yellow-400 font-semibold">Warning</p>
-              <p class="text-gray-300 text-sm mt-1">
-                This key is currently used by
-                <strong>{{ deleteState.usageCount }}</strong>
-                profile(s). Deleting it may affect SSH connections.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button variant="secondary" @click="cancelDelete">Cancel</Button>
-          <Button
-            variant="danger"
-            :loading="deleteState.isDeleting"
-            @click="executeDelete"
-          >
-            Delete Key
-          </Button>
-        </div>
-      </template>
-    </Modal>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { onMounted, watch } from "vue";
 import Modal from "../ui/Modal.vue";
 import { formatFingerprint, formatDateOrNever } from "../../utils/formatter";
 import Card from "../ui/Card.vue";
 import Button from "../ui/Button.vue";
-import { Key, Plus, Edit3, Trash2, AlertTriangle } from "lucide-vue-next";
+import { Key, Plus, Edit3, Trash2 } from "lucide-vue-next";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import type { SSHKey } from "../../types/ssh";
@@ -180,14 +136,7 @@ import type { SSHKey } from "../../types/ssh";
 const sshKeyStore = useSshKeyStore();
 const { openOverlay, isOverlayVisible } = useOverlay();
 
-// State
-// Reactive state
-const deleteState = ref({
-  isVisible: false,
-  key: null as SSHKey | null,
-  usageCount: 0,
-  isDeleting: false,
-});
+
 
 // Functions
 const openKeyModal = (key?: SSHKey) => {
@@ -196,32 +145,20 @@ const openKeyModal = (key?: SSHKey) => {
 
 const confirmDelete = async (key: SSHKey) => {
   const count = await sshKeyStore.countProfilesUsing(key.id);
-  deleteState.value = {
-    isVisible: true,
-    key,
-    usageCount: count,
-    isDeleting: false,
-  };
-};
 
-const cancelDelete = () => {
-  deleteState.value = {
-    isVisible: false,
-    key: null,
-    usageCount: 0,
-    isDeleting: false,
-  };
-};
+  let confirmMessage = `Are you sure you want to delete the SSH key "${key.name}"?`;
+  if (count > 0) {
+    confirmMessage += `\n\nWarning: This key is currently used by ${count} profile(s). Deleting it may affect SSH connections.`;
+  }
 
-const executeDelete = async () => {
-  if (!deleteState.value.key) return;
+  const confirmed = confirm(confirmMessage);
 
-  deleteState.value.isDeleting = true;
-  try {
-    await sshKeyStore.deleteKey(deleteState.value.key.id);
-    cancelDelete();
-  } catch (error) {
-    deleteState.value.isDeleting = false;
+  if (confirmed) {
+    try {
+      await sshKeyStore.deleteKey(key.id);
+    } catch (error) {
+      console.error("Failed to delete SSH key:", error);
+    }
   }
 };
 

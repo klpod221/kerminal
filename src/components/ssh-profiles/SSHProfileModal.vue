@@ -100,11 +100,16 @@
           v-model="authPassword"
           label="Password"
           type="password"
-          :placeholder="sshProfileId ? 'Leave empty to keep current password' : 'Enter password'"
+          :placeholder="
+            sshProfileId
+              ? 'Leave empty to keep current password'
+              : 'Enter password'
+          "
           :rules="sshProfileId ? '' : 'required'"
         />
         <div v-if="sshProfileId" class="text-xs text-gray-400">
-          Leave empty to keep the current password. Enter a new password to change it.
+          Leave empty to keep the current password. Enter a new password to
+          change it.
         </div>
       </div>
 
@@ -131,8 +136,6 @@
           </p>
         </div>
       </div>
-
-
 
       <!-- Advanced Settings -->
       <Collapsible
@@ -172,8 +175,6 @@
             label="Enable Compression"
           />
         </div>
-
-
       </Collapsible>
 
       <!-- Proxy Configuration -->
@@ -182,13 +183,11 @@
         subtitle="Route connection through proxy"
         :default-expanded="false"
       >
-        <div class="flex items-center mb-4">
-          <Checkbox
-            id="enable-proxy"
-            v-model="enableProxy"
-            label="Enable Proxy"
-          />
-        </div>
+        <Checkbox
+          id="enable-proxy"
+          v-model="enableProxy"
+          label="Enable Proxy"
+        />
 
         <div v-if="enableProxy">
           <Select
@@ -294,11 +293,7 @@ import { useSSHStore } from "../../stores/ssh";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import * as sshService from "../../services/sshProfile";
-import type {
-  SSHProfile,
-  AuthMethod,
-  AuthData,
-} from "../../types/ssh";
+import type { SSHProfile, AuthMethod, AuthData } from "../../types/ssh";
 import { invoke } from "@tauri-apps/api/core";
 
 // Props (for direct usage)
@@ -351,7 +346,6 @@ const sshProfile = ref({
 const authPassword = ref("");
 const authKeyId = ref("");
 
-
 // Proxy-specific data
 const enableProxy = ref(false);
 const proxyConfig = ref({
@@ -367,8 +361,6 @@ const authMethodOptions = [
   { value: "Password", label: "Password" },
   { value: "KeyReference", label: "SSH Key" },
 ];
-
-
 
 const proxyTypeOptions = [
   { value: "Http", label: "HTTP" },
@@ -414,8 +406,6 @@ const loadProfile = async () => {
           authKeyId.value = profile.authData.KeyReference.keyId;
         }
       }
-
-
 
       // Parse proxy config
       if (profile.proxy) {
@@ -481,8 +471,13 @@ const testConnection = async () => {
         authData = formAuthData;
       } else {
         // No new auth data, use existing encrypted data from database
-        const existingProfile = await sshService.getSSHProfile(sshProfileId.value);
-        console.log("Edit mode - using existing auth data:", existingProfile.authData);
+        const existingProfile = await sshService.getSSHProfile(
+          sshProfileId.value,
+        );
+        console.log(
+          "Edit mode - using existing auth data:",
+          existingProfile.authData,
+        );
         authData = existingProfile.authData;
       }
 
@@ -495,13 +490,15 @@ const testConnection = async () => {
         timeout: sshProfile.value.timeout || 30,
         keepAlive: sshProfile.value.keepAlive ?? true,
         compression: sshProfile.value.compression ?? false,
-        proxy: enableProxy.value ? {
-          proxyType: proxyConfig.value.proxyType,
-          host: proxyConfig.value.host,
-          port: proxyConfig.value.port,
-          username: proxyConfig.value.username || undefined,
-          password: proxyConfig.value.password || undefined,
-        } : undefined,
+        proxy: enableProxy.value
+          ? {
+              proxyType: proxyConfig.value.proxyType,
+              host: proxyConfig.value.host,
+              port: proxyConfig.value.port,
+              username: proxyConfig.value.username || undefined,
+              password: proxyConfig.value.password || undefined,
+            }
+          : undefined,
       };
     } else {
       // Create mode: Use form data
@@ -520,13 +517,15 @@ const testConnection = async () => {
         timeout: sshProfile.value.timeout || 30,
         keepAlive: sshProfile.value.keepAlive ?? true,
         compression: sshProfile.value.compression ?? false,
-        proxy: enableProxy.value ? {
-          proxyType: proxyConfig.value.proxyType,
-          host: proxyConfig.value.host,
-          port: proxyConfig.value.port,
-          username: proxyConfig.value.username || undefined,
-          password: proxyConfig.value.password || undefined,
-        } : undefined,
+        proxy: enableProxy.value
+          ? {
+              proxyType: proxyConfig.value.proxyType,
+              host: proxyConfig.value.host,
+              port: proxyConfig.value.port,
+              username: proxyConfig.value.username || undefined,
+              password: proxyConfig.value.password || undefined,
+            }
+          : undefined,
       };
     }
 
@@ -535,7 +534,9 @@ const testConnection = async () => {
     message.success("SSH connection test successful!");
   } catch (error) {
     console.error("SSH connection test failed:", error);
-    message.error(`SSH connection test failed: ${getErrorMessage(error as Error, "Unknown error")}`);
+    message.error(
+      `SSH connection test failed: ${getErrorMessage(error as Error, "Unknown error")}`,
+    );
   } finally {
     isTesting.value = false;
   }
@@ -610,7 +611,6 @@ watch(
       };
       authPassword.value = "";
       authKeyId.value = "";
-
 
       // Reset proxy config
       enableProxy.value = false;
