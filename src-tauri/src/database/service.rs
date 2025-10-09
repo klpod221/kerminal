@@ -18,6 +18,10 @@ use crate::database::{
 };
 use crate::models::{
     auth::{Device, DeviceInfo},
+    saved_command::{
+        CreateSavedCommandRequest, SavedCommand, UpdateSavedCommandRequest,
+        CreateSavedCommandGroupRequest, SavedCommandGroup, UpdateSavedCommandGroupRequest,
+    },
     ssh::{
         CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
         SSHGroup, SSHKey, SSHProfile, UpdateSSHGroupRequest, UpdateSSHKeyRequest,
@@ -1003,6 +1007,216 @@ impl DatabaseService {
         }
 
         Ok(())
+    }
+
+    // === Saved Command Operations ===
+
+    /// Create saved command
+    pub async fn create_saved_command(
+        &self,
+        request: CreateSavedCommandRequest,
+    ) -> DatabaseResult<SavedCommand> {
+        let command = SavedCommand::new(
+            self.current_device.device_id.clone(),
+            request.name,
+            request.command,
+            request.group_id,
+        );
+
+        // Apply optional fields
+        let mut command = command;
+        command.description = request.description;
+        command.tags = request.tags;
+        command.is_favorite = request.is_favorite.unwrap_or(false);
+
+        let local_db = self.local_db.read().await;
+        local_db.save_saved_command(&command).await?;
+
+        Ok(command)
+    }
+
+    /// Get all saved commands
+    pub async fn get_saved_commands(&self) -> DatabaseResult<Vec<SavedCommand>> {
+        let local_db = self.local_db.read().await;
+        local_db.find_all_saved_commands().await
+    }
+
+    /// Get saved command by ID
+    pub async fn get_saved_command(&self, id: &str) -> DatabaseResult<SavedCommand> {
+        let local_db = self.local_db.read().await;
+        local_db
+            .find_saved_command_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Saved command {} not found", id)))
+    }
+
+    /// Update saved command
+    pub async fn update_saved_command(
+        &self,
+        id: &str,
+        request: UpdateSavedCommandRequest,
+    ) -> DatabaseResult<SavedCommand> {
+        let local_db = self.local_db.read().await;
+        let mut command = local_db
+            .find_saved_command_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Saved command {} not found", id)))?;
+
+        // Update fields
+        if let Some(name) = request.name {
+            command.name = name;
+        }
+        if let Some(description) = request.description {
+            command.description = Some(description);
+        }
+        if let Some(cmd) = request.command {
+            command.command = cmd;
+        }
+        if let Some(group_id) = request.group_id {
+            command.group_id = Some(group_id);
+        }
+        if let Some(tags) = request.tags {
+            command.tags = Some(tags);
+        }
+        if let Some(is_favorite) = request.is_favorite {
+            command.is_favorite = is_favorite;
+        }
+
+        // Update timestamp
+        command.base.updated_at = Utc::now();
+        command.base.version += 1;
+
+        local_db.save_saved_command(&command).await?;
+        Ok(command)
+    }
+
+    /// Delete saved command
+    pub async fn delete_saved_command(&self, id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        local_db.delete_saved_command(id).await
+    }
+
+    /// Increment command usage count
+    pub async fn increment_command_usage(&self, id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        let mut command = local_db
+            .find_saved_command_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Saved command {} not found", id)))?;
+
+        command.usage_count += 1;
+        command.last_used_at = Some(Utc::now().to_rfc3339());
+        command.base.updated_at = Utc::now();
+        command.base.version += 1;
+
+        local_db.save_saved_command(&command).await?;
+        Ok(())
+    }
+
+    /// Toggle command favorite status
+    pub async fn toggle_command_favorite(&self, id: &str) -> DatabaseResult<SavedCommand> {
+        let local_db = self.local_db.read().await;
+        let mut command = local_db
+            .find_saved_command_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Saved command {} not found", id)))?;
+
+        command.is_favorite = !command.is_favorite;
+        command.base.updated_at = Utc::now();
+        command.base.version += 1;
+
+        local_db.save_saved_command(&command).await?;
+        Ok(command)
+    }
+
+    // === Saved Command Group Operations ===
+
+    /// Create saved command group
+    pub async fn create_saved_command_group(
+        &self,
+        request: CreateSavedCommandGroupRequest,
+    ) -> DatabaseResult<SavedCommandGroup> {
+        let group = SavedCommandGroup::new(
+            self.current_device.device_id.clone(),
+            request.name,
+        );
+
+        // Apply optional fields
+        let mut group = group;
+        group.description = request.description;
+        group.color = request.color;
+        group.icon = request.icon;
+
+        let local_db = self.local_db.read().await;
+        local_db.save_saved_command_group(&group).await?;
+
+        Ok(group)
+    }
+
+    /// Get all saved command groups
+    pub async fn get_saved_command_groups(&self) -> DatabaseResult<Vec<SavedCommandGroup>> {
+        let local_db = self.local_db.read().await;
+        local_db.find_all_saved_command_groups().await
+    }
+
+    /// Get saved command group by ID
+    pub async fn get_saved_command_group(&self, id: &str) -> DatabaseResult<SavedCommandGroup> {
+        let local_db = self.local_db.read().await;
+        local_db
+            .find_saved_command_group_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Saved command group {} not found", id)))
+    }
+
+    /// Update saved command group
+    pub async fn update_saved_command_group(
+        &self,
+        id: &str,
+        request: UpdateSavedCommandGroupRequest,
+    ) -> DatabaseResult<SavedCommandGroup> {
+        let local_db = self.local_db.read().await;
+        let mut group = local_db
+            .find_saved_command_group_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Saved command group {} not found", id)))?;
+
+        // Update fields
+        if let Some(name) = request.name {
+            group.name = name;
+        }
+        if let Some(description) = request.description {
+            group.description = Some(description);
+        }
+        if let Some(color) = request.color {
+            group.color = Some(color);
+        }
+        if let Some(icon) = request.icon {
+            group.icon = Some(icon);
+        }
+
+        // Update timestamp
+        group.base.updated_at = Utc::now();
+        group.base.version += 1;
+
+        local_db.save_saved_command_group(&group).await?;
+        Ok(group)
+    }
+
+    /// Delete saved command group
+    pub async fn delete_saved_command_group(&self, id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+
+        // Move commands in this group to ungrouped
+        let commands = local_db.find_saved_commands_by_group_id(Some(id)).await?;
+        for mut command in commands {
+            command.group_id = None;
+            command.base.updated_at = Utc::now();
+            command.base.version += 1;
+            local_db.save_saved_command(&command).await?;
+        }
+
+        // Delete the group
+        local_db.delete_saved_command_group(id).await
     }
 
     /// Get service statistics

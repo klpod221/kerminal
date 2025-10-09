@@ -1,5 +1,5 @@
 use crate::database::{DatabaseService, DatabaseServiceConfig};
-use crate::services::{auth::AuthService, ssh::{SSHKeyService, SSHService}, sync::SyncService, terminal::TerminalManager, tunnel::TunnelService};
+use crate::services::{auth::AuthService, saved_command::SavedCommandService, ssh::{SSHKeyService, SSHService}, sync::SyncService, terminal::TerminalManager, tunnel::TunnelService};
 use crate::core::auth_session_manager::AuthSessionManager;
 use futures::FutureExt;
 use std::sync::Arc;
@@ -12,6 +12,7 @@ pub struct AppState {
     pub ssh_service: SSHService,
     pub ssh_key_service: Arc<Mutex<SSHKeyService>>,
     pub tunnel_service: TunnelService,
+    pub saved_command_service: SavedCommandService,
     pub sync_service: SyncService,
     pub terminal_manager: TerminalManager,
     pub auth_session_manager: Arc<Mutex<AuthSessionManager>>,
@@ -32,6 +33,7 @@ impl AppState {
         let ssh_key_service = Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
         let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
         let tunnel_service = TunnelService::new_with_auto_start(database_service_arc.clone()).await;
+        let saved_command_service = SavedCommandService::new(database_service_arc.clone());
         let sync_service = SyncService::new(database_service_arc.clone());
         let terminal_manager = TerminalManager::new_with_ssh_key_service(database_service_arc.clone(), ssh_key_service.clone());
 
@@ -46,6 +48,7 @@ impl AppState {
             ssh_service,
             ssh_key_service,
             tunnel_service,
+            saved_command_service,
             sync_service,
             terminal_manager,
             auth_session_manager,
@@ -70,6 +73,7 @@ impl Default for AppState {
         let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
         // Note: Default impl cannot be async, so use regular new() here
         let tunnel_service = TunnelService::new(database_service_arc.clone());
+        let saved_command_service = SavedCommandService::new(database_service_arc.clone());
         let sync_service = SyncService::new(database_service_arc.clone());
         let terminal_manager = TerminalManager::new_with_ssh_key_service(database_service_arc.clone(), ssh_key_service.clone());
 
@@ -84,6 +88,7 @@ impl Default for AppState {
             ssh_service,
             ssh_key_service,
             tunnel_service,
+            saved_command_service,
             sync_service,
             terminal_manager,
             auth_session_manager,

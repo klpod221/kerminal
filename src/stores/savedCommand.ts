@@ -1,0 +1,443 @@
+import { defineStore } from "pinia";
+import { ref, computed } from "vue";
+import type {
+  SavedCommand,
+  SavedCommandGroup,
+  CreateSavedCommandRequest,
+  UpdateSavedCommandRequest,
+  CreateSavedCommandGroupRequest,
+  UpdateSavedCommandGroupRequest,
+  GroupedSavedCommandsData,
+  SavedCommandSearchParams,
+} from "../types/savedCommand";
+import { savedCommandService } from "../services/savedCommand";
+import { writeToTerminal } from "../services/terminal";
+
+export const useSavedCommandStore = defineStore("savedCommand", () => {
+  // State
+  const commands = ref<SavedCommand[]>([]);
+  const groups = ref<SavedCommandGroup[]>([]);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+
+  // Computed
+  const favoriteCommands = computed(() =>
+    commands.value.filter(c => c && c.base.id && c.isFavorite)
+  );
+
+  const recentCommands = computed(() =>
+    commands.value
+      .filter(c => c && c.base.id && c.lastUsedAt)
+      .sort((a, b) => new Date(b.lastUsedAt!).getTime() - new Date(a.lastUsedAt!).getTime())
+      .slice(0, 10)
+  );
+
+  const popularCommands = computed(() =>
+    commands.value
+      .filter(c => c && c.base.id && c.usageCount > 0)
+      .sort((a, b) => b.usageCount - a.usageCount)
+      .slice(0, 10)
+  );
+
+  const commandCount = computed(() => commands.value.length);
+  const groupCount = computed(() => groups.value.length);
+  const favoriteCount = computed(() => favoriteCommands.value.length);
+
+  const hasData = computed(() => commands.value.length > 0 || groups.value.length > 0);
+
+  // Actions
+  const loadCommands = async () => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const loadedCommands = await savedCommandService.getCommands();
+      commands.value = (loadedCommands || []).filter(command =>
+        command &&
+        command.base.id &&
+        typeof command.base.id === 'string'
+      );
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load saved commands';
+      console.error('Failed to load saved commands:', err);
+      commands.value = [];
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const loadGroups = async () => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const loadedGroups = await savedCommandService.getGroups();
+      groups.value = (loadedGroups || []).filter(group =>
+        group &&
+        group.base.id &&
+        typeof group.base.id === 'string'
+      );
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to load saved command groups';
+      console.error('Failed to load saved command groups:', err);
+      groups.value = [];
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const loadAll = async () => {
+    await Promise.all([loadCommands(), loadGroups()]);
+  };
+
+  const createCommand = async (request: CreateSavedCommandRequest): Promise<SavedCommand> => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const command = await savedCommandService.createCommand(request);
+      await loadCommands(); // Reload to get updated list
+      return command;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to create saved command';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const updateCommand = async (id: string, request: UpdateSavedCommandRequest): Promise<SavedCommand> => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const command = await savedCommandService.updateCommand(id, request);
+      await loadCommands(); // Reload to get updated list
+      return command;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update saved command';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const deleteCommand = async (id: string): Promise<void> => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      await savedCommandService.deleteCommand(id);
+      await loadCommands(); // Reload to get updated list
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete saved command';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const executeCommand = async (id: string, terminalId?: string): Promise<void> => {
+    try {
+      // Find the command
+      const command = commands.value.find(c => c.base.id === id);
+      if (!command) {
+        throw new Error('Command not found');
+      }
+
+      // Get workspace store to find active terminal if terminalId not provided
+      let targetTerminalId = terminalId;
+      if (!targetTerminalId) {
+        const { useWorkspaceStore } = await import('./workspace');
+        const workspaceStore = useWorkspaceStore();
+
+        if (workspaceStore.activePanelId) {
+          const activePanel = workspaceStore.findPanelInLayout(workspaceStore.activePanelId);
+          if (activePanel?.activeTabId) {
+            // Tab ID is the same as Terminal ID
+            targetTerminalId = activePanel.activeTabId;
+          }
+        }
+      }
+
+      if (!targetTerminalId) {
+        throw new Error('No active terminal found');
+      }
+
+      // Check if terminal exists and is ready
+      const { useWorkspaceStore } = await import('./workspace');
+      const workspaceStore = useWorkspaceStore();
+      const terminal = workspaceStore.terminals.find(t => t.id === targetTerminalId);
+
+      if (!terminal) {
+        throw new Error('Terminal not found');
+      }
+
+      if (!terminal.ready) {
+        throw new Error('Terminal is not ready');
+      }
+
+      if (!terminal.backendTerminalId) {
+        throw new Error('Terminal backend ID not available');
+      }
+
+      // Execute the command in terminal using backend terminal ID
+      await writeToTerminal({
+        terminalId: terminal.backendTerminalId,
+        data: command.command + '\n', // Add newline to execute
+      });
+
+      // Increment usage count
+      await savedCommandService.incrementUsage(id);
+
+      // Update local state without full reload for better UX
+      const commandIndex = commands.value.findIndex(c => c.base.id === id);
+      if (commandIndex !== -1) {
+        commands.value[commandIndex].usageCount += 1;
+        commands.value[commandIndex].lastUsedAt = new Date().toISOString();
+      }
+    } catch (err) {
+      console.error('Failed to execute command:', err);
+      error.value = err instanceof Error ? err.message : 'Failed to execute command';
+      throw err;
+    }
+  };
+
+  const toggleFavorite = async (id: string): Promise<void> => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const updatedCommand = await savedCommandService.toggleFavorite(id);
+      // Update local state
+      const commandIndex = commands.value.findIndex(c => c.base.id === id);
+      if (commandIndex !== -1) {
+        commands.value[commandIndex] = updatedCommand;
+      }
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to toggle favorite';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const createGroup = async (request: CreateSavedCommandGroupRequest): Promise<SavedCommandGroup> => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const group = await savedCommandService.createGroup(request);
+      await loadGroups(); // Reload to get updated list
+      return group;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to create saved command group';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const updateGroup = async (id: string, request: UpdateSavedCommandGroupRequest): Promise<SavedCommandGroup> => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const group = await savedCommandService.updateGroup(id, request);
+      await loadGroups(); // Reload to get updated list
+      return group;
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update saved command group';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const deleteGroup = async (id: string): Promise<void> => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      await savedCommandService.deleteGroup(id);
+      await loadAll(); // Reload both commands and groups
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to delete saved command group';
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  // Helper methods for UI
+  const getGroupedCommandsData = (searchQuery?: string): GroupedSavedCommandsData[] => {
+    const filteredCommands = searchQuery
+      ? commands.value.filter(command =>
+          command.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          command.command.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (command.description && command.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (command.tags && command.tags.toLowerCase().includes(searchQuery.toLowerCase()))
+        )
+      : commands.value;
+
+    // Group commands by group
+    const groupedMap = new Map<string, SavedCommand[]>();
+    const ungroupedCommands: SavedCommand[] = [];
+
+    filteredCommands.forEach(command => {
+      if (command.groupId) {
+        if (!groupedMap.has(command.groupId)) {
+          groupedMap.set(command.groupId, []);
+        }
+        groupedMap.get(command.groupId)!.push(command);
+      } else {
+        ungroupedCommands.push(command);
+      }
+    });
+
+    const result: GroupedSavedCommandsData[] = [];
+
+    // Add groups with commands
+    groups.value.forEach(group => {
+      const groupCommands = groupedMap.get(group.base.id) || [];
+      if (groupCommands.length > 0 || !searchQuery) { // Show empty groups when no search
+        result.push({
+          group,
+          commands: groupCommands.sort((a, b) => a.name.localeCompare(b.name)),
+          commandCount: groupCommands.length,
+        });
+      }
+    });
+
+    // Add ungrouped commands
+    if (ungroupedCommands.length > 0 || (!searchQuery && groups.value.length === 0)) {
+      result.push({
+        commands: ungroupedCommands.sort((a, b) => a.name.localeCompare(b.name)),
+        commandCount: ungroupedCommands.length,
+      });
+    }
+
+    return result;
+  };
+
+  const filterCommands = (params: SavedCommandSearchParams): SavedCommand[] => {
+    let filtered = [...commands.value];
+
+    // Filter by query
+    if (params.query) {
+      const query = params.query.toLowerCase();
+      filtered = filtered.filter(command =>
+        command.name.toLowerCase().includes(query) ||
+        command.command.toLowerCase().includes(query) ||
+        (command.description && command.description.toLowerCase().includes(query)) ||
+        (command.tags && command.tags.toLowerCase().includes(query))
+      );
+    }
+
+    // Filter by group
+    if (params.groupId) {
+      filtered = filtered.filter(command => command.groupId === params.groupId);
+    }
+
+    // Filter by type
+    if (params.filterBy) {
+      switch (params.filterBy) {
+        case 'favorites':
+          filtered = filtered.filter(command => command.isFavorite);
+          break;
+        case 'recent':
+          filtered = filtered.filter(command => command.lastUsedAt);
+          break;
+        case 'unused':
+          filtered = filtered.filter(command => command.usageCount === 0);
+          break;
+      }
+    }
+
+    // Filter by tags
+    if (params.tags && params.tags.length > 0) {
+      filtered = filtered.filter(command => {
+        if (!command.tags) return false;
+        try {
+          const commandTags = JSON.parse(command.tags) as string[];
+          return params.tags!.some(tag => commandTags.includes(tag));
+        } catch {
+          return false;
+        }
+      });
+    }
+
+    // Sort
+    if (params.sortBy) {
+      filtered.sort((a, b) => {
+        let comparison = 0;
+        switch (params.sortBy) {
+          case 'name':
+            comparison = a.name.localeCompare(b.name);
+            break;
+          case 'lastUsed':
+            const aDate = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0;
+            const bDate = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0;
+            comparison = bDate - aDate;
+            break;
+          case 'usageCount':
+            comparison = b.usageCount - a.usageCount;
+            break;
+          case 'createdAt':
+            comparison = new Date(b.base.createdAt).getTime() - new Date(a.base.createdAt).getTime();
+            break;
+          case 'updatedAt':
+            comparison = new Date(b.base.updatedAt).getTime() - new Date(a.base.updatedAt).getTime();
+            break;
+        }
+        return params.sortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return filtered;
+  };
+
+  const getCommandById = (id: string): SavedCommand | undefined => {
+    return commands.value.find(command => command.base.id === id);
+  };
+
+  const getGroupById = (id: string): SavedCommandGroup | undefined => {
+    return groups.value.find(group => group.base.id === id);
+  };
+
+  return {
+    // State
+    commands,
+    groups,
+    loading,
+    error,
+
+    // Computed
+    favoriteCommands,
+    recentCommands,
+    popularCommands,
+    commandCount,
+    groupCount,
+    favoriteCount,
+    hasData,
+
+    // Actions
+    loadCommands,
+    loadGroups,
+    loadAll,
+    createCommand,
+    updateCommand,
+    deleteCommand,
+    executeCommand,
+    toggleFavorite,
+    createGroup,
+    updateGroup,
+    deleteGroup,
+
+    // Helper methods
+    getGroupedCommandsData,
+    filterCommands,
+    getCommandById,
+    getGroupById,
+  };
+});

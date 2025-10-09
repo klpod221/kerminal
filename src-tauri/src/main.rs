@@ -85,6 +85,18 @@ async fn main() {
             commands::database::tunnel::start_tunnel,
             commands::database::tunnel::stop_tunnel,
             commands::database::tunnel::get_tunnel_status,
+            commands::database::saved_command::create_saved_command,
+            commands::database::saved_command::get_saved_commands,
+            commands::database::saved_command::get_saved_command,
+            commands::database::saved_command::update_saved_command,
+            commands::database::saved_command::delete_saved_command,
+            commands::database::saved_command::increment_command_usage,
+            commands::database::saved_command::toggle_command_favorite,
+            commands::database::saved_command::create_saved_command_group,
+            commands::database::saved_command::get_saved_command_groups,
+            commands::database::saved_command::get_saved_command_group,
+            commands::database::saved_command::update_saved_command_group,
+            commands::database::saved_command::delete_saved_command_group,
             commands::database::system::get_database_stats
         ])
         .setup(setup::init)

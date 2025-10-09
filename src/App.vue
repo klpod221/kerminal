@@ -12,6 +12,8 @@
 
         <SSHProfileManager />
 
+        <SavedCommandManager />
+
         <TunnelManager />
       </template>
     </div>
@@ -26,6 +28,7 @@ import TopBar from "./components/TopBar.vue";
 import Dashboard from "./components/Dashboard.vue";
 import Workspace from "./components/Workspace.vue";
 import SSHProfileManager from "./components/ssh-profiles/SSHProfileManager.vue";
+import SavedCommandManager from "./components/saved-commands/SavedCommandManager.vue";
 import TunnelManager from "./components/tunnels/TunnelManager.vue";
 import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
 

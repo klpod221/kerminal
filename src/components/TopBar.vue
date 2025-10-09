@@ -67,6 +67,25 @@
           "
         />
       </div>
+
+      <!-- Saved Commands button -->
+      <div
+        class="flex items-center px-3 h-[30px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer"
+        :class="{
+          'bg-gray-800': isOverlayVisible('saved-command-drawer'),
+        }"
+        @click="toggleOverlay('saved-command-drawer')"
+      >
+        <Terminal
+          :size="16"
+          class="transition-opacity duration-200"
+          :class="
+            isOverlayVisible('saved-command-drawer')
+              ? 'opacity-100'
+              : 'opacity-60 hover:opacity-100'
+          "
+        />
+      </div>
     </div>
 
     <!-- Center content -->
@@ -120,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { LayoutGrid, Server, Shield, Key, Route } from "lucide-vue-next";
+import { LayoutGrid, Server, Shield, Key, Route, Terminal } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 
 import { useViewStateStore } from "../stores/viewState";
