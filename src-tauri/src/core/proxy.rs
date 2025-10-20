@@ -16,8 +16,6 @@ pub enum ProxyError {
     Io(#[from] std::io::Error),
 }
 
-
-
 /// Create a proxy command string for russh-config
 pub fn create_proxy_command(
     proxy_config: &ProxyConfig,
@@ -25,15 +23,9 @@ pub fn create_proxy_command(
     target_port: u16,
 ) -> Result<String, ProxyError> {
     match proxy_config.proxy_type {
-        ProxyType::Http => {
-            create_http_proxy_command(proxy_config, target_host, target_port)
-        }
-        ProxyType::Socks4 => {
-            create_socks4_proxy_command(proxy_config, target_host, target_port)
-        }
-        ProxyType::Socks5 => {
-            create_socks5_proxy_command(proxy_config, target_host, target_port)
-        }
+        ProxyType::Http => create_http_proxy_command(proxy_config, target_host, target_port),
+        ProxyType::Socks4 => create_socks4_proxy_command(proxy_config, target_host, target_port),
+        ProxyType::Socks5 => create_socks5_proxy_command(proxy_config, target_host, target_port),
     }
 }
 
@@ -45,7 +37,8 @@ pub async fn create_proxy_stream(
 ) -> Result<Stream, ProxyError> {
     let command = create_proxy_command(proxy_config, target_host, target_port)?;
 
-    Stream::proxy_command(&command, &[]).await
+    Stream::proxy_command(&command, &[])
+        .await
         .map_err(|e| ProxyError::ConnectionFailed(format!("Proxy command failed: {}", e)))
 }
 
@@ -62,14 +55,12 @@ fn create_http_proxy_command(
         println!("Warning: HTTP proxy authentication not fully supported in netcat command");
         Ok(format!(
             "nc -X connect -x {}:{} {} {}",
-            proxy_config.host, proxy_config.port,
-            target_host, target_port
+            proxy_config.host, proxy_config.port, target_host, target_port
         ))
     } else {
         Ok(format!(
             "nc -X connect -x {}:{} {} {}",
-            proxy_config.host, proxy_config.port,
-            target_host, target_port
+            proxy_config.host, proxy_config.port, target_host, target_port
         ))
     }
 }
@@ -82,8 +73,7 @@ fn create_socks4_proxy_command(
 ) -> Result<String, ProxyError> {
     Ok(format!(
         "nc -X 4 -x {}:{} {} {}",
-        proxy_config.host, proxy_config.port,
-        target_host, target_port
+        proxy_config.host, proxy_config.port, target_host, target_port
     ))
 }
 
@@ -95,7 +85,6 @@ fn create_socks5_proxy_command(
 ) -> Result<String, ProxyError> {
     Ok(format!(
         "nc -X 5 -x {}:{} {} {}",
-        proxy_config.host, proxy_config.port,
-        target_host, target_port
+        proxy_config.host, proxy_config.port, target_host, target_port
     ))
 }

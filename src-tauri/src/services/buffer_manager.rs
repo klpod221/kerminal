@@ -1,8 +1,8 @@
+use crate::models::buffer::TerminalBufferChunk;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use crate::models::buffer::TerminalBufferChunk;
 
 /// Statistics about the buffer manager
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -41,7 +41,7 @@
       <div class="space-y-2 pb-3 border-b border-gray-700">
         <div class="flex items-center justify-between">
           <!-- Filter & Sort Controls -->
-          <div class="grid grid-cols-2 gap-2 w-full">
+          <Form class="grid grid-cols-2 gap-2 w-full">
             <Select
               id="filter-select"
               v-model="activeFilter"
@@ -69,7 +69,7 @@
               class="w-full"
               size="sm"
             />
-          </div>
+          </Form>
         </div>
 
         <!-- Stats -->
@@ -196,6 +196,7 @@
   <!-- Modals -->
   <SavedCommandModal
     modal-id="saved-command-modal"
+    :groups="savedCommandStore.groups"
     @success="handleCommandSaved"
     @error="handleError"
   />
@@ -329,12 +330,12 @@ const filteredGroupsData = computed(() => {
       const sortedCommands = [...filteredGroupCommands].sort((a, b) => {
         const aVal = getSortValue(a);
         const bVal = getSortValue(b);
-        
+
         if (typeof aVal === 'string' && typeof bVal === 'string') {
           const comparison = aVal.localeCompare(bVal);
           return sortOrder.value === 'asc' ? comparison : -comparison;
         }
-        
+
         const comparison = (aVal as number) - (bVal as number);
         return sortOrder.value === 'asc' ? comparison : -comparison;
       });

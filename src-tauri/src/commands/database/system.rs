@@ -9,5 +9,6 @@ use super::common::app_result;
 /// Get database statistics
 #[tauri::command]
 pub async fn get_database_stats(state: State<'_, AppState>) -> Result<DatabaseStats, String> {
-    app_result!(state.sync_service.get_database_stats().await)
+    let db_service = state.database_service.lock().await;
+    app_result!(db_service.get_database_stats().await)
 }

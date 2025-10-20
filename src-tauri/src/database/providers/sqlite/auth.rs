@@ -1,7 +1,10 @@
 use sqlx::Row;
 
 use crate::{
-    database::{encryption::device_keys::MasterPasswordEntry, error::{DatabaseError, DatabaseResult}},
+    database::{
+        encryption::device_keys::MasterPasswordEntry,
+        error::{DatabaseError, DatabaseResult},
+    },
     models::auth::Device,
 };
 
@@ -59,7 +62,9 @@ pub async fn get_master_password_entry(
             password_salt: salt_array,
             verification_hash: row.get("verification_hash"),
             auto_unlock: row.get("auto_unlock"),
-            auto_lock_timeout: row.get::<Option<i64>, _>("auto_lock_timeout").map(|t| t as u32),
+            auto_lock_timeout: row
+                .get::<Option<i64>, _>("auto_lock_timeout")
+                .map(|t| t as u32),
             created_at: row.get("created_at"),
             last_verified_at: row.get("last_verified_at"),
         };
@@ -140,10 +145,7 @@ pub async fn save_device(provider: &SQLiteProvider, device: &Device) -> Database
     )
     .bind(&device.device_id)
     .bind(&device.device_name)
-    .bind(
-        serde_json::to_string(&device.device_type)
-            .unwrap_or_else(|_| "\"Unknown\"".to_string()),
-    )
+    .bind(serde_json::to_string(&device.device_type).unwrap_or_else(|_| "\"Unknown\"".to_string()))
     .bind(&device.os_info.os_type)
     .bind(&device.os_info.os_version)
     .bind(device.created_at.to_rfc3339())

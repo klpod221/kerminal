@@ -23,10 +23,15 @@ impl TerminalWrapper {
     }
 
     /// Connect to the terminal with resolved SSH key data (SSH only)
-    pub async fn connect_with_resolved_data(&mut self, resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>) -> Result<(), AppError> {
+    pub async fn connect_with_resolved_data(
+        &mut self,
+        resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>,
+    ) -> Result<(), AppError> {
         match self {
             TerminalWrapper::Local(terminal) => terminal.connect().await,
-            TerminalWrapper::SSH(terminal) => terminal.connect_with_resolved_data(resolved_key).await,
+            TerminalWrapper::SSH(terminal) => {
+                terminal.connect_with_resolved_data(resolved_key).await
+            }
         }
     }
 
@@ -118,7 +123,7 @@ impl TerminalFactory {
     pub async fn create_terminal(
         id: String,
         config: TerminalConfig,
-        database_service: Option<Arc<Mutex<DatabaseService>>>
+        database_service: Option<Arc<Mutex<DatabaseService>>>,
     ) -> Result<TerminalWrapper, AppError> {
         match config.terminal_type {
             TerminalType::Local => {
@@ -147,9 +152,7 @@ impl TerminalFactory {
                     db_service
                         .get_ssh_profile(&ssh_profile_id)
                         .await
-                        .map_err(|e| {
-                            AppError::Database(e.to_string())
-                        })?
+                        .map_err(|e| AppError::Database(e.to_string()))?
                 };
 
                 Ok(TerminalWrapper::SSH(ssh::SSHTerminal::new(

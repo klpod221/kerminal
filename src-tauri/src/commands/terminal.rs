@@ -1,8 +1,9 @@
 use crate::error::AppError;
 use crate::models::terminal::{
-    CreateTerminalRequest, CreateTerminalResponse, LocalConfig, ResizeTerminalRequest,
-    TerminalConfig, TerminalInfo, TerminalType, WriteTerminalRequest, WriteBatchTerminalRequest,
-    CreateLocalTerminalRequest, CreateSshTerminalRequest, CloseTerminalRequest, GetTerminalInfoRequest,
+    CloseTerminalRequest, CreateLocalTerminalRequest, CreateSshTerminalRequest,
+    CreateTerminalRequest, CreateTerminalResponse, GetTerminalInfoRequest, LocalConfig,
+    ResizeTerminalRequest, TerminalConfig, TerminalInfo, TerminalType, WriteBatchTerminalRequest,
+    WriteTerminalRequest,
 };
 use crate::state::AppState;
 use tauri::{AppHandle, State};
@@ -24,8 +25,12 @@ pub async fn create_terminal(
         ssh_profile_id: None,
     };
 
-    let create_request = CreateTerminalRequest { config, title: request.title };
-    app_state.terminal_manager
+    let create_request = CreateTerminalRequest {
+        config,
+        title: request.title,
+    };
+    app_state
+        .terminal_manager
         .create_terminal(create_request, Some(app_handle))
         .await
 }
@@ -38,7 +43,8 @@ pub async fn create_ssh_terminal(
     app_handle: AppHandle,
 ) -> Result<CreateTerminalResponse, AppError> {
     // Get SSH profile from database
-    let ssh_profile = app_state.ssh_service
+    let ssh_profile = app_state
+        .ssh_service
         .get_ssh_profile(&request.profile_id)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
@@ -55,10 +61,12 @@ pub async fn create_ssh_terminal(
         title: Some(ssh_profile.display_name()),
     };
 
-    app_state.terminal_manager
+    app_state
+        .terminal_manager
         .create_terminal(terminal_request, Some(app_handle))
         .await
-}/// Write data to a terminal
+}
+/// Write data to a terminal
 #[tauri::command]
 pub async fn write_to_terminal(
     request: WriteTerminalRequest,
@@ -75,7 +83,10 @@ pub async fn write_batch_to_terminal(
 ) -> Result<(), AppError> {
     // Process each write request in the batch
     for write_request in request.requests {
-        app_state.terminal_manager.write_to_terminal(write_request).await?;
+        app_state
+            .terminal_manager
+            .write_to_terminal(write_request)
+            .await?;
     }
     Ok(())
 }
@@ -95,7 +106,10 @@ pub async fn close_terminal(
     request: CloseTerminalRequest,
     app_state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    app_state.terminal_manager.close_terminal(request.terminal_id).await
+    app_state
+        .terminal_manager
+        .close_terminal(request.terminal_id)
+        .await
 }
 
 /// Get information about a specific terminal
@@ -104,13 +118,14 @@ pub async fn get_terminal_info(
     request: GetTerminalInfoRequest,
     app_state: State<'_, AppState>,
 ) -> Result<TerminalInfo, AppError> {
-    app_state.terminal_manager.get_terminal_info(request.terminal_id).await
+    app_state
+        .terminal_manager
+        .get_terminal_info(request.terminal_id)
+        .await
 }
 
 /// List all active terminals
 #[tauri::command]
-pub async fn list_terminals(
-    app_state: State<'_, AppState>,
-) -> Result<Vec<TerminalInfo>, AppError> {
+pub async fn list_terminals(app_state: State<'_, AppState>) -> Result<Vec<TerminalInfo>, AppError> {
     app_state.terminal_manager.list_terminals().await
 }

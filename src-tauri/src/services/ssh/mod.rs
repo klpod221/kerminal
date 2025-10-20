@@ -1,18 +1,15 @@
 pub mod key;
 
+use anyhow;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use anyhow;
 
 pub use key::SSHKeyService;
 
-use crate::database::{
-    error::DatabaseResult,
-    service::DatabaseService,
-};
+use crate::database::{error::DatabaseResult, service::DatabaseService};
 use crate::models::ssh::{
-    CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest,
-    CreateSSHProfileRequest, SSHProfile, TestSSHConnectionRequest, UpdateSSHProfileRequest,
+    CreateSSHGroupRequest, CreateSSHProfileRequest, DeleteGroupAction, SSHGroup, SSHProfile,
+    TestSSHConnectionRequest, UpdateSSHGroupRequest, UpdateSSHProfileRequest,
 };
 
 /// SSH service for handling SSH profiles and groups
@@ -23,7 +20,10 @@ pub struct SSHService {
 
 impl SSHService {
     /// Create new SSHService instance
-    pub fn new(database_service: Arc<Mutex<DatabaseService>>, ssh_key_service: Arc<Mutex<SSHKeyService>>) -> Self {
+    pub fn new(
+        database_service: Arc<Mutex<DatabaseService>>,
+        ssh_key_service: Arc<Mutex<SSHKeyService>>,
+    ) -> Self {
         Self {
             database_service,
             ssh_key_service,
@@ -33,7 +33,10 @@ impl SSHService {
     // === SSH Group Management ===
 
     /// Create new SSH group
-    pub async fn create_ssh_group(&self, request: CreateSSHGroupRequest) -> DatabaseResult<SSHGroup> {
+    pub async fn create_ssh_group(
+        &self,
+        request: CreateSSHGroupRequest,
+    ) -> DatabaseResult<SSHGroup> {
         let db_service = self.database_service.lock().await;
         db_service.create_ssh_group(request).await
     }
@@ -73,7 +76,10 @@ impl SSHService {
     // === SSH Profile Management ===
 
     /// Create new SSH profile
-    pub async fn create_ssh_profile(&self, request: CreateSSHProfileRequest) -> DatabaseResult<SSHProfile> {
+    pub async fn create_ssh_profile(
+        &self,
+        request: CreateSSHProfileRequest,
+    ) -> DatabaseResult<SSHProfile> {
         let db_service = self.database_service.lock().await;
         db_service.create_ssh_profile(request).await
     }
@@ -127,10 +133,13 @@ impl SSHService {
     }
 
     /// Test SSH connection with a profile
-    pub async fn test_ssh_connection(&self, request: TestSSHConnectionRequest) -> DatabaseResult<()> {
+    pub async fn test_ssh_connection(
+        &self,
+        request: TestSSHConnectionRequest,
+    ) -> DatabaseResult<()> {
         use crate::core::terminal::ssh::SSHTerminal;
-        use crate::models::terminal::{TerminalConfig, TerminalType};
         use crate::models::ssh::profile::AuthData;
+        use crate::models::terminal::{TerminalConfig, TerminalType};
 
         // Get device_id from database service
         let device_id = {
@@ -145,8 +154,16 @@ impl SSHService {
         let resolved_key = match &profile.auth_data {
             AuthData::KeyReference { key_id } => {
                 let key_service = self.ssh_key_service.lock().await;
-                Some(key_service.resolve_key_for_auth(key_id).await
-                    .map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?)
+                Some(
+                    key_service
+                        .resolve_key_for_auth(key_id)
+                        .await
+                        .map_err(|e| {
+                            crate::database::error::DatabaseError::Internal(anyhow::anyhow!(
+                                e.to_string()
+                            ))
+                        })?,
+                )
             }
             AuthData::Password { .. } => None,
         };
@@ -164,11 +181,16 @@ impl SSHService {
             config,
             profile,
             Some(self.database_service.clone()),
-        ).map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
+        )
+        .map_err(|e| {
+            crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string()))
+        })?;
 
         // Attempt to connect with resolved data
         let connect_result = if let Some(resolved_key) = resolved_key {
-            ssh_terminal.connect_with_resolved_data(Some(resolved_key)).await
+            ssh_terminal
+                .connect_with_resolved_data(Some(resolved_key))
+                .await
         } else {
             ssh_terminal.connect().await
         };
@@ -177,8 +199,9 @@ impl SSHService {
         let _ = ssh_terminal.disconnect().await;
 
         // Return the connection result
-        connect_result
-            .map_err(|e| crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string())))?;
+        connect_result.map_err(|e| {
+            crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string()))
+        })?;
 
         Ok(())
     }

@@ -1,13 +1,10 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::database::{
-    error::DatabaseResult,
-    service::DatabaseService,
-};
+use crate::database::{error::DatabaseResult, service::DatabaseService};
 use crate::models::saved_command::{
-    CreateSavedCommandRequest, SavedCommand, UpdateSavedCommandRequest,
-    CreateSavedCommandGroupRequest, SavedCommandGroup, UpdateSavedCommandGroupRequest,
+    CreateSavedCommandGroupRequest, CreateSavedCommandRequest, SavedCommand, SavedCommandGroup,
+    UpdateSavedCommandGroupRequest, UpdateSavedCommandRequest,
 };
 
 /// Saved command service for handling saved commands and groups
@@ -18,15 +15,16 @@ pub struct SavedCommandService {
 impl SavedCommandService {
     /// Create new SavedCommandService instance
     pub fn new(database_service: Arc<Mutex<DatabaseService>>) -> Self {
-        Self {
-            database_service,
-        }
+        Self { database_service }
     }
 
     // === Saved Command Management ===
 
     /// Create new saved command
-    pub async fn create_command(&self, request: CreateSavedCommandRequest) -> DatabaseResult<SavedCommand> {
+    pub async fn create_command(
+        &self,
+        request: CreateSavedCommandRequest,
+    ) -> DatabaseResult<SavedCommand> {
         let db_service = self.database_service.lock().await;
         db_service.create_saved_command(request).await
     }
@@ -74,7 +72,10 @@ impl SavedCommandService {
     // === Saved Command Group Management ===
 
     /// Create new saved command group
-    pub async fn create_group(&self, request: CreateSavedCommandGroupRequest) -> DatabaseResult<SavedCommandGroup> {
+    pub async fn create_group(
+        &self,
+        request: CreateSavedCommandGroupRequest,
+    ) -> DatabaseResult<SavedCommandGroup> {
         let db_service = self.database_service.lock().await;
         db_service.create_saved_command_group(request).await
     }

@@ -7,10 +7,7 @@ use crate::{
 
 use super::SQLiteProvider;
 
-pub async fn save_ssh_tunnel(
-    provider: &SQLiteProvider,
-    model: &SSHTunnel,
-) -> DatabaseResult<()> {
+pub async fn save_ssh_tunnel(provider: &SQLiteProvider, model: &SSHTunnel) -> DatabaseResult<()> {
     let pool = provider.get_pool()?;
     let pool = pool.read().await;
 
@@ -246,10 +243,7 @@ pub async fn find_auto_start_ssh_tunnels(
     Ok(tunnels)
 }
 
-pub async fn update_ssh_tunnel(
-    provider: &SQLiteProvider,
-    model: &SSHTunnel,
-) -> DatabaseResult<()> {
+pub async fn update_ssh_tunnel(provider: &SQLiteProvider, model: &SSHTunnel) -> DatabaseResult<()> {
     save_ssh_tunnel(provider, model).await
 }
 

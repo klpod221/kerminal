@@ -19,8 +19,8 @@ use crate::database::{
 use crate::models::{
     auth::{Device, DeviceInfo},
     saved_command::{
-        CreateSavedCommandRequest, SavedCommand, UpdateSavedCommandRequest,
-        CreateSavedCommandGroupRequest, SavedCommandGroup, UpdateSavedCommandGroupRequest,
+        CreateSavedCommandGroupRequest, CreateSavedCommandRequest, SavedCommand, SavedCommandGroup,
+        UpdateSavedCommandGroupRequest, UpdateSavedCommandRequest,
     },
     ssh::{
         CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
@@ -117,6 +117,16 @@ impl DatabaseService {
     /// Get current device ID
     pub fn get_device_id(&self) -> &str {
         &self.current_device.device_id
+    }
+
+    /// Get master password manager Arc for encryption operations
+    pub fn get_master_password_manager_arc(&self) -> Arc<RwLock<MasterPasswordManager>> {
+        self.master_password_manager.clone()
+    }
+
+    /// Get local database Arc for sync operations
+    pub fn get_local_database(&self) -> Arc<RwLock<SQLiteProvider>> {
+        self.local_db.clone()
     }
 
     /// Setup master password (first time)
@@ -872,7 +882,9 @@ impl DatabaseService {
         tunnel.auto_start = request.auto_start.unwrap_or(false);
 
         // Validate tunnel configuration
-        tunnel.validate().map_err(|e| DatabaseError::ValidationError(e))?;
+        tunnel
+            .validate()
+            .map_err(|e| DatabaseError::ValidationError(e))?;
 
         let local_db = self.local_db.read().await;
         local_db.save_ssh_tunnel(&tunnel).await?;
@@ -956,7 +968,9 @@ impl DatabaseService {
         }
 
         // Validate updated configuration
-        tunnel.validate().map_err(|e| DatabaseError::ValidationError(e))?;
+        tunnel
+            .validate()
+            .map_err(|e| DatabaseError::ValidationError(e))?;
 
         // Update timestamp and version
         tunnel.base.touch();
@@ -1136,10 +1150,7 @@ impl DatabaseService {
         &self,
         request: CreateSavedCommandGroupRequest,
     ) -> DatabaseResult<SavedCommandGroup> {
-        let group = SavedCommandGroup::new(
-            self.current_device.device_id.clone(),
-            request.name,
-        );
+        let group = SavedCommandGroup::new(self.current_device.device_id.clone(), request.name);
 
         // Apply optional fields
         let mut group = group;
@@ -1178,7 +1189,9 @@ impl DatabaseService {
         let mut group = local_db
             .find_saved_command_group_by_id(id)
             .await?
-            .ok_or_else(|| DatabaseError::NotFound(format!("Saved command group {} not found", id)))?;
+            .ok_or_else(|| {
+                DatabaseError::NotFound(format!("Saved command group {} not found", id))
+            })?;
 
         // Update fields
         if let Some(name) = request.name {
@@ -1293,5 +1306,117 @@ impl Default for DatabaseServiceConfig {
             sync_interval_minutes: 15,
             master_password_config: MasterPasswordConfig::default(),
         }
+    }
+}
+
+impl DatabaseService {
+    pub async fn save_external_database(
+        &self,
+        config: &crate::models::sync::ExternalDatabaseConfig,
+    ) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.save_external_database(config).await
+    }
+
+    pub async fn find_external_database_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::sync::ExternalDatabaseConfig>> {
+        let db = self.local_db.read().await;
+        db.find_external_database_by_id(id).await
+    }
+
+    pub async fn find_all_external_databases(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::sync::ExternalDatabaseConfig>> {
+        let db = self.local_db.read().await;
+        db.find_all_external_databases().await
+    }
+
+    pub async fn update_external_database_last_sync(
+        &self,
+        id: &str,
+        last_sync: chrono::DateTime<chrono::Utc>,
+    ) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.update_external_database_last_sync(id, last_sync).await
+    }
+
+    pub async fn toggle_external_database_active(
+        &self,
+        id: &str,
+        is_active: bool,
+    ) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.toggle_external_database_active(id, is_active).await
+    }
+
+    pub async fn delete_external_database(&self, id: &str) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.delete_external_database(id).await
+    }
+
+    pub async fn save_sync_operation(
+        &self,
+        operation: &crate::models::sync::SyncOperation,
+    ) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.save_sync_operation(operation).await
+    }
+
+    pub async fn find_sync_operations_by_entity(
+        &self,
+        entity_type: &str,
+        entity_id: &str,
+    ) -> DatabaseResult<Vec<crate::models::sync::SyncOperation>> {
+        let db = self.local_db.read().await;
+        db.find_sync_operations_by_entity(entity_type, entity_id)
+            .await
+    }
+
+    pub async fn find_recent_sync_operations(
+        &self,
+        limit: i32,
+    ) -> DatabaseResult<Vec<crate::models::sync::SyncOperation>> {
+        let db = self.local_db.read().await;
+        db.find_recent_sync_operations(limit).await
+    }
+
+    pub async fn save_sync_conflict(
+        &self,
+        conflict: &crate::models::sync::SyncConflict,
+    ) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.save_sync_conflict(conflict).await
+    }
+
+    pub async fn find_unresolved_conflicts(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::sync::SyncConflict>> {
+        let db = self.local_db.read().await;
+        db.find_unresolved_conflicts().await
+    }
+
+    pub async fn find_conflict_by_entity(
+        &self,
+        entity_type: &str,
+        entity_id: &str,
+    ) -> DatabaseResult<Option<crate::models::sync::SyncConflict>> {
+        let db = self.local_db.read().await;
+        db.find_conflict_by_entity(entity_type, entity_id).await
+    }
+
+    pub async fn resolve_conflict(
+        &self,
+        id: &str,
+        strategy: crate::models::sync::ConflictResolutionStrategy,
+    ) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.resolve_conflict(id, strategy).await
+    }
+
+    pub async fn delete_conflict(&self, id: &str) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.delete_conflict(id).await
     }
 }

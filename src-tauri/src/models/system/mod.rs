@@ -1,5 +1,3 @@
 pub mod info;
 
-pub use info::{
-    CPUInfo, ComponentInfo, DiskInfo, NetworkInterface, SystemInfo,
-};
+pub use info::{CPUInfo, ComponentInfo, DiskInfo, NetworkInterface, SystemInfo};

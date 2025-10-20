@@ -1,8 +1,8 @@
+use crate::core::proxy::create_proxy_stream;
 use crate::error::AppError;
 use crate::models::ssh::key::ResolvedSSHKey;
 use crate::models::ssh::{AuthData, SSHProfile};
 use crate::models::terminal::{TerminalConfig, TerminalState};
-use crate::core::proxy::create_proxy_stream;
 use async_trait::async_trait;
 use russh::client::{Handle, Handler, Session};
 use russh::{client::Msg, Channel, ChannelId, Disconnect};
@@ -10,8 +10,6 @@ use russh_keys::key::PublicKey;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex};
-
-
 
 /// SSH client handler implementation
 #[derive(Clone)]
@@ -133,7 +131,9 @@ impl SSHTerminal {
         id: String,
         config: TerminalConfig,
         ssh_profile: SSHProfile,
-        database_service: Option<Arc<tokio::sync::Mutex<crate::database::service::DatabaseService>>>,
+        database_service: Option<
+            Arc<tokio::sync::Mutex<crate::database::service::DatabaseService>>,
+        >,
     ) -> Result<Self, AppError> {
         let handler = Arc::new(ClientHandler::new(id.clone()));
         Ok(SSHTerminal {
@@ -174,21 +174,22 @@ impl SSHTerminal {
         // Connect to the server (either directly or through proxy)
         let handler = (*self.handler).clone();
         let mut session = if let Some(proxy_config) = &self.ssh_profile.proxy {
-            println!("Connecting through {} proxy at {}:{}",
-                proxy_config.proxy_type, proxy_config.host, proxy_config.port);
+            println!(
+                "Connecting through {} proxy at {}:{}",
+                proxy_config.proxy_type, proxy_config.host, proxy_config.port
+            );
 
             // Create proxy stream using russh-config
-            let stream = create_proxy_stream(
-                proxy_config,
-                &self.ssh_profile.host,
-                self.ssh_profile.port,
-            ).await.map_err(|e| {
-                self.state = TerminalState::Disconnected;
-                AppError::connection_failed(format!(
-                    "Failed to create proxy connection: {}",
-                    e
-                ))
-            })?;
+            let stream =
+                create_proxy_stream(proxy_config, &self.ssh_profile.host, self.ssh_profile.port)
+                    .await
+                    .map_err(|e| {
+                        self.state = TerminalState::Disconnected;
+                        AppError::connection_failed(format!(
+                            "Failed to create proxy connection: {}",
+                            e
+                        ))
+                    })?;
 
             // Connect using the proxy stream
             russh::client::connect_stream(config, stream, handler).await
@@ -198,8 +199,10 @@ impl SSHTerminal {
                 config,
                 (self.ssh_profile.host.as_str(), self.ssh_profile.port),
                 handler,
-            ).await
-        }.map_err(|e| {
+            )
+            .await
+        }
+        .map_err(|e| {
             self.state = TerminalState::Disconnected;
             AppError::connection_failed(format!(
                 "Failed to connect to SSH server {}:{}: {}",

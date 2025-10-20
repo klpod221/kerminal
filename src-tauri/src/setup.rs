@@ -1,5 +1,5 @@
-use tauri::{App, Manager};
 use crate::state::AppState;
+use tauri::{App, Manager};
 
 pub fn init(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").unwrap();

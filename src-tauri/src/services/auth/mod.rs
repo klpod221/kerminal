@@ -37,7 +37,8 @@ impl AuthService {
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
         let db_service = self.database_service.lock().await;
         db_service.try_auto_unlock().await
-    }    /// Lock current session
+    }
+    /// Lock current session
     pub async fn lock_session(&self) {
         let db_service = self.database_service.lock().await;
         db_service.lock_session().await;
@@ -93,28 +94,34 @@ impl AuthService {
     ) -> DatabaseResult<()> {
         // Validate that passwords are provided
         if old_password.is_empty() {
-            return Err(DatabaseError::ValidationError("Current password is required".to_string()));
+            return Err(DatabaseError::ValidationError(
+                "Current password is required".to_string(),
+            ));
         }
 
         if new_password.is_empty() {
-            return Err(DatabaseError::ValidationError("New password is required".to_string()));
+            return Err(DatabaseError::ValidationError(
+                "New password is required".to_string(),
+            ));
         }
 
         // Validate new password strength (basic checks)
         if new_password.len() < 8 {
             return Err(DatabaseError::ValidationError(
-                "New password must be at least 8 characters long".to_string()
+                "New password must be at least 8 characters long".to_string(),
             ));
         }
 
         if old_password == new_password {
             return Err(DatabaseError::ValidationError(
-                "New password must be different from current password".to_string()
+                "New password must be different from current password".to_string(),
             ));
         }
 
         let db_service = self.database_service.lock().await;
-        db_service.change_master_password(old_password, new_password).await
+        db_service
+            .change_master_password(old_password, new_password)
+            .await
     }
 
     /// Reset master password (dangerous operation)
@@ -130,7 +137,9 @@ impl AuthService {
         auto_lock_timeout: Option<u32>,
     ) -> DatabaseResult<()> {
         let db_service = self.database_service.lock().await;
-        db_service.update_master_password_config(auto_unlock, auto_lock_timeout).await
+        db_service
+            .update_master_password_config(auto_unlock, auto_lock_timeout)
+            .await
     }
 
     /// Update master password configuration with keychain management
@@ -141,7 +150,9 @@ impl AuthService {
         password: Option<String>,
     ) -> DatabaseResult<()> {
         let db_service = self.database_service.lock().await;
-        db_service.update_master_password_config_with_keychain(auto_unlock, auto_lock_timeout, password).await
+        db_service
+            .update_master_password_config_with_keychain(auto_unlock, auto_lock_timeout, password)
+            .await
     }
 
     /// Get master password configuration

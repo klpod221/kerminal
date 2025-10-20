@@ -1,6 +1,6 @@
 use crate::models::saved_command::{
-    CreateSavedCommandRequest, SavedCommand, UpdateSavedCommandRequest,
-    CreateSavedCommandGroupRequest, SavedCommandGroup, UpdateSavedCommandGroupRequest,
+    CreateSavedCommandGroupRequest, CreateSavedCommandRequest, SavedCommand, SavedCommandGroup,
+    UpdateSavedCommandGroupRequest, UpdateSavedCommandRequest,
 };
 use crate::state::AppState;
 use tauri::State;
@@ -47,24 +47,23 @@ pub async fn update_saved_command(
     id: String,
     request: UpdateSavedCommandRequest,
 ) -> Result<SavedCommand, String> {
-    app_result!(state.saved_command_service.update_command(&id, request).await)
+    app_result!(
+        state
+            .saved_command_service
+            .update_command(&id, request)
+            .await
+    )
 }
 
 /// Delete saved command
 #[tauri::command]
-pub async fn delete_saved_command(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_saved_command(state: State<'_, AppState>, id: String) -> Result<(), String> {
     app_result!(state.saved_command_service.delete_command(&id).await)
 }
 
 /// Increment command usage count
 #[tauri::command]
-pub async fn increment_command_usage(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn increment_command_usage(state: State<'_, AppState>, id: String) -> Result<(), String> {
     app_result!(state.saved_command_service.increment_usage(&id).await)
 }
 
@@ -90,7 +89,9 @@ pub async fn create_saved_command_group(
 
 /// Get all saved command groups
 #[tauri::command]
-pub async fn get_saved_command_groups(state: State<'_, AppState>) -> Result<Vec<SavedCommandGroup>, String> {
+pub async fn get_saved_command_groups(
+    state: State<'_, AppState>,
+) -> Result<Vec<SavedCommandGroup>, String> {
     app_result!(state.saved_command_service.get_groups().await)
 }
 

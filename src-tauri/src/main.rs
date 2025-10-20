@@ -97,7 +97,21 @@ async fn main() {
             commands::database::saved_command::get_saved_command_group,
             commands::database::saved_command::update_saved_command_group,
             commands::database::saved_command::delete_saved_command_group,
-            commands::database::system::get_database_stats
+            commands::database::system::get_database_stats,
+            // External database commands
+            commands::database::external_db::add_external_database,
+            commands::database::external_db::get_external_databases,
+            commands::database::external_db::get_external_database,
+            commands::database::external_db::delete_external_database,
+            commands::database::external_db::toggle_database_active,
+            commands::database::external_db::test_external_connection,
+            commands::database::external_db::decrypt_connection_details,
+            // Sync commands
+            commands::database::sync::get_sync_history,
+            commands::database::sync::get_sync_conflicts,
+            commands::database::sync::resolve_conflict,
+            commands::database::sync::delete_conflict,
+            commands::database::sync::get_sync_operations_by_entity
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

@@ -1,6 +1,5 @@
 use crate::models::ssh::{
-    CreateSSHTunnelRequest, SSHTunnel, TunnelStatus, TunnelWithStatus,
-    UpdateSSHTunnelRequest,
+    CreateSSHTunnelRequest, SSHTunnel, TunnelStatus, TunnelWithStatus, UpdateSSHTunnelRequest,
 };
 use crate::state::AppState;
 use tauri::State;
@@ -52,28 +51,19 @@ pub async fn update_tunnel(
 
 /// Delete SSH tunnel
 #[tauri::command]
-pub async fn delete_tunnel(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn delete_tunnel(state: State<'_, AppState>, id: String) -> Result<(), String> {
     app_result!(state.tunnel_service.delete_tunnel(&id).await)
 }
 
 /// Start SSH tunnel
 #[tauri::command]
-pub async fn start_tunnel(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn start_tunnel(state: State<'_, AppState>, id: String) -> Result<(), String> {
     tunnel_result!(state.tunnel_service.start_tunnel(id).await)
 }
 
 /// Stop SSH tunnel
 #[tauri::command]
-pub async fn stop_tunnel(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<(), String> {
+pub async fn stop_tunnel(state: State<'_, AppState>, id: String) -> Result<(), String> {
     tunnel_result!(state.tunnel_service.stop_tunnel(id).await)
 }
 
@@ -85,4 +75,3 @@ pub async fn get_tunnel_status(
 ) -> Result<TunnelStatus, String> {
     tunnel_result!(state.tunnel_service.get_tunnel_status(id).await)
 }
-

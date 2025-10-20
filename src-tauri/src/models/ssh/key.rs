@@ -157,10 +157,7 @@ impl Encryptable for SSHKey {
         vec!["private_key", "passphrase"]
     }
 
-    fn encrypt_fields(
-        &mut self,
-        encryption_service: &dyn EncryptionService,
-    ) -> DatabaseResult<()> {
+    fn encrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
         // Encrypt private key
         let encrypted_key = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
@@ -188,10 +185,7 @@ impl Encryptable for SSHKey {
         Ok(())
     }
 
-    fn decrypt_fields(
-        &mut self,
-        encryption_service: &dyn EncryptionService,
-    ) -> DatabaseResult<()> {
+    fn decrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
         // Decrypt private key
         let decrypted_key = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
@@ -244,9 +238,9 @@ pub struct CreateSSHKeyRequest {
 impl CreateSSHKeyRequest {
     pub fn to_key(self, device_id: String) -> SSHKey {
         // Auto-detect key type if not provided
-        let key_type = self.key_type.unwrap_or_else(|| {
-            Self::detect_key_type(&self.private_key).unwrap_or(KeyType::RSA)
-        });
+        let key_type = self
+            .key_type
+            .unwrap_or_else(|| Self::detect_key_type(&self.private_key).unwrap_or(KeyType::RSA));
 
         let mut key = SSHKey::new(
             device_id,

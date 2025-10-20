@@ -4,15 +4,12 @@ use chrono::Utc;
 use serde_json::json;
 use tauri::State;
 
-
-
 /// Manually trigger auth session unlock notification (called after successful unlock)
 #[tauri::command]
-pub async fn notify_session_unlocked(
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn notify_session_unlocked(state: State<'_, AppState>) -> Result<(), String> {
     let auth_session_manager = state.auth_session_manager.lock().await;
-    auth_session_manager.on_session_unlocked()
+    auth_session_manager
+        .on_session_unlocked()
         .await
         .map_err(|e| e.to_string())?;
 
@@ -33,7 +30,8 @@ pub async fn notify_session_locked(
     };
 
     let auth_session_manager = state.auth_session_manager.lock().await;
-    auth_session_manager.on_session_locked(lock_reason)
+    auth_session_manager
+        .on_session_locked(lock_reason)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -47,7 +45,8 @@ pub async fn get_auth_session_status(
 ) -> Result<serde_json::Value, String> {
     // Get status from database service (which handles auto-lock internally)
     let database_service = state.database_service.lock().await;
-    let status = database_service.get_master_password_status()
+    let status = database_service
+        .get_master_password_status()
         .await
         .map_err(|e| e.to_string())?;
 

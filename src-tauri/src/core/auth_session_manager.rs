@@ -1,13 +1,10 @@
 use chrono::{DateTime, Utc};
-use std::sync::Arc;
-use tokio::sync::{Mutex, broadcast};
-use tokio::time::{interval, Duration};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use tokio::sync::{broadcast, Mutex};
+use tokio::time::{interval, Duration};
 
-use crate::database::{
-    service::DatabaseService,
-    error::DatabaseResult,
-};
+use crate::database::{error::DatabaseResult, service::DatabaseService};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -163,8 +160,6 @@ impl AuthSessionManager {
 
         Ok(())
     }
-
-
 }
 
 impl Drop for AuthSessionManager {

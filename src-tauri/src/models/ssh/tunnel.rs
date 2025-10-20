@@ -26,7 +26,7 @@ pub struct SSHTunnel {
 
     /// Tunnel configuration
     pub tunnel_type: TunnelType,
-    pub local_host: String,  // Usually "127.0.0.1" or "0.0.0.0"
+    pub local_host: String, // Usually "127.0.0.1" or "0.0.0.0"
     pub local_port: u16,
 
     /// Remote configuration (not used for Dynamic tunnels)
@@ -120,7 +120,10 @@ impl SSHTunnel {
         match self.tunnel_type {
             TunnelType::Local | TunnelType::Remote => {
                 if self.remote_host.is_none() || self.remote_port.is_none() {
-                    return Err("Remote host and port are required for Local and Remote tunnels".to_string());
+                    return Err(
+                        "Remote host and port are required for Local and Remote tunnels"
+                            .to_string(),
+                    );
                 }
                 if let Some(port) = self.remote_port {
                     if port == 0 {
@@ -132,7 +135,7 @@ impl SSHTunnel {
                         return Err("Remote host cannot be empty".to_string());
                     }
                 }
-            },
+            }
             TunnelType::Dynamic => {
                 // Dynamic tunnels don't need remote configuration
             }
@@ -157,7 +160,7 @@ impl SSHTunnel {
                     self.remote_host.as_deref().unwrap_or(""),
                     self.remote_port.unwrap_or(0)
                 )
-            },
+            }
             TunnelType::Remote => {
                 format!(
                     "Remote:{} -> {}:{}",
@@ -165,7 +168,7 @@ impl SSHTunnel {
                     self.remote_host.as_deref().unwrap_or(""),
                     self.remote_port.unwrap_or(0)
                 )
-            },
+            }
             TunnelType::Dynamic => {
                 format!("SOCKS5 {}:{}", self.local_host, self.local_port)
             }
@@ -217,12 +220,18 @@ impl Encryptable for SSHTunnel {
         vec![] // No encrypted fields
     }
 
-    fn encrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn encrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         // No encrypted fields in SSH tunnels
         Ok(())
     }
 
-    fn decrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn decrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         // No encrypted fields in SSH tunnels
         Ok(())
     }
@@ -241,11 +250,17 @@ impl Encryptable for CreateSSHTunnelRequest {
         vec![] // No encrypted fields
     }
 
-    fn encrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn encrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 
-    fn decrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn decrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 
@@ -263,11 +278,17 @@ impl Encryptable for UpdateSSHTunnelRequest {
         vec![] // No encrypted fields
     }
 
-    fn encrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn encrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 
-    fn decrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn decrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 

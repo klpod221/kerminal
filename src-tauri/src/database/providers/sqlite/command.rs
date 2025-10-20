@@ -335,10 +335,7 @@ pub async fn find_saved_command_group_by_id(
     }
 }
 
-pub async fn delete_saved_command_group(
-    provider: &SQLiteProvider,
-    id: &str,
-) -> DatabaseResult<()> {
+pub async fn delete_saved_command_group(provider: &SQLiteProvider, id: &str) -> DatabaseResult<()> {
     let pool = provider.get_pool()?;
     let pool = pool.read().await;
 

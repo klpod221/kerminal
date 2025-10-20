@@ -7,10 +7,7 @@ use crate::{
 
 use super::SQLiteProvider;
 
-pub async fn save_ssh_profile(
-    provider: &SQLiteProvider,
-    model: &SSHProfile,
-) -> DatabaseResult<()> {
+pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> DatabaseResult<()> {
     let pool_arc = provider.get_pool()?;
     let pool = pool_arc.read().await;
 
@@ -67,12 +64,16 @@ pub async fn find_ssh_profile_by_id(
         let profile = SSHProfile {
             base: crate::models::base::BaseModel {
                 id: row.get("id"),
-                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("created_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("updated_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
                 device_id: row.get("device_id"),
                 version: row.get::<i64, _>("version") as u64,
                 sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -116,12 +117,16 @@ pub async fn find_all_ssh_profiles(provider: &SQLiteProvider) -> DatabaseResult<
         let profile = SSHProfile {
             base: crate::models::base::BaseModel {
                 id: row.get("id"),
-                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("created_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("updated_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
                 device_id: row.get("device_id"),
                 version: row.get::<i64, _>("version") as u64,
                 sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -216,12 +221,16 @@ pub async fn find_ssh_group_by_id(
         let group = SSHGroup {
             base: crate::models::base::BaseModel {
                 id: row.get("id"),
-                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("created_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("updated_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
                 device_id: row.get("device_id"),
                 version: row.get::<i64, _>("version") as u64,
                 sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -253,12 +262,16 @@ pub async fn find_all_ssh_groups(provider: &SQLiteProvider) -> DatabaseResult<Ve
         let group = SSHGroup {
             base: crate::models::base::BaseModel {
                 id: row.get("id"),
-                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("created_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("updated_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
                 device_id: row.get("device_id"),
                 version: row.get::<i64, _>("version") as u64,
                 sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -344,12 +357,16 @@ pub async fn find_ssh_key_by_id(
         let key = SSHKey {
             base: crate::models::base::BaseModel {
                 id: row.get("id"),
-                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("created_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("updated_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
                 device_id: row.get("device_id"),
                 version: row.get::<i64, _>("version") as u64,
                 sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
@@ -390,12 +407,16 @@ pub async fn find_all_ssh_keys(provider: &SQLiteProvider) -> DatabaseResult<Vec<
         let key = SSHKey {
             base: crate::models::base::BaseModel {
                 id: row.get("id"),
-                created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("updated_at"))
-                    .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
-                    .with_timezone(&chrono::Utc),
+                created_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("created_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
+                updated_at: chrono::DateTime::parse_from_rfc3339(
+                    &row.get::<String, _>("updated_at"),
+                )
+                .map_err(|e| DatabaseError::ParseError(format!("Parse error: {}", e)))?
+                .with_timezone(&chrono::Utc),
                 device_id: row.get("device_id"),
                 version: row.get::<i64, _>("version") as u64,
                 sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))

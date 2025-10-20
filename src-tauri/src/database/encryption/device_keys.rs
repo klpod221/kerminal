@@ -142,7 +142,11 @@ impl DeviceKeyManager {
     }
 
     /// Try to auto-unlock using keychain with stored password
-    pub fn try_auto_unlock_with_password(&mut self, device_id: &str, entry: &MasterPasswordEntry) -> EncryptionResult<bool> {
+    pub fn try_auto_unlock_with_password(
+        &mut self,
+        device_id: &str,
+        entry: &MasterPasswordEntry,
+    ) -> EncryptionResult<bool> {
         if !self.keychain.is_available() {
             return Ok(false);
         }
@@ -183,14 +187,20 @@ impl DeviceKeyManager {
                     println!("DeviceKeyManager: Legacy device key loaded, auto-unlock successful");
                     return Ok(true);
                 } else {
-                    println!("DeviceKeyManager: Device key found but invalid length: {}", key_bytes.len());
+                    println!(
+                        "DeviceKeyManager: Device key found but invalid length: {}",
+                        key_bytes.len()
+                    );
                 }
             }
             Ok(None) => {
                 println!("DeviceKeyManager: No device key found in keychain");
             }
             Err(e) => {
-                println!("DeviceKeyManager: Error retrieving device key from keychain: {}", e);
+                println!(
+                    "DeviceKeyManager: Error retrieving device key from keychain: {}",
+                    e
+                );
             }
         }
 

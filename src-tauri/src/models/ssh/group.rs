@@ -22,7 +22,7 @@ pub struct SSHGroup {
     pub description: Option<String>,
 
     /// UI customization
-    pub color: Option<String>,       // Hex color
+    pub color: Option<String>, // Hex color
 }
 
 impl SSHGroup {
@@ -46,11 +46,17 @@ impl Encryptable for SSHGroup {
         vec![]
     }
 
-    fn encrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn encrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 
-    fn decrypt_fields(&mut self, _encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+    fn decrypt_fields(
+        &mut self,
+        _encryption_service: &dyn EncryptionService,
+    ) -> DatabaseResult<()> {
         Ok(())
     }
 
@@ -89,7 +95,7 @@ impl CreateSSHGroupRequest {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateSSHGroupRequest {
     pub name: Option<String>,
-    pub description: Option<Option<String>>,  // Some(None) = clear description
+    pub description: Option<Option<String>>, // Some(None) = clear description
     pub color: Option<Option<String>>,
     pub icon: Option<Option<String>>,
 }
@@ -123,7 +129,7 @@ pub struct SSHGroupWithStats {
     #[serde(flatten)]
     pub group: SSHGroup,
     pub profile_count: u32,
-    pub profiles: Vec<String>,  // Profile IDs in this group
+    pub profiles: Vec<String>, // Profile IDs in this group
 }
 
 impl SSHGroupWithStats {

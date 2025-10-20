@@ -150,7 +150,10 @@ impl SSHKeyService {
     }
 
     /// Resolve SSH key reference to plain text key data for authentication
-    pub async fn resolve_key_for_auth(&self, key_id: &str) -> DatabaseResult<crate::models::ssh::key::ResolvedSSHKey> {
+    pub async fn resolve_key_for_auth(
+        &self,
+        key_id: &str,
+    ) -> DatabaseResult<crate::models::ssh::key::ResolvedSSHKey> {
         // Get the SSH key
         let ssh_key = self.get_ssh_key(key_id).await?;
 

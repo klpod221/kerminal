@@ -28,10 +28,7 @@ pub async fn get_ssh_groups(state: State<'_, AppState>) -> Result<Vec<SSHGroup>,
 
 /// Get SSH group by ID
 #[tauri::command]
-pub async fn get_ssh_group(
-    state: State<'_, AppState>,
-    id: String,
-) -> Result<SSHGroup, String> {
+pub async fn get_ssh_group(state: State<'_, AppState>, id: String) -> Result<SSHGroup, String> {
     app_result!(state.ssh_service.get_ssh_group(&id).await)
 }
 
@@ -40,7 +37,7 @@ pub async fn get_ssh_group(
 pub async fn update_ssh_group(
     state: State<'_, AppState>,
     id: String,
-    request: UpdateSSHGroupRequest
+    request: UpdateSSHGroupRequest,
 ) -> Result<SSHGroup, String> {
     app_result!(state.ssh_service.update_ssh_group(&id, request).await)
 }
@@ -103,7 +100,8 @@ pub async fn move_profile_to_group(
     group_id: Option<String>,
 ) -> Result<(), String> {
     app_result!(
-        state.ssh_service
+        state
+            .ssh_service
             .move_profile_to_group(&profile_id, group_id.as_deref())
             .await
     )

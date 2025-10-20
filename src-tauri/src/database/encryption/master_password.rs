@@ -1,8 +1,8 @@
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde::{Deserialize, Serialize};
 
 use crate::database::{
     config::MasterPasswordConfig,
@@ -84,8 +84,7 @@ impl MasterPasswordManager {
 
         // Create master password entry
         let mut manager = self.device_key_manager.write().await;
-        let entry =
-            manager.create_master_password(&request.password, &self.config)?;
+        let entry = manager.create_master_password(&request.password, &self.config)?;
 
         // Only start session if auto unlock is enabled
         if request.auto_unlock && request.use_keychain {
@@ -95,10 +94,10 @@ impl MasterPasswordManager {
         // Try to store in keychain if requested
         if request.use_keychain && request.auto_unlock {
             println!("MasterPasswordManager: Attempting to store password in keychain...");
-            match self.keychain_manager.store_master_password(
-                &self.current_device_id,
-                &request.password,
-            ) {
+            match self
+                .keychain_manager
+                .store_master_password(&self.current_device_id, &request.password)
+            {
                 Ok(()) => {
                     println!("MasterPasswordManager: Successfully stored password in keychain");
                 }
@@ -157,7 +156,10 @@ impl MasterPasswordManager {
     }
 
     /// Try auto-unlock with stored password entry from database
-    pub async fn try_auto_unlock_with_entry(&mut self, entry: &crate::database::encryption::device_keys::MasterPasswordEntry) -> EncryptionResult<bool> {
+    pub async fn try_auto_unlock_with_entry(
+        &mut self,
+        entry: &crate::database::encryption::device_keys::MasterPasswordEntry,
+    ) -> EncryptionResult<bool> {
         if !self.config.auto_unlock || !self.config.use_keychain {
             return Ok(false);
         }
@@ -266,7 +268,7 @@ impl MasterPasswordManager {
     pub async fn update_config(
         &mut self,
         auto_unlock: bool,
-        auto_lock_timeout: Option<u32>
+        auto_lock_timeout: Option<u32>,
     ) -> EncryptionResult<()> {
         self.config.auto_unlock = auto_unlock;
         self.config.require_on_startup = !auto_unlock;
@@ -304,7 +306,7 @@ impl MasterPasswordManager {
         &mut self,
         auto_unlock: bool,
         auto_lock_timeout: Option<u32>,
-        password: Option<String>
+        password: Option<String>,
     ) -> EncryptionResult<()> {
         self.config.auto_unlock = auto_unlock;
         self.config.require_on_startup = !auto_unlock;
@@ -337,7 +339,10 @@ impl MasterPasswordManager {
                 .store_master_password(&self.current_device_id, &pwd)
             {
                 eprintln!("Warning: Failed to store password in keychain: {}", e);
-                return Err(EncryptionError::KeychainError(format!("Failed to store password: {}", e)));
+                return Err(EncryptionError::KeychainError(format!(
+                    "Failed to store password: {}",
+                    e
+                )));
             }
 
             // Also store device key if we have an active session

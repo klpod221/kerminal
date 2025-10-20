@@ -169,8 +169,6 @@ impl SSHProfile {
         self.base.touch();
     }
 
-
-
     /// Static method to get profile by ID (will be implemented in service layer)
     pub async fn get_by_id(
         _profile_id: &str,
@@ -218,17 +216,16 @@ impl Encryptable for SSHProfile {
         vec!["auth_data"]
     }
 
-    fn encrypt_fields(
-        &mut self,
-        encryption_service: &dyn EncryptionService,
-    ) -> DatabaseResult<()> {
+    fn encrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
         // Encrypt auth_data fields based on auth method
         match &mut self.auth_data {
             AuthData::Password { password } => {
                 // Encrypt password
                 let encrypted = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.encrypt_string(password, Some(&self.base.device_id)).await
+                        encryption_service
+                            .encrypt_string(password, Some(&self.base.device_id))
+                            .await
                     })
                 })?;
                 *password = encrypted;
@@ -240,17 +237,16 @@ impl Encryptable for SSHProfile {
         Ok(())
     }
 
-    fn decrypt_fields(
-        &mut self,
-        encryption_service: &dyn EncryptionService,
-    ) -> DatabaseResult<()> {
+    fn decrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
         // Decrypt auth_data fields based on auth method
         match &mut self.auth_data {
             AuthData::Password { password } => {
                 // Decrypt password
                 let decrypted = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
-                        encryption_service.decrypt_string(password, Some(&self.base.device_id)).await
+                        encryption_service
+                            .decrypt_string(password, Some(&self.base.device_id))
+                            .await
                     })
                 })?;
                 *password = decrypted;

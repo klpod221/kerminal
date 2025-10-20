@@ -1,9 +1,16 @@
-use crate::database::{DatabaseService, DatabaseServiceConfig};
-use crate::services::{auth::AuthService, saved_command::SavedCommandService, ssh::{SSHKeyService, SSHService}, sync::SyncService, terminal::TerminalManager, tunnel::TunnelService};
 use crate::core::auth_session_manager::AuthSessionManager;
+use crate::database::{DatabaseService, DatabaseServiceConfig};
+use crate::services::{
+    auth::AuthService,
+    saved_command::SavedCommandService,
+    ssh::{SSHKeyService, SSHService},
+    sync::SyncService,
+    terminal::TerminalManager,
+    tunnel::TunnelService,
+};
 use futures::FutureExt;
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 // Application state
 pub struct AppState {
@@ -13,7 +20,7 @@ pub struct AppState {
     pub ssh_key_service: Arc<Mutex<SSHKeyService>>,
     pub tunnel_service: TunnelService,
     pub saved_command_service: SavedCommandService,
-    pub sync_service: SyncService,
+    pub sync_service: Arc<SyncService>,
     pub terminal_manager: TerminalManager,
     pub auth_session_manager: Arc<Mutex<AuthSessionManager>>,
 }
@@ -30,17 +37,35 @@ impl AppState {
 
         // Create service instances
         let auth_service = AuthService::new(database_service_arc.clone());
-        let ssh_key_service = Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
+        let ssh_key_service =
+            Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
         let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
         let tunnel_service = TunnelService::new_with_auto_start(database_service_arc.clone()).await;
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
-        let sync_service = SyncService::new(database_service_arc.clone());
-        let terminal_manager = TerminalManager::new_with_ssh_key_service(database_service_arc.clone(), ssh_key_service.clone());
+
+        // Create RwLock wrapper for sync service (allows parallel reads)
+        let database_service_rw = Arc::new(RwLock::new(
+            DatabaseService::new(DatabaseServiceConfig::default())
+                .await
+                .map_err(|e| format!("Failed to initialize sync database service: {}", e))?,
+        ));
+
+        // Create and initialize sync service
+        let sync_service = Arc::new(SyncService::new(database_service_rw));
+        sync_service
+            .initialize()
+            .await
+            .map_err(|e| format!("Failed to initialize sync service: {}", e))?;
+
+        let terminal_manager = TerminalManager::new_with_ssh_key_service(
+            database_service_arc.clone(),
+            ssh_key_service.clone(),
+        );
 
         // Create auth session manager
-        let auth_session_manager = Arc::new(Mutex::new(
-            AuthSessionManager::new(database_service_arc.clone())
-        ));
+        let auth_session_manager = Arc::new(Mutex::new(AuthSessionManager::new(
+            database_service_arc.clone(),
+        )));
 
         Ok(Self {
             database_service: database_service_arc,
@@ -67,20 +92,33 @@ impl Default for AppState {
                 .unwrap(),
         ));
 
-                // Create service instances
+        // Create service instances
         let auth_service = AuthService::new(database_service_arc.clone());
-        let ssh_key_service = Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
+        let ssh_key_service =
+            Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
         let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
         // Note: Default impl cannot be async, so use regular new() here
         let tunnel_service = TunnelService::new(database_service_arc.clone());
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
-        let sync_service = SyncService::new(database_service_arc.clone());
-        let terminal_manager = TerminalManager::new_with_ssh_key_service(database_service_arc.clone(), ssh_key_service.clone());
+
+        // Create RwLock wrapper for sync service
+        let database_service_rw = Arc::new(RwLock::new(
+            DatabaseService::new(DatabaseServiceConfig::default())
+                .now_or_never()
+                .unwrap()
+                .unwrap(),
+        ));
+        let sync_service = Arc::new(SyncService::new(database_service_rw));
+
+        let terminal_manager = TerminalManager::new_with_ssh_key_service(
+            database_service_arc.clone(),
+            ssh_key_service.clone(),
+        );
 
         // Create auth session manager
-        let auth_session_manager = Arc::new(Mutex::new(
-            AuthSessionManager::new(database_service_arc.clone())
-        ));
+        let auth_session_manager = Arc::new(Mutex::new(AuthSessionManager::new(
+            database_service_arc.clone(),
+        )));
 
         Self {
             database_service: database_service_arc,

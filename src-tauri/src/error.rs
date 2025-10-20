@@ -1,6 +1,6 @@
-use std::fmt;
-use serde::{Deserialize, Serialize};
 use crate::database::error::{DatabaseError, EncryptionError, SSHError};
+use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Unified application error type for frontend communication
 #[derive(Debug, Serialize, Deserialize)]
@@ -71,24 +71,40 @@ impl From<std::io::Error> for AppError {
 impl From<DatabaseError> for AppError {
     fn from(error: DatabaseError) -> Self {
         match error {
-            DatabaseError::ConnectionFailed(msg) => AppError::Network(format!("Database connection failed: {}", msg)),
-            DatabaseError::AuthenticationFailed(msg) => AppError::Auth(format!("Database authentication failed: {}", msg)),
+            DatabaseError::ConnectionFailed(msg) => {
+                AppError::Network(format!("Database connection failed: {}", msg))
+            }
+            DatabaseError::AuthenticationFailed(msg) => {
+                AppError::Auth(format!("Database authentication failed: {}", msg))
+            }
             DatabaseError::QueryFailed(msg) => AppError::Database(format!("Query failed: {}", msg)),
-            DatabaseError::TransactionFailed(msg) => AppError::Database(format!("Transaction failed: {}", msg)),
+            DatabaseError::TransactionFailed(msg) => {
+                AppError::Database(format!("Transaction failed: {}", msg))
+            }
             DatabaseError::NotFound(msg) => AppError::NotFound(msg),
             DatabaseError::ValidationError(msg) => AppError::Validation(msg),
             DatabaseError::ParseError(msg) => AppError::Database(format!("Parse error: {}", msg)),
-            DatabaseError::SerializationError(err) => AppError::Database(format!("Serialization error: {}", err)),
+            DatabaseError::SerializationError(err) => {
+                AppError::Database(format!("Serialization error: {}", err))
+            }
             DatabaseError::EncryptionError(err) => AppError::Encryption(err.to_string()),
             DatabaseError::SyncError(msg) => AppError::Database(format!("Sync error: {}", msg)),
             DatabaseError::ConfigError(msg) => AppError::Config(msg),
-            DatabaseError::MigrationError(msg) => AppError::Database(format!("Migration error: {}", msg)),
+            DatabaseError::MigrationError(msg) => {
+                AppError::Database(format!("Migration error: {}", msg))
+            }
             DatabaseError::ConflictResolutionRequired => AppError::ConflictResolutionRequired,
             DatabaseError::Conflict(msg) => AppError::Validation(format!("Conflict: {}", msg)),
             DatabaseError::MasterPasswordRequired => AppError::MasterPasswordRequired,
-            DatabaseError::UnsupportedProvider(msg) => AppError::Config(format!("Unsupported provider: {}", msg)),
-            DatabaseError::Internal(err) => AppError::General(format!("Internal database error: {}", err)),
-            DatabaseError::NotImplemented(msg) => AppError::General(format!("Not implemented: {}", msg)),
+            DatabaseError::UnsupportedProvider(msg) => {
+                AppError::Config(format!("Unsupported provider: {}", msg))
+            }
+            DatabaseError::Internal(err) => {
+                AppError::General(format!("Internal database error: {}", err))
+            }
+            DatabaseError::NotImplemented(msg) => {
+                AppError::General(format!("Not implemented: {}", msg))
+            }
         }
     }
 }
@@ -96,14 +112,30 @@ impl From<DatabaseError> for AppError {
 impl From<EncryptionError> for AppError {
     fn from(error: EncryptionError) -> Self {
         match error {
-            EncryptionError::EncryptionFailed(msg) => AppError::Encryption(format!("Encryption failed: {}", msg)),
-            EncryptionError::DecryptionFailed(msg) => AppError::Encryption(format!("Decryption failed: {}", msg)),
-            EncryptionError::InvalidKey(msg) => AppError::Encryption(format!("Invalid key: {}", msg)),
-            EncryptionError::KeyDerivationFailed(msg) => AppError::Encryption(format!("Key derivation failed: {}", msg)),
-            EncryptionError::MasterPasswordVerificationFailed => AppError::Auth("Master password verification failed".to_string()),
-            EncryptionError::UnknownDeviceKey(msg) => AppError::Encryption(format!("Unknown device key: {}", msg)),
-            EncryptionError::KeychainError(msg) => AppError::Config(format!("Keychain error: {}", msg)),
-            EncryptionError::InvalidFormat => AppError::Encryption("Invalid encryption format".to_string()),
+            EncryptionError::EncryptionFailed(msg) => {
+                AppError::Encryption(format!("Encryption failed: {}", msg))
+            }
+            EncryptionError::DecryptionFailed(msg) => {
+                AppError::Encryption(format!("Decryption failed: {}", msg))
+            }
+            EncryptionError::InvalidKey(msg) => {
+                AppError::Encryption(format!("Invalid key: {}", msg))
+            }
+            EncryptionError::KeyDerivationFailed(msg) => {
+                AppError::Encryption(format!("Key derivation failed: {}", msg))
+            }
+            EncryptionError::MasterPasswordVerificationFailed => {
+                AppError::Auth("Master password verification failed".to_string())
+            }
+            EncryptionError::UnknownDeviceKey(msg) => {
+                AppError::Encryption(format!("Unknown device key: {}", msg))
+            }
+            EncryptionError::KeychainError(msg) => {
+                AppError::Config(format!("Keychain error: {}", msg))
+            }
+            EncryptionError::InvalidFormat => {
+                AppError::Encryption("Invalid encryption format".to_string())
+            }
         }
     }
 }
@@ -225,10 +257,16 @@ impl AppError {
 impl From<SSHError> for AppError {
     fn from(error: SSHError) -> Self {
         match error {
-            SSHError::ConnectionFailed(msg) => AppError::Network(format!("SSH connection failed: {}", msg)),
-            SSHError::AuthenticationFailed => AppError::Auth("SSH authentication failed".to_string()),
+            SSHError::ConnectionFailed(msg) => {
+                AppError::Network(format!("SSH connection failed: {}", msg))
+            }
+            SSHError::AuthenticationFailed => {
+                AppError::Auth("SSH authentication failed".to_string())
+            }
             SSHError::AuthMethodMismatch => AppError::Auth("SSH auth method mismatch".to_string()),
-            SSHError::PrivateKeyError(msg) => AppError::Config(format!("SSH private key error: {}", msg)),
+            SSHError::PrivateKeyError(msg) => {
+                AppError::Config(format!("SSH private key error: {}", msg))
+            }
             SSHError::SessionError(msg) => AppError::SSH(format!("SSH session error: {}", msg)),
             SSHError::ChannelError(msg) => AppError::SSH(format!("SSH channel error: {}", msg)),
             SSHError::Timeout => AppError::Network("SSH connection timeout".to_string()),

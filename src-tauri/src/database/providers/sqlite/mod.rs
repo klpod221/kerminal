@@ -1,6 +1,7 @@
 mod auth;
 mod command;
 mod ssh;
+mod sync_ops;
 mod tunnel;
 
 use async_trait::async_trait;
@@ -278,6 +279,109 @@ impl Database for SQLiteProvider {
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS external_databases (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                db_type TEXT NOT NULL,
+                connection_details_encrypted TEXT NOT NULL,
+                sync_settings TEXT NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT false,
+                last_sync_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                version INTEGER NOT NULL DEFAULT 1,
+                sync_status TEXT NOT NULL DEFAULT 'Pending'
+            )
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS sync_operations (
+                id TEXT PRIMARY KEY,
+                operation_type TEXT NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id TEXT NOT NULL,
+                source_db TEXT NOT NULL,
+                target_db TEXT NOT NULL,
+                status TEXT NOT NULL,
+                error_message TEXT,
+                started_at TEXT NOT NULL,
+                completed_at TEXT
+            )
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_sync_operations_entity
+            ON sync_operations(entity_type, entity_id)
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_sync_operations_started_at
+            ON sync_operations(started_at DESC)
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS sync_conflicts (
+                id TEXT PRIMARY KEY,
+                entity_type TEXT NOT NULL,
+                entity_id TEXT NOT NULL,
+                local_version INTEGER NOT NULL,
+                remote_version INTEGER NOT NULL,
+                local_data TEXT NOT NULL,
+                remote_data TEXT NOT NULL,
+                resolution_strategy TEXT,
+                resolved BOOLEAN NOT NULL DEFAULT false,
+                created_at TEXT NOT NULL,
+                resolved_at TEXT
+            )
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_sync_conflicts_entity
+            ON sync_conflicts(entity_type, entity_id)
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_sync_conflicts_resolved
+            ON sync_conflicts(resolved)
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
         Ok(())
     }
 
@@ -397,7 +501,10 @@ impl Database for SQLiteProvider {
         ssh::save_ssh_profile(self, model).await
     }
 
-    async fn find_ssh_profile_by_id(&self, id: &str) -> DatabaseResult<Option<crate::models::ssh::SSHProfile>> {
+    async fn find_ssh_profile_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHProfile>> {
         ssh::find_ssh_profile_by_id(self, id).await
     }
 
@@ -405,7 +512,10 @@ impl Database for SQLiteProvider {
         ssh::find_all_ssh_profiles(self).await
     }
 
-    async fn update_ssh_profile(&self, model: &crate::models::ssh::SSHProfile) -> DatabaseResult<()> {
+    async fn update_ssh_profile(
+        &self,
+        model: &crate::models::ssh::SSHProfile,
+    ) -> DatabaseResult<()> {
         ssh::update_ssh_profile(self, model).await
     }
 
@@ -417,7 +527,10 @@ impl Database for SQLiteProvider {
         ssh::save_ssh_group(self, model).await
     }
 
-    async fn find_ssh_group_by_id(&self, id: &str) -> DatabaseResult<Option<crate::models::ssh::SSHGroup>> {
+    async fn find_ssh_group_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHGroup>> {
         ssh::find_ssh_group_by_id(self, id).await
     }
 
@@ -437,7 +550,10 @@ impl Database for SQLiteProvider {
         ssh::save_ssh_key(self, model).await
     }
 
-    async fn find_ssh_key_by_id(&self, id: &str) -> DatabaseResult<Option<crate::models::ssh::SSHKey>> {
+    async fn find_ssh_key_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHKey>> {
         ssh::find_ssh_key_by_id(self, id).await
     }
 
@@ -461,7 +577,10 @@ impl Database for SQLiteProvider {
         tunnel::save_ssh_tunnel(self, model).await
     }
 
-    async fn find_ssh_tunnel_by_id(&self, id: &str) -> DatabaseResult<Option<crate::models::ssh::SSHTunnel>> {
+    async fn find_ssh_tunnel_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::ssh::SSHTunnel>> {
         tunnel::find_ssh_tunnel_by_id(self, id).await
     }
 
@@ -469,11 +588,16 @@ impl Database for SQLiteProvider {
         tunnel::find_all_ssh_tunnels(self).await
     }
 
-    async fn find_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+    async fn find_ssh_tunnels_by_profile_id(
+        &self,
+        profile_id: &str,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
         tunnel::find_ssh_tunnels_by_profile_id(self, profile_id).await
     }
 
-    async fn find_auto_start_ssh_tunnels(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
+    async fn find_auto_start_ssh_tunnels(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
         tunnel::find_auto_start_ssh_tunnels(self).await
     }
 
@@ -487,5 +611,185 @@ impl Database for SQLiteProvider {
 
     async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
         tunnel::delete_ssh_tunnels_by_profile_id(self, profile_id).await
+    }
+
+    async fn save_saved_command(
+        &self,
+        model: &crate::models::saved_command::SavedCommand,
+    ) -> DatabaseResult<()> {
+        command::save_saved_command(self, model).await
+    }
+
+    async fn find_saved_command_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::saved_command::SavedCommand>> {
+        command::find_saved_command_by_id(self, id).await
+    }
+
+    async fn find_all_saved_commands(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::saved_command::SavedCommand>> {
+        command::find_all_saved_commands(self).await
+    }
+
+    async fn update_saved_command(
+        &self,
+        model: &crate::models::saved_command::SavedCommand,
+    ) -> DatabaseResult<()> {
+        command::save_saved_command(self, model).await
+    }
+
+    async fn delete_saved_command(&self, id: &str) -> DatabaseResult<()> {
+        command::delete_saved_command(self, id).await
+    }
+
+    async fn increment_command_usage(&self, _id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented(
+            "increment_command_usage not yet implemented".to_string(),
+        ))
+    }
+
+    async fn toggle_command_favorite(&self, _id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented(
+            "toggle_command_favorite not yet implemented".to_string(),
+        ))
+    }
+
+    async fn save_saved_command_group(
+        &self,
+        model: &crate::models::saved_command::SavedCommandGroup,
+    ) -> DatabaseResult<()> {
+        command::save_saved_command_group(self, model).await
+    }
+
+    async fn find_saved_command_group_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::saved_command::SavedCommandGroup>> {
+        command::find_saved_command_group_by_id(self, id).await
+    }
+
+    async fn find_all_saved_command_groups(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::saved_command::SavedCommandGroup>> {
+        command::find_all_saved_command_groups(self).await
+    }
+
+    async fn update_saved_command_group(
+        &self,
+        model: &crate::models::saved_command::SavedCommandGroup,
+    ) -> DatabaseResult<()> {
+        command::save_saved_command_group(self, model).await
+    }
+
+    async fn delete_saved_command_group(&self, id: &str) -> DatabaseResult<()> {
+        command::delete_saved_command_group(self, id).await
+    }
+
+    async fn save_master_password_entry(
+        &self,
+        entry: &crate::database::encryption::device_keys::MasterPasswordEntry,
+    ) -> DatabaseResult<()> {
+        auth::save_master_password_entry(self, entry).await
+    }
+
+    async fn get_master_password_entry(
+        &self,
+    ) -> DatabaseResult<Option<crate::database::encryption::device_keys::MasterPasswordEntry>> {
+        let device = auth::get_current_device(self).await?;
+        match device {
+            Some(d) => auth::get_master_password_entry(self, &d.device_id).await,
+            None => Ok(None),
+        }
+    }
+
+    async fn update_master_password_last_verified(&self, _device_id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented(
+            "update_master_password_last_verified not yet implemented".to_string(),
+        ))
+    }
+
+    async fn delete_master_password_entry(&self, device_id: &str) -> DatabaseResult<()> {
+        auth::delete_master_password_entry(self, device_id).await
+    }
+
+    async fn save_device(&self, device: &crate::models::auth::Device) -> DatabaseResult<()> {
+        auth::save_device(self, device).await
+    }
+
+    async fn get_device_by_id(
+        &self,
+        _device_id: &str,
+    ) -> DatabaseResult<Option<crate::models::auth::Device>> {
+        Err(DatabaseError::NotImplemented(
+            "get_device_by_id not yet implemented".to_string(),
+        ))
+    }
+
+    async fn get_current_device(&self) -> DatabaseResult<Option<crate::models::auth::Device>> {
+        auth::get_current_device(self).await
+    }
+
+    async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>> {
+        Err(DatabaseError::NotImplemented(
+            "get_all_devices not yet implemented".to_string(),
+        ))
+    }
+
+    async fn update_device_last_seen(&self, _device_id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented(
+            "update_device_last_seen not yet implemented".to_string(),
+        ))
+    }
+
+    async fn delete_device(&self, _device_id: &str) -> DatabaseResult<()> {
+        Err(DatabaseError::NotImplemented(
+            "delete_device not yet implemented".to_string(),
+        ))
+    }
+}
+
+impl SQLiteProvider {
+    pub async fn get_all_external_databases(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::sync::external_db::ExternalDatabaseConfig>> {
+        self.find_all_external_databases().await
+    }
+
+    pub async fn get_external_database(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::sync::external_db::ExternalDatabaseConfig>> {
+        self.find_external_database_by_id(id).await
+    }
+
+    pub async fn update_external_database(
+        &self,
+        config: &crate::models::sync::external_db::ExternalDatabaseConfig,
+    ) -> DatabaseResult<()> {
+        self.save_external_database(config).await
+    }
+
+    pub async fn get_sync_logs(
+        &self,
+        database_id: &str,
+        limit: Option<i32>,
+    ) -> DatabaseResult<Vec<crate::models::sync::log::SyncLog>> {
+        Ok(Vec::new())
+    }
+
+    pub async fn save_sync_log(
+        &self,
+        log: &crate::models::sync::log::SyncLog,
+    ) -> DatabaseResult<()> {
+        Ok(())
+    }
+
+    pub async fn save_conflict_resolution(
+        &self,
+        resolution: &crate::models::sync::conflict::ConflictResolution,
+    ) -> DatabaseResult<()> {
+        Ok(())
     }
 }

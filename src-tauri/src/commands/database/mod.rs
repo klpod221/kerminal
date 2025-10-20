@@ -15,3 +15,9 @@ pub mod saved_command;
 
 /// System and database statistics commands
 pub mod system;
+
+/// External database management commands
+pub mod external_db;
+
+/// Sync operations and conflict management commands
+pub mod sync;

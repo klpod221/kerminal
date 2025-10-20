@@ -62,7 +62,8 @@ impl LocalTerminal {
                     "cmd.exe".to_string()
                 } else {
                     // Try to find available shells in order of preference
-                    let preferred_shells = ["/bin/zsh", "/usr/bin/zsh", "/bin/bash", "/usr/bin/bash"];
+                    let preferred_shells =
+                        ["/bin/zsh", "/usr/bin/zsh", "/bin/bash", "/usr/bin/bash"];
                     for shell_path in &preferred_shells {
                         if std::path::Path::new(shell_path).exists() {
                             return shell_path.to_string();
@@ -131,9 +132,7 @@ impl LocalTerminal {
 
             // Wait for the process to exit
             match child.wait() {
-                Ok(_) => {
-
-                }
+                Ok(_) => {}
                 Err(e) => {
                     eprintln!("Failed to wait for child process: {}", e);
                 }

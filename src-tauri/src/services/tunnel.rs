@@ -1,20 +1,17 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
-use tokio::net::TcpListener;
-use tokio_util::sync::CancellationToken;
 use anyhow::Result;
 use async_trait::async_trait;
 use russh::client::{Config, Handle};
 use russh_keys::key;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::net::TcpListener;
+use tokio::sync::{Mutex, RwLock};
+use tokio_util::sync::CancellationToken;
 
-use crate::database::{
-    error::DatabaseResult,
-    service::DatabaseService,
-};
+use crate::database::{error::DatabaseResult, service::DatabaseService};
 use crate::models::ssh::{
-    CreateSSHTunnelRequest, SSHTunnel, TunnelStatus, TunnelType, TunnelWithStatus,
-    UpdateSSHTunnelRequest, SSHProfile, AuthData,
+    AuthData, CreateSSHTunnelRequest, SSHProfile, SSHTunnel, TunnelStatus, TunnelType,
+    TunnelWithStatus, UpdateSSHTunnelRequest,
 };
 
 /// SSH Tunnel service for managing port forwarding and SOCKS proxy
@@ -90,7 +87,10 @@ impl TunnelService {
         let service_clone = self.clone();
         tokio::spawn(async move {
             if let Err(e) = service_clone.start_auto_start_tunnels().await {
-                eprintln!("Failed to start auto-start tunnels during initialization: {}", e);
+                eprintln!(
+                    "Failed to start auto-start tunnels during initialization: {}",
+                    e
+                );
             }
         });
 
@@ -98,7 +98,10 @@ impl TunnelService {
     }
 
     /// Create new SSH tunnel
-    pub async fn create_tunnel(&self, request: CreateSSHTunnelRequest) -> DatabaseResult<SSHTunnel> {
+    pub async fn create_tunnel(
+        &self,
+        request: CreateSSHTunnelRequest,
+    ) -> DatabaseResult<SSHTunnel> {
         let db_service = self.database_service.lock().await;
         db_service.create_ssh_tunnel(request).await
     }
@@ -208,14 +211,18 @@ impl TunnelService {
         // Get tunnel configuration
         let tunnel = {
             let db_service = self.database_service.lock().await;
-            db_service.get_ssh_tunnel(&tunnel_id).await
+            db_service
+                .get_ssh_tunnel(&tunnel_id)
+                .await
                 .map_err(|e| format!("Failed to get tunnel: {}", e))?
         };
 
         // Get SSH profile
         let profile = {
             let db_service = self.database_service.lock().await;
-            db_service.get_ssh_profile(&tunnel.profile_id).await
+            db_service
+                .get_ssh_profile(&tunnel.profile_id)
+                .await
                 .map_err(|e| format!("Failed to get SSH profile: {}", e))?
         };
 
@@ -253,7 +260,9 @@ impl TunnelService {
                 status,
                 error_message,
                 sessions_arc,
-            ).await {
+            )
+            .await
+            {
                 eprintln!("Tunnel {} failed: {}", tunnel_id_clone, e);
             }
         });
@@ -297,7 +306,9 @@ impl TunnelService {
     pub async fn start_auto_start_tunnels(&self) -> Result<(), String> {
         let tunnels = {
             let db_service = self.database_service.lock().await;
-            db_service.get_auto_start_ssh_tunnels().await
+            db_service
+                .get_auto_start_ssh_tunnels()
+                .await
                 .map_err(|e| format!("Failed to get auto-start tunnels: {}", e))?
         };
 
@@ -347,7 +358,8 @@ impl TunnelService {
                     tunnel.remote_port.unwrap_or(22),
                     session,
                     cancel_token,
-                ).await
+                )
+                .await
             }
             TunnelType::Remote => {
                 Self::start_remote_forward(
@@ -357,7 +369,8 @@ impl TunnelService {
                     tunnel.remote_port.unwrap_or(22),
                     session,
                     cancel_token,
-                ).await
+                )
+                .await
             }
             TunnelType::Dynamic => {
                 Self::start_dynamic_forward(
@@ -365,7 +378,8 @@ impl TunnelService {
                     tunnel.local_port,
                     session,
                     cancel_token,
-                ).await
+                )
+                .await
             }
         };
 
@@ -405,12 +419,16 @@ impl TunnelService {
         // Create new SSH session
         let config = Arc::new(Config::default());
         let handler = SSHClientHandler;
-        let mut session = russh::client::connect(config, (&profile.host as &str, profile.port), handler).await?;
+        let mut session =
+            russh::client::connect(config, (&profile.host as &str, profile.port), handler).await?;
 
         // Authenticate
         let authenticated = match &profile.auth_data {
             AuthData::Password { password } => {
-                match session.authenticate_password(&profile.username, password).await {
+                match session
+                    .authenticate_password(&profile.username, password)
+                    .await
+                {
                     Ok(auth_result) => auth_result,
                     Err(e) => {
                         return Err(anyhow::anyhow!("Password authentication failed: {}", e));
@@ -418,12 +436,16 @@ impl TunnelService {
                 }
             }
             AuthData::KeyReference { .. } => {
-                return Err(anyhow::anyhow!("Key-based authentication not implemented yet"));
+                return Err(anyhow::anyhow!(
+                    "Key-based authentication not implemented yet"
+                ));
             }
         };
 
         if !authenticated {
-            return Err(anyhow::anyhow!("Authentication failed: Invalid credentials"));
+            return Err(anyhow::anyhow!(
+                "Authentication failed: Invalid credentials"
+            ));
         }
 
         // Store session wrapped in Mutex
@@ -488,28 +510,45 @@ impl TunnelService {
         cancel_token: CancellationToken,
     ) -> Result<()> {
         // Request remote port forwarding from SSH server
-        println!("🔄 Requesting remote port forwarding: {}:{} -> {}:{}", 
-                remote_host, remote_port, local_host, local_port);
-        
+        println!(
+            "🔄 Requesting remote port forwarding: {}:{} -> {}:{}",
+            remote_host, remote_port, local_host, local_port
+        );
+
         let forwarded_port = {
             let mut session_guard = session.lock().await;
-            match session_guard.tcpip_forward(&remote_host, remote_port as u32).await {
+            match session_guard
+                .tcpip_forward(&remote_host, remote_port as u32)
+                .await
+            {
                 Ok(port) => port,
                 Err(e) => {
-                    return Err(anyhow::anyhow!("Failed to request remote port forwarding: {}", e));
+                    return Err(anyhow::anyhow!(
+                        "Failed to request remote port forwarding: {}",
+                        e
+                    ));
                 }
             }
         };
 
-        let actual_port = if remote_port == 0 { forwarded_port as u16 } else { remote_port };
-        
-        println!("✅ Remote port forwarding established: {}:{} -> {}:{}", 
-                remote_host, actual_port, local_host, local_port);
-        
+        let actual_port = if remote_port == 0 {
+            forwarded_port as u16
+        } else {
+            remote_port
+        };
+
+        println!(
+            "✅ Remote port forwarding established: {}:{} -> {}:{}",
+            remote_host, actual_port, local_host, local_port
+        );
+
         if forwarded_port != remote_port as u32 {
-            println!("🔄 Server assigned port: {} (requested: {})", forwarded_port, remote_port);
+            println!(
+                "🔄 Server assigned port: {} (requested: {})",
+                forwarded_port, remote_port
+            );
         }
-        
+
         println!("💡 Waiting for forwarded connections...");
 
         // Main event loop for remote forwarding
@@ -521,13 +560,13 @@ impl TunnelService {
             tokio::select! {
                 _ = cancel_token.cancelled() => {
                     println!("🛑 Stopping remote port forwarding...");
-                    
+
                     // Cancel remote port forwarding
                     let cancel_result = {
                         let session_guard = session.lock().await;
                         session_guard.cancel_tcpip_forward(&remote_host, actual_port as u32).await
                     };
-                    
+
                     match cancel_result {
                         Ok(_) => {
                             println!("✅ Remote port forwarding cancelled: {}:{}", remote_host, actual_port);
@@ -540,15 +579,15 @@ impl TunnelService {
                 }
                 _ = tokio::time::sleep(tokio::time::Duration::from_millis(500)) => {
                     heartbeat_counter += 1;
-                    
+
                     // Periodic status log
                     if heartbeat_counter % heartbeat_interval == 0 {
                         let minutes = heartbeat_counter / 120;
-                        println!("📡 Remote forwarding active for {}m: {}:{} -> {}:{} ({} connections handled)", 
+                        println!("📡 Remote forwarding active for {}m: {}:{} -> {}:{} ({} connections handled)",
                                 minutes, remote_host, actual_port, local_host, local_port, connection_count);
                     }
-                    
-                    // Session health check every 5 minutes  
+
+                    // Session health check every 5 minutes
                     if heartbeat_counter % (heartbeat_interval * 5) == 0 {
                         let health_check_result = {
                             let session_guard = session.lock().await;
@@ -557,7 +596,7 @@ impl TunnelService {
                                 session_guard.channel_open_session()
                             ).await
                         };
-                        
+
                         match health_check_result {
                             Ok(Ok(test_channel)) => {
                                 let _ = test_channel.close().await;
@@ -577,10 +616,11 @@ impl TunnelService {
             }
         }
 
-        println!("🔚 Remote port forwarding stopped (handled {} connections)", connection_count);
+        println!(
+            "🔚 Remote port forwarding stopped (handled {} connections)",
+            connection_count
+        );
         Ok(())
-
-
     }
 
     /// Start dynamic port forwarding (SOCKS proxy)
@@ -620,8 +660,8 @@ impl TunnelService {
         mut channel: russh::Channel<russh::client::Msg>,
         cancel_token: CancellationToken,
     ) -> Result<()> {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use russh::ChannelMsg;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let (mut local_reader, mut local_writer) = local_stream.split();
         let mut buffer = [0u8; 8192];
@@ -682,12 +722,12 @@ impl TunnelService {
         session: Arc<Mutex<Handle<SSHClientHandler>>>,
         cancel_token: CancellationToken,
     ) -> Result<()> {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use std::net::{Ipv4Addr, Ipv6Addr};
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         // SOCKS5 greeting phase
         let mut buffer = [0u8; 512];
-        
+
         // Read client greeting
         let n = local_stream.read(&mut buffer).await?;
         if n < 3 || buffer[0] != 0x05 {
@@ -746,14 +786,11 @@ impl TunnelService {
         // Try to establish SSH channel to target
         let channel_result = {
             let session_guard = session.lock().await;
-            session_guard.channel_open_direct_tcpip(
-                &target_host,
-                target_port as u32,
-                "127.0.0.1",
-                0,
-            ).await
+            session_guard
+                .channel_open_direct_tcpip(&target_host, target_port as u32, "127.0.0.1", 0)
+                .await
         };
-        
+
         match channel_result {
             Ok(channel) => {
                 // Send success response
@@ -789,8 +826,8 @@ impl TunnelService {
         mut channel: russh::Channel<russh::client::Msg>,
         cancel_token: CancellationToken,
     ) -> Result<()> {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use russh::ChannelMsg;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
         let (mut local_reader, mut local_writer) = local_stream.split();
         let mut buffer = [0u8; 8192];
