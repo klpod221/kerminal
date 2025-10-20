@@ -105,72 +105,6 @@
             Lock Session
           </Button>
         </div>
-
-        <div class="flex flex-col gap-2" v-if="authStore.currentDevice">
-          <h4
-            class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2"
-          >
-            Current Device Information
-          </h4>
-          <div class="flex flex-col gap-4">
-            <Card>
-              <div class="flex justify-between items-center">
-                <div class="text-sm font-medium text-gray-400">Device Name</div>
-                <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.deviceName }}
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div class="flex justify-between items-center">
-                <div class="text-sm font-medium text-gray-400">Device Type</div>
-                <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.deviceType }}
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div class="flex justify-between items-center">
-                <div class="text-sm font-medium text-gray-400">
-                  Operating System
-                </div>
-                <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.osName }}
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div class="flex justify-between items-center">
-                <div class="text-sm font-medium text-gray-400">
-                  Operating System Version
-                </div>
-                <div class="text-sm text-gray-100">
-                  {{ authStore.currentDevice.osVersion }}
-                </div>
-              </div>
-            </Card>
-
-            <Card>
-              <div class="flex justify-between items-center">
-                <div class="text-sm font-medium text-gray-400">Created At</div>
-                <div class="text-sm text-gray-100">
-                  {{
-                    formatRelativeTime(
-                      new Date(authStore.currentDevice.createdAt),
-                    )
-                  }}
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <Button variant="secondary" :icon="Book" class="mt-2">
-            Device List
-          </Button>
-        </div>
       </Form>
     </div>
   </Modal>
@@ -192,10 +126,9 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { useAuthStore } from "../../stores/auth";
-import { Key, Lock, Trash2, Book } from "lucide-vue-next";
+import { Key, Lock, Trash2 } from "lucide-vue-next";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
-import { formatRelativeTime } from "../../utils/formatter";
 import { useOverlay } from "../../composables/useOverlay";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";

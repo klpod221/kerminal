@@ -90,12 +90,6 @@ pub async fn get_master_password_config(
     app_result!(state.auth_service.get_master_password_config().await)
 }
 
-/// Get current device information
-#[tauri::command]
-pub async fn get_current_device(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
-    app_result!(state.auth_service.get_current_device().await)
-}
-
 /// Change master password
 #[tauri::command]
 pub async fn change_master_password(

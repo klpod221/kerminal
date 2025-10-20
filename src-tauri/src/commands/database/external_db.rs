@@ -128,11 +128,56 @@ pub async fn test_external_connection(
         .map_err(|e| format!("Failed to decrypt connection details: {}", e))?;
 
     match config.db_type {
-        DatabaseType::MySQL => Err("MySQL connection testing not yet implemented".to_string()),
-        DatabaseType::PostgreSQL => {
-            Err("PostgreSQL connection testing not yet implemented".to_string())
+        DatabaseType::MySQL => {
+            // Test MySQL connection
+            let conn_str = format!(
+                "mysql://{}:{}@{}:{}/{}",
+                _connection_details.username,
+                _connection_details.password,
+                _connection_details.host,
+                _connection_details.port,
+                _connection_details.database
+            );
+            match sqlx::MySqlPool::connect(&conn_str).await {
+                Ok(_) => Ok("Connection successful".to_string()),
+                Err(e) => Err(format!("MySQL connection failed: {}", e)),
+            }
         }
-        DatabaseType::MongoDB => Err("MongoDB connection testing not yet implemented".to_string()),
+        DatabaseType::PostgreSQL => {
+            // Test PostgreSQL connection
+            let conn_str = format!(
+                "postgresql://{}:{}@{}:{}/{}",
+                _connection_details.username,
+                _connection_details.password,
+                _connection_details.host,
+                _connection_details.port,
+                _connection_details.database
+            );
+            match sqlx::PgPool::connect(&conn_str).await {
+                Ok(_) => Ok("Connection successful".to_string()),
+                Err(e) => Err(format!("PostgreSQL connection failed: {}", e)),
+            }
+        }
+        DatabaseType::MongoDB => {
+            // Test MongoDB connection
+            let conn_str = format!(
+                "mongodb://{}:{}@{}:{}/{}",
+                _connection_details.username,
+                _connection_details.password,
+                _connection_details.host,
+                _connection_details.port,
+                _connection_details.database
+            );
+            match mongodb::Client::with_uri_str(&conn_str).await {
+                Ok(client) => {
+                    match client.list_database_names(None, None).await {
+                        Ok(_) => Ok("Connection successful".to_string()),
+                        Err(e) => Err(format!("MongoDB connection failed: {}", e)),
+                    }
+                }
+                Err(e) => Err(format!("MongoDB connection failed: {}", e)),
+            }
+        }
     }
 }
 
@@ -156,4 +201,38 @@ pub async fn decrypt_connection_details(
         .decrypt_connection_details(&config.connection_details_encrypted)
         .await
         .map_err(|e| format!("Failed to decrypt connection details: {}", e))
+}
+
+#[tauri::command]
+pub async fn test_external_database_connection(
+    id: String,
+    app_state: State<'_, AppState>,
+) -> Result<String, String> {
+    test_external_connection(id, app_state).await
+}
+
+#[tauri::command]
+pub async fn connect_to_database(
+    database_id: String,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    let database_service = app_state.database_service.lock().await;
+    
+    database_service
+        .toggle_external_database_active(&database_id, true)
+        .await
+        .map_err(|e| format!("Failed to connect to database: {}", e))
+}
+
+#[tauri::command]
+pub async fn disconnect_from_database(
+    database_id: String,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    let database_service = app_state.database_service.lock().await;
+    
+    database_service
+        .toggle_external_database_active(&database_id, false)
+        .await
+        .map_err(|e| format!("Failed to disconnect from database: {}", e))
 }

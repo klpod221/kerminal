@@ -70,7 +70,9 @@
     </div>
 
     <!-- Center content -->
-    <div class="flex justify-center items-center h-full" />
+    <div class="flex justify-center items-center h-full">
+      <SyncStatusIndicator />
+    </div>
 
     <!-- Right side buttons -->
     <div class="flex items-center justify-end">
@@ -116,11 +118,25 @@
         @click="toggleOverlay('ssh-key-manager-modal')"
       />
 
+      <!-- Sync Manager -->
+      <Button
+        title="Sync Manager"
+        variant="ghost"
+        size="sm"
+        :icon="RefreshCw"
+        :class="
+          isOverlayVisible('sync-manager-modal')
+            ? 'bg-gray-800 text-gray-400 hover:text-white'
+            : ''
+        "
+        @click="toggleOverlay('sync-manager-modal')"
+      />
+
       <!-- Master Password  -->
       <Button
         title="Master Password Settings"
         variant="ghost"
-        size="sm"
+        size="sm"Top
         :icon="Shield"
         :class="
           isOverlayVisible('master-password-settinTopgs')
@@ -141,8 +157,10 @@ import {
   Key,
   Route,
   Terminal,
+  RefreshCw,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
+import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";
 
 import { useViewStateStore } from "../stores/viewState";
 import { useOverlay } from "../composables/useOverlay";

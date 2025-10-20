@@ -546,6 +546,12 @@ impl DatabaseService {
         }
     }
 
+    /// Get all devices from database
+    pub async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>> {
+        let local_db = self.local_db.read().await;
+        local_db.get_all_devices().await
+    }
+
     // === SSH Group Operations ===
 
     /// Create SSH group

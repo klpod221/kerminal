@@ -158,6 +158,115 @@ pub async fn save_device(provider: &SQLiteProvider, device: &Device) -> Database
     Ok(())
 }
 
+pub async fn get_all_devices(provider: &SQLiteProvider) -> DatabaseResult<Vec<Device>> {
+    let pool_arc = provider.get_pool()?;
+    let pool = pool_arc.read().await;
+
+    let rows = sqlx::query("SELECT * FROM devices ORDER BY last_seen_at DESC")
+        .fetch_all(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+    let mut devices = Vec::new();
+    for row in rows {
+        let device = Device {
+            device_id: row.get("device_id"),
+            device_name: row.get("device_name"),
+            device_type: serde_json::from_str(&row.get::<String, _>("device_type"))
+                .unwrap_or(crate::models::auth::DeviceType::Unknown),
+            os_info: crate::models::auth::OsInfo {
+                os_type: row.get("os_name"),
+                os_version: row.get("os_version"),
+                arch: "".to_string(),
+                hostname: "".to_string(),
+            },
+            app_version: env!("CARGO_PKG_VERSION").to_string(),
+            created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&chrono::Utc),
+            last_seen: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("last_seen_at"))
+                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&chrono::Utc),
+            is_current: row.get("is_current"),
+        };
+        devices.push(device);
+    }
+
+    Ok(devices)
+}
+
+pub async fn update_device_last_seen(
+    provider: &SQLiteProvider,
+    device_id: &str,
+) -> DatabaseResult<()> {
+    let pool_arc = provider.get_pool()?;
+    let pool = pool_arc.read().await;
+
+    let now = chrono::Utc::now().to_rfc3339();
+
+    sqlx::query("UPDATE devices SET last_seen_at = ? WHERE device_id = ?")
+        .bind(&now)
+        .bind(device_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+    Ok(())
+}
+
+pub async fn delete_device(provider: &SQLiteProvider, device_id: &str) -> DatabaseResult<()> {
+    let pool_arc = provider.get_pool()?;
+    let pool = pool_arc.read().await;
+
+    sqlx::query("DELETE FROM devices WHERE device_id = ?")
+        .bind(device_id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+    Ok(())
+}
+
+pub async fn get_device_by_id(
+    provider: &SQLiteProvider,
+    device_id: &str,
+) -> DatabaseResult<Option<Device>> {
+    let pool_arc = provider.get_pool()?;
+    let pool = pool_arc.read().await;
+
+    let row = sqlx::query("SELECT * FROM devices WHERE device_id = ? LIMIT 1")
+        .bind(device_id)
+        .fetch_optional(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+    if let Some(row) = row {
+        let device = Device {
+            device_id: row.get("device_id"),
+            device_name: row.get("device_name"),
+            device_type: serde_json::from_str(&row.get::<String, _>("device_type"))
+                .unwrap_or(crate::models::auth::DeviceType::Unknown),
+            os_info: crate::models::auth::OsInfo {
+                os_type: row.get("os_name"),
+                os_version: row.get("os_version"),
+                arch: "".to_string(),
+                hostname: "".to_string(),
+            },
+            app_version: env!("CARGO_PKG_VERSION").to_string(),
+            created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
+                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&chrono::Utc),
+            last_seen: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("last_seen_at"))
+                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&chrono::Utc),
+            is_current: row.get("is_current"),
+        };
+        Ok(Some(device))
+    } else {
+        Ok(None)
+    }
+}
+
 impl SQLiteProvider {
     pub async fn save_master_password_entry(
         &self,
@@ -181,7 +290,23 @@ impl SQLiteProvider {
         get_current_device(self).await
     }
 
+    pub async fn get_device_by_id(&self, device_id: &str) -> DatabaseResult<Option<Device>> {
+        get_device_by_id(self, device_id).await
+    }
+
     pub async fn save_device(&self, device: &Device) -> DatabaseResult<()> {
         save_device(self, device).await
+    }
+
+    pub async fn get_all_devices(&self) -> DatabaseResult<Vec<Device>> {
+        get_all_devices(self).await
+    }
+
+    pub async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()> {
+        update_device_last_seen(self, device_id).await
+    }
+
+    pub async fn delete_device(&self, device_id: &str) -> DatabaseResult<()> {
+        delete_device(self, device_id).await
     }
 }

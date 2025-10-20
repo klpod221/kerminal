@@ -15,6 +15,8 @@
         <SavedCommandManager />
 
         <TunnelManager />
+
+        <SyncManager />
       </template>
     </div>
   </div>
@@ -30,6 +32,7 @@ import Workspace from "./components/Workspace.vue";
 import SSHProfileManager from "./components/ssh-profiles/SSHProfileManager.vue";
 import SavedCommandManager from "./components/saved-commands/SavedCommandManager.vue";
 import TunnelManager from "./components/tunnels/TunnelManager.vue";
+import SyncManager from "./components/sync/SyncManager.vue";
 import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
 
 // Import stores and composables
@@ -78,7 +81,7 @@ onMounted(async () => {
 
     // if setup is not completed, ensure the setup view is shown
     if (authStore.requiresSetup) {
-      openOverlay("master-password-setup");
+      openOverlay("initial-setup");
       return;
     }
 
@@ -101,7 +104,7 @@ watch(
     }
 
     if (requiresSetup) {
-      openOverlay("master-password-setup");
+      openOverlay("initial-setup");
     } else if (requiresUnlock) {
       openOverlay("master-password-unlock");
     }

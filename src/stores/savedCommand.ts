@@ -12,6 +12,7 @@ import type {
 } from "../types/savedCommand";
 import { savedCommandService } from "../services/savedCommand";
 import { writeToTerminal } from "../services/terminal";
+import { useWorkspaceStore } from "./workspace";
 
 export const useSavedCommandStore = defineStore("savedCommand", () => {
   // State
@@ -148,7 +149,6 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
       // Get workspace store to find active terminal if terminalId not provided
       let targetTerminalId = terminalId;
       if (!targetTerminalId) {
-        const { useWorkspaceStore } = await import('./workspace');
         const workspaceStore = useWorkspaceStore();
 
         if (workspaceStore.activePanelId) {
@@ -165,7 +165,6 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
       }
 
       // Check if terminal exists and is ready
-      const { useWorkspaceStore } = await import('./workspace');
       const workspaceStore = useWorkspaceStore();
       const terminal = workspaceStore.terminals.find(t => t.id === targetTerminalId);
 

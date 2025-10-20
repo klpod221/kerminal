@@ -720,11 +720,9 @@ impl Database for SQLiteProvider {
 
     async fn get_device_by_id(
         &self,
-        _device_id: &str,
+        device_id: &str,
     ) -> DatabaseResult<Option<crate::models::auth::Device>> {
-        Err(DatabaseError::NotImplemented(
-            "get_device_by_id not yet implemented".to_string(),
-        ))
+        auth::get_device_by_id(self, device_id).await
     }
 
     async fn get_current_device(&self) -> DatabaseResult<Option<crate::models::auth::Device>> {
@@ -732,21 +730,15 @@ impl Database for SQLiteProvider {
     }
 
     async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>> {
-        Err(DatabaseError::NotImplemented(
-            "get_all_devices not yet implemented".to_string(),
-        ))
+        auth::get_all_devices(self).await
     }
 
-    async fn update_device_last_seen(&self, _device_id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "update_device_last_seen not yet implemented".to_string(),
-        ))
+    async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()> {
+        auth::update_device_last_seen(self, device_id).await
     }
 
-    async fn delete_device(&self, _device_id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "delete_device not yet implemented".to_string(),
-        ))
+    async fn delete_device(&self, device_id: &str) -> DatabaseResult<()> {
+        auth::delete_device(self, device_id).await
     }
 }
 

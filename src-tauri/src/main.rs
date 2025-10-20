@@ -55,7 +55,6 @@ async fn main() {
             commands::database::auth::get_master_password_status,
             commands::database::auth::is_session_valid,
             commands::database::auth::get_master_password_config,
-            commands::database::auth::get_current_device,
             commands::database::auth::update_master_password_config,
             commands::database::ssh::create_ssh_group,
             commands::database::ssh::get_ssh_groups,
@@ -105,13 +104,27 @@ async fn main() {
             commands::database::external_db::delete_external_database,
             commands::database::external_db::toggle_database_active,
             commands::database::external_db::test_external_connection,
+            commands::database::external_db::test_external_database_connection,
+            commands::database::external_db::connect_to_database,
+            commands::database::external_db::disconnect_from_database,
             commands::database::external_db::decrypt_connection_details,
             // Sync commands
             commands::database::sync::get_sync_history,
             commands::database::sync::get_sync_conflicts,
+            commands::database::sync::get_unresolved_conflicts,
+            commands::database::sync::sync_now,
+            commands::database::sync::get_sync_status,
+            commands::database::sync::get_sync_logs,
+            commands::database::sync::enable_auto_sync,
+            commands::database::sync::disable_auto_sync,
+            commands::database::sync::get_sync_statistics,
             commands::database::sync::resolve_conflict,
             commands::database::sync::delete_conflict,
-            commands::database::sync::get_sync_operations_by_entity
+            commands::database::sync::get_sync_operations_by_entity,
+            // Device commands
+            commands::database::sync::get_current_device,
+            commands::database::sync::get_all_devices,
+            commands::database::sync::register_device
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

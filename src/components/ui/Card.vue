@@ -48,7 +48,7 @@
           <h3
             v-if="title"
             :class="[
-              'font-semibold',
+              'font-semibold text-white',
               size === 'sm'
                 ? 'text-lg'
                 : size === 'lg'
