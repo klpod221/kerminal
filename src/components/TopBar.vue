@@ -67,25 +67,6 @@
           "
         />
       </div>
-
-      <!-- Saved Commands button -->
-      <div
-        class="flex items-center px-3 h-[30px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer"
-        :class="{
-          'bg-gray-800': isOverlayVisible('saved-command-drawer'),
-        }"
-        @click="toggleOverlay('saved-command-drawer')"
-      >
-        <Terminal
-          :size="16"
-          class="transition-opacity duration-200"
-          :class="
-            isOverlayVisible('saved-command-drawer')
-              ? 'opacity-100'
-              : 'opacity-60 hover:opacity-100'
-          "
-        />
-      </div>
     </div>
 
     <!-- Center content -->
@@ -93,6 +74,20 @@
 
     <!-- Right side buttons -->
     <div class="flex items-center justify-end">
+      <!-- Saved Commands -->
+      <Button
+        title="Saved Commands"
+        variant="ghost"
+        size="sm"
+        :icon="Terminal"
+        :class="
+          isOverlayVisible('saved-command-drawer')
+            ? 'bg-gray-800 text-gray-400 hover:text-white'
+            : ''
+        "
+        @click="toggleOverlay('saved-command-drawer')"
+      />
+
       <!-- Tunnel Manager -->
       <Button
         title="SSH Tunnel Manager"
@@ -128,7 +123,7 @@
         size="sm"
         :icon="Shield"
         :class="
-          isOverlayVisible('master-password-settings')
+          isOverlayVisible('master-password-settinTopgs')
             ? 'bg-gray-800 text-gray-400 hover:text-white'
             : ''
         "
@@ -139,14 +134,22 @@
 </template>
 
 <script setup lang="ts">
-import { LayoutGrid, Server, Shield, Key, Route, Terminal } from "lucide-vue-next";
+import {
+  LayoutGrid,
+  Server,
+  Shield,
+  Key,
+  Route,
+  Terminal,
+} from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 
 import { useViewStateStore } from "../stores/viewState";
 import { useOverlay } from "../composables/useOverlay";
 
 const viewState = useViewStateStore();
-const { openOverlay, closeOverlay, closeAllOverlays, isOverlayVisible } = useOverlay();
+const { openOverlay, closeOverlay, closeAllOverlays, isOverlayVisible } =
+  useOverlay();
 
 const setActiveView = (view: "dashboard" | "workspace" | "fileManager") => {
   if (!viewState.isTopBarActive || viewState.activeView === view) return;

@@ -9,13 +9,20 @@ export interface OverlayConfig {
   title?: string;
   icon?: Component;
   metadata?: Record<string, any>;
+  onBeforeOpen?: () => void | Promise<void>;
+  onOpened?: () => void;
+  onBeforeClose?: () => boolean | Promise<boolean>;
+  onClosed?: () => void;
+  onError?: (error: Error) => void;
 }
 
 export interface OverlayState {
   config: OverlayConfig;
   visible: boolean;
+  transitioning: boolean;
   zIndex: number;
   createdAt: number;
+  lastAccessedAt?: number;
 }
 
 export interface OverlayManagerState {

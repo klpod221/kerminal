@@ -51,18 +51,16 @@
               <div class="flex-1 min-w-0">
                 <h3 class="text-white font-semibold truncate">{{ key.name }}</h3>
                 <div class="flex items-center gap-2 mt-1">
-                  <span
-                    class="text-xs px-2 py-1 rounded"
-                    :class="getKeyTypeColor(key.keyType)"
-                  >
+                  <Badge variant="info" size="xs">
                     {{ key.keyType }}
-                  </span>
-                  <span
+                  </Badge>
+                  <Badge
                     v-if="key.passphrase"
-                    class="text-xs px-2 py-1 rounded bg-yellow-500/20 text-yellow-400"
+                    variant="warning"
+                    size="xs"
                   >
                     Protected
-                  </span>
+                  </Badge>
                 </div>
               </div>
               <div class="flex items-center gap-1">
@@ -126,6 +124,7 @@ import { onMounted, watch } from "vue";
 import Modal from "../ui/Modal.vue";
 import { formatFingerprint, formatDateOrNever } from "../../utils/formatter";
 import Card from "../ui/Card.vue";
+import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import { Key, Plus, Edit3, Trash2 } from "lucide-vue-next";
 import { useSshKeyStore } from "../../stores/sshKey";
@@ -160,16 +159,6 @@ const confirmDelete = async (key: SSHKey) => {
       console.error("Failed to delete SSH key:", error);
     }
   }
-};
-
-const getKeyTypeColor = (keyType: string): string => {
-  const colors: Record<string, string> = {
-    RSA: "bg-blue-500/20 text-blue-400",
-    Ed25519: "bg-green-500/20 text-green-400",
-    ECDSA: "bg-purple-500/20 text-purple-400",
-    DSA: "bg-orange-500/20 text-orange-400",
-  };
-  return colors[keyType] || "bg-gray-500/20 text-gray-400";
 };
 
 // Load keys on mount

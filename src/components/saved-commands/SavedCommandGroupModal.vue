@@ -2,9 +2,9 @@
   <Modal
     :id="modalId"
     :title="isEditing ? 'Edit Command Group' : 'New Command Group'"
-    :show-close="true"
+    :show-close-button="true"
   >
-    <Form @submit="handleSubmit">
+    <Form ref="groupForm" @submit="handleSubmit">
       <div class="space-y-4">
         <!-- Group Name -->
         <Input
@@ -12,8 +12,7 @@
           v-model="formData.name"
           label="Group Name"
           placeholder="e.g., System Administration"
-          required
-          :error="errors.name"
+          rules="required|min:3|max:50"
         />
 
         <!-- Description -->
@@ -22,40 +21,16 @@
           v-model="formData.description"
           label="Description"
           placeholder="Brief description of this group"
-          :error="errors.description"
+          rules="max:200"
         />
 
         <!-- Color Picker -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
-            Color
-          </label>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="color in colorOptions"
-              :key="color.value"
-              type="button"
-              class="w-8 h-8 rounded-full border-2 transition-all duration-200 hover:scale-110"
-              :class="formData.color === color.value ? 'border-white ring-2 ring-blue-500' : 'border-gray-600'"
-              :style="{ backgroundColor: color.value }"
-              :title="color.name"
-              @click="formData.color = color.value"
-            />
-          </div>
-          <div class="mt-2 flex items-center space-x-2">
-            <input
-              v-model="formData.color"
-              type="color"
-              class="w-8 h-8 rounded border border-gray-600 bg-transparent"
-            />
-            <Input
-              id="group-color-hex"
-              v-model="formData.color"
-              placeholder="#6b7280"
-              class="flex-1"
-            />
-          </div>
-        </div>
+        <ColorPicker
+          id="group-color"
+          v-model="formData.color"
+          label="Color"
+          :preset-colors="colorOptions"
+        />
 
         <!-- Icon Selection -->
         <div>
@@ -68,19 +43,23 @@
               :key="icon.name"
               type="button"
               class="flex items-center justify-center w-10 h-10 rounded border-2 transition-all duration-200 hover:scale-110"
-              :class="formData.icon === icon.name ? 'border-white bg-blue-900/30' : 'border-gray-600 hover:border-gray-400'"
+              :class="
+                formData.icon === icon.name
+                  ? 'border-white bg-blue-900/30'
+                  : 'border-gray-600 hover:border-gray-400'
+              "
               :title="icon.name"
-              @click="formData.icon = formData.icon === icon.name ? '' : icon.name"
+              @click="
+                formData.icon = formData.icon === icon.name ? '' : icon.name
+              "
             >
-              <component :is="icon.component" :size="16" class="text-gray-300" />
+              <component
+                :is="icon.component"
+                :size="16"
+                class="text-gray-300"
+              />
             </button>
           </div>
-          <Input
-            id="group-icon-custom"
-            v-model="formData.icon"
-            placeholder="Custom icon name"
-            class="mt-2"
-          />
         </div>
 
         <!-- Preview -->
@@ -92,7 +71,7 @@
               :style="{ backgroundColor: formData.color || '#6b7280' }"
             />
             <span class="text-white font-medium">
-              {{ formData.name || 'Group Name' }}
+              {{ formData.name || "Group Name" }}
             </span>
             <component
               v-if="selectedIconComponent"
@@ -101,39 +80,29 @@
               class="text-gray-400"
             />
           </div>
-          <p
-            v-if="formData.description"
-            class="text-xs text-gray-400 mt-1"
-          >
+          <p v-if="formData.description" class="text-xs text-gray-400 mt-1">
             {{ formData.description }}
           </p>
         </div>
       </div>
-
-      <!-- Actions -->
-      <template #footer>
-        <div class="flex justify-end space-x-3">
-          <Button
-            type="button"
-            variant="outline"
-            @click="closeModal"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            :loading="loading"
-          >
-            {{ isEditing ? 'Update Group' : 'Create Group' }}
-          </Button>
-        </div>
-      </template>
     </Form>
+
+    <!-- Actions -->
+    <template #footer>
+      <div class="flex justify-end space-x-3">
+        <Button type="button" variant="outline" @click="closeModal">
+          Cancel
+        </Button>
+        <Button type="submit" :loading="loading" @click="handleSubmit">
+          {{ isEditing ? "Update Group" : "Create Group" }}
+        </Button>
+      </div>
+    </template>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 import {
   Folder,
   Terminal,
@@ -146,19 +115,20 @@ import {
   Shield,
   Zap,
   Wrench,
-  Monitor
+  Monitor,
 } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
+import ColorPicker from "../ui/ColorPicker.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
-import type { SavedCommandGroup, CreateSavedCommandGroupRequest, UpdateSavedCommandGroupRequest } from "../../types/savedCommand";
+import type { SavedCommandGroup } from "../../types/savedCommand";
 
 interface Props {
   modalId: string;
-  group?: SavedCommandGroup;
+  groupId?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -168,9 +138,13 @@ const emit = defineEmits<{
   error: [error: string];
 }>();
 
-const { closeOverlay } = useOverlay();
+const { closeOverlay, getOverlayProp } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
 
+// Use overlay prop with fallback to direct prop
+const groupId = getOverlayProp(props.modalId, "groupId", props.groupId, null);
+
+const groupForm = ref<InstanceType<typeof Form> | null>(null);
 const loading = ref(false);
 
 const formData = ref({
@@ -180,22 +154,17 @@ const formData = ref({
   icon: "",
 });
 
-const errors = ref({
-  name: "",
-  description: "",
-});
-
 const colorOptions = [
-  { name: "Gray", value: "#6b7280" },
-  { name: "Red", value: "#ef4444" },
-  { name: "Orange", value: "#f97316" },
-  { name: "Yellow", value: "#eab308" },
-  { name: "Green", value: "#22c55e" },
-  { name: "Blue", value: "#3b82f6" },
-  { name: "Indigo", value: "#6366f1" },
-  { name: "Purple", value: "#a855f7" },
-  { name: "Pink", value: "#ec4899" },
-  { name: "Teal", value: "#14b8a6" },
+  "#6b7280", // Gray
+  "#ef4444", // Red
+  "#f97316", // Orange
+  "#eab308", // Yellow
+  "#22c55e", // Green
+  "#3b82f6", // Blue
+  "#6366f1", // Indigo
+  "#a855f7", // Purple
+  "#ec4899", // Pink
+  "#14b8a6", // Teal
 ];
 
 const iconOptions = [
@@ -213,85 +182,67 @@ const iconOptions = [
   { name: "monitor", component: Monitor },
 ];
 
-const isEditing = computed(() => !!props.group);
+const isEditing = computed(() => !!groupId.value);
 
 const selectedIconComponent = computed(() => {
-  const icon = iconOptions.find(opt => opt.name === formData.value.icon);
+  const icon = iconOptions.find((opt) => opt.name === formData.value.icon);
   return icon?.component;
 });
 
-// Initialize form data
-const initializeForm = () => {
-  if (props.group) {
-    // Editing existing group
-    formData.value = {
-      name: props.group.name,
-      description: props.group.description || "",
-      color: props.group.color || "#6b7280",
-      icon: props.group.icon || "",
-    };
-  } else {
-    // Creating new group
-    formData.value = {
-      name: "",
-      description: "",
-      color: "#6b7280",
-      icon: "",
-    };
-  }
-
-  // Clear errors
-  errors.value = {
-    name: "",
-    description: "",
-  };
-};
-
-const validateForm = (): boolean => {
-  let isValid = true;
-  errors.value = { name: "", description: "" };
-
-  if (!formData.value.name.trim()) {
-    errors.value.name = "Group name is required";
-    isValid = false;
-  }
-
-  return isValid;
-};
-
-const handleSubmit = async () => {
-  if (!validateForm()) return;
+// Load group data
+const loadGroup = async () => {
+  if (!groupId.value) return;
 
   loading.value = true;
   try {
-    if (isEditing.value && props.group) {
-      // Update existing group
-      const updateRequest: UpdateSavedCommandGroupRequest = {
-        name: formData.value.name,
-        description: formData.value.description || undefined,
-        color: formData.value.color || undefined,
-        icon: formData.value.icon || undefined,
+    const group = await savedCommandStore.findGroupById(groupId.value);
+    if (group) {
+      formData.value = {
+        name: group.name,
+        description: group.description || "",
+        color: group.color || "#6b7280",
+        icon: group.icon || "",
       };
+    }
+  } catch (error) {
+    console.error("Error loading group:", error);
+    emit("error", "Failed to load group");
+  } finally {
+    loading.value = false;
+  }
+};
 
-      const updatedGroup = await savedCommandStore.updateGroup(props.group.base.id, updateRequest);
+const handleSubmit = async () => {
+  const isValid = await groupForm.value?.validate();
+  if (!isValid) return;
+
+  loading.value = true;
+  try {
+    const groupData = {
+      name: formData.value.name,
+      description: formData.value.description || undefined,
+      color: formData.value.color || undefined,
+      icon: formData.value.icon || undefined,
+    };
+
+    if (isEditing.value && groupId.value) {
+      const updatedGroup = await savedCommandStore.updateGroup(
+        groupId.value,
+        groupData,
+      );
       emit("success", updatedGroup);
     } else {
-      // Create new group
-      const createRequest: CreateSavedCommandGroupRequest = {
-        name: formData.value.name,
-        description: formData.value.description || undefined,
-        color: formData.value.color || undefined,
-        icon: formData.value.icon || undefined,
-      };
-
-      const newGroup = await savedCommandStore.createGroup(createRequest);
+      const newGroup = await savedCommandStore.createGroup(groupData);
       emit("success", newGroup);
     }
 
     closeModal();
   } catch (error) {
     console.error("Failed to save group:", error);
-    emit("error", error instanceof Error ? error.message : "Failed to save group");
+    emit(
+      "error",
+      error instanceof Error ? error.message : "Failed to save group",
+    );
   } finally {
     loading.value = false;
   }
@@ -302,9 +253,25 @@ const closeModal = () => {
 };
 
 // Watch for prop changes to reinitialize form
-watch(() => props.group, initializeForm, { immediate: true });
+watch(
+  () => groupId.value,
+  (newGroupId) => {
+    console.log("🔍 SavedCommandGroupModal props changed:", {
+      groupId: newGroupId,
+    });
 
-onMounted(() => {
-  initializeForm();
-});
+    if (newGroupId) {
+      loadGroup();
+    } else {
+      // Reset form for new group
+      formData.value = {
+        name: "",
+        description: "",
+        color: "#6b7280",
+        icon: "",
+      };
+    }
+  },
+  { immediate: true },
+);
 </script>

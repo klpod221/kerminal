@@ -13,16 +13,16 @@ export function useOverlay() {
     overlayStore.unregister(id);
   };
 
-  const openOverlay = (id: string, props?: Record<string, any>) => {
+  const openOverlay = async (id: string, props?: Record<string, any>) => {
     if (typeof overlayStore.open === "function") {
-      overlayStore.open(id, props);
+      await overlayStore.open(id, props);
     } else {
       console.error("overlayStore.open is not a function");
     }
   };
 
-  const closeOverlay = (id?: string) => {
-    overlayStore.close(id);
+  const closeOverlay = async (id?: string) => {
+    await overlayStore.close(id);
   };
 
   const closeAllOverlays = () => {
@@ -31,6 +31,10 @@ export function useOverlay() {
 
   const isOverlayVisible = (id: string) => {
     return overlayStore.isVisible(id);
+  };
+
+  const isOverlayTransitioning = (id: string) => {
+    return overlayStore.isTransitioning(id);
   };
 
   /**
@@ -138,6 +142,7 @@ export function useOverlay() {
     closeOverlay,
     closeAllOverlays,
     isOverlayVisible,
+    isOverlayTransitioning,
     clearOverlayProps,
 
     // Props helpers
@@ -166,5 +171,10 @@ export function createOverlayConfig(
     title: options.title,
     icon: options.icon,
     metadata: options.metadata || {},
+    onBeforeOpen: options.onBeforeOpen,
+    onOpened: options.onOpened,
+    onBeforeClose: options.onBeforeClose,
+    onClosed: options.onClosed,
+    onError: options.onError,
   };
 }

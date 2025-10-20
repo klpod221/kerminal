@@ -143,38 +143,34 @@
         subtitle="Optional configuration"
         :default-expanded="false"
       >
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input
-            id="profile-timeout"
-            v-model.number="sshProfile.timeout"
-            label="Timeout (s)"
-            type="number"
-            placeholder="30"
-            :min="1"
-            :max="300"
-          />
+        <Input
+          id="profile-timeout"
+          v-model.number="sshProfile.timeout"
+          label="Timeout (s)"
+          type="number"
+          placeholder="30"
+          :min="1"
+          :max="300"
+        />
 
-          <ColorPicker
-            id="profile-color"
-            v-model="sshProfile.color"
-            label="Profile Color"
-            placeholder="Pick a color for the profile"
-          />
-        </div>
+        <ColorPicker
+          id="profile-color"
+          v-model="sshProfile.color"
+          label="Profile Color"
+          placeholder="Pick a color for the profile"
+        />
 
-        <div class="flex gap-4">
-          <Checkbox
-            id="profile-keep-alive"
-            v-model="sshProfile.keepAlive"
-            label="Keep Alive"
-          />
+        <Checkbox
+          id="profile-keep-alive"
+          v-model="sshProfile.keepAlive"
+          label="Keep Alive"
+        />
 
-          <Checkbox
-            id="profile-compression"
-            v-model="sshProfile.compression"
-            label="Enable Compression"
-          />
-        </div>
+        <Checkbox
+          id="profile-compression"
+          v-model="sshProfile.compression"
+          label="Enable Compression"
+        />
       </Collapsible>
 
       <!-- Proxy Configuration -->
@@ -296,7 +292,6 @@ import * as sshService from "../../services/sshProfile";
 import type { SSHProfile, AuthMethod, AuthData } from "../../types/ssh";
 import { invoke } from "@tauri-apps/api/core";
 
-// Props (for direct usage)
 const props = defineProps<{
   sshProfileId?: string | null;
   groupId?: string | null;

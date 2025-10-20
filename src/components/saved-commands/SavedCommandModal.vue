@@ -2,152 +2,98 @@
   <Modal
     :id="modalId"
     :title="isEditing ? 'Edit Saved Command' : 'New Saved Command'"
-    :show-close="true"
+    :show-close-button="true"
   >
-    <Form @submit="handleSubmit">
-      <div class="space-y-4">
-        <!-- Command Name -->
-        <Input
-          id="command-name"
-          v-model="formData.name"
-          label="Command Name"
-          placeholder="e.g., Update System Packages"
-          required
-          :error="errors.name"
-        />
+    <Form ref="commandForm" @submit="handleSubmit">
+      <!-- Command Name -->
+      <Input
+        id="command-name"
+        v-model="formData.name"
+        label="Command Name"
+        placeholder="e.g., Update System Packages"
+        rules="required|min:3|max:100"
+      />
 
-        <!-- Command -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
-            Command *
-          </label>
-          <textarea
-            v-model="formData.command"
-            class="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
-            rows="3"
-            placeholder="e.g., sudo apt update && sudo apt upgrade -y"
-            required
-          />
-          <span v-if="errors.command" class="text-red-400 text-xs mt-1">
-            {{ errors.command }}
-          </span>
-        </div>
+      <!-- Command -->
+      <Textarea
+        id="command-textarea"
+        v-model="formData.command"
+        label="Command"
+        placeholder="e.g., sudo apt update && sudo apt upgrade -y"
+        :rows="3"
+        rules="required|min:1"
+        size="md"
+      />
 
-        <!-- Description -->
-        <Input
-          id="command-description"
-          v-model="formData.description"
-          label="Description"
-          placeholder="Brief description of what this command does"
-          :error="errors.description"
-        />
+      <!-- Description -->
+      <Input
+        id="command-description"
+        v-model="formData.description"
+        label="Description"
+        placeholder="Brief description of what this command does"
+        rules="max:500"
+      />
 
-        <!-- Group Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
-            Group
-          </label>
-          <select
-            v-model="formData.groupId"
-            class="w-full px-3 py-2 bg-[#1a1a1a] border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          >
-            <option value="">No Group (Ungrouped)</option>
-            <option
-              v-for="group in groups"
-              :key="group.base.id"
-              :value="group.base.id"
-            >
-              {{ group.name }}
-            </option>
-          </select>
-        </div>
+      <!-- Group Selection -->
+      <Select
+        id="group-select"
+        v-model="formData.groupId"
+        label="Group"
+        :options="[
+          { value: '', label: 'No Group (Ungrouped)' },
+          ...groups.map((g) => ({ value: g.id, label: g.name })),
+        ]"
+        size="md"
+      />
 
-        <!-- Tags -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
-            Tags
-          </label>
-          <div class="flex flex-wrap gap-2 mb-2">
-            <span
-              v-for="(tag, index) in parsedTags"
-              :key="index"
-              class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-900/30 text-blue-300"
-            >
-              {{ tag }}
-              <button
-                type="button"
-                class="ml-1 hover:text-blue-200"
-                @click="removeTag(index)"
-              >
-                ×
-              </button>
-            </span>
-          </div>
-          <div class="flex gap-2">
-            <input
-              v-model="newTag"
-              type="text"
-              class="flex-1 px-3 py-2 bg-[#1a1a1a] border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-              placeholder="Add a tag..."
-              @keyup.enter="addTag"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              @click="addTag"
-            >
-              Add
-            </Button>
-          </div>
-        </div>
+      <!-- Tags -->
+      <TagInput id="command-tags" v-model="parsedTags" label="Tags" size="sm" />
 
-        <!-- Favorite Toggle -->
-        <Checkbox
-          id="is-favorite"
-          v-model="formData.isFavorite"
-          label="Mark as favorite"
-        />
-      </div>
+      <!-- Favorite Toggle -->
+      <Checkbox
+        id="is-favorite"
+        v-model="formData.isFavorite"
+        label="Mark as favorite"
+      />
 
       <!-- Actions -->
-      <template #footer>
-        <div class="flex justify-end space-x-3">
-          <Button
-            type="button"
-            variant="outline"
-            @click="closeModal"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            :loading="loading"
-          >
-            {{ isEditing ? 'Update Command' : 'Create Command' }}
-          </Button>
-        </div>
-      </template>
     </Form>
+
+    <template #footer>
+      <div class="flex space-x-3">
+        <Button type="button" variant="outline" @click="closeModal">
+          Cancel
+        </Button>
+        <Button type="submit" :loading="loading" @click="handleSubmit">
+          {{ isEditing ? "Update Command" : "Create Command" }}
+        </Button>
+      </div>
+    </template>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch } from "vue";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
+import Textarea from "../ui/Textarea.vue";
+import Select from "../ui/Select.vue";
+import TagInput from "../ui/TagInput.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
-import type { SavedCommand, SavedCommandGroup, CreateSavedCommandRequest, UpdateSavedCommandRequest } from "../../types/savedCommand";
+import type {
+  SavedCommand,
+  SavedCommandGroup,
+} from "../../types/savedCommand";
 
 interface Props {
   modalId: string;
-  command?: SavedCommand;
   groups: SavedCommandGroup[];
-  defaultGroupId?: string;
+  commandId?: string | null;
+  defaultGroupId?: string | null;
 }
 
 const props = defineProps<Props>();
@@ -157,11 +103,25 @@ const emit = defineEmits<{
   error: [error: string];
 }>();
 
-const { closeOverlay } = useOverlay();
+const { closeOverlay, getOverlayProp } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
 
+// Use overlay prop with fallback to direct prop
+const commandId = getOverlayProp(
+  props.modalId,
+  "commandId",
+  props.commandId,
+  null,
+);
+const defaultGroupId = getOverlayProp(
+  props.modalId,
+  "defaultGroupId",
+  props.defaultGroupId,
+  null,
+);
+
+const commandForm = ref<InstanceType<typeof Form> | null>(null);
 const loading = ref(false);
-const newTag = ref("");
 
 const formData = ref({
   name: "",
@@ -173,120 +133,77 @@ const formData = ref({
 
 const parsedTags = ref<string[]>([]);
 
-const errors = ref({
-  name: "",
-  command: "",
-  description: "",
-});
+const isEditing = computed(() => !!commandId.value);
 
-const isEditing = computed(() => !!props.command);
-
-// Initialize form data
-const initializeForm = () => {
-  if (props.command) {
-    // Editing existing command
-    formData.value = {
-      name: props.command.name,
-      command: props.command.command,
-      description: props.command.description || "",
-      groupId: props.command.groupId || "",
-      isFavorite: props.command.isFavorite,
-    };
-
-    // Parse tags
-    try {
-      parsedTags.value = props.command.tags ? JSON.parse(props.command.tags) : [];
-    } catch {
-      parsedTags.value = [];
-    }
-  } else {
-    // Creating new command
-    formData.value = {
-      name: "",
-      command: "",
-      description: "",
-      groupId: props.defaultGroupId || "",
-      isFavorite: false,
-    };
-    parsedTags.value = [];
-  }
-
-  // Clear errors
-  errors.value = {
-    name: "",
-    command: "",
-    description: "",
-  };
-};
-
-const validateForm = (): boolean => {
-  let isValid = true;
-  errors.value = { name: "", command: "", description: "" };
-
-  if (!formData.value.name.trim()) {
-    errors.value.name = "Command name is required";
-    isValid = false;
-  }
-
-  if (!formData.value.command.trim()) {
-    errors.value.command = "Command is required";
-    isValid = false;
-  }
-
-  return isValid;
-};
-
-const addTag = () => {
-  const tag = newTag.value.trim();
-  if (tag && !parsedTags.value.includes(tag)) {
-    parsedTags.value.push(tag);
-    newTag.value = "";
-  }
-};
-
-const removeTag = (index: number) => {
-  parsedTags.value.splice(index, 1);
-};
-
-const handleSubmit = async () => {
-  if (!validateForm()) return;
+// Load command data
+const loadCommand = async () => {
+  if (!commandId.value) return;
 
   loading.value = true;
   try {
-    const tagsJson = parsedTags.value.length > 0 ? JSON.stringify(parsedTags.value) : undefined;
-
-    if (isEditing.value && props.command) {
-      // Update existing command
-      const updateRequest: UpdateSavedCommandRequest = {
-        name: formData.value.name,
-        command: formData.value.command,
-        description: formData.value.description || undefined,
-        groupId: formData.value.groupId || undefined,
-        tags: tagsJson,
-        isFavorite: formData.value.isFavorite,
+    const command = await savedCommandStore.findCommandById(commandId.value);
+    if (command) {
+      formData.value = {
+        name: command.name,
+        command: command.command,
+        description: command.description || "",
+        groupId: command.groupId || "",
+        isFavorite: command.isFavorite,
       };
 
-      const updatedCommand = await savedCommandStore.updateCommand(props.command.base.id, updateRequest);
+      // Parse tags
+      try {
+        parsedTags.value = command.tags ? JSON.parse(command.tags) : [];
+      } catch {
+        parsedTags.value = [];
+      }
+    }
+  } catch (error) {
+    console.error("Error loading command:", error);
+    emit("error", "Failed to load command");
+  } finally {
+    loading.value = false;
+  }
+};
+
+const handleSubmit = async () => {
+  const isValid = await commandForm.value?.validate();
+  if (!isValid) return;
+
+  loading.value = true;
+  try {
+    const tagsJson =
+      parsedTags.value.length > 0
+        ? JSON.stringify(parsedTags.value)
+        : undefined;
+
+    const commandData = {
+      name: formData.value.name,
+      command: formData.value.command,
+      description: formData.value.description || undefined,
+      groupId: formData.value.groupId || undefined,
+      tags: tagsJson,
+      isFavorite: formData.value.isFavorite,
+    };
+
+    if (isEditing.value && commandId.value) {
+      const updatedCommand = await savedCommandStore.updateCommand(
+        commandId.value,
+        commandData,
+      );
       emit("success", updatedCommand);
     } else {
-      // Create new command
-      const createRequest: CreateSavedCommandRequest = {
-        name: formData.value.name,
-        command: formData.value.command,
-        description: formData.value.description || undefined,
-        groupId: formData.value.groupId || undefined,
-        tags: tagsJson,
-        isFavorite: formData.value.isFavorite,
-      };
-
-      const newCommand = await savedCommandStore.createCommand(createRequest);
+      const newCommand = await savedCommandStore.createCommand(commandData);
       emit("success", newCommand);
     }
 
     closeModal();
   } catch (error) {
     console.error("Failed to save command:", error);
-    emit("error", error instanceof Error ? error.message : "Failed to save command");
+    emit(
+      "error",
+      error instanceof Error ? error.message : "Failed to save command",
+    );
   } finally {
     loading.value = false;
   }
@@ -297,14 +214,28 @@ const closeModal = () => {
 };
 
 // Watch for prop changes to reinitialize form
-watch(() => props.command, initializeForm, { immediate: true });
-watch(() => props.defaultGroupId, () => {
-  if (!isEditing.value) {
-    formData.value.groupId = props.defaultGroupId || "";
-  }
-});
+watch(
+  () => [commandId.value, defaultGroupId.value],
+  ([newCommandId, newDefaultGroupId]) => {
+    console.log("🔍 SavedCommandModal props changed:", {
+      commandId: newCommandId,
+      defaultGroupId: newDefaultGroupId,
+    });
 
-onMounted(() => {
-  initializeForm();
-});
+    if (newCommandId) {
+      loadCommand();
+    } else {
+      // Reset form for new command
+      formData.value = {
+        name: "",
+        command: "",
+        description: "",
+        groupId: newDefaultGroupId || "",
+        isFavorite: false,
+      };
+      parsedTags.value = [];
+    }
+  },
+  { immediate: true },
+);
 </script>

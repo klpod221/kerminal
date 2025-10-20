@@ -1,33 +1,29 @@
 <template>
   <div
-    class="group flex items-center justify-between p-3 bg-[#2a2a2a] hover:bg-[#333333] hover:border-gray-500 border border-transparent rounded-lg cursor-pointer transition-all duration-300 transform hover:scale-[1.02] hover:shadow-lg"
+    class="group relative flex items-center gap-3 p-3.5 bg-[#2a2a2a] hover:bg-[#303030] border border-gray-700 hover:border-gray-600 rounded-lg cursor-pointer transition-all duration-200"
     @click="$emit('connect', profile)"
   >
-    <div class="flex items-center space-x-3 flex-1 min-w-0">
-      <div class="flex-shrink-0">
-        <div
-          class="w-2 h-2 rounded-full transition-all duration-300 group-hover:w-3 group-hover:h-3"
-          :style="{ backgroundColor: profile.color || fallbackColor || '#6b7280' }"
-        ></div>
-      </div>
-      <div class="flex-1 min-w-0">
-        <div class="flex items-center space-x-2">
-          <p
-            class="text-sm font-medium text-white group-hover:text-blue-300 truncate transition-colors duration-300"
-          >
-            {{ profile.name }}
-          </p>
-        </div>
-        <p
-          class="text-xs text-gray-400 group-hover:text-gray-300 truncate transition-colors duration-300"
-        >
-          {{ profile.username }}@{{ profile.host }}:{{ profile.port }}
-        </p>
+    <!-- Color indicator -->
+    <div class="flex-shrink-0">
+      <div
+        class="w-1 h-10 rounded-full transition-all duration-200"
+        :style="{ backgroundColor: profile.color || fallbackColor || '#6b7280' }"
+      />
+    </div>
+
+    <!-- Profile info -->
+    <div class="flex-1 min-w-0 space-y-1">
+      <h4 class="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors truncate">
+        {{ profile.name }}
+      </h4>
+      <div class="flex items-center gap-2 text-xs text-gray-400">
+        <code class="font-mono">{{ profile.username }}@{{ profile.host }}:{{ profile.port }}</code>
       </div>
     </div>
 
+    <!-- Action buttons (hover) -->
     <div
-      class="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-300"
+      class="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
       @click.stop
     >
       <Button
@@ -37,19 +33,14 @@
         :icon="Edit3"
         @click="$emit('edit', profile)"
       />
-      <PopConfirm
-        :title="`Delete profile '${profile.name}'?`"
-        content="This action cannot be undone."
-        placement="bottom"
-        @confirm="$emit('delete', profile)"
-      >
-        <Button
-          title="Delete profile"
-          variant="ghost"
-          size="sm"
-          :icon="Trash2"
-        />
-      </PopConfirm>
+      <Button
+        title="Delete profile"
+        variant="ghost"
+        size="sm"
+        :icon="Trash2"
+        class="text-red-400 hover:text-red-300"
+        @click="handleDelete"
+      />
     </div>
   </div>
 </template>
@@ -57,7 +48,6 @@
 <script setup lang="ts">
 import type { SSHProfile } from "../../types/ssh";
 import Button from "../ui/Button.vue";
-import PopConfirm from "../ui/PopConfirm.vue";
 import { Edit3, Trash2 } from "lucide-vue-next";
 
 interface Props {
@@ -71,6 +61,12 @@ interface Emits {
   delete: [profile: SSHProfile];
 }
 
-defineProps<Props>();
-defineEmits<Emits>();
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+const handleDelete = () => {
+  if (confirm(`Delete '${props.profile.name}'? This action cannot be undone.`)) {
+    emit('delete', props.profile);
+  }
+};
 </script>

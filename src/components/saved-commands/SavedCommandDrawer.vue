@@ -21,10 +21,7 @@
       </Form>
     </template>
 
-    <div
-      class="p-4"
-      v-if="!savedCommandStore.hasData"
-    >
+    <div class="p-4" v-if="!savedCommandStore.hasData">
       <div class="text-center">
         <Terminal :size="48" class="mx-auto text-gray-500 mb-4" />
         <p class="text-sm text-gray-500 mb-4">No saved commands available.</p>
@@ -40,65 +37,54 @@
     </div>
 
     <div v-else class="space-y-4 p-4">
-      <!-- Quick Actions Bar -->
-      <div class="flex items-center justify-between pb-2 border-b border-gray-700">
-        <div class="flex items-center space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            :icon="Plus"
-            @click="createNewCommand()"
-          >
-            Command
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            :icon="FolderPlus"
-            @click="createNewGroup()"
-          >
-            Group
-          </Button>
+      <!-- Filter & Sort Bar -->
+      <div class="space-y-2 pb-3 border-b border-gray-700">
+        <div class="flex items-center justify-between">
+          <!-- Filter & Sort Controls -->
+          <div class="grid grid-cols-2 gap-2 w-full">
+            <Select
+              id="filter-select"
+              v-model="activeFilter"
+              label="Filter"
+              :options="[
+                { value: 'all', label: 'All' },
+                { value: 'favorites', label: 'Favorites' },
+                { value: 'recent', label: 'Recent' },
+                { value: 'unused', label: 'Unused' },
+              ]"
+              class="w-full"
+              size="sm"
+            />
+
+            <Select
+              id="sort-select"
+              v-model="sortBy"
+              label="Sort By"
+              :options="[
+                { value: 'name', label: 'Name' },
+                { value: 'lastUsed', label: 'Last Used' },
+                { value: 'usageCount', label: 'Usage Count' },
+                { value: 'createdAt', label: 'Created Date' },
+              ]"
+              class="w-full"
+              size="sm"
+            />
+          </div>
         </div>
 
-        <div class="flex items-center space-x-2">
-          <!-- Filter dropdown -->
-          <select
-            v-model="activeFilter"
-            class="px-2 py-1 bg-[#1a1a1a] border border-gray-600 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="all">All</option>
-            <option value="favorites">Favorites</option>
-            <option value="recent">Recent</option>
-            <option value="unused">Unused</option>
-          </select>
-
-          <!-- Sort dropdown -->
-          <select
-            v-model="sortBy"
-            class="px-2 py-1 bg-[#1a1a1a] border border-gray-600 rounded text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="name">Name</option>
-            <option value="lastUsed">Last Used</option>
-            <option value="usageCount">Usage Count</option>
-            <option value="createdAt">Created</option>
-          </select>
+        <!-- Stats -->
+        <div class="flex items-center gap-4 text-xs text-gray-400">
+          <span>Showing {{ filteredCommandCount }} of {{ savedCommandStore.commandCount }} commands</span>
+          <span v-if="activeFilter !== 'all'" class="text-blue-400">
+            • Filtered by {{ activeFilterLabel }}
+          </span>
         </div>
-      </div>
-
-      <!-- Stats Bar -->
-      <div class="flex items-center space-x-4 text-xs text-gray-400">
-        <span>{{ savedCommandStore.commandCount }} commands</span>
-        <span>{{ savedCommandStore.groupCount }} groups</span>
-        <span v-if="savedCommandStore.favoriteCount > 0">
-          {{ savedCommandStore.favoriteCount }} favorites
-        </span>
       </div>
 
       <!-- Grouped Commands -->
       <div
         v-for="groupData in filteredGroupsData"
-        :key="groupData.group?.base.id || 'ungrouped'"
+        :key="groupData.group?.id || 'ungrouped'"
         class="space-y-2"
       >
         <!-- Group Header -->
@@ -115,8 +101,11 @@
               :size="14"
               class="text-gray-400"
             />
-            <h3 class="text-sm font-medium" :class="groupData.group ? 'text-white' : 'text-gray-400'">
-              {{ groupData.group?.name || 'Ungrouped' }}
+            <h3
+              class="text-sm font-medium"
+              :class="groupData.group ? 'text-white' : 'text-gray-400'"
+            >
+              {{ groupData.group?.name || "Ungrouped" }}
             </h3>
             <span class="text-xs text-gray-400">
               ({{ groupData.commandCount }})
@@ -131,7 +120,7 @@
               variant="ghost"
               size="sm"
               :icon="Plus"
-              @click="createNewCommand(groupData.group!.base.id)"
+              @click="createNewCommand(groupData.group!.id)"
             />
             <Button
               title="Edit group"
@@ -157,13 +146,17 @@
             v-if="groupData.commandCount === 0 && !searchQuery"
             class="p-3 text-gray-500 text-sm italic text-center border border-dashed border-gray-600 rounded-lg"
           >
-            {{ groupData.group ? 'No commands in this group. Click the + button above to add one.' : 'No ungrouped commands available.' }}
+            {{
+              groupData.group
+                ? "No commands in this group. Click the + button above to add one."
+                : "No ungrouped commands available."
+            }}
           </div>
 
           <!-- Commands -->
           <SavedCommandItem
             v-for="command in groupData.commands"
-            :key="command.base.id"
+            :key="command.id"
             :command="command"
             :fallback-color="groupData.group?.color"
             @execute="executeCommand"
@@ -176,23 +169,42 @@
       </div>
     </div>
 
-    <!-- Modals -->
-    <SavedCommandModal
-      modal-id="saved-command-modal"
-      :command="editingCommand"
-      :groups="savedCommandStore.groups"
-      :default-group-id="defaultGroupId"
-      @success="handleCommandSaved"
-      @error="handleError"
-    />
+    <!-- Footer -->
+    <template #footer>
+      <div class="flex justify-between items-center gap-2">
+        <div class="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="FolderPlus"
+            text="New Group"
+            @click="createNewGroup()"
+          />
+        </div>
 
-    <SavedCommandGroupModal
-      modal-id="saved-command-group-modal"
-      :group="editingGroup"
-      @success="handleGroupSaved"
-      @error="handleError"
-    />
+        <Button
+          variant="success"
+          size="sm"
+          :icon="Plus"
+          text="New Command"
+          @click="createNewCommand()"
+        />
+      </div>
+    </template>
   </Drawer>
+
+  <!-- Modals -->
+  <SavedCommandModal
+    modal-id="saved-command-modal"
+    @success="handleCommandSaved"
+    @error="handleError"
+  />
+
+  <SavedCommandGroupModal
+    modal-id="saved-command-group-modal"
+    @success="handleGroupSaved"
+    @error="handleError"
+  />
 </template>
 
 <script setup lang="ts">
@@ -214,21 +226,25 @@ import {
   Shield,
   Zap,
   Wrench,
-  Monitor
+  Monitor,
 } from "lucide-vue-next";
 import Drawer from "../ui/Drawer.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
+import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import SavedCommandItem from "./SavedCommandItem.vue";
 import SavedCommandModal from "./SavedCommandModal.vue";
 import SavedCommandGroupModal from "./SavedCommandGroupModal.vue";
 
-
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
 import { message } from "../../utils/message";
-import type { SavedCommand, SavedCommandGroup, SavedCommandSearchParams } from "../../types/savedCommand";
+import type {
+  SavedCommand,
+  SavedCommandGroup,
+  SavedCommandSearchParams,
+} from "../../types/savedCommand";
 
 const { openOverlay } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
@@ -239,9 +255,6 @@ const showError = (msg: string) => message.error(msg);
 const searchQuery = ref("");
 const activeFilter = ref<"all" | "favorites" | "recent" | "unused">("all");
 const sortBy = ref<"name" | "lastUsed" | "usageCount" | "createdAt">("name");
-const editingCommand = ref<SavedCommand | undefined>();
-const editingGroup = ref<SavedCommandGroup | undefined>();
-const defaultGroupId = ref<string>("");
 
 // Icon mapping
 const iconComponents: Record<string, any> = {
@@ -260,29 +273,82 @@ const iconComponents: Record<string, any> = {
 };
 
 // Computed
-const filteredGroupsData = computed(() => {
+const sortOrder = computed(() => {
+  // Name should be ascending (A-Z), others descending (newest/highest first)
+  return sortBy.value === 'name' ? 'asc' : 'desc';
+});
+
+const filteredCommands = computed(() => {
   const searchParams: SavedCommandSearchParams = {
     query: searchQuery.value,
     filterBy: activeFilter.value,
     sortBy: sortBy.value,
-    sortOrder: "asc",
+    sortOrder: sortOrder.value,
   };
 
-  // Get filtered commands
-  const filteredCommands = savedCommandStore.filterCommands(searchParams);
+  return savedCommandStore.filterCommands(searchParams);
+});
+
+const filteredCommandCount = computed(() => filteredCommands.value.length);
+
+const activeFilterLabel = computed(() => {
+  const labels: Record<string, string> = {
+    favorites: "Favorites",
+    recent: "Recent",
+    unused: "Unused",
+  };
+  return labels[activeFilter.value] || "All";
+});
+
+const filteredGroupsData = computed(() => {
+  // Get sort function based on current sortBy
+  const getSortValue = (command: SavedCommand): number | string => {
+    switch (sortBy.value) {
+      case 'name':
+        return command.name.toLowerCase();
+      case 'lastUsed':
+        return command.lastUsedAt ? new Date(command.lastUsedAt).getTime() : 0;
+      case 'usageCount':
+        return command.usageCount;
+      case 'createdAt':
+        return new Date(command.createdAt).getTime();
+      default:
+        return command.name.toLowerCase();
+    }
+  };
 
   // Group the filtered commands
-  return savedCommandStore.getGroupedCommandsData(searchQuery.value).map(groupData => ({
-    ...groupData,
-    commands: groupData.commands.filter(command =>
-      filteredCommands.some(fc => fc.base.id === command.base.id)
-    ),
-    commandCount: groupData.commands.filter(command =>
-      filteredCommands.some(fc => fc.base.id === command.base.id)
-    ).length,
-  })).filter(groupData =>
-    groupData.commandCount > 0 || (!searchQuery.value && groupData.group)
-  );
+  return savedCommandStore
+    .getGroupedCommandsData(searchQuery.value)
+    .map((groupData) => {
+      const filteredGroupCommands = groupData.commands.filter((command) =>
+        filteredCommands.value.some((fc) => fc.id === command.id),
+      );
+
+      // Sort commands within the group
+      const sortedCommands = [...filteredGroupCommands].sort((a, b) => {
+        const aVal = getSortValue(a);
+        const bVal = getSortValue(b);
+        
+        if (typeof aVal === 'string' && typeof bVal === 'string') {
+          const comparison = aVal.localeCompare(bVal);
+          return sortOrder.value === 'asc' ? comparison : -comparison;
+        }
+        
+        const comparison = (aVal as number) - (bVal as number);
+        return sortOrder.value === 'asc' ? comparison : -comparison;
+      });
+
+      return {
+        ...groupData,
+        commands: sortedCommands,
+        commandCount: filteredGroupCommands.length,
+      };
+    })
+    .filter(
+      (groupData) =>
+        groupData.commandCount > 0 || (!searchQuery.value && groupData.group),
+    );
 });
 
 // Methods
@@ -291,30 +357,31 @@ const getIconComponent = (iconName: string) => {
 };
 
 const createNewCommand = (groupId?: string) => {
-  editingCommand.value = undefined;
-  defaultGroupId.value = groupId || "";
-  openOverlay("saved-command-modal");
+  openOverlay("saved-command-modal", {
+    commandId: undefined,
+    defaultGroupId: groupId,
+  });
 };
 
 const createNewGroup = () => {
-  editingGroup.value = undefined;
-  openOverlay("saved-command-group-modal");
+  openOverlay("saved-command-group-modal", { groupId: undefined });
 };
 
 const editCommand = (command: SavedCommand) => {
-  editingCommand.value = command;
-  defaultGroupId.value = "";
-  openOverlay("saved-command-modal");
+  openOverlay("saved-command-modal", {
+    commandId: command.id,
+  });
 };
 
 const editGroup = (group: SavedCommandGroup) => {
-  editingGroup.value = group;
-  openOverlay("saved-command-group-modal");
+  openOverlay("saved-command-group-modal", {
+    groupId: group.id,
+  });
 };
 
 const executeCommand = async (command: SavedCommand) => {
   try {
-    await savedCommandStore.executeCommand(command.base.id);
+    await savedCommandStore.executeCommand(command.id);
     showSuccess(`Executed: ${command.name}`);
   } catch (error) {
     console.error("Failed to execute command:", error);
@@ -334,11 +401,9 @@ const copyCommand = async (command: SavedCommand) => {
 
 const toggleFavorite = async (command: SavedCommand) => {
   try {
-    await savedCommandStore.toggleFavorite(command.base.id);
+    await savedCommandStore.toggleFavorite(command.id);
     showSuccess(
-      command.isFavorite
-        ? "Removed from favorites"
-        : "Added to favorites"
+      command.isFavorite ? "Removed from favorites" : "Added to favorites",
     );
   } catch (error) {
     console.error("Failed to toggle favorite:", error);
@@ -348,7 +413,7 @@ const toggleFavorite = async (command: SavedCommand) => {
 
 const deleteCommand = async (command: SavedCommand) => {
   try {
-    await savedCommandStore.deleteCommand(command.base.id);
+    await savedCommandStore.deleteCommand(command.id);
     showSuccess("Command deleted successfully");
   } catch (error) {
     console.error("Failed to delete command:", error);
@@ -357,15 +422,18 @@ const deleteCommand = async (command: SavedCommand) => {
 };
 
 const confirmDeleteGroup = (group: SavedCommandGroup) => {
-  // Use PopConfirm component inline for group deletion
-  if (confirm(`Delete group '${group.name}'? Commands in this group will be moved to ungrouped.`)) {
+  if (
+    confirm(
+      `Delete group '${group.name}'? Commands in this group will be moved to ungrouped.`,
+    )
+  ) {
     deleteGroup(group);
   }
 };
 
 const deleteGroup = async (group: SavedCommandGroup) => {
   try {
-    await savedCommandStore.deleteGroup(group.base.id);
+    await savedCommandStore.deleteGroup(group.id);
     showSuccess("Group deleted successfully");
   } catch (error) {
     console.error("Failed to delete group:", error);
@@ -374,22 +442,11 @@ const deleteGroup = async (group: SavedCommandGroup) => {
 };
 
 const handleCommandSaved = () => {
-  showSuccess(
-    editingCommand.value
-      ? "Command updated successfully"
-      : "Command created successfully"
-  );
-  editingCommand.value = undefined;
-  defaultGroupId.value = "";
+  showSuccess("Command saved successfully");
 };
 
 const handleGroupSaved = () => {
-  showSuccess(
-    editingGroup.value
-      ? "Group updated successfully"
-      : "Group created successfully"
-  );
-  editingGroup.value = undefined;
+  showSuccess("Group saved successfully");
 };
 
 const handleError = (error: string) => {
@@ -407,9 +464,12 @@ onMounted(async () => {
 });
 
 // Watch for overlay visibility to refresh data
-watch(() => savedCommandStore.loading, (loading) => {
-  if (!loading && savedCommandStore.error) {
-    showError(savedCommandStore.error);
-  }
-});
+watch(
+  () => savedCommandStore.loading,
+  (loading) => {
+    if (!loading && savedCommandStore.error) {
+      showError(savedCommandStore.error);
+    }
+  },
+);
 </script>

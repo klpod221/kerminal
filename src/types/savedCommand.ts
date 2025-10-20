@@ -9,8 +9,7 @@ export interface BaseModel {
 }
 
 // Saved command model
-export interface SavedCommand {
-  base: BaseModel;
+export interface SavedCommand extends BaseModel {
   name: string;
   description?: string;
   command: string;
@@ -22,8 +21,7 @@ export interface SavedCommand {
 }
 
 // Saved command group model
-export interface SavedCommandGroup {
-  base: BaseModel;
+export interface SavedCommandGroup extends BaseModel {
   name: string;
   description?: string;
   color?: string;

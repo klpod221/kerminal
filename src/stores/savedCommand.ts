@@ -22,19 +22,19 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
 
   // Computed
   const favoriteCommands = computed(() =>
-    commands.value.filter(c => c && c.base.id && c.isFavorite)
+    commands.value.filter(c => c && c.id && c.isFavorite)
   );
 
   const recentCommands = computed(() =>
     commands.value
-      .filter(c => c && c.base.id && c.lastUsedAt)
+      .filter(c => c && c.id && c.lastUsedAt)
       .sort((a, b) => new Date(b.lastUsedAt!).getTime() - new Date(a.lastUsedAt!).getTime())
       .slice(0, 10)
   );
 
   const popularCommands = computed(() =>
     commands.value
-      .filter(c => c && c.base.id && c.usageCount > 0)
+      .filter(c => c && c.id && c.usageCount > 0)
       .sort((a, b) => b.usageCount - a.usageCount)
       .slice(0, 10)
   );
@@ -54,8 +54,8 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
       const loadedCommands = await savedCommandService.getCommands();
       commands.value = (loadedCommands || []).filter(command =>
         command &&
-        command.base.id &&
-        typeof command.base.id === 'string'
+        command.id &&
+        typeof command.id === 'string'
       );
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load saved commands';
@@ -74,8 +74,8 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
       const loadedGroups = await savedCommandService.getGroups();
       groups.value = (loadedGroups || []).filter(group =>
         group &&
-        group.base.id &&
-        typeof group.base.id === 'string'
+        group.id &&
+        typeof group.id === 'string'
       );
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to load saved command groups';
@@ -140,7 +140,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
   const executeCommand = async (id: string, terminalId?: string): Promise<void> => {
     try {
       // Find the command
-      const command = commands.value.find(c => c.base.id === id);
+      const command = commands.value.find(c => c.id === id);
       if (!command) {
         throw new Error('Command not found');
       }
@@ -191,7 +191,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
       await savedCommandService.incrementUsage(id);
 
       // Update local state without full reload for better UX
-      const commandIndex = commands.value.findIndex(c => c.base.id === id);
+      const commandIndex = commands.value.findIndex(c => c.id === id);
       if (commandIndex !== -1) {
         commands.value[commandIndex].usageCount += 1;
         commands.value[commandIndex].lastUsedAt = new Date().toISOString();
@@ -210,7 +210,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     try {
       const updatedCommand = await savedCommandService.toggleFavorite(id);
       // Update local state
-      const commandIndex = commands.value.findIndex(c => c.base.id === id);
+      const commandIndex = commands.value.findIndex(c => c.id === id);
       if (commandIndex !== -1) {
         commands.value[commandIndex] = updatedCommand;
       }
@@ -299,7 +299,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
 
     // Add groups with commands
     groups.value.forEach(group => {
-      const groupCommands = groupedMap.get(group.base.id) || [];
+      const groupCommands = groupedMap.get(group.id) || [];
       if (groupCommands.length > 0 || !searchQuery) { // Show empty groups when no search
         result.push({
           group,
@@ -384,10 +384,10 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
             comparison = b.usageCount - a.usageCount;
             break;
           case 'createdAt':
-            comparison = new Date(b.base.createdAt).getTime() - new Date(a.base.createdAt).getTime();
+            comparison = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
             break;
           case 'updatedAt':
-            comparison = new Date(b.base.updatedAt).getTime() - new Date(a.base.updatedAt).getTime();
+            comparison = new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
             break;
         }
         return params.sortOrder === 'asc' ? comparison : -comparison;
@@ -398,11 +398,31 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
   };
 
   const getCommandById = (id: string): SavedCommand | undefined => {
-    return commands.value.find(command => command.base.id === id);
+    return commands.value.find(command => command.id === id);
+  };
+
+  const findCommandById = async (id: string): Promise<SavedCommand | undefined> => {
+    // First try to find in loaded commands
+    let command = getCommandById(id);
+    if (command) return command;
+
+    // If not found, reload and try again
+    await loadCommands();
+    return getCommandById(id);
   };
 
   const getGroupById = (id: string): SavedCommandGroup | undefined => {
-    return groups.value.find(group => group.base.id === id);
+    return groups.value.find(group => group.id === id);
+  };
+
+  const findGroupById = async (id: string): Promise<SavedCommandGroup | undefined> => {
+    // First try to find in loaded groups
+    let group = getGroupById(id);
+    if (group) return group;
+
+    // If not found, reload and try again
+    await loadGroups();
+    return getGroupById(id);
   };
 
   return {
@@ -438,6 +458,8 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     getGroupedCommandsData,
     filterCommands,
     getCommandById,
+    findCommandById,
     getGroupById,
+    findGroupById,
   };
 });

@@ -41,8 +41,10 @@ export const useOverlayStore = defineStore("overlay", () => {
     const state: OverlayState = {
       config,
       visible: false,
+      transitioning: false,
       zIndex: baseZIndex.value + overlays.value.size,
       createdAt: Date.now(),
+      lastAccessedAt: Date.now(),
     };
 
     overlays.value.set(config.id, state);
@@ -66,79 +68,158 @@ export const useOverlayStore = defineStore("overlay", () => {
 
   };
 
-  const open = (id: string, props?: Record<string, any>): void => {
+  const open = async (id: string, props?: Record<string, any>): Promise<void> => {
     const overlay = overlays.value.get(id);
     if (!overlay) {
 
       return;
     }
 
-    // Clear existing props first, then set new ones
-    overlay.config.props = {};
-
-    // Update props if provided
-    if (props) {
-      overlay.config.props = { ...props };
+    // Check if already transitioning
+    if (overlay.transitioning) {
+      console.warn(`⚠️ Overlay ${id} is already transitioning`);
+      return;
     }
 
-    // Close current overlay if exists
-    if (activeOverlayId.value && activeOverlayId.value !== id) {
-      const currentOverlay = overlays.value.get(activeOverlayId.value);
-      if (currentOverlay) {
-        currentOverlay.visible = false;
-        // Add to history if not already there
-        if (!history.value.includes(activeOverlayId.value)) {
-          history.value.push(activeOverlayId.value);
+    try {
+      // Set transitioning state
+      overlay.transitioning = true;
+
+      // Call onBeforeOpen hook
+      if (overlay.config.onBeforeOpen) {
+        await overlay.config.onBeforeOpen();
+      }
+
+      // Clear existing props first, then set new ones
+      overlay.config.props = {};
+
+      // Update props if provided
+      if (props) {
+        overlay.config.props = { ...props };
+      }
+
+      // Close current overlay if exists
+      if (activeOverlayId.value && activeOverlayId.value !== id) {
+        const currentOverlay = overlays.value.get(activeOverlayId.value);
+        if (currentOverlay) {
+          currentOverlay.visible = false;
+          // Add to history if not already there
+          if (!history.value.includes(activeOverlayId.value)) {
+            history.value.push(activeOverlayId.value);
+          }
         }
       }
+
+      // Open new overlay
+      overlay.visible = true;
+      overlay.lastAccessedAt = Date.now();
+      activeOverlayId.value = id;
+
+      // Wait for animation to complete
+      setTimeout(() => {
+        overlay.transitioning = false;
+
+        // Call onOpened hook
+        if (overlay.config.onOpened) {
+          overlay.config.onOpened();
+        }
+      }, 300); // Match animation duration
+
+    } catch (error) {
+      console.error(`❌ Error opening overlay ${id}:`, error);
+      overlay.transitioning = false;
+
+      // Call onError hook
+      if (overlay.config.onError) {
+        overlay.config.onError(error as Error);
+      }
+
+      throw error;
     }
-
-    // Open new overlay
-    overlay.visible = true;
-    activeOverlayId.value = id;
-
-
   };
 
-  const close = (id?: string): void => {
+  const close = async (id?: string, clearPropsDelay: number = 300): Promise<void> => {
     const targetId = id || activeOverlayId.value;
     if (!targetId) return;
 
     const overlay = overlays.value.get(targetId);
     if (!overlay) return;
 
-    // Clear props when closing overlay to prevent stale data
-    overlay.config.props = {};
+    try {
+      // Check if already transitioning
+      if (overlay.transitioning) {
+        console.warn(`⚠️ Overlay ${targetId} is already transitioning`);
+        return;
+      }
 
-    // Hide the overlay
-    overlay.visible = false;
+      // Set transitioning state
+      overlay.transitioning = true;
 
-    // If this is the active overlay, handle navigation
-    if (activeOverlayId.value === targetId) {
-      activeOverlayId.value = null;
-
-      // Find parent to open
-      const parentId = overlay.config.parentId;
-      if (parentId && overlays.value.has(parentId)) {
-        // Open parent overlay
-        const parentOverlay = overlays.value.get(parentId)!;
-        parentOverlay.visible = true;
-        activeOverlayId.value = parentId;
-
-      } else {
-        // No parent, check history
-        let nextId: string | undefined;
-        do {
-          nextId = history.value.pop();
-        } while (nextId && !overlays.value.has(nextId));
-
-        if (nextId) {
-          const nextOverlay = overlays.value.get(nextId)!;
-          nextOverlay.visible = true;
-          activeOverlayId.value = nextId;
-
+      // Call onBeforeClose hook - can cancel close
+      if (overlay.config.onBeforeClose) {
+        const canClose = await overlay.config.onBeforeClose();
+        if (canClose === false) {
+          overlay.transitioning = false;
+          console.log(`🚫 Close cancelled for overlay: ${targetId}`);
+          return;
         }
       }
+
+      // Hide the overlay
+      overlay.visible = false;
+
+      // If this is the active overlay, handle navigation
+      if (activeOverlayId.value === targetId) {
+        activeOverlayId.value = null;
+
+        // Find parent to open
+        const parentId = overlay.config.parentId;
+        if (parentId && overlays.value.has(parentId)) {
+          // Open parent overlay
+          const parentOverlay = overlays.value.get(parentId)!;
+          parentOverlay.visible = true;
+          activeOverlayId.value = parentId;
+
+        } else {
+          // No parent, check history
+          let nextId: string | undefined;
+          do {
+            nextId = history.value.pop();
+          } while (nextId && !overlays.value.has(nextId));
+
+          if (nextId) {
+            const nextOverlay = overlays.value.get(nextId)!;
+            nextOverlay.visible = true;
+            activeOverlayId.value = nextId;
+
+          }
+        }
+      }
+
+      // Clear props after animation completes (lazy clearing)
+      setTimeout(() => {
+        const currentOverlay = overlays.value.get(targetId);
+        if (currentOverlay && !currentOverlay.visible) {
+          currentOverlay.config.props = {};
+          currentOverlay.transitioning = false;
+
+          // Call onClosed hook
+          if (currentOverlay.config.onClosed) {
+            currentOverlay.config.onClosed();
+          }
+        }
+      }, clearPropsDelay);
+
+    } catch (error) {
+      console.error(`❌ Error closing overlay ${targetId}:`, error);
+      overlay.transitioning = false;
+
+      // Call onError hook
+      if (overlay.config.onError) {
+        overlay.config.onError(error as Error);
+      }
+
+      throw error;
     }
 
     // Remove from history
@@ -164,6 +245,11 @@ export const useOverlayStore = defineStore("overlay", () => {
   const isVisible = (id: string): boolean => {
     const overlay = overlays.value.get(id);
     return overlay?.visible || false;
+  };
+
+  const isTransitioning = (id: string): boolean => {
+    const overlay = overlays.value.get(id);
+    return overlay?.transitioning || false;
   };
 
   // ESC key handler
@@ -194,6 +280,7 @@ export const useOverlayStore = defineStore("overlay", () => {
     close,
     closeAll,
     isVisible,
+    isTransitioning,
     handleEscapeKey,
   };
 });

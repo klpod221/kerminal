@@ -105,6 +105,11 @@ interface ModalProps {
   closeOnEsc?: boolean;
   size?: "sm" | "md" | "lg" | "xl" | "2xl";
   parentId?: string;
+  onBeforeOpen?: () => void | Promise<void>;
+  onOpened?: () => void;
+  onBeforeClose?: () => boolean | Promise<boolean>;
+  onClosed?: () => void;
+  onError?: (error: Error) => void;
 }
 
 const props = withDefaults(defineProps<ModalProps>(), {
@@ -117,8 +122,13 @@ const props = withDefaults(defineProps<ModalProps>(), {
 
 const emit = defineEmits(["close", "update:visible"]);
 
-const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } =
-  useOverlay();
+const {
+  overlayStore,
+  registerOverlay,
+  unregisterOverlay,
+  closeOverlay,
+  isOverlayTransitioning,
+} = useOverlay();
 
 /**
  * Compute size class based on size prop
@@ -136,12 +146,18 @@ const sizeClass = computed(() => {
 
 // Use overlay system visibility instead of props.visible
 const isVisible = computed(() => overlayStore.isVisible(props.id));
+const isTransitioning = computed(() => isOverlayTransitioning(props.id));
 
 /**
  * Handle close button click
  */
-function handleClose(): void {
-  closeOverlay(props.id);
+async function handleClose(): Promise<void> {
+  if (isTransitioning.value) {
+    console.warn(`⚠️ Modal ${props.id} is transitioning, ignoring close`);
+    return;
+  }
+
+  await closeOverlay(props.id);
   emit("close");
   emit("update:visible", false);
 }
@@ -150,7 +166,7 @@ function handleClose(): void {
  * Handle backdrop click to close modal
  */
 function handleBackdropClick(): void {
-  if (props.closeOnBackdrop) {
+  if (props.closeOnBackdrop && !isTransitioning.value) {
     handleClose();
   }
 }
@@ -159,7 +175,7 @@ function handleBackdropClick(): void {
  * Handle keyboard events - close modal on Esc key
  */
 function handleKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape" && props.closeOnEsc && isVisible.value) {
+  if (event.key === "Escape" && props.closeOnEsc && isVisible.value && !isTransitioning.value) {
     handleClose();
   }
 }
@@ -179,6 +195,11 @@ onMounted(() => {
       showCloseButton: props.showCloseButton,
       closeOnBackdrop: props.closeOnBackdrop,
     },
+    onBeforeOpen: props.onBeforeOpen,
+    onOpened: props.onOpened,
+    onBeforeClose: props.onBeforeClose,
+    onClosed: props.onClosed,
+    onError: props.onError,
   });
 });
 

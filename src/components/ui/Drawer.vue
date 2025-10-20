@@ -98,6 +98,11 @@ interface DrawerProps {
   closeOnOverlay?: boolean;
   closeOnEsc?: boolean;
   parentId?: string;
+  onBeforeOpen?: () => void | Promise<void>;
+  onOpened?: () => void;
+  onBeforeClose?: () => boolean | Promise<boolean>;
+  onClosed?: () => void;
+  onError?: (error: Error) => void;
 }
 
 const props = withDefaults(defineProps<DrawerProps>(), {
@@ -116,8 +121,13 @@ const emit = defineEmits<{
   close: [];
 }>();
 
-const { overlayStore, registerOverlay, unregisterOverlay, closeOverlay } =
-  useOverlay();
+const {
+  overlayStore,
+  registerOverlay,
+  unregisterOverlay,
+  closeOverlay,
+  isOverlayTransitioning,
+} = useOverlay();
 
 const widthClass = computed(() => {
   const widthMap = {
@@ -132,15 +142,21 @@ const widthClass = computed(() => {
 
 // Use overlay system visibility instead of props.visible
 const isVisible = computed(() => overlayStore.isVisible(props.id));
+const isTransitioning = computed(() => isOverlayTransitioning(props.id));
 
-const close = (): void => {
-  closeOverlay(props.id);
+const close = async (): Promise<void> => {
+  if (isTransitioning.value) {
+    console.warn(`⚠️ Drawer ${props.id} is transitioning, ignoring close`);
+    return;
+  }
+
+  await closeOverlay(props.id);
   emit("update:visible", false);
   emit("close");
 };
 
 const handleOverlayClick = (): void => {
-  if (props.closeOnOverlay) {
+  if (props.closeOnOverlay && !isTransitioning.value) {
     close();
   }
 };
@@ -149,7 +165,7 @@ const handleOverlayClick = (): void => {
  * Handle keyboard events - close drawer on Esc key
  */
 const handleKeydown = (event: KeyboardEvent): void => {
-  if (event.key === "Escape" && props.closeOnEsc && isVisible.value) {
+  if (event.key === "Escape" && props.closeOnEsc && isVisible.value && !isTransitioning.value) {
     close();
   }
 };
@@ -170,6 +186,11 @@ onMounted(() => {
       closeOnOverlay: props.closeOnOverlay,
       closeOnEsc: props.closeOnEsc,
     },
+    onBeforeOpen: props.onBeforeOpen,
+    onOpened: props.onOpened,
+    onBeforeClose: props.onBeforeClose,
+    onClosed: props.onClosed,
+    onError: props.onError,
   });
 });
 

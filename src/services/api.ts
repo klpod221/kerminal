@@ -91,7 +91,15 @@ class ApiClient {
       'start_tunnel': ['id'],
       'stop_tunnel': ['id'],
       'get_tunnel_status': ['id'],
-      // Add more commands as needed
+      // Saved command commands
+      'get_saved_command': ['id'],
+      'update_saved_command': ['id', 'request'],
+      'delete_saved_command': ['id'],
+      'increment_command_usage': ['id'],
+      'toggle_command_favorite': ['id'],
+      'get_saved_command_group': ['id'],
+      'update_saved_command_group': ['id', 'request'],
+      'delete_saved_command_group': ['id'],
     };
 
     return commandParams[command] || [];

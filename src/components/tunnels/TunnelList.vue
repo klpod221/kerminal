@@ -23,19 +23,17 @@
     <div v-else class="space-y-4">
       <!-- Header -->
       <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-4">
           <div class="text-sm text-gray-400">
             {{ tunnelStore.tunnels.length }} tunnel(s) configured
           </div>
           <div class="flex items-center gap-2">
-            <div class="flex items-center gap-1">
-              <div class="w-2 h-2 rounded-full bg-green-500"></div>
-              <span class="text-xs text-gray-400">{{ activeTunnels.length }} active</span>
-            </div>
-            <div class="flex items-center gap-1">
-              <div class="w-2 h-2 rounded-full bg-gray-500"></div>
-              <span class="text-xs text-gray-400">{{ stoppedTunnels.length }} stopped</span>
-            </div>
+            <Badge variant="success" size="sm" :dot="true">
+              {{ activeTunnels.length }} active
+            </Badge>
+            <Badge variant="gray" size="sm" :dot="true">
+              {{ stoppedTunnels.length }} stopped
+            </Badge>
           </div>
         </div>
         <Button variant="primary" :icon="Plus" size="sm" @click="openTunnelModal()">
@@ -66,18 +64,19 @@
                   <TunnelStatusIndicator :status="tunnel.status" />
                 </div>
                 <div class="flex items-center gap-2 mt-1">
-                  <span
-                    class="text-xs px-2 py-1 rounded"
-                    :class="getTunnelTypeColor(tunnel.tunnelType)"
+                  <Badge
+                    variant="info"
+                    size="xs"
                   >
                     {{ tunnel.tunnelType }}
-                  </span>
-                  <span
+                  </Badge>
+                  <Badge
                     v-if="tunnel.autoStart"
-                    class="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-400"
+                    variant="primary"
+                    size="xs"
                   >
                     Auto-start
-                  </span>
+                  </Badge>
                 </div>
               </div>
               <div class="flex items-center gap-1">
@@ -140,9 +139,14 @@
             </div>
 
             <!-- Error Message -->
-            <div v-if="tunnel.errorMessage" class="text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded">
+            <Badge
+              v-if="tunnel.errorMessage"
+              variant="danger"
+              size="sm"
+              custom-class="w-full justify-start"
+            >
               {{ tunnel.errorMessage }}
-            </div>
+            </Badge>
           </div>
         </Card>
       </div>
@@ -161,6 +165,7 @@ import { useOverlay } from '../../composables/useOverlay';
 import type { TunnelWithStatus } from '../../types/tunnel';
 import Modal from '../ui/Modal.vue';
 import Button from '../ui/Button.vue';
+import Badge from '../ui/Badge.vue';
 import Card from '../ui/Card.vue';
 import TunnelStatusIndicator from './TunnelStatusIndicator.vue';
 import {
@@ -255,19 +260,6 @@ const confirmDelete = async (tunnel: TunnelWithStatus) => {
     } catch (error) {
       console.error('Failed to delete tunnel:', error);
     }
-  }
-};
-
-const getTunnelTypeColor = (type: string) => {
-  switch (type) {
-    case 'Local':
-      return 'bg-blue-500/20 text-blue-400';
-    case 'Remote':
-      return 'bg-green-500/20 text-green-400';
-    case 'Dynamic':
-      return 'bg-purple-500/20 text-purple-400';
-    default:
-      return 'bg-gray-500/20 text-gray-400';
   }
 };
 
