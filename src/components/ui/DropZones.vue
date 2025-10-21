@@ -72,6 +72,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import type { Tab } from "../../types/panel";
+import { safeJsonParse } from "../../utils/helpers";
 
 interface DropZonesProps {
   showDropZones: boolean;
@@ -162,22 +163,20 @@ const onDrop = (event: DragEvent): void => {
   if (event.dataTransfer) {
     const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
-      try {
-        const dragData = JSON.parse(draggedTabData);
-        const draggedTab = dragData.tab as Tab;
-        const sourcePanelId = dragData.sourcePanelId as string;
+      const dragData = safeJsonParse<{tab: Tab; sourcePanelId: string} | null>(draggedTabData, null);
+      if (!dragData) return;
 
-        if (activeZone.value && activeZone.value !== "center") {
-          // Split panel in the specified direction
-          emit("splitPanel", activeZone.value, draggedTab, sourcePanelId);
-        } else if (activeZone.value === "center") {
-          // Move tab to existing panel (only if from different panel)
-          if (sourcePanelId !== props.panelId) {
-            emit("moveTab", draggedTab, sourcePanelId);
-          }
+      const draggedTab = dragData.tab;
+      const sourcePanelId = dragData.sourcePanelId;
+
+      if (activeZone.value && activeZone.value !== "center") {
+        // Split panel in the specified direction
+        emit("splitPanel", activeZone.value, draggedTab, sourcePanelId);
+      } else if (activeZone.value === "center") {
+        // Move tab to existing panel (only if from different panel)
+        if (sourcePanelId !== props.panelId) {
+          emit("moveTab", draggedTab, sourcePanelId);
         }
-      } catch (error) {
-        console.error("Error parsing dragged tab data:", error);
       }
     }
   }

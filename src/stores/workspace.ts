@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, nextTick } from "vue";
-import { debounce } from "../utils/helpers";
+import { debounce, safeJsonStringify } from "../utils/helpers";
 import { useViewStateStore } from "./viewState";
 import {
   createLocalTerminal,
@@ -1142,7 +1142,7 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
               errorMessage = error;
             } else if (error && typeof error === 'object') {
               // Handle object errors by stringifying or extracting message
-              errorMessage = (error as any).message || JSON.stringify(error, null, 2);
+              errorMessage = (error as any).message || safeJsonStringify(error, 'Unknown error');
             } else {
               errorMessage = 'Unknown connection error occurred';
             }
@@ -1172,7 +1172,7 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    */
   const updateLayout = (newLayout: PanelLayout): void => {
     // Deep clone to ensure reactivity
-    panelLayout.value = JSON.parse(JSON.stringify(newLayout));
+    panelLayout.value = structuredClone(newLayout);
     // Trigger terminal resize after layout update
     triggerTerminalResize();
   };

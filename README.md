@@ -1,5 +1,3 @@
-- [ ] get_curent_device chưa lấy được thông tin gì cả
-- [ ] (Frontend) Tìm, tạo , thay thế, sử dụng các hàm vào utils sao cho hợp lý
 - [ ] Tìm và loại bỏ những command không được sử dụng
 - [ ] Hoàn thành các database provider
 - [ ] Kiểm tra và tìm tất cả các phần TODO, implementation, ... sau đó update cho đầy đủ

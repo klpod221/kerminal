@@ -174,6 +174,7 @@ import {
 import Tab from "./Tab.vue";
 import Button from "./Button.vue";
 import { useWindowSize } from "../../composables/useWindowSize";
+import { safeJsonParse } from "../../utils/helpers";
 import type {
   Tab as TabType,
   Panel,
@@ -544,18 +545,16 @@ const onPanelDrop = (event: DragEvent): void => {
   if (event.dataTransfer) {
     const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
-      try {
-        const dragData = JSON.parse(draggedTabData);
-        const draggedTab = dragData.tab as TabType;
-        const sourcePanelId = dragData.sourcePanelId as string;
+      const dragData = safeJsonParse<{tab: TabType; sourcePanelId: string} | null>(draggedTabData, null);
+      if (!dragData) return;
 
-        // Only handle cross-panel drops here (same panel drops are handled by tab-level drop)
-        if (sourcePanelId && sourcePanelId !== props.panel.id) {
-          // Move tab to this panel (at the end)
-          emit("moveTab", sourcePanelId, props.panel.id, draggedTab.id, "");
-        }
-      } catch (error) {
-        console.error("Error parsing dragged tab data:", error);
+      const draggedTab = dragData.tab;
+      const sourcePanelId = dragData.sourcePanelId;
+
+      // Only handle cross-panel drops here (same panel drops are handled by tab-level drop)
+      if (sourcePanelId && sourcePanelId !== props.panel.id) {
+        // Move tab to this panel (at the end)
+        emit("moveTab", sourcePanelId, props.panel.id, draggedTab.id, "");
       }
     }
   }

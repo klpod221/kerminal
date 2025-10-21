@@ -101,11 +101,7 @@
                 class="text-white text-sm bg-gray-800 px-2 py-1 rounded truncate"
                 :title="systemInfo.cpus[0].model"
               >
-                {{
-                  systemInfo.cpus[0].model.length > 20
-                    ? systemInfo.cpus[0].model.substring(0, 20) + "..."
-                    : systemInfo.cpus[0].model
-                }}
+                {{ truncateText(systemInfo.cpus[0].model, 20) }}
               </span>
             </div>
             <div
@@ -320,6 +316,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from "vue";
 import Card from "./ui/Card.vue";
+import { truncateText } from "../utils/helpers";
 import {
   formatBytes,
   formatUptime,

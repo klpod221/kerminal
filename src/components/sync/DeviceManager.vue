@@ -84,7 +84,7 @@
                       {{ device.deviceName }}
                     </h4>
                     <Badge
-                      v-if="device.lastSeen && isOnline(device.lastSeen)"
+                      v-if="device.lastSeen && isRecentlyActive(device.lastSeen)"
                       variant="success"
                     >
                       Online
@@ -100,8 +100,8 @@
                       OS: {{ device.osInfo.osType }}
                       {{ device.osInfo.osVersion }}
                     </div>
-                    <div>Last Seen: {{ formatDate(device.lastSeen) }}</div>
-                    <div>Registered: {{ formatDate(device.createdAt) }}</div>
+                    <div>Last Seen: {{ formatDateOrNever(device.lastSeen) }}</div>
+                    <div>Registered: {{ formatDateOrNever(device.createdAt) }}</div>
                   </div>
                 </div>
               </div>
@@ -132,7 +132,7 @@
             class="bg-gray-800 rounded-lg p-4 border border-gray-700 text-center"
           >
             <div class="text-2xl font-semibold text-green-400">
-              {{ onlineDevices }}
+              {{ onlineDevicesCount }}
             </div>
             <div class="text-xs text-gray-400 mt-1">Online</div>
           </div>
@@ -140,7 +140,7 @@
             class="bg-gray-800 rounded-lg p-4 border border-gray-700 text-center"
           >
             <div class="text-2xl font-semibold text-gray-400">
-              {{ devices.length - onlineDevices }}
+              {{ devices.length - onlineDevicesCount }}
             </div>
             <div class="text-xs text-gray-400 mt-1">Offline</div>
           </div>
@@ -157,7 +157,8 @@ import Card from "../ui/Card.vue";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
+import { getErrorMessage, isRecentlyActive } from "../../utils/helpers";
+import { formatDateOrNever } from "../../utils/formatter";
 import { syncService } from "../../services/sync";
 import type { Device } from "../../types/sync";
 
@@ -173,8 +174,8 @@ const otherDevices = computed(() => {
   );
 });
 
-const onlineDevices = computed(() => {
-  return devices.value.filter((d) => d.lastSeen && isOnline(d.lastSeen)).length;
+const onlineDevicesCount = computed(() => {
+  return devices.value.filter((d) => d.lastSeen && isRecentlyActive(d.lastSeen)).length;
 });
 
 const getDeviceIcon = (type: string): string => {
@@ -186,32 +187,6 @@ const getDeviceIcon = (type: string): string => {
     Server: "🖧",
   };
   return icons[type] || "💻";
-};
-
-const isOnline = (lastSeenAt: string): boolean => {
-  const lastSeen = new Date(lastSeenAt).getTime();
-  const now = Date.now();
-  const fiveMinutes = 5 * 60 * 1000;
-  return now - lastSeen < fiveMinutes;
-};
-
-const formatDate = (dateStr?: string): string => {
-  if (!dateStr) return "Never";
-
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (seconds < 60) return "Just now";
-  if (minutes < 60) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
-  if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
-  if (days < 7) return `${days} day${days > 1 ? "s" : ""} ago`;
-
-  return date.toLocaleDateString() + " " + date.toLocaleTimeString();
 };
 
 const loadDevices = async () => {
@@ -261,8 +236,8 @@ Device Information:
 - ID: ${device.deviceId}
 - Type: ${device.deviceType}
 - OS: ${device.osInfo.osType} ${device.osInfo.osVersion}
-- Last Seen: ${formatDate(device.lastSeen)}
-- Registered: ${formatDate(device.createdAt)}
+- Last Seen: ${formatDateOrNever(device.lastSeen)}
+- Registered: ${formatDateOrNever(device.createdAt)}
   `.trim();
 
   message.info(info);

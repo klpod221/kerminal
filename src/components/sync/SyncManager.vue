@@ -11,10 +11,10 @@
             placeholder="Choose a database to manage"
           />
         </div>
-        <Button 
-          variant="primary" 
+        <Button
+          variant="primary"
           :icon="Database"
-          @click="openAddDatabaseModal"
+          @click="openEditDatabaseModal"
         >
           Add Database
         </Button>
@@ -114,7 +114,7 @@
                       </div>
                       <div class="flex items-center gap-1.5">
                         <Clock class="w-3 h-3" />
-                        <span>{{ formatDate(conflict.createdAt) }}</span>
+                        <span>{{ formatDateOrNever(conflict.createdAt) }}</span>
                       </div>
                     </div>
                   </div>
@@ -174,6 +174,7 @@ import ExternalDatabaseModal from "./ExternalDatabaseModal.vue";
 import ConflictResolutionModal from "./ConflictResolutionModal.vue";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
+import { formatDateOrNever } from "../../utils/formatter";
 import { useSyncStore } from "../../stores/sync";
 import { useOverlay } from "../../composables/useOverlay";
 
@@ -216,29 +217,9 @@ const formatEntityType = (type: string): string => {
   return types[type] || type;
 };
 
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / 1000 / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-
-  return date.toLocaleDateString();
-};
-
-const openAddDatabaseModal = () => {
-  openOverlay("external-database-modal", { databaseId: null });
-};
-
 const openEditDatabaseModal = () => {
-  if (!selectedDatabaseId.value) return;
   openOverlay("external-database-modal", {
-    databaseId: selectedDatabaseId.value,
+    databaseId: selectedDatabaseId.value || null,
   });
 };
 

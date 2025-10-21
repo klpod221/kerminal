@@ -13,6 +13,11 @@ import type {
 import { savedCommandService } from "../services/savedCommand";
 import { writeToTerminal } from "../services/terminal";
 import { useWorkspaceStore } from "./workspace";
+import {
+  safeJsonParse,
+  caseInsensitiveIncludes,
+  getCurrentTimestamp
+} from "../utils/helpers";
 
 export const useSavedCommandStore = defineStore("savedCommand", () => {
   // State
@@ -193,7 +198,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
       const commandIndex = commands.value.findIndex(c => c.id === id);
       if (commandIndex !== -1) {
         commands.value[commandIndex].usageCount += 1;
-        commands.value[commandIndex].lastUsedAt = new Date().toISOString();
+        commands.value[commandIndex].lastUsedAt = getCurrentTimestamp();
       }
     } catch (err) {
       console.error('Failed to execute command:', err);
@@ -272,10 +277,10 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
   const getGroupedCommandsData = (searchQuery?: string): GroupedSavedCommandsData[] => {
     const filteredCommands = searchQuery
       ? commands.value.filter(command =>
-          command.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          command.command.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (command.description && command.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
-          (command.tags && command.tags.toLowerCase().includes(searchQuery.toLowerCase()))
+          caseInsensitiveIncludes(command.name, searchQuery) ||
+          caseInsensitiveIncludes(command.command, searchQuery) ||
+          caseInsensitiveIncludes(command.description, searchQuery) ||
+          caseInsensitiveIncludes(command.tags, searchQuery)
         )
       : commands.value;
 
@@ -324,12 +329,11 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
 
     // Filter by query
     if (params.query) {
-      const query = params.query.toLowerCase();
       filtered = filtered.filter(command =>
-        command.name.toLowerCase().includes(query) ||
-        command.command.toLowerCase().includes(query) ||
-        (command.description && command.description.toLowerCase().includes(query)) ||
-        (command.tags && command.tags.toLowerCase().includes(query))
+        caseInsensitiveIncludes(command.name, params.query!) ||
+        caseInsensitiveIncludes(command.command, params.query!) ||
+        caseInsensitiveIncludes(command.description, params.query!) ||
+        caseInsensitiveIncludes(command.tags, params.query!)
       );
     }
 
@@ -357,12 +361,8 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     if (params.tags && params.tags.length > 0) {
       filtered = filtered.filter(command => {
         if (!command.tags) return false;
-        try {
-          const commandTags = JSON.parse(command.tags) as string[];
-          return params.tags!.some(tag => commandTags.includes(tag));
-        } catch {
-          return false;
-        }
+        const commandTags = safeJsonParse<string[]>(command.tags, []);
+        return params.tags!.some(tag => commandTags.includes(tag));
       });
     }
 

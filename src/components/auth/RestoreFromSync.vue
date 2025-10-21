@@ -153,7 +153,7 @@ import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
+import { getErrorMessage, safeJsonStringify, getCurrentTimestamp } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSyncStore } from "../../stores/sync";
 import type { DatabaseType } from "../../types/sync";
@@ -222,14 +222,14 @@ const handleTestConnection = async () => {
     const tempConfig = {
       name: "Temp Test",
       dbType: formData.value.dbType,
-      connectionDetailsEncrypted: JSON.stringify({
+      connectionDetailsEncrypted: safeJsonStringify({
         host: formData.value.host,
         port: formData.value.port,
         username: formData.value.username,
         password: formData.value.password,
         database: formData.value.database,
       }),
-      syncSettings: JSON.stringify({
+      syncSettings: safeJsonStringify({
         autoSync: false,
         syncIntervalMinutes: 15,
         conflictResolutionStrategy: "LastWriteWins",
@@ -237,8 +237,8 @@ const handleTestConnection = async () => {
       isActive: false,
       autoSyncEnabled: false,
       lastSyncAt: undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: getCurrentTimestamp(),
+      updatedAt: getCurrentTimestamp(),
       deviceId: "",
       version: 1,
       syncStatus: "Disconnected",
@@ -272,14 +272,14 @@ const handleRestore = async () => {
     const databaseConfig = {
       name: "Sync Server",
       dbType: formData.value.dbType,
-      connectionDetailsEncrypted: JSON.stringify({
+      connectionDetailsEncrypted: safeJsonStringify({
         host: formData.value.host,
         port: formData.value.port,
         username: formData.value.username,
         password: formData.value.password,
         database: formData.value.database,
       }),
-      syncSettings: JSON.stringify({
+      syncSettings: safeJsonStringify({
         autoSync: true,
         syncIntervalMinutes: 15,
         conflictResolutionStrategy: "LastWriteWins",
@@ -287,11 +287,11 @@ const handleRestore = async () => {
       isActive: false,
       autoSyncEnabled: true,
       lastSyncAt: undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deviceId: formData.value.deviceName,
-      version: 1,
-      syncStatus: "Disconnected",
+      createdAt: getCurrentTimestamp(),
+      updatedAt: getCurrentTimestamp(),
+      deviceId: "",
+      version: 0,
+      syncStatus: "idle",
     };
 
     const newDb = await syncStore.addDatabase(databaseConfig);

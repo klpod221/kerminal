@@ -70,6 +70,7 @@ import {
 import ContextMenu from "./ContextMenu.vue";
 import type { ContextMenuItem } from "./ContextMenu.vue";
 import type { Tab } from "../../types/panel";
+import { safeJsonParse, safeJsonStringify } from "../../utils/helpers";
 
 interface TabProps {
   tab: Tab;
@@ -192,7 +193,7 @@ const onDragStart = (event: DragEvent): void => {
       tab: props.tab,
       sourcePanelId: props.panelId,
     };
-    event.dataTransfer.setData("application/json", JSON.stringify(dragData));
+    event.dataTransfer.setData("application/json", safeJsonStringify(dragData));
     event.dataTransfer.effectAllowed = "move";
   }
   emit("dragStart", props.tab);
@@ -214,13 +215,11 @@ const onDrop = (event: DragEvent): void => {
   if (event.dataTransfer) {
     const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
-      try {
-        const dragData = JSON.parse(draggedTabData);
-        const draggedTab = dragData.tab as Tab;
-        emit("drop", draggedTab, props.tab);
-      } catch (error) {
-        console.error("Error parsing dragged tab data:", error);
-      }
+      const dragData = safeJsonParse<{tab: Tab; sourcePanelId: string} | null>(draggedTabData, null);
+      if (!dragData) return;
+
+      const draggedTab = dragData.tab;
+      emit("drop", draggedTab, props.tab);
     }
   }
 };

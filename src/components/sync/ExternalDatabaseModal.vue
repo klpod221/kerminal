@@ -153,7 +153,7 @@ import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
+import { getErrorMessage, safeJsonParse, safeJsonStringify, getCurrentTimestamp } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
 import { useOverlay } from "../../composables/useOverlay";
 import type {
@@ -259,15 +259,11 @@ const loadDatabase = async () => {
       };
 
       if (db.syncSettings) {
-        try {
-          const parsed = JSON.parse(db.syncSettings);
-          syncSettings.value = {
-            ...syncSettings.value,
-            ...parsed,
-          };
-        } catch (e) {
-          console.error("Failed to parse sync settings:", e);
-        }
+        const parsed = safeJsonParse(db.syncSettings, {});
+        syncSettings.value = {
+          ...syncSettings.value,
+          ...parsed,
+        };
       }
 
       connectionDetails.value.password = "";
@@ -292,12 +288,12 @@ const testConnection = async () => {
       const tempDb = await syncStore.addDatabase({
         name: `__test_${Date.now()}`,
         dbType: database.value.dbType,
-        connectionDetailsEncrypted: JSON.stringify(connectionDetails.value),
-        syncSettings: JSON.stringify(syncSettings.value),
+        connectionDetailsEncrypted: safeJsonStringify(connectionDetails.value),
+        syncSettings: safeJsonStringify(syncSettings.value),
         isActive: false,
         autoSyncEnabled: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: getCurrentTimestamp(),
+        updatedAt: getCurrentTimestamp(),
         deviceId: "",
         version: 0,
         syncStatus: "idle",
@@ -333,12 +329,12 @@ const handleSubmit = async () => {
     const dbData = {
       name: database.value.name,
       dbType: database.value.dbType,
-      connectionDetailsEncrypted: JSON.stringify(connectionDetails.value),
-      syncSettings: JSON.stringify(syncSettings.value),
+      connectionDetailsEncrypted: safeJsonStringify(connectionDetails.value),
+      syncSettings: safeJsonStringify(syncSettings.value),
       isActive: false,
       autoSyncEnabled: syncSettings.value.autoSync,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: getCurrentTimestamp(),
+      updatedAt: getCurrentTimestamp(),
       deviceId: "",
       version: 0,
       syncStatus: "idle",
@@ -348,7 +344,7 @@ const handleSubmit = async () => {
       await syncStore.updateDatabase(databaseId.value, {
         ...dbData,
         ...(connectionDetails.value.password && {
-          connectionDetailsEncrypted: JSON.stringify(connectionDetails.value),
+          connectionDetailsEncrypted: safeJsonStringify(connectionDetails.value),
         }),
       });
       message.success("Database updated successfully");

@@ -154,6 +154,7 @@ import {
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
 import { useWorkspaceStore } from "../../stores/workspace";
+import { caseInsensitiveIncludes } from "../../utils/helpers";
 
 // State
 const searchQuery = ref("");
@@ -188,7 +189,7 @@ const filteredGroupsData = computed(() => {
     return allData;
   }
 
-  const query = searchQuery.value.toLowerCase().trim();
+  const query = searchQuery.value.trim();
   const filteredData = [];
 
   // Filter grouped profiles
@@ -196,10 +197,10 @@ const filteredGroupsData = computed(() => {
     if (groupId === null) return; // Skip ungrouped here
 
     const filteredProfiles = groupData.profiles.filter((profile: SSHProfile) =>
-      profile.name.toLowerCase().includes(query) ||
-      profile.host.toLowerCase().includes(query) ||
-      profile.username.toLowerCase().includes(query) ||
-      `${profile.username}@${profile.host}`.toLowerCase().includes(query)
+      caseInsensitiveIncludes(profile.name, query) ||
+      caseInsensitiveIncludes(profile.host, query) ||
+      caseInsensitiveIncludes(profile.username, query) ||
+      caseInsensitiveIncludes(`${profile.username}@${profile.host}`, query)
     );
 
     if (filteredProfiles.length > 0) {
@@ -213,10 +214,10 @@ const filteredGroupsData = computed(() => {
 
   // Filter ungrouped profiles
   const filteredUngroupedProfiles = ungroupedData.profiles.filter((profile: SSHProfile) =>
-    profile.name.toLowerCase().includes(query) ||
-    profile.host.toLowerCase().includes(query) ||
-    profile.username.toLowerCase().includes(query) ||
-    `${profile.username}@${profile.host}`.toLowerCase().includes(query)
+    caseInsensitiveIncludes(profile.name, query) ||
+    caseInsensitiveIncludes(profile.host, query) ||
+    caseInsensitiveIncludes(profile.username, query) ||
+    caseInsensitiveIncludes(`${profile.username}@${profile.host}`, query)
   );
 
   if (filteredUngroupedProfiles.length > 0) {

@@ -123,7 +123,7 @@
         title="Sync Manager"
         variant="ghost"
         size="sm"
-        :icon="RefreshCw"
+        :icon="Cloud"
         :class="
           isOverlayVisible('sync-manager-modal')
             ? 'bg-gray-800 text-gray-400 hover:text-white'
@@ -157,7 +157,7 @@ import {
   Key,
   Route,
   Terminal,
-  RefreshCw,
+  Cloud,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

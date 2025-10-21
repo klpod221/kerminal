@@ -84,6 +84,7 @@ import Select from "../ui/Select.vue";
 import TagInput from "../ui/TagInput.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
+import { safeJsonParse, safeJsonStringify } from "../../utils/helpers";
 import type {
   SavedCommand,
   SavedCommandGroup,
@@ -151,12 +152,7 @@ const loadCommand = async () => {
         isFavorite: command.isFavorite,
       };
 
-      // Parse tags
-      try {
-        parsedTags.value = command.tags ? JSON.parse(command.tags) : [];
-      } catch {
-        parsedTags.value = [];
-      }
+      parsedTags.value = safeJsonParse<string[]>(command.tags, []);
     }
   } catch (error) {
     console.error("Error loading command:", error);
@@ -172,10 +168,7 @@ const handleSubmit = async () => {
 
   loading.value = true;
   try {
-    const tagsJson =
-      parsedTags.value.length > 0
-        ? JSON.stringify(parsedTags.value)
-        : undefined;
+    const tagsJson = safeJsonStringify(parsedTags.value) || undefined;
 
     const commandData = {
       name: formData.value.name,

@@ -80,7 +80,7 @@
       <div v-if="currentDatabase.lastSyncAt" class="border border-gray-700 rounded-lg p-4">
         <h4 class="text-sm font-medium text-gray-100 mb-2">Last Sync</h4>
         <p class="text-xs text-gray-400">
-          {{ formatDate(currentDatabase.lastSyncAt) }}
+          {{ formatRelativeTime(new Date(currentDatabase.lastSyncAt)) }}
         </p>
       </div>
 
@@ -114,7 +114,8 @@ import Input from "../ui/Input.vue";
 import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
+import { getErrorMessage, safeJsonParse, safeJsonStringify } from "../../utils/helpers";
+import { formatRelativeTime } from "../../utils/formatter";
 import { useSyncStore } from "../../stores/sync";
 import type { ConflictResolutionStrategy, DatabaseType } from "../../types/sync";
 
@@ -155,22 +156,7 @@ const getDatabaseTypeLabel = (type: DatabaseType): string => {
   return labels[type] || type;
 };
 
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
 
-  if (seconds < 60) return "Just now";
-  if (minutes < 60) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
-  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
-
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-};
 
 const loadSettings = () => {
   if (!currentDatabase.value) return;
@@ -178,13 +164,13 @@ const loadSettings = () => {
   autoSyncEnabled.value = currentDatabase.value.autoSyncEnabled;
 
   if (currentDatabase.value.syncSettings) {
-    try {
-      const settings = JSON.parse(currentDatabase.value.syncSettings);
-      syncInterval.value = settings.syncIntervalMinutes || 15;
-      conflictStrategy.value = settings.conflictResolutionStrategy || "LastWriteWins";
-    } catch (e) {
-      console.error("Failed to parse sync settings:", e);
-    }
+    const settings = safeJsonParse(currentDatabase.value.syncSettings, {
+      syncIntervalMinutes: 15,
+      conflictResolutionStrategy: "LastWriteWins" as const,
+    });
+
+    syncInterval.value = settings.syncIntervalMinutes || 15;
+    conflictStrategy.value = settings.conflictResolutionStrategy || "LastWriteWins";
   }
 };
 
@@ -231,7 +217,7 @@ const handleSave = async () => {
     };
 
     await syncStore.updateDatabase(currentDatabase.value.id, {
-      syncSettings: JSON.stringify(settings),
+      syncSettings: safeJsonStringify(settings),
     });
 
     message.success("Settings saved successfully");

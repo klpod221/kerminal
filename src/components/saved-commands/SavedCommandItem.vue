@@ -10,7 +10,7 @@
         class="w-1 h-8 rounded-full transition-all duration-200"
         :style="{ backgroundColor: fallbackColor || '#6b7280' }"
       />
-      
+
       <!-- Favorite button - always visible -->
       <Button
         variant="ghost"
@@ -71,7 +71,7 @@
       <div class="flex items-center gap-3 text-xs text-gray-500">
         <div v-if="command.lastUsedAt" class="flex items-center gap-1">
           <Clock :size="12" />
-          <span>{{ formatRelativeTime(command.lastUsedAt) }}</span>
+          <span>{{ formatTime(new Date(command.lastUsedAt)) }}</span>
         </div>
       </div>
     </div>
@@ -111,10 +111,18 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Star, Copy, Edit3, Trash2, Clock } from "lucide-vue-next";
-import Button from "../ui/Button.vue";
-import Badge from "../ui/Badge.vue";
 import type { SavedCommand } from "../../types/savedCommand";
+import {
+  Copy,
+  Star,
+  Edit3,
+  Trash2,
+  Clock,
+} from "lucide-vue-next";
+import Badge from "../ui/Badge.vue";
+import Button from "../ui/Button.vue";
+import { safeJsonParse } from "../../utils/helpers";
+import { formatRelativeTime as formatTime } from "../../utils/formatter";
 
 interface Props {
   command: SavedCommand;
@@ -138,26 +146,6 @@ const handleDelete = () => {
 };
 
 const parsedTags = computed(() => {
-  if (!props.command.tags) return [];
-  try {
-    return JSON.parse(props.command.tags) as string[];
-  } catch {
-    return [];
-  }
+  return safeJsonParse<string[]>(props.command.tags, []);
 });
-
-const formatRelativeTime = (dateString: string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMinutes = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMinutes / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMinutes < 1) return "just now";
-  if (diffMinutes < 60) return `${diffMinutes}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
-};
 </script>

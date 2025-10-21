@@ -61,7 +61,7 @@
         <div class="space-y-2 text-xs">
           <div class="flex justify-between">
             <span class="text-gray-400">Time:</span>
-            <span class="text-gray-200">{{ formatDate(syncStatus.lastSync?.completedAt || syncStatus.lastSync?.startedAt) }}</span>
+            <span class="text-gray-200">{{ formatDateOrNever(syncStatus.lastSync?.completedAt || syncStatus.lastSync?.startedAt) }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Direction:</span>
@@ -123,7 +123,7 @@
               <Badge :variant="getStatusVariant(log.status)">
                 {{ log.status }}
               </Badge>
-              <span class="text-xs text-gray-400">{{ formatDate(log.startedAt) }}</span>
+              <span class="text-xs text-gray-400">{{ formatDateOrNever(log.startedAt) }}</span>
             </div>
             <div class="grid grid-cols-3 gap-2 text-xs">
               <div>
@@ -174,6 +174,7 @@ import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
+import { formatDateOrNever } from "../../utils/formatter";
 import { useSyncStore } from "../../stores/sync";
 import type { SyncLogStatus } from "../../types/sync";
 
@@ -202,25 +203,6 @@ const getStatusVariant = (status?: SyncLogStatus): "success" | "danger" | "warni
     default:
       return "default";
   }
-};
-
-const formatDate = (dateStr?: string): string => {
-  if (!dateStr) return "Never";
-
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-
-  if (seconds < 60) return "Just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
-  if (days < 7) return `${days}d ago`;
-
-  return date.toLocaleDateString();
 };
 
 const handleSync = async (direction: "push" | "pull" | "bidirectional") => {

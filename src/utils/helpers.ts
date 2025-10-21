@@ -59,3 +59,87 @@ export function getErrorMessage(
 export const bytesToString = (bytes: number[]): string => {
   return new TextDecoder().decode(new Uint8Array(bytes));
 };
+
+/**
+ * Safe JSON parse with fallback value
+ * @param json - JSON string to parse
+ * @param fallback - Fallback value if parsing fails
+ * @returns Parsed value or fallback
+ */
+export function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Safe JSON stringify with fallback
+ * @param value - Value to stringify
+ * @param fallback - Fallback string if stringify fails
+ * @returns Stringified value or fallback
+ */
+export function safeJsonStringify(value: unknown, fallback = ""): string {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Truncate text with ellipsis
+ * @param text - Text to truncate
+ * @param maxLength - Maximum length before truncation
+ * @param ellipsis - Ellipsis string to append
+ * @returns Truncated text
+ */
+export function truncateText(
+  text: string,
+  maxLength: number,
+  ellipsis = "..."
+): string {
+  if (!text || text.length <= maxLength) return text;
+  return text.substring(0, maxLength - ellipsis.length) + ellipsis;
+}
+
+/**
+ * Check if a timestamp is recently active (within specified minutes)
+ * @param timestamp - Timestamp to check (Date, number, or string)
+ * @param withinMinutes - Number of minutes to consider as recent (default: 5)
+ * @returns True if timestamp is within the specified minutes
+ */
+export function isRecentlyActive(
+  timestamp: Date | number | string,
+  withinMinutes = 5
+): boolean {
+  const time = typeof timestamp === "number"
+    ? timestamp
+    : new Date(timestamp).getTime();
+  const now = Date.now();
+  return now - time < withinMinutes * 60 * 1000;
+}
+
+/**
+ * Case-insensitive string includes check
+ * @param text - Text to search in
+ * @param query - Query to search for
+ * @returns True if text includes query (case-insensitive)
+ */
+export function caseInsensitiveIncludes(
+  text: string | null | undefined,
+  query: string
+): boolean {
+  if (!text) return false;
+  return text.toLowerCase().includes(query.toLowerCase());
+}
+
+/**
+ * Get current timestamp in ISO format
+ * @returns ISO timestamp string
+ */
+export function getCurrentTimestamp(): string {
+  return new Date().toISOString();
+}
