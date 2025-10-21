@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -49,22 +50,6 @@ pub struct ConnectionDetails {
 }
 
 impl ConnectionDetails {
-    pub fn new(
-        host: String,
-        port: u16,
-        username: String,
-        password: String,
-        database: String,
-    ) -> Self {
-        Self {
-            host,
-            port,
-            username,
-            password,
-            database,
-        }
-    }
-
     pub fn to_connection_string(&self, db_type: &DatabaseType) -> String {
         match db_type {
             DatabaseType::MySQL => {
@@ -178,15 +163,5 @@ impl ExternalDatabaseConfig {
 
     pub fn parse_sync_settings(&self) -> Result<SyncSettings, serde_json::Error> {
         serde_json::from_str(&self.sync_settings)
-    }
-
-    pub fn update_last_sync(&mut self) {
-        self.last_sync_at = Some(Utc::now());
-        self.base.touch();
-    }
-
-    pub fn toggle_active(&mut self) {
-        self.is_active = !self.is_active;
-        self.base.touch();
     }
 }

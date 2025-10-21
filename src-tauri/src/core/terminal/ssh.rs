@@ -115,7 +115,6 @@ impl Handler for ClientHandler {
 
 /// SSH terminal implementation using russh
 pub struct SSHTerminal {
-    id: String,
     config: TerminalConfig,
     ssh_profile: SSHProfile,
     state: TerminalState,
@@ -137,7 +136,6 @@ impl SSHTerminal {
     ) -> Result<Self, AppError> {
         let handler = Arc::new(ClientHandler::new(id.clone()));
         Ok(SSHTerminal {
-            id,
             config,
             ssh_profile,
             state: TerminalState::Disconnected,
@@ -398,18 +396,6 @@ impl SSHTerminal {
     /// Get terminal configuration
     pub fn get_config(&self) -> &TerminalConfig {
         &self.config
-    }
-
-    /// Get terminal ID
-    pub fn get_id(&self) -> &str {
-        &self.id
-    }
-
-    /// Check if terminal is alive/connected
-    pub fn is_alive(&self) -> bool {
-        matches!(self.state, TerminalState::Connected)
-            && self.session.is_some()
-            && self.channel.is_some()
     }
 
     /// Start reading from SSH terminal and send output to the provided sender

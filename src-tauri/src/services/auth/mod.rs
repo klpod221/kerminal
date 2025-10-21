@@ -44,8 +44,8 @@ impl AuthService {
         db_service.lock_session().await;
     }
 
-    #[allow(dead_code)]
     /// Check if master password is setup
+    #[allow(dead_code)]
     pub async fn is_master_password_setup(&self) -> DatabaseResult<bool> {
         let db_service = self.database_service.lock().await;
         db_service.is_master_password_setup().await
@@ -68,24 +68,6 @@ impl AuthService {
         });
 
         Ok(status)
-    }
-
-    #[allow(dead_code)]
-    /// Get current device information
-    pub async fn get_current_device(&self) -> DatabaseResult<serde_json::Value> {
-        let db_service = self.database_service.lock().await;
-        let device_info = db_service.get_current_device_info().await?;
-
-        let device = serde_json::json!({
-            "device_id": device_info.device_id,
-            "device_name": device_info.device_name,
-            "device_type": device_info.device_type.to_string(),
-            "os_name": device_info.os_info.os_type,
-            "os_version": device_info.os_info.os_version,
-            "created_at": device_info.created_at.to_rfc3339()
-        });
-
-        Ok(device)
     }
 
     /// Change master password with validation

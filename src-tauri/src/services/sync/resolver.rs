@@ -53,18 +53,6 @@ impl ConflictResolver {
         }
     }
 
-    /// Resolve multiple conflicts
-    pub fn resolve_batch<T: Clone>(
-        &self,
-        conflicts: Vec<DataConflict<T>>,
-        strategy: ConflictResolutionStrategy,
-    ) -> DatabaseResult<Vec<ConflictResolution<T>>> {
-        conflicts
-            .into_iter()
-            .map(|conflict| self.resolve(conflict, strategy))
-            .collect()
-    }
-
     /// Last write wins strategy - use the most recently updated data
     fn resolve_last_write_wins<T: Clone>(
         &self,
@@ -174,26 +162,6 @@ impl Default for ConflictResolver {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Helper for manual conflict resolution
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ManualResolutionChoice {
-    pub conflict_id: String,
-    pub choice: ManualChoice,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum ManualChoice {
-    UseLocal,
-    UseRemote,
-    #[serde(rename_all = "camelCase")]
-    UseMerged {
-        merged_data: serde_json::Value,
-    },
 }
 
 #[cfg(test)]

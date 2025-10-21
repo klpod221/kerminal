@@ -1,21 +1,14 @@
-
 use crate::database::error::DatabaseResult;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 /// Core database trait that all providers must implement
-#[allow(dead_code)]
 #[async_trait]
+#[allow(dead_code)]
 pub trait Database: Send + Sync {
     /// Connect to the database
     async fn connect(&mut self) -> DatabaseResult<()>;
-
-    /// Disconnect from the database
-    async fn disconnect(&mut self) -> DatabaseResult<()>;
-
-    /// Check if the database is connected
-    fn is_connected(&self) -> bool;
 
     /// Test the database connection
     async fn test_connection(&self) -> DatabaseResult<()>;
@@ -39,7 +32,6 @@ pub trait Database: Send + Sync {
         id: &str,
     ) -> DatabaseResult<Option<crate::models::ssh::SSHGroup>>;
     async fn find_all_ssh_groups(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHGroup>>;
-    async fn update_ssh_group(&self, model: &crate::models::ssh::SSHGroup) -> DatabaseResult<()>;
     async fn delete_ssh_group(&self, id: &str) -> DatabaseResult<()>;
 
     async fn save_ssh_key(&self, model: &crate::models::ssh::SSHKey) -> DatabaseResult<()>;
@@ -48,7 +40,6 @@ pub trait Database: Send + Sync {
         id: &str,
     ) -> DatabaseResult<Option<crate::models::ssh::SSHKey>>;
     async fn find_all_ssh_keys(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHKey>>;
-    async fn update_ssh_key(&self, model: &crate::models::ssh::SSHKey) -> DatabaseResult<()>;
     async fn delete_ssh_key(&self, id: &str) -> DatabaseResult<()>;
     async fn count_profiles_using_key(&self, key_id: &str) -> DatabaseResult<u32>;
 
@@ -58,16 +49,10 @@ pub trait Database: Send + Sync {
         id: &str,
     ) -> DatabaseResult<Option<crate::models::ssh::SSHTunnel>>;
     async fn find_all_ssh_tunnels(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>>;
-    async fn find_ssh_tunnels_by_profile_id(
-        &self,
-        profile_id: &str,
-    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>>;
     async fn find_auto_start_ssh_tunnels(
         &self,
     ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>>;
-    async fn update_ssh_tunnel(&self, model: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()>;
     async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()>;
-    async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()>;
 
     /// Saved Command operations
     async fn save_saved_command(
@@ -120,14 +105,8 @@ pub trait Database: Send + Sync {
 
     /// Device operations
     async fn save_device(&self, device: &crate::models::auth::Device) -> DatabaseResult<()>;
-    async fn get_device_by_id(
-        &self,
-        device_id: &str,
-    ) -> DatabaseResult<Option<crate::models::auth::Device>>;
     async fn get_current_device(&self) -> DatabaseResult<Option<crate::models::auth::Device>>;
     async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>>;
-    async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()>;
-    async fn delete_device(&self, device_id: &str) -> DatabaseResult<()>;
 
     /// Schema management
     async fn create_tables(&self) -> DatabaseResult<()>;
@@ -204,7 +183,6 @@ pub trait Encryptable: Send + Sync {
 
 /// Encryption service trait
 #[async_trait]
-#[allow(dead_code)]
 pub trait EncryptionService: Send + Sync {
     async fn encrypt(&self, data: &[u8], device_id: Option<&str>) -> DatabaseResult<Vec<u8>>;
     async fn decrypt(

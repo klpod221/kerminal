@@ -24,11 +24,7 @@ pub struct TunnelService {
 
 /// Handle for an active tunnel
 #[derive(Debug)]
-#[allow(dead_code)]
 struct TunnelHandle {
-    tunnel_id: String,
-    tunnel_type: TunnelType,
-    local_listener: Option<TcpListener>,
     cancel_token: CancellationToken,
     status: Arc<RwLock<TunnelStatus>>,
     error_message: Arc<RwLock<Option<String>>>,
@@ -80,24 +76,7 @@ impl TunnelService {
         service
     }
 
-    /// Initialize the service - starts auto-start tunnels
-    #[allow(dead_code)]
-    pub async fn initialize(&self) -> Result<(), String> {
-        // Start auto-start tunnels in the background
-        let service_clone = self.clone();
-        tokio::spawn(async move {
-            if let Err(e) = service_clone.start_auto_start_tunnels().await {
-                eprintln!(
-                    "Failed to start auto-start tunnels during initialization: {}",
-                    e
-                );
-            }
-        });
-
-        Ok(())
-    }
-
-    /// Create new SSH tunnel
+    /// Start tunnels that have auto_start enabled
     pub async fn create_tunnel(
         &self,
         request: CreateSSHTunnelRequest,
@@ -129,13 +108,6 @@ impl TunnelService {
         }
 
         Ok(tunnels_with_status)
-    }
-
-    /// Get SSH tunnels by profile ID
-    #[allow(dead_code)]
-    pub async fn get_tunnels_by_profile(&self, profile_id: &str) -> DatabaseResult<Vec<SSHTunnel>> {
-        let db_service = self.database_service.lock().await;
-        db_service.get_ssh_tunnels_by_profile_id(profile_id).await
     }
 
     /// Get tunnel with current status
@@ -232,9 +204,6 @@ impl TunnelService {
         let error_message = Arc::new(RwLock::new(None));
 
         let handle = TunnelHandle {
-            tunnel_id: tunnel.base.id.clone(),
-            tunnel_type: tunnel.tunnel_type.clone(),
-            local_listener: None,
             cancel_token: cancel_token.clone(),
             status: status.clone(),
             error_message: error_message.clone(),

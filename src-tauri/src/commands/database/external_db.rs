@@ -79,83 +79,22 @@ pub async fn delete_external_database(
         .map_err(|e| format!("Failed to delete external database: {}", e))
 }
 
-async fn test_external_connection(
-    id: String,
-    app_state: State<'_, AppState>,
-) -> Result<String, String> {
-    let database_service = app_state.database_service.lock().await;
-
-    let config = database_service
-        .find_external_database_by_id(&id)
-        .await
-        .map_err(|e| format!("Failed to find database config: {}", e))?
-        .ok_or_else(|| "Database configuration not found".to_string())?;
-
-    let master_password_manager = database_service.get_master_password_manager_arc();
-    let encryptor = ExternalDbEncryptor::new(master_password_manager);
-
-    let _connection_details = encryptor
-        .decrypt_connection_details(&config.connection_details_encrypted)
-        .await
-        .map_err(|e| format!("Failed to decrypt connection details: {}", e))?;
-
-    match config.db_type {
-        DatabaseType::MySQL => {
-            let conn_str = format!(
-                "mysql://{}:{}@{}:{}/{}",
-                _connection_details.username,
-                _connection_details.password,
-                _connection_details.host,
-                _connection_details.port,
-                _connection_details.database
-            );
-            match sqlx::MySqlPool::connect(&conn_str).await {
-                Ok(_) => Ok("Connection successful".to_string()),
-                Err(e) => Err(format!("MySQL connection failed: {}", e)),
-            }
-        }
-        DatabaseType::PostgreSQL => {
-            let conn_str = format!(
-                "postgresql://{}:{}@{}:{}/{}",
-                _connection_details.username,
-                _connection_details.password,
-                _connection_details.host,
-                _connection_details.port,
-                _connection_details.database
-            );
-            match sqlx::PgPool::connect(&conn_str).await {
-                Ok(_) => Ok("Connection successful".to_string()),
-                Err(e) => Err(format!("PostgreSQL connection failed: {}", e)),
-            }
-        }
-        DatabaseType::MongoDB => {
-            let conn_str = format!(
-                "mongodb://{}:{}@{}:{}/{}",
-                _connection_details.username,
-                _connection_details.password,
-                _connection_details.host,
-                _connection_details.port,
-                _connection_details.database
-            );
-            match mongodb::Client::with_uri_str(&conn_str).await {
-                Ok(client) => {
-                    match client.list_database_names(None, None).await {
-                        Ok(_) => Ok("Connection successful".to_string()),
-                        Err(e) => Err(format!("MongoDB connection failed: {}", e)),
-                    }
-                }
-                Err(e) => Err(format!("MongoDB connection failed: {}", e)),
-            }
-        }
-    }
-}
-
 #[tauri::command]
 pub async fn test_external_database_connection(
     id: String,
     app_state: State<'_, AppState>,
 ) -> Result<String, String> {
-    test_external_connection(id, app_state).await
+    let result = app_state
+        .sync_service
+        .test_connection(&id)
+        .await
+        .map_err(|e| format!("Failed to test connection: {}", e))?;
+
+    if result {
+        Ok("Connection successful".to_string())
+    } else {
+        Err("Connection failed".to_string())
+    }
 }
 
 #[tauri::command]
@@ -163,10 +102,9 @@ pub async fn connect_to_database(
     database_id: String,
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let database_service = app_state.database_service.lock().await;
-
-    database_service
-        .toggle_external_database_active(&database_id, true)
+    app_state
+        .sync_service
+        .connect(&database_id)
         .await
         .map_err(|e| format!("Failed to connect to database: {}", e))
 }
@@ -176,10 +114,9 @@ pub async fn disconnect_from_database(
     database_id: String,
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let database_service = app_state.database_service.lock().await;
-
-    database_service
-        .toggle_external_database_active(&database_id, false)
+    app_state
+        .sync_service
+        .disconnect(&database_id)
         .await
         .map_err(|e| format!("Failed to disconnect from database: {}", e))
 }

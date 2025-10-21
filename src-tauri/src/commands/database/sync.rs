@@ -37,39 +37,11 @@ pub async fn sync_now(
     direction: SyncDirection,
     app_state: State<'_, AppState>,
 ) -> Result<String, String> {
-    let database_service = app_state.database_service.lock().await;
-
-    let config = database_service
-        .find_external_database_by_id(&database_id)
+    let log = app_state
+        .sync_service
+        .sync(&database_id, direction)
         .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "External database not found".to_string())?;
-
-    drop(database_service);
-
-    let sync_service = &app_state.sync_service;
-    let engine = sync_service.engine();
-
-    let log = match direction {
-        SyncDirection::Pull => {
-            engine
-                .pull(&config)
-                .await
-                .map_err(|e| e.to_string())?
-        }
-        SyncDirection::Push => {
-            engine
-                .push(&config)
-                .await
-                .map_err(|e| e.to_string())?
-        }
-        SyncDirection::Bidirectional => {
-            engine
-                .sync(&config)
-                .await
-                .map_err(|e| e.to_string())?
-        }
-    };
+        .map_err(|e| e.to_string())?;
 
     Ok(format!(
         "Sync completed: {} records synced, status: {:?}",
@@ -81,22 +53,12 @@ pub async fn sync_now(
 pub async fn get_sync_status(
     database_id: String,
     app_state: State<'_, AppState>,
-) -> Result<String, String> {
-    let database_service = app_state.database_service.lock().await;
-
-    let config = database_service
-        .find_external_database_by_id(&database_id)
+) -> Result<crate::services::sync::SyncServiceStatus, String> {
+    app_state
+        .sync_service
+        .get_status(&database_id)
         .await
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "External database not found".to_string())?;
-
-    let status = if config.is_active {
-        format!("Active - Last sync: {:?}", config.last_sync_at)
-    } else {
-        "Inactive".to_string()
-    };
-
-    Ok(status)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -120,10 +82,9 @@ pub async fn enable_auto_sync(
     database_id: String,
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let database_service = app_state.database_service.lock().await;
-
-    database_service
-        .toggle_external_database_active(&database_id, true)
+    app_state
+        .sync_service
+        .enable_auto_sync(&database_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -133,10 +94,9 @@ pub async fn disable_auto_sync(
     database_id: String,
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let database_service = app_state.database_service.lock().await;
-
-    database_service
-        .toggle_external_database_active(&database_id, false)
+    app_state
+        .sync_service
+        .disable_auto_sync(&database_id)
         .await
         .map_err(|e| e.to_string())
 }
@@ -144,28 +104,19 @@ pub async fn disable_auto_sync(
 #[tauri::command]
 pub async fn get_sync_statistics(
     app_state: State<'_, AppState>,
-) -> Result<serde_json::Value, String> {
+) -> Result<crate::models::sync::SyncStats, String> {
     let database_service = app_state.database_service.lock().await;
-
-    let databases = database_service
-        .find_all_external_databases()
+    database_service
+        .get_sync_stats()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())
+}
 
-    let total_databases = databases.len();
-    let active_databases = databases.iter().filter(|db| db.is_active).count();
-    let conflicts = database_service
-        .find_unresolved_conflicts()
-        .await
-        .map_err(|e| e.to_string())?
-        .len();
-
-    Ok(serde_json::json!({
-        "totalDatabases": total_databases,
-        "activeDatabases": active_databases,
-        "unresolvedConflicts": conflicts,
-        "lastSyncTime": chrono::Utc::now().to_rfc3339()
-    }))
+#[tauri::command]
+pub async fn get_sync_service_statistics(
+    app_state: State<'_, AppState>,
+) -> Result<crate::services::sync::SyncServiceStatistics, String> {
+    Ok(app_state.sync_service.get_statistics().await)
 }
 
 #[tauri::command]

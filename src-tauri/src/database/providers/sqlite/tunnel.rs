@@ -142,58 +142,6 @@ pub async fn find_all_ssh_tunnels(provider: &SQLiteProvider) -> DatabaseResult<V
     Ok(tunnels)
 }
 
-pub async fn find_ssh_tunnels_by_profile_id(
-    provider: &SQLiteProvider,
-    profile_id: &str,
-) -> DatabaseResult<Vec<SSHTunnel>> {
-    let pool = provider.get_pool()?;
-    let pool = pool.read().await;
-
-    let rows = sqlx::query("SELECT * FROM ssh_tunnels WHERE profile_id = ? ORDER BY name")
-        .bind(profile_id)
-        .fetch_all(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-    let mut tunnels = Vec::new();
-    for row in rows {
-        let tunnel = SSHTunnel {
-            base: crate::models::base::BaseModel {
-                id: row.get("id"),
-                created_at: chrono::DateTime::parse_from_rfc3339(
-                    &row.get::<String, _>("created_at"),
-                )
-                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
-                .with_timezone(&chrono::Utc),
-                updated_at: chrono::DateTime::parse_from_rfc3339(
-                    &row.get::<String, _>("updated_at"),
-                )
-                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
-                .with_timezone(&chrono::Utc),
-                device_id: row.get("device_id"),
-                version: row.get::<i64, _>("version") as u64,
-                sync_status: serde_json::from_str(&row.get::<String, _>("sync_status"))
-                    .unwrap_or(crate::database::traits::SyncStatus::Synced),
-            },
-            name: row.get("name"),
-            description: row.get("description"),
-            profile_id: row.get("profile_id"),
-            tunnel_type: serde_json::from_str(&row.get::<String, _>("tunnel_type"))
-                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?,
-            local_host: row.get("local_host"),
-            local_port: row.get::<i32, _>("local_port") as u16,
-            remote_host: row.get("remote_host"),
-            remote_port: row.get::<Option<i32>, _>("remote_port").map(|p| p as u16),
-            auto_start: row.get("auto_start"),
-            status: crate::models::ssh::TunnelStatus::default(),
-            error_message: None,
-        };
-        tunnels.push(tunnel);
-    }
-
-    Ok(tunnels)
-}
-
 pub async fn find_auto_start_ssh_tunnels(
     provider: &SQLiteProvider,
 ) -> DatabaseResult<Vec<SSHTunnel>> {
@@ -244,32 +192,12 @@ pub async fn find_auto_start_ssh_tunnels(
     Ok(tunnels)
 }
 
-pub async fn update_ssh_tunnel(provider: &SQLiteProvider, model: &SSHTunnel) -> DatabaseResult<()> {
-    save_ssh_tunnel(provider, model).await
-}
-
 pub async fn delete_ssh_tunnel(provider: &SQLiteProvider, id: &str) -> DatabaseResult<()> {
     let pool = provider.get_pool()?;
     let pool = pool.read().await;
 
     sqlx::query("DELETE FROM ssh_tunnels WHERE id = ?")
         .bind(id)
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-    Ok(())
-}
-
-pub async fn delete_ssh_tunnels_by_profile_id(
-    provider: &SQLiteProvider,
-    profile_id: &str,
-) -> DatabaseResult<()> {
-    let pool = provider.get_pool()?;
-    let pool = pool.read().await;
-
-    sqlx::query("DELETE FROM ssh_tunnels WHERE profile_id = ?")
-        .bind(profile_id)
         .execute(&*pool)
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;

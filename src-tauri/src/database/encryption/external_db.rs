@@ -65,16 +65,4 @@ impl ExternalDbEncryptor {
 
         Ok(encrypted)
     }
-
-    #[allow(dead_code)]
-    pub async fn decrypt_sync_settings(&self, encrypted: &str) -> DatabaseResult<SyncSettings> {
-        let manager = self.master_password_manager.read().await;
-        let decrypted = manager.decrypt_string(encrypted, None).await?;
-
-        let settings: SyncSettings = serde_json::from_str(&decrypted).map_err(|e| {
-            EncryptionError::DecryptionFailed(format!("Failed to deserialize sync settings: {}", e))
-        })?;
-
-        Ok(settings)
-    }
 }

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -18,9 +19,7 @@ use super::profile::KeyType;
 #[derive(Debug, Clone)]
 pub struct ResolvedSSHKey {
     pub private_key: String,
-    #[allow(dead_code)]
     pub key_type: KeyType,
-    #[allow(dead_code)]
     pub public_key: Option<String>,
     pub passphrase: Option<String>,
 }
@@ -106,49 +105,10 @@ impl SSHKey {
             .join(":")
     }
 
-    /// Get key ID
-    pub fn get_id(&self) -> &str {
-        &self.base.id
-    }
-
-    /// Update key information
-    pub fn update(&mut self, name: Option<String>, description: Option<Option<String>>) {
-        if let Some(name) = name {
-            self.name = name;
-        }
-        if let Some(description) = description {
-            self.description = description;
-        }
-        self.base.touch();
-    }
-
     /// Mark key as recently used
     pub fn mark_used(&mut self) {
         self.last_used = Some(Utc::now());
         self.base.touch();
-    }
-
-    /// Check if key has passphrase
-    pub fn has_passphrase(&self) -> bool {
-        self.passphrase.is_some() && !self.passphrase.as_ref().unwrap().is_empty()
-    }
-
-    /// Get display name for UI
-    pub fn display_name(&self) -> String {
-        if self.name.is_empty() {
-            format!("{} Key ({})", self.key_type, &self.fingerprint[..16])
-        } else {
-            self.name.clone()
-        }
-    }
-
-    /// Get short fingerprint for display (first 16 chars)
-    pub fn short_fingerprint(&self) -> String {
-        if self.fingerprint.len() > 16 {
-            format!("{}...", &self.fingerprint[..16])
-        } else {
-            self.fingerprint.clone()
-        }
     }
 }
 
@@ -356,8 +316,3 @@ mod encrypted_option_string {
     }
 }
 
-impl crate::database::sync::strategies::HasBaseModel for SSHKey {
-    fn base_model(&self) -> &crate::models::base::BaseModel {
-        &self.base
-    }
-}

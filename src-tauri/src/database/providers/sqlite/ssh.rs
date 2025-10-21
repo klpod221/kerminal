@@ -288,10 +288,6 @@ pub async fn find_all_ssh_groups(provider: &SQLiteProvider) -> DatabaseResult<Ve
     Ok(groups)
 }
 
-pub async fn update_ssh_group(provider: &SQLiteProvider, model: &SSHGroup) -> DatabaseResult<()> {
-    save_ssh_group(provider, model).await
-}
-
 pub async fn delete_ssh_group(provider: &SQLiteProvider, id: &str) -> DatabaseResult<()> {
     let pool_arc = provider.get_pool()?;
     let pool = pool_arc.read().await;
@@ -440,10 +436,6 @@ pub async fn find_all_ssh_keys(provider: &SQLiteProvider) -> DatabaseResult<Vec<
     }
 
     Ok(keys)
-}
-
-pub async fn update_ssh_key(provider: &SQLiteProvider, model: &SSHKey) -> DatabaseResult<()> {
-    save_ssh_key(provider, model).await
 }
 
 pub async fn delete_ssh_key(provider: &SQLiteProvider, id: &str) -> DatabaseResult<()> {

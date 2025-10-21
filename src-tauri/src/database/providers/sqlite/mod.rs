@@ -1,7 +1,7 @@
 mod auth;
 mod command;
 mod ssh;
-mod sync_ops;
+pub mod sync_ops;
 mod tunnel;
 
 use async_trait::async_trait;
@@ -385,19 +385,6 @@ impl Database for SQLiteProvider {
         Ok(())
     }
 
-    async fn disconnect(&mut self) -> DatabaseResult<()> {
-        if let Some(pool_arc) = &self.pool {
-            let pool = pool_arc.read().await;
-            pool.close().await;
-        }
-        self.pool = None;
-        Ok(())
-    }
-
-    fn is_connected(&self) -> bool {
-        self.pool.is_some()
-    }
-
     async fn test_connection(&self) -> DatabaseResult<()> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
@@ -500,10 +487,6 @@ impl Database for SQLiteProvider {
         ssh::find_all_ssh_groups(self).await
     }
 
-    async fn update_ssh_group(&self, model: &crate::models::ssh::SSHGroup) -> DatabaseResult<()> {
-        ssh::update_ssh_group(self, model).await
-    }
-
     async fn delete_ssh_group(&self, id: &str) -> DatabaseResult<()> {
         ssh::delete_ssh_group(self, id).await
     }
@@ -521,10 +504,6 @@ impl Database for SQLiteProvider {
 
     async fn find_all_ssh_keys(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHKey>> {
         ssh::find_all_ssh_keys(self).await
-    }
-
-    async fn update_ssh_key(&self, model: &crate::models::ssh::SSHKey) -> DatabaseResult<()> {
-        ssh::update_ssh_key(self, model).await
     }
 
     async fn delete_ssh_key(&self, id: &str) -> DatabaseResult<()> {
@@ -550,29 +529,14 @@ impl Database for SQLiteProvider {
         tunnel::find_all_ssh_tunnels(self).await
     }
 
-    async fn find_ssh_tunnels_by_profile_id(
-        &self,
-        profile_id: &str,
-    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
-        tunnel::find_ssh_tunnels_by_profile_id(self, profile_id).await
-    }
-
     async fn find_auto_start_ssh_tunnels(
         &self,
     ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
         tunnel::find_auto_start_ssh_tunnels(self).await
     }
 
-    async fn update_ssh_tunnel(&self, model: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
-        tunnel::update_ssh_tunnel(self, model).await
-    }
-
     async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()> {
         tunnel::delete_ssh_tunnel(self, id).await
-    }
-
-    async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
-        tunnel::delete_ssh_tunnels_by_profile_id(self, profile_id).await
     }
 
     async fn save_saved_command(
@@ -680,27 +644,12 @@ impl Database for SQLiteProvider {
         auth::save_device(self, device).await
     }
 
-    async fn get_device_by_id(
-        &self,
-        device_id: &str,
-    ) -> DatabaseResult<Option<crate::models::auth::Device>> {
-        auth::get_device_by_id(self, device_id).await
-    }
-
     async fn get_current_device(&self) -> DatabaseResult<Option<crate::models::auth::Device>> {
         auth::get_current_device(self).await
     }
 
     async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>> {
         auth::get_all_devices(self).await
-    }
-
-    async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()> {
-        auth::update_device_last_seen(self, device_id).await
-    }
-
-    async fn delete_device(&self, device_id: &str) -> DatabaseResult<()> {
-        auth::delete_device(self, device_id).await
     }
 }
 
@@ -709,22 +658,6 @@ impl SQLiteProvider {
         &self,
     ) -> DatabaseResult<Vec<crate::models::sync::external_db::ExternalDatabaseConfig>> {
         self.find_all_external_databases().await
-    }
-
-    #[allow(dead_code)]
-    pub async fn get_external_database(
-        &self,
-        id: &str,
-    ) -> DatabaseResult<Option<crate::models::sync::external_db::ExternalDatabaseConfig>> {
-        self.find_external_database_by_id(id).await
-    }
-
-    #[allow(dead_code)]
-    pub async fn update_external_database(
-        &self,
-        config: &crate::models::sync::external_db::ExternalDatabaseConfig,
-    ) -> DatabaseResult<()> {
-        self.save_external_database(config).await
     }
 
     pub async fn get_sync_logs(
@@ -744,8 +677,29 @@ impl SQLiteProvider {
 
     pub async fn save_conflict_resolution(
         &self,
-        _resolution: &crate::models::sync::conflict::ConflictResolution,
+        resolution: &crate::models::sync::conflict::ConflictResolution,
     ) -> DatabaseResult<()> {
+        let pool_arc = self.get_pool()?;
+        let pool = pool_arc.read().await;
+
+        sqlx::query(
+            r#"
+            INSERT INTO sync_conflicts (
+                id, entity_type, entity_id, local_version, remote_version,
+                local_data, remote_data, resolution_strategy, resolved, created_at, resolved_at
+            ) VALUES (?, ?, ?, 0, 0, ?, ?, NULL, false, ?, NULL)
+            "#,
+        )
+        .bind(&resolution.id)
+        .bind(&resolution.entity_type)
+        .bind(&resolution.entity_id)
+        .bind(resolution.local_data.to_string())
+        .bind(resolution.remote_data.to_string())
+        .bind(resolution.created_at.to_rfc3339())
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
         Ok(())
     }
 }

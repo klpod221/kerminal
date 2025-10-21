@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -85,7 +86,6 @@ pub struct SyncOperation {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
-#[allow(dead_code)]
 impl SyncOperation {
     pub fn new(
         operation_type: SyncOperationType,

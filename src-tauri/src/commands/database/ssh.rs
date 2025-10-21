@@ -26,6 +26,12 @@ pub async fn get_ssh_groups(state: State<'_, AppState>) -> Result<Vec<SSHGroup>,
     app_result!(state.ssh_service.get_ssh_groups().await)
 }
 
+/// Get SSH group by ID
+#[tauri::command]
+pub async fn get_ssh_group(state: State<'_, AppState>, id: String) -> Result<SSHGroup, String> {
+    app_result!(state.ssh_service.get_ssh_group(&id).await)
+}
+
 /// Update SSH group
 #[tauri::command]
 pub async fn update_ssh_group(

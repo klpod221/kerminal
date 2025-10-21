@@ -126,8 +126,8 @@ impl SSHKeyService {
         std::fs::read_to_string(&pub_key_path).ok()
     }
 
-    #[allow(dead_code)]
     /// Validate SSH key format (basic validation)
+    #[allow(dead_code)]
     pub fn validate_key_format(key_content: &str) -> Result<(), String> {
         if key_content.trim().is_empty() {
             return Err("SSH key cannot be empty".to_string());
@@ -144,8 +144,8 @@ impl SSHKeyService {
         Ok(())
     }
 
-    #[allow(dead_code)]
     /// Mark key as recently used (called when connecting with a profile)
+    #[allow(dead_code)]
     pub async fn mark_key_used(&self, key_id: &str) -> DatabaseResult<()> {
         let db_service = self.database_service.lock().await;
         db_service.mark_key_used(key_id).await

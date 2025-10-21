@@ -15,12 +15,11 @@ use crate::database::{
     error::{DatabaseError, DatabaseResult},
     service::DatabaseService,
 };
-use crate::models::sync::log::SyncLog;
+use crate::models::sync::{log::SyncLog, SyncDirection};
 
 /// High-level sync service that orchestrates all sync operations
 pub struct SyncService {
     database_service: Arc<RwLock<DatabaseService>>,
-    #[allow(dead_code)]
     sync_manager: Arc<SyncManager>,
     sync_engine: Arc<SyncEngine>,
     sync_scheduler: Arc<SyncScheduler>,
@@ -44,21 +43,6 @@ impl SyncService {
             sync_engine,
             sync_scheduler,
         }
-    }
-
-    /// Get sync manager reference
-    pub fn manager(&self) -> &Arc<SyncManager> {
-        &self.sync_manager
-    }
-
-    /// Get sync engine reference
-    pub fn engine(&self) -> &Arc<SyncEngine> {
-        &self.sync_engine
-    }
-
-    /// Get sync scheduler reference
-    pub fn scheduler(&self) -> &Arc<SyncScheduler> {
-        &self.sync_scheduler
     }
 
     /// Initialize sync service (start scheduler, load enabled databases)
@@ -87,6 +71,7 @@ impl SyncService {
     }
 
     /// Shutdown sync service
+    #[allow(dead_code)]
     pub async fn shutdown(&self) -> DatabaseResult<()> {
         // Stop scheduler
         self.sync_scheduler.stop().await?;
@@ -104,7 +89,7 @@ impl SyncService {
         let config = local_db
             .read()
             .await
-            .get_external_database(database_id)
+            .find_external_database_by_id(database_id)
             .await?
             .ok_or_else(|| {
                 crate::database::error::DatabaseError::NotFound(format!(
@@ -128,7 +113,7 @@ impl SyncService {
         let config = local_db
             .read()
             .await
-            .get_external_database(database_id)
+            .find_external_database_by_id(database_id)
             .await?
             .ok_or_else(|| {
                 crate::database::error::DatabaseError::NotFound(format!(
@@ -157,7 +142,7 @@ impl SyncService {
         let config = local_db
             .read()
             .await
-            .get_external_database(database_id)
+            .find_external_database_by_id(database_id)
             .await?
             .ok_or_else(|| {
                 crate::database::error::DatabaseError::NotFound(format!(
@@ -208,7 +193,7 @@ impl SyncService {
         let mut config = local_db
             .read()
             .await
-            .get_external_database(database_id)
+            .find_external_database_by_id(database_id)
             .await?
             .ok_or_else(|| {
                 crate::database::error::DatabaseError::NotFound(format!(
@@ -227,7 +212,7 @@ impl SyncService {
         local_db
             .write()
             .await
-            .update_external_database(&config)
+            .save_external_database(&config)
             .await?;
 
         // Enable in scheduler
@@ -244,7 +229,7 @@ impl SyncService {
         let mut config = local_db
             .read()
             .await
-            .get_external_database(database_id)
+            .find_external_database_by_id(database_id)
             .await?
             .ok_or_else(|| {
                 crate::database::error::DatabaseError::NotFound(format!(
@@ -263,7 +248,7 @@ impl SyncService {
         local_db
             .write()
             .await
-            .update_external_database(&config)
+            .save_external_database(&config)
             .await?;
 
         // Disable in scheduler
@@ -283,26 +268,18 @@ impl SyncService {
     }
 }
 
-/// Sync direction enum
-#[derive(Debug, Clone, Copy)]
-pub enum SyncDirection {
-    Push,
-    Pull,
-    Bidirectional,
-}
-
-#[allow(dead_code)]
 /// Sync service status
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncServiceStatus {
     pub is_connected: bool,
     pub last_sync: Option<SyncLog>,
     pub scheduler_enabled: bool,
 }
 
-#[allow(dead_code)]
 /// Service-wide statistics
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SyncServiceStatistics {
     pub active_connections: usize,
     pub scheduler_running: bool,

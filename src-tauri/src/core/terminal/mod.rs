@@ -75,24 +75,6 @@ impl TerminalWrapper {
         }
     }
 
-    /// Get terminal ID
-    #[allow(dead_code)]
-    pub fn get_id(&self) -> &str {
-        match self {
-            TerminalWrapper::Local(terminal) => terminal.get_id(),
-            TerminalWrapper::Ssh(terminal) => terminal.get_id(),
-        }
-    }
-
-    /// Check if terminal is alive/connected
-    #[allow(dead_code)]
-    pub fn is_alive(&self) -> bool {
-        match self {
-            TerminalWrapper::Local(terminal) => terminal.is_alive(),
-            TerminalWrapper::Ssh(terminal) => terminal.is_alive(),
-        }
-    }
-
     /// Start reading from terminal and send output to the provided sender
     pub async fn start_read_loop(
         &mut self,

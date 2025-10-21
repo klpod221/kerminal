@@ -188,16 +188,6 @@ impl LocalTerminal {
         &self.config
     }
 
-    /// Get terminal ID
-    pub fn get_id(&self) -> &str {
-        &self.id
-    }
-
-    /// Check if terminal is alive/connected
-    pub fn is_alive(&self) -> bool {
-        matches!(self.state, TerminalState::Connected) && self.pty_pair.is_some()
-    }
-
     /// Start reading from terminal and send output to the provided sender
     pub async fn start_read_loop(
         &mut self,

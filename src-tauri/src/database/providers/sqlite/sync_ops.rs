@@ -108,56 +108,6 @@ impl SQLiteProvider {
         Ok(configs)
     }
 
-    pub async fn update_external_database_last_sync(
-        &self,
-        id: &str,
-        last_sync: DateTime<Utc>,
-    ) -> DatabaseResult<()> {
-        let pool = self.get_pool()?;
-        let pool = pool.read().await;
-
-        sqlx::query(
-            r#"
-            UPDATE external_databases
-            SET last_sync_at = ?1, updated_at = ?2
-            WHERE id = ?3
-        "#,
-        )
-        .bind(last_sync)
-        .bind(Utc::now())
-        .bind(id)
-        .execute(&*pool)
-        .await
-        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
-    pub async fn toggle_external_database_active(
-        &self,
-        id: &str,
-        is_active: bool,
-    ) -> DatabaseResult<()> {
-        let pool = self.get_pool()?;
-        let pool = pool.read().await;
-
-        sqlx::query(
-            r#"
-            UPDATE external_databases
-            SET is_active = ?1, updated_at = ?2
-            WHERE id = ?3
-        "#,
-        )
-        .bind(is_active)
-        .bind(Utc::now())
-        .bind(id)
-        .execute(&*pool)
-        .await
-        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
     pub async fn delete_external_database(&self, id: &str) -> DatabaseResult<()> {
         let pool = self.get_pool()?;
         let pool = pool.read().await;
@@ -173,70 +123,6 @@ impl SQLiteProvider {
         .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
 
         Ok(())
-    }
-
-    pub async fn save_sync_operation(&self, operation: &SyncOperation) -> DatabaseResult<()> {
-        let pool = self.get_pool()?;
-        let pool = pool.read().await;
-
-        sqlx::query(
-            r#"
-            INSERT INTO sync_operations (
-                id, operation_type, entity_type, entity_id, source_db, target_db,
-                status, error_message, started_at, completed_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-            ON CONFLICT(id) DO UPDATE SET
-                status = excluded.status,
-                error_message = excluded.error_message,
-                completed_at = excluded.completed_at
-        "#,
-        )
-        .bind(&operation.id)
-        .bind(operation.operation_type.to_string())
-        .bind(&operation.entity_type)
-        .bind(&operation.entity_id)
-        .bind(&operation.source_db)
-        .bind(&operation.target_db)
-        .bind(operation.status.to_string())
-        .bind(&operation.error_message)
-        .bind(operation.started_at)
-        .bind(operation.completed_at)
-        .execute(&*pool)
-        .await
-        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
-    pub async fn find_sync_operations_by_entity(
-        &self,
-        entity_type: &str,
-        entity_id: &str,
-    ) -> DatabaseResult<Vec<SyncOperation>> {
-        let pool = self.get_pool()?;
-        let pool = pool.read().await;
-
-        let rows = sqlx::query(
-            r#"
-            SELECT id, operation_type, entity_type, entity_id, source_db, target_db,
-                status, error_message, started_at, completed_at
-            FROM sync_operations
-            WHERE entity_type = ?1 AND entity_id = ?2
-            ORDER BY started_at DESC
-        "#,
-        )
-        .bind(entity_type)
-        .bind(entity_id)
-        .fetch_all(&*pool)
-        .await
-        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-
-        let mut operations = Vec::new();
-        for row in rows {
-            operations.push(self.map_sync_operation_row(&row)?);
-        }
-
-        Ok(operations)
     }
 
     pub async fn find_recent_sync_operations(
@@ -268,42 +154,6 @@ impl SQLiteProvider {
         Ok(operations)
     }
 
-    pub async fn save_sync_conflict(&self, conflict: &SyncConflict) -> DatabaseResult<()> {
-        let pool = self.get_pool()?;
-        let pool = pool.read().await;
-
-        let resolution_strategy = conflict.resolution_strategy.as_ref().map(|s| s.to_string());
-
-        sqlx::query(
-            r#"
-            INSERT INTO sync_conflicts (
-                id, entity_type, entity_id, local_version, remote_version,
-                local_data, remote_data, resolution_strategy, resolved, created_at, resolved_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
-            ON CONFLICT(id) DO UPDATE SET
-                resolution_strategy = excluded.resolution_strategy,
-                resolved = excluded.resolved,
-                resolved_at = excluded.resolved_at
-        "#,
-        )
-        .bind(&conflict.id)
-        .bind(&conflict.entity_type)
-        .bind(&conflict.entity_id)
-        .bind(conflict.local_version as i64)
-        .bind(conflict.remote_version as i64)
-        .bind(&conflict.local_data)
-        .bind(&conflict.remote_data)
-        .bind(&resolution_strategy)
-        .bind(conflict.resolved)
-        .bind(conflict.created_at)
-        .bind(conflict.resolved_at)
-        .execute(&*pool)
-        .await
-        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
     pub async fn find_unresolved_conflicts(&self) -> DatabaseResult<Vec<SyncConflict>> {
         let pool = self.get_pool()?;
         let pool = pool.read().await;
@@ -329,38 +179,6 @@ impl SQLiteProvider {
         Ok(conflicts)
     }
 
-    pub async fn find_conflict_by_entity(
-        &self,
-        entity_type: &str,
-        entity_id: &str,
-    ) -> DatabaseResult<Option<SyncConflict>> {
-        let pool = self.get_pool()?;
-        let pool = pool.read().await;
-
-        let row = sqlx::query(
-            r#"
-            SELECT id, entity_type, entity_id, local_version, remote_version,
-                local_data, remote_data, resolution_strategy, resolved, created_at, resolved_at
-            FROM sync_conflicts
-            WHERE entity_type = ?1 AND entity_id = ?2 AND resolved = false
-            ORDER BY created_at DESC
-            LIMIT 1
-        "#,
-        )
-        .bind(entity_type)
-        .bind(entity_id)
-        .fetch_optional(&*pool)
-        .await
-        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-
-        if let Some(row) = row {
-            let conflict = self.map_sync_conflict_row(&row)?;
-            Ok(Some(conflict))
-        } else {
-            Ok(None)
-        }
-    }
-
     pub async fn resolve_conflict(
         &self,
         id: &str,
@@ -378,23 +196,6 @@ impl SQLiteProvider {
         )
         .bind(strategy.to_string())
         .bind(Utc::now())
-        .bind(id)
-        .execute(&*pool)
-        .await
-        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
-    pub async fn delete_conflict(&self, id: &str) -> DatabaseResult<()> {
-        let pool = self.get_pool()?;
-        let pool = pool.read().await;
-
-        sqlx::query(
-            r#"
-            DELETE FROM sync_conflicts WHERE id = ?1
-        "#,
-        )
         .bind(id)
         .execute(&*pool)
         .await

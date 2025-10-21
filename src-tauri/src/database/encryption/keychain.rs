@@ -7,7 +7,6 @@ pub struct KeychainManager {
     app_name: String,
 }
 
-#[allow(dead_code)]
 impl KeychainManager {
     /// Create new keychain manager
     pub fn new(app_name: String) -> Self {

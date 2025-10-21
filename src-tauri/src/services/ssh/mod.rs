@@ -47,7 +47,6 @@ impl SSHService {
         db_service.get_ssh_groups().await
     }
 
-    #[allow(dead_code)]
     /// Get SSH group by ID
     pub async fn get_ssh_group(&self, id: &str) -> DatabaseResult<SSHGroup> {
         let db_service = self.database_service.lock().await;

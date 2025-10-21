@@ -54,15 +54,11 @@ impl SyncScheduler {
     }
 
     /// Stop the scheduler
+    #[allow(dead_code)]
     pub async fn stop(&self) -> DatabaseResult<()> {
         let mut is_running = self.is_running.lock().await;
         *is_running = false;
         Ok(())
-    }
-
-    /// Check if scheduler is running
-    pub async fn is_running(&self) -> bool {
-        *self.is_running.lock().await
     }
 
     /// Enable auto-sync for a database
@@ -209,37 +205,6 @@ impl SyncScheduler {
         }
     }
 
-    /// Trigger immediate sync for a database
-    pub async fn trigger_immediate_sync(
-        &self,
-        config: &ExternalDatabaseConfig,
-    ) -> DatabaseResult<()> {
-        self.execute_scheduled_sync(config).await
-    }
-
-    /// Trigger sync for all enabled databases
-    pub async fn trigger_sync_all(&self) -> DatabaseResult<()> {
-        let enabled_databases = self.enabled_databases.lock().await.clone();
-
-        let db_service = self.database_service.read().await;
-        let local_db = db_service.get_local_database();
-        let all_configs = local_db.read().await.get_all_external_databases().await?;
-
-        for config in all_configs {
-            let sync_settings = config.parse_sync_settings().ok();
-            if enabled_databases.contains(&config.base.id)
-                && sync_settings.is_some()
-                && sync_settings.unwrap().auto_sync
-            {
-                if let Err(e) = self.execute_scheduled_sync(&config).await {
-                    eprintln!("Failed to sync {}: {}", config.name, e);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     /// Get scheduler statistics
     pub async fn get_stats(&self) -> SchedulerStats {
         let enabled_count = self.enabled_databases.lock().await.len();
@@ -252,7 +217,6 @@ impl SyncScheduler {
     }
 }
 
-#[allow(dead_code)]
 /// Scheduler statistics
 #[derive(Debug, Clone)]
 pub struct SchedulerStats {

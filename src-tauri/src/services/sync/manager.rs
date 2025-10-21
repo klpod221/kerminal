@@ -67,6 +67,7 @@ impl SyncManager {
     }
 
     /// Disconnect all active connections
+    #[allow(dead_code)]
     pub async fn disconnect_all(&self) -> DatabaseResult<()> {
         let mut connections = self.active_connections.write().await;
         connections.clear();
@@ -89,12 +90,6 @@ impl SyncManager {
     pub async fn is_connected(&self, database_id: &str) -> bool {
         let connections = self.active_connections.read().await;
         connections.contains_key(database_id)
-    }
-
-    /// Get all active connection IDs
-    pub async fn get_active_connections(&self) -> Vec<String> {
-        let connections = self.active_connections.read().await;
-        connections.keys().cloned().collect()
     }
 
     /// Ensure connection exists, reconnect if needed
@@ -144,17 +139,14 @@ impl SyncManager {
         let connections = self.active_connections.read().await;
         ConnectionStats {
             total_connections: connections.len(),
-            active_database_ids: connections.keys().cloned().collect(),
         }
     }
 }
 
-#[allow(dead_code)]
 /// Connection statistics
 #[derive(Debug, Clone)]
 pub struct ConnectionStats {
     pub total_connections: usize,
-    pub active_database_ids: Vec<String>,
 }
 
 impl Drop for SyncManager {

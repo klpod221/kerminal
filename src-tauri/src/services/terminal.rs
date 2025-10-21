@@ -25,21 +25,6 @@ pub struct TerminalManager {
 }
 
 impl TerminalManager {
-    #[allow(dead_code)]
-    pub fn new(database_service: Arc<Mutex<DatabaseService>>) -> Self {
-        let (output_sender, output_receiver) = mpsc::unbounded_channel();
-
-        Self {
-            terminals: Arc::new(RwLock::new(HashMap::new())),
-            output_senders: Arc::new(RwLock::new(HashMap::new())),
-            output_receiver: Arc::new(Mutex::new(Some(output_receiver))),
-            output_sender,
-            buffer_manager: Arc::new(TerminalBufferManager::default()),
-            database_service,
-            ssh_key_service: None,
-        }
-    }
-
     pub fn new_with_ssh_key_service(
         database_service: Arc<Mutex<DatabaseService>>,
         ssh_key_service: Arc<Mutex<SSHKeyService>>,

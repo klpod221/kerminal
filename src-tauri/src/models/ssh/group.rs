@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -123,7 +124,6 @@ impl UpdateSSHGroupRequest {
     }
 }
 
-#[allow(dead_code)]
 /// Group with profile statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SSHGroupWithStats {
@@ -133,7 +133,6 @@ pub struct SSHGroupWithStats {
     pub profiles: Vec<String>, // Profile IDs in this group
 }
 
-#[allow(dead_code)]
 impl SSHGroupWithStats {
     pub fn new(group: SSHGroup, profile_count: u32, profiles: Vec<String>) -> Self {
         Self {
@@ -158,11 +157,5 @@ pub enum DeleteGroupAction {
 impl Default for DeleteGroupAction {
     fn default() -> Self {
         Self::MoveToUngrouped
-    }
-}
-
-impl crate::database::sync::strategies::HasBaseModel for SSHGroup {
-    fn base_model(&self) -> &crate::models::base::BaseModel {
-        &self.base
     }
 }

@@ -52,37 +52,9 @@ impl Device {
         }
     }
 
-    /// Create device from sync data
-    pub fn new_remote(
-        device_id: String,
-        device_name: String,
-        device_type: DeviceType,
-        os_info: OsInfo,
-        app_version: String,
-        created_at: DateTime<Utc>,
-        last_seen: DateTime<Utc>,
-    ) -> Self {
-        Self {
-            device_id,
-            device_name,
-            device_type,
-            os_info,
-            app_version,
-            created_at,
-            last_seen,
-            is_current: false,
-        }
-    }
-
     /// Update last seen timestamp
     pub fn update_last_seen(&mut self) {
         self.last_seen = Utc::now();
-    }
-
-    /// Check if device was seen recently
-    pub fn is_online(&self, threshold_minutes: i64) -> bool {
-        let threshold = chrono::Duration::minutes(threshold_minutes);
-        (Utc::now() - self.last_seen) < threshold
     }
 
     /// Detect device type from system info
@@ -133,55 +105,6 @@ impl Device {
                     .unwrap_or_else(|| "Unknown".to_string())
             }
             _ => "Unknown".to_string(),
-        }
-    }
-
-    /// Get display name for UI
-    pub fn display_name(&self) -> String {
-        if self.is_current {
-            format!("{} (Current)", self.device_name)
-        } else {
-            self.device_name.clone()
-        }
-    }
-
-    /// Get short device info
-    pub fn short_info(&self) -> String {
-        format!(
-            "{} - {} {}",
-            self.device_name, self.os_info.os_type, self.os_info.arch
-        )
-    }
-}
-
-#[allow(dead_code)]
-/// Device information for API responses
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DeviceInfo {
-    pub device_id: String,
-    pub device_name: String,
-    pub device_type: DeviceType,
-    pub os_info: OsInfo,
-    pub app_version: String,
-    pub created_at: DateTime<Utc>,
-    pub last_seen: DateTime<Utc>,
-    pub is_current: bool,
-    pub is_online: bool,
-}
-
-impl From<Device> for DeviceInfo {
-    fn from(device: Device) -> Self {
-        let is_online = device.is_online(5); // Calculate before any moves
-        Self {
-            device_id: device.device_id,
-            device_name: device.device_name,
-            device_type: device.device_type,
-            os_info: device.os_info,
-            app_version: device.app_version,
-            created_at: device.created_at,
-            last_seen: device.last_seen,
-            is_current: device.is_current,
-            is_online,
         }
     }
 }

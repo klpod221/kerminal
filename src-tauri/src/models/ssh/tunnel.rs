@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 
@@ -145,37 +146,6 @@ impl SSHTunnel {
         }
 
         Ok(())
-    }
-
-    /// Get display string for tunnel configuration
-    pub fn get_tunnel_config_display(&self) -> String {
-        match self.tunnel_type {
-            TunnelType::Local => {
-                format!(
-                    "{}:{} -> {}:{}",
-                    self.local_host,
-                    self.local_port,
-                    self.remote_host.as_deref().unwrap_or(""),
-                    self.remote_port.unwrap_or(0)
-                )
-            }
-            TunnelType::Remote => {
-                format!(
-                    "Remote:{} -> {}:{}",
-                    self.local_port,
-                    self.remote_host.as_deref().unwrap_or(""),
-                    self.remote_port.unwrap_or(0)
-                )
-            }
-            TunnelType::Dynamic => {
-                format!("SOCKS5 {}:{}", self.local_host, self.local_port)
-            }
-        }
-    }
-
-    /// Check if tunnel is active (starting or running)
-    pub fn is_active(&self) -> bool {
-        matches!(self.status, TunnelStatus::Starting | TunnelStatus::Running)
     }
 }
 

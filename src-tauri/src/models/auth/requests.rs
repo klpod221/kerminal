@@ -13,12 +13,3 @@ pub struct ChangeMasterPasswordRequest {
     pub old_password: String,
     pub new_password: String,
 }
-
-#[allow(dead_code)]
-/// Request for updating master password configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateMasterPasswordConfigRequest {
-    pub auto_unlock: Option<bool>,
-    pub auto_lock_timeout: Option<u32>,
-}

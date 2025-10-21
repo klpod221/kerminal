@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -34,7 +35,6 @@ pub struct ConflictResolution {
     pub created_at: DateTime<Utc>,
 }
 
-#[allow(dead_code)]
 impl SyncConflict {
     pub fn new(
         entity_type: String,

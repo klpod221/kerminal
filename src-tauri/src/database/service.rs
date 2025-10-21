@@ -1,5 +1,4 @@
 use chrono::Utc;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -17,7 +16,7 @@ use crate::database::{
     traits::{Database, Encryptable},
 };
 use crate::models::{
-    auth::{Device, DeviceInfo},
+    auth::Device,
     saved_command::{
         CreateSavedCommandGroupRequest, CreateSavedCommandRequest, SavedCommand, SavedCommandGroup,
         UpdateSavedCommandGroupRequest, UpdateSavedCommandRequest,
@@ -36,10 +35,6 @@ pub struct DatabaseService {
     /// Local SQLite database (always available)
     local_db: Arc<RwLock<SQLiteProvider>>,
 
-    /// External databases for sync
-    #[allow(dead_code)]
-    external_dbs: Arc<RwLock<HashMap<String, Box<dyn Database>>>>,
-
     /// Master password manager
     master_password_manager: Arc<RwLock<MasterPasswordManager>>,
 
@@ -54,10 +49,6 @@ pub struct DatabaseService {
 #[derive(Debug, Clone)]
 pub struct DatabaseServiceConfig {
     pub local_db_path: String,
-    #[allow(dead_code)]
-    pub auto_sync: bool,
-    #[allow(dead_code)]
-    pub sync_interval_minutes: u32,
     pub master_password_config: MasterPasswordConfig,
 }
 
@@ -101,7 +92,6 @@ impl DatabaseService {
 
         Ok(Self {
             local_db: Arc::new(RwLock::new(local_db)),
-            external_dbs: Arc::new(RwLock::new(HashMap::new())),
             master_password_manager: Arc::new(RwLock::new(master_password_manager)),
             current_device,
             config,
@@ -535,19 +525,6 @@ impl DatabaseService {
         Ok(mp_manager.get_config().clone())
     }
 
-    #[allow(dead_code)]
-    /// Get current device information
-    pub async fn get_current_device_info(&self) -> DatabaseResult<DeviceInfo> {
-        let local_db = self.local_db.read().await;
-        // Get current device from database (prefer latest data)
-        if let Some(device) = local_db.get_current_device().await? {
-            Ok(DeviceInfo::from(device))
-        } else {
-            // Fallback to the device stored in service
-            Ok(DeviceInfo::from(self.current_device.clone()))
-        }
-    }
-
     /// Get all devices from database
     pub async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>> {
         let local_db = self.local_db.read().await;
@@ -575,7 +552,6 @@ impl DatabaseService {
         local_db.find_all_ssh_groups().await
     }
 
-    #[allow(dead_code)]
     /// Get SSH group by ID
     pub async fn get_ssh_group(&self, id: &str) -> DatabaseResult<SSHGroup> {
         let local_db = self.local_db.read().await;
@@ -916,15 +892,6 @@ impl DatabaseService {
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH tunnel {} not found", id)))
     }
 
-    /// Get SSH tunnels by profile ID
-    pub async fn get_ssh_tunnels_by_profile_id(
-        &self,
-        profile_id: &str,
-    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
-        let local_db = self.local_db.read().await;
-        local_db.find_ssh_tunnels_by_profile_id(profile_id).await
-    }
-
     /// Get SSH tunnels that have auto-start enabled
     pub async fn get_auto_start_ssh_tunnels(
         &self,
@@ -993,13 +960,6 @@ impl DatabaseService {
     pub async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
         local_db.delete_ssh_tunnel(id).await
-    }
-
-    #[allow(dead_code)]
-    /// Delete all tunnels for a profile (used when deleting profiles)
-    pub async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
-        let local_db = self.local_db.read().await;
-        local_db.delete_ssh_tunnels_by_profile_id(profile_id).await
     }
 
     // === Utility Operations ===
@@ -1242,7 +1202,6 @@ impl DatabaseService {
         local_db.delete_saved_command_group(id).await
     }
 
-    #[allow(dead_code)]
     /// Get service statistics
     pub async fn get_sync_stats(&self) -> DatabaseResult<SyncStats> {
         let provider = self.local_db.read().await;
@@ -1266,38 +1225,8 @@ impl DatabaseService {
             databases: vec![],   // No external databases for now
         })
     }
-
-    #[allow(dead_code)]
-    /// Alias for get_sync_stats - returns basic stats as DatabaseStats
-    pub async fn get_database_stats(&self) -> DatabaseResult<DatabaseStats> {
-        let provider = self.local_db.read().await;
-        let ssh_profiles = provider.find_all_ssh_profiles().await?;
-        let ssh_groups = provider.find_all_ssh_groups().await?;
-
-        let ungrouped_count = ssh_profiles.iter().filter(|p| p.group_id.is_none()).count() as u32;
-
-        Ok(DatabaseStats {
-            groups_count: ssh_groups.len() as u32,
-            profiles_count: ssh_profiles.len() as u32,
-            ungrouped_count,
-            sync_pending_count: 0, // No sync pending for now
-            external_databases_count: self.external_dbs.read().await.len() as u32,
-            last_sync: None, // No sync tracking for now
-        })
-    }
 }
 
-/// Database statistics
-#[allow(dead_code)]
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct DatabaseStats {
-    pub groups_count: u32,
-    pub profiles_count: u32,
-    pub ungrouped_count: u32,
-    pub sync_pending_count: u32,
-    pub external_databases_count: u32,
-    pub last_sync: Option<chrono::DateTime<chrono::Utc>>,
-}
 
 impl Default for DatabaseServiceConfig {
     fn default() -> Self {
@@ -1315,14 +1244,11 @@ impl Default for DatabaseServiceConfig {
 
         Self {
             local_db_path: db_path,
-            auto_sync: true,
-            sync_interval_minutes: 15,
             master_password_config: MasterPasswordConfig::default(),
         }
     }
 }
 
-#[allow(dead_code)]
 impl DatabaseService {
     pub async fn save_external_database(
         &self,
@@ -1332,6 +1258,7 @@ impl DatabaseService {
         db.save_external_database(config).await
     }
 
+    #[allow(dead_code)]
     pub async fn find_external_database_by_id(
         &self,
         id: &str,
@@ -1347,90 +1274,32 @@ impl DatabaseService {
         db.find_all_external_databases().await
     }
 
-    pub async fn update_external_database_last_sync(
-        &self,
-        id: &str,
-        last_sync: chrono::DateTime<chrono::Utc>,
-    ) -> DatabaseResult<()> {
-        let db = self.local_db.read().await;
-        db.update_external_database_last_sync(id, last_sync).await
-    }
-
-    pub async fn toggle_external_database_active(
-        &self,
-        id: &str,
-        is_active: bool,
-    ) -> DatabaseResult<()> {
-        let db = self.local_db.read().await;
-        db.toggle_external_database_active(id, is_active).await
-    }
-
     pub async fn delete_external_database(&self, id: &str) -> DatabaseResult<()> {
         let db = self.local_db.read().await;
         db.delete_external_database(id).await
     }
 
-    pub async fn save_sync_operation(
+    pub async fn find_unresolved_conflicts(
         &self,
-        operation: &crate::models::sync::SyncOperation,
-    ) -> DatabaseResult<()> {
+    ) -> DatabaseResult<Vec<crate::models::sync::conflict::SyncConflict>> {
         let db = self.local_db.read().await;
-        db.save_sync_operation(operation).await
+        db.find_unresolved_conflicts().await
     }
 
-    pub async fn find_sync_operations_by_entity(
+    pub async fn resolve_conflict(
         &self,
-        entity_type: &str,
-        entity_id: &str,
-    ) -> DatabaseResult<Vec<crate::models::sync::SyncOperation>> {
+        conflict_id: &str,
+        strategy: crate::models::sync::external_db::ConflictResolutionStrategy,
+    ) -> DatabaseResult<()> {
         let db = self.local_db.read().await;
-        db.find_sync_operations_by_entity(entity_type, entity_id)
-            .await
+        db.resolve_conflict(conflict_id, strategy).await
     }
 
     pub async fn find_recent_sync_operations(
         &self,
         limit: i32,
-    ) -> DatabaseResult<Vec<crate::models::sync::SyncOperation>> {
+    ) -> DatabaseResult<Vec<crate::models::sync::operation::SyncOperation>> {
         let db = self.local_db.read().await;
         db.find_recent_sync_operations(limit).await
-    }
-
-    pub async fn save_sync_conflict(
-        &self,
-        conflict: &crate::models::sync::SyncConflict,
-    ) -> DatabaseResult<()> {
-        let db = self.local_db.read().await;
-        db.save_sync_conflict(conflict).await
-    }
-
-    pub async fn find_unresolved_conflicts(
-        &self,
-    ) -> DatabaseResult<Vec<crate::models::sync::SyncConflict>> {
-        let db = self.local_db.read().await;
-        db.find_unresolved_conflicts().await
-    }
-
-    pub async fn find_conflict_by_entity(
-        &self,
-        entity_type: &str,
-        entity_id: &str,
-    ) -> DatabaseResult<Option<crate::models::sync::SyncConflict>> {
-        let db = self.local_db.read().await;
-        db.find_conflict_by_entity(entity_type, entity_id).await
-    }
-
-    pub async fn resolve_conflict(
-        &self,
-        id: &str,
-        strategy: crate::models::sync::ConflictResolutionStrategy,
-    ) -> DatabaseResult<()> {
-        let db = self.local_db.read().await;
-        db.resolve_conflict(id, strategy).await
-    }
-
-    pub async fn delete_conflict(&self, id: &str) -> DatabaseResult<()> {
-        let db = self.local_db.read().await;
-        db.delete_conflict(id).await
     }
 }

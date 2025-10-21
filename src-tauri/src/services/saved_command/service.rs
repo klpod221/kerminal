@@ -35,7 +35,6 @@ impl SavedCommandService {
         db_service.get_saved_commands().await
     }
 
-    #[allow(dead_code)]
     /// Get saved command by ID
     pub async fn get_command(&self, id: &str) -> DatabaseResult<SavedCommand> {
         let db_service = self.database_service.lock().await;
@@ -87,7 +86,6 @@ impl SavedCommandService {
         db_service.get_saved_command_groups().await
     }
 
-    #[allow(dead_code)]
     /// Get saved command group by ID
     pub async fn get_group(&self, id: &str) -> DatabaseResult<SavedCommandGroup> {
         let db_service = self.database_service.lock().await;

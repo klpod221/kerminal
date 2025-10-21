@@ -18,13 +18,17 @@ pub struct DeviceKeyManager {
 
 /// Device encryption key information
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct DeviceEncryptionKey {
+    #[allow(dead_code)]
     pub device_id: String,
+    #[allow(dead_code)]
     pub device_name: String,
     pub encryption_key: [u8; 32],
+    #[allow(dead_code)]
     pub key_salt: [u8; 32],
+    #[allow(dead_code)]
     pub key_version: u32,
+    #[allow(dead_code)]
     pub created_at: DateTime<Utc>,
     pub last_used_at: DateTime<Utc>,
 }
@@ -41,7 +45,6 @@ pub struct MasterPasswordEntry {
     pub last_verified_at: Option<DateTime<Utc>>,
 }
 
-#[allow(dead_code)]
 impl DeviceKeyManager {
     /// Create new device key manager
     pub fn new(current_device_id: String) -> Self {
@@ -177,7 +180,7 @@ impl DeviceKeyManager {
                         device_id: device_id.to_string(),
                         device_name: "Auto-unlocked".to_string(),
                         encryption_key: key_array,
-                        key_salt: [0u8; 32], // Not needed for direct key
+                        key_salt: [0u8; 32],
                         key_version: 1,
                         created_at: Utc::now(),
                         last_used_at: Utc::now(),
@@ -207,13 +210,13 @@ impl DeviceKeyManager {
         Ok(false)
     }
 
-    /// Try to auto-unlock using keychain (legacy method - kept for compatibility)
+    /// Try to auto-unlock using keychain
+    #[allow(dead_code)]
     pub fn try_auto_unlock(&mut self, device_id: &str) -> EncryptionResult<bool> {
         if !self.keychain.is_available() {
             return Ok(false);
         }
 
-        // Try to get device key directly from keychain
         if let Some(key_bytes) = self.keychain.get_device_key(device_id)? {
             if key_bytes.len() == 32 {
                 let mut key_array = [0u8; 32];
@@ -223,7 +226,7 @@ impl DeviceKeyManager {
                     device_id: device_id.to_string(),
                     device_name: "Auto-unlocked".to_string(),
                     encryption_key: key_array,
-                    key_salt: [0u8; 32], // Not needed for direct key
+                    key_salt: [0u8; 32],
                     key_version: 1,
                     created_at: Utc::now(),
                     last_used_at: Utc::now(),
@@ -237,7 +240,8 @@ impl DeviceKeyManager {
         Ok(false)
     }
 
-    /// Add device key from sync (when encountering encrypted data from other device)
+    /// Add device key from sync
+    #[allow(dead_code)]
     pub fn add_device_key(
         &mut self,
         device_id: String,
@@ -245,26 +249,21 @@ impl DeviceKeyManager {
         password: &str,
         password_entry: &MasterPasswordEntry,
     ) -> EncryptionResult<()> {
-        // Verify password first
         if !self.verify_password_for_device(password, password_entry)? {
             return Err(EncryptionError::MasterPasswordVerificationFailed);
         }
 
-        // Derive device key
         let device_key = DeviceEncryptionKey {
             device_id: device_id.clone(),
             device_name,
-            encryption_key: self
-                .derive_key_from_password(password, &password_entry.password_salt)?,
+            encryption_key: self.derive_key_from_password(password, &password_entry.password_salt)?,
             key_salt: password_entry.password_salt,
             key_version: 1,
             created_at: Utc::now(),
             last_used_at: Utc::now(),
         };
 
-        // Store in memory
         self.device_keys.insert(device_id, device_key);
-
         Ok(())
     }
 
@@ -404,20 +403,5 @@ impl DeviceKeyManager {
         Ok(argon2
             .verify_password(password.as_bytes(), &parsed_hash)
             .is_ok())
-    }
-}
-
-#[allow(dead_code)]
-impl DeviceEncryptionKey {
-    /// Check if key is expired (for security)
-    pub fn is_expired(&self, max_age_days: i64) -> bool {
-        let max_age = chrono::Duration::days(max_age_days);
-        (Utc::now() - self.created_at) > max_age
-    }
-
-    /// Check if key was used recently
-    pub fn is_recently_used(&self, threshold_hours: i64) -> bool {
-        let threshold = chrono::Duration::hours(threshold_hours);
-        (Utc::now() - self.last_used_at) < threshold
     }
 }

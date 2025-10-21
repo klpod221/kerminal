@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -109,7 +110,6 @@ pub enum KeyType {
     DSA,
 }
 
-#[allow(dead_code)]
 impl SSHProfile {
     /// Create a new SSH profile
     pub fn new(device_id: String, name: String, host: String, port: u16, username: String) -> Self {
@@ -471,11 +471,5 @@ impl std::fmt::Display for KeyType {
             KeyType::ECDSA => write!(f, "ECDSA"),
             KeyType::DSA => write!(f, "DSA"),
         }
-    }
-}
-
-impl crate::database::sync::strategies::HasBaseModel for SSHProfile {
-    fn base_model(&self) -> &crate::models::base::BaseModel {
-        &self.base
     }
 }

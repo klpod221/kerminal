@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 pub mod group;
 pub mod key;
 pub mod profile;

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 
 use sqlx::Row;
 
@@ -151,46 +152,6 @@ pub async fn save_device(provider: &MySQLProvider, device: &Device) -> DatabaseR
     Ok(())
 }
 
-pub async fn get_device_by_id(
-    provider: &MySQLProvider,
-    device_id: &str,
-) -> DatabaseResult<Option<Device>> {
-    let pool_arc = provider.get_pool()?;
-    let pool = pool_arc.read().await;
-
-    let row = sqlx::query("SELECT * FROM devices WHERE device_id = ?")
-        .bind(device_id)
-        .fetch_optional(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-    if let Some(row) = row {
-        let device = Device {
-            device_id: row.get("device_id"),
-            device_name: row.get("device_name"),
-            device_type: serde_json::from_str(&row.get::<String, _>("device_type"))
-                .unwrap_or(crate::models::auth::DeviceType::Unknown),
-            os_info: crate::models::auth::OsInfo {
-                os_type: row.get("os_name"),
-                os_version: row.get("os_version"),
-                arch: "".to_string(),
-                hostname: "".to_string(),
-            },
-            app_version: env!("CARGO_PKG_VERSION").to_string(),
-            created_at: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("created_at"))
-                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
-                .with_timezone(&chrono::Utc),
-            last_seen: chrono::DateTime::parse_from_rfc3339(&row.get::<String, _>("last_seen_at"))
-                .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
-                .with_timezone(&chrono::Utc),
-            is_current: row.get("is_current"),
-        };
-        Ok(Some(device))
-    } else {
-        Ok(None)
-    }
-}
-
 pub async fn get_current_device(provider: &MySQLProvider) -> DatabaseResult<Option<Device>> {
     let pool_arc = provider.get_pool()?;
     let pool = pool_arc.read().await;
@@ -262,34 +223,4 @@ pub async fn get_all_devices(provider: &MySQLProvider) -> DatabaseResult<Vec<Dev
     }
 
     Ok(devices)
-}
-
-pub async fn update_device_last_seen(
-    provider: &MySQLProvider,
-    device_id: &str,
-) -> DatabaseResult<()> {
-    let pool_arc = provider.get_pool()?;
-    let pool = pool_arc.read().await;
-
-    sqlx::query("UPDATE devices SET last_seen_at = ? WHERE device_id = ?")
-        .bind(chrono::Utc::now().to_rfc3339())
-        .bind(device_id)
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-    Ok(())
-}
-
-pub async fn delete_device(provider: &MySQLProvider, device_id: &str) -> DatabaseResult<()> {
-    let pool_arc = provider.get_pool()?;
-    let pool = pool_arc.read().await;
-
-    sqlx::query("DELETE FROM devices WHERE device_id = ?")
-        .bind(device_id)
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-    Ok(())
 }

@@ -79,16 +79,6 @@ impl Database for MongoDBProvider {
         Ok(())
     }
 
-    async fn disconnect(&mut self) -> DatabaseResult<()> {
-        self.database = None;
-        self.client = None;
-        Ok(())
-    }
-
-    fn is_connected(&self) -> bool {
-        self.database.is_some()
-    }
-
     async fn test_connection(&self) -> DatabaseResult<()> {
         let db_arc = self.get_database()?;
         let db = db_arc.read().await;
@@ -238,19 +228,6 @@ impl Database for MongoDBProvider {
         Ok(groups)
     }
 
-    async fn update_ssh_group(&self, model: &crate::models::ssh::SSHGroup) -> DatabaseResult<()> {
-        let collection = self.get_collection("ssh_groups").await?;
-        let filter = doc! { "_id": &model.base.id };
-        let doc = Self::model_to_document(model)?;
-
-        collection
-            .replace_one(filter, doc, None)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
     async fn delete_ssh_group(&self, id: &str) -> DatabaseResult<()> {
         let collection = self.get_collection("ssh_groups").await?;
         let filter = doc! { "_id": id };
@@ -317,19 +294,6 @@ impl Database for MongoDBProvider {
         }
 
         Ok(keys)
-    }
-
-    async fn update_ssh_key(&self, model: &crate::models::ssh::SSHKey) -> DatabaseResult<()> {
-        let collection = self.get_collection("ssh_keys").await?;
-        let filter = doc! { "_id": &model.base.id };
-        let doc = Self::model_to_document(model)?;
-
-        collection
-            .replace_one(filter, doc, None)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
     }
 
     async fn delete_ssh_key(&self, id: &str) -> DatabaseResult<()> {
@@ -412,36 +376,6 @@ impl Database for MongoDBProvider {
         Ok(tunnels)
     }
 
-    async fn find_ssh_tunnels_by_profile_id(
-        &self,
-        profile_id: &str,
-    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
-        let collection = self.get_collection("ssh_tunnels").await?;
-        let filter = doc! { "profileId": profile_id };
-        let find_options = FindOptions::builder()
-            .sort(doc! { "createdAt": -1 })
-            .build();
-
-        let mut cursor = collection
-            .find(filter, find_options)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        let mut tunnels = Vec::new();
-        while cursor
-            .advance()
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
-        {
-            let doc = cursor
-                .deserialize_current()
-                .map_err(|e| DatabaseError::ParseError(e.to_string()))?;
-            tunnels.push(Self::document_to_model(doc)?);
-        }
-
-        Ok(tunnels)
-    }
-
     async fn find_auto_start_ssh_tunnels(
         &self,
     ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
@@ -471,37 +405,12 @@ impl Database for MongoDBProvider {
         Ok(tunnels)
     }
 
-    async fn update_ssh_tunnel(&self, model: &crate::models::ssh::SSHTunnel) -> DatabaseResult<()> {
-        let collection = self.get_collection("ssh_tunnels").await?;
-        let filter = doc! { "_id": &model.base.id };
-        let doc = Self::model_to_document(model)?;
-
-        collection
-            .replace_one(filter, doc, None)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
     async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()> {
         let collection = self.get_collection("ssh_tunnels").await?;
         let filter = doc! { "_id": id };
 
         collection
             .delete_one(filter, None)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
-    async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
-        let collection = self.get_collection("ssh_tunnels").await?;
-        let filter = doc! { "profileId": profile_id };
-
-        collection
-            .delete_many(filter, None)
             .await
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
@@ -859,24 +768,6 @@ impl Database for MongoDBProvider {
         Ok(())
     }
 
-    async fn get_device_by_id(
-        &self,
-        device_id: &str,
-    ) -> DatabaseResult<Option<crate::models::auth::Device>> {
-        let collection = self.get_collection("devices").await?;
-        let filter = doc! { "_id": device_id };
-
-        let result = collection
-            .find_one(filter, None)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        match result {
-            Some(doc) => Ok(Some(Self::document_to_model(doc)?)),
-            None => Ok(None),
-        }
-    }
-
     async fn get_current_device(&self) -> DatabaseResult<Option<crate::models::auth::Device>> {
         let collection = self.get_collection("devices").await?;
         let filter = doc! { "isCurrent": true };
@@ -907,30 +798,5 @@ impl Database for MongoDBProvider {
         }
 
         Ok(devices)
-    }
-
-    async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()> {
-        let collection = self.get_collection("devices").await?;
-        let filter = doc! { "_id": device_id };
-        let update = doc! { "$set": { "lastSeenAt": chrono::Utc::now().to_rfc3339() } };
-
-        collection
-            .update_one(filter, update, None)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
-    }
-
-    async fn delete_device(&self, device_id: &str) -> DatabaseResult<()> {
-        let collection = self.get_collection("devices").await?;
-        let filter = doc! { "_id": device_id };
-
-        collection
-            .delete_one(filter, None)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(())
     }
 }

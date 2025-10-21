@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod auth;
 mod command;
 mod ssh;
@@ -231,19 +232,6 @@ impl Database for MySQLProvider {
         Ok(())
     }
 
-    async fn disconnect(&mut self) -> DatabaseResult<()> {
-        if let Some(pool_arc) = &self.pool {
-            let pool = pool_arc.read().await;
-            pool.close().await;
-        }
-        self.pool = None;
-        Ok(())
-    }
-
-    fn is_connected(&self) -> bool {
-        self.pool.is_some()
-    }
-
     async fn test_connection(&self) -> DatabaseResult<()> {
         let pool_arc = self.get_pool()?;
         let pool = pool_arc.read().await;
@@ -300,10 +288,6 @@ impl Database for MySQLProvider {
         ssh::find_all_ssh_groups(self).await
     }
 
-    async fn update_ssh_group(&self, model: &crate::models::ssh::SSHGroup) -> DatabaseResult<()> {
-        ssh::update_ssh_group(self, model).await
-    }
-
     async fn delete_ssh_group(&self, id: &str) -> DatabaseResult<()> {
         ssh::delete_ssh_group(self, id).await
     }
@@ -321,10 +305,6 @@ impl Database for MySQLProvider {
 
     async fn find_all_ssh_keys(&self) -> DatabaseResult<Vec<crate::models::ssh::SSHKey>> {
         ssh::find_all_ssh_keys(self).await
-    }
-
-    async fn update_ssh_key(&self, model: &crate::models::ssh::SSHKey) -> DatabaseResult<()> {
-        ssh::update_ssh_key(self, model).await
     }
 
     async fn delete_ssh_key(&self, id: &str) -> DatabaseResult<()> {
@@ -350,32 +330,14 @@ impl Database for MySQLProvider {
         tunnel::find_all_ssh_tunnels(self).await
     }
 
-    async fn find_ssh_tunnels_by_profile_id(
-        &self,
-        profile_id: &str,
-    ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
-        tunnel::find_ssh_tunnels_by_profile_id(self, profile_id).await
-    }
-
     async fn find_auto_start_ssh_tunnels(
         &self,
     ) -> DatabaseResult<Vec<crate::models::ssh::SSHTunnel>> {
         tunnel::find_auto_start_ssh_tunnels(self).await
     }
 
-    async fn update_ssh_tunnel(
-        &self,
-        model: &crate::models::ssh::SSHTunnel,
-    ) -> DatabaseResult<()> {
-        tunnel::update_ssh_tunnel(self, model).await
-    }
-
     async fn delete_ssh_tunnel(&self, id: &str) -> DatabaseResult<()> {
         tunnel::delete_ssh_tunnel(self, id).await
-    }
-
-    async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
-        tunnel::delete_ssh_tunnels_by_profile_id(self, profile_id).await
     }
 
     async fn save_saved_command(
@@ -473,27 +435,12 @@ impl Database for MySQLProvider {
         auth::save_device(self, device).await
     }
 
-    async fn get_device_by_id(
-        &self,
-        device_id: &str,
-    ) -> DatabaseResult<Option<crate::models::auth::Device>> {
-        auth::get_device_by_id(self, device_id).await
-    }
-
     async fn get_current_device(&self) -> DatabaseResult<Option<crate::models::auth::Device>> {
         auth::get_current_device(self).await
     }
 
     async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>> {
         auth::get_all_devices(self).await
-    }
-
-    async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()> {
-        auth::update_device_last_seen(self, device_id).await
-    }
-
-    async fn delete_device(&self, device_id: &str) -> DatabaseResult<()> {
-        auth::delete_device(self, device_id).await
     }
 
     async fn drop_tables(&self) -> DatabaseResult<()> {

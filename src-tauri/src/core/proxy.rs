@@ -7,12 +7,6 @@ use russh_config::Stream;
 pub enum ProxyError {
     #[error("Failed to connect to proxy server: {0}")]
     ConnectionFailed(String),
-    #[error("Proxy authentication failed: {0}")]
-    AuthenticationFailed(String),
-    #[error("Unsupported proxy type")]
-    UnsupportedProxyType,
-    #[error("Invalid proxy configuration: {0}")]
-    InvalidConfig(String),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 }

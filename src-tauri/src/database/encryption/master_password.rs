@@ -41,7 +41,6 @@ pub struct VerifyMasterPasswordRequest {
 
 /// Master password status
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct MasterPasswordStatus {
     pub is_setup: bool,
     pub is_unlocked: bool,
@@ -52,7 +51,6 @@ pub struct MasterPasswordStatus {
     pub loaded_device_count: usize,
 }
 
-#[allow(dead_code)]
 impl MasterPasswordManager {
     /// Create new master password manager
     pub fn new(current_device_id: String, config: MasterPasswordConfig) -> Self {
@@ -139,22 +137,6 @@ impl MasterPasswordManager {
         Ok(is_valid)
     }
 
-    /// Try auto-unlock from keychain
-    pub async fn try_auto_unlock(&mut self) -> EncryptionResult<bool> {
-        if !self.config.auto_unlock || !self.config.use_keychain {
-            return Ok(false);
-        }
-
-        let mut manager = self.device_key_manager.write().await;
-        let success = manager.try_auto_unlock(&self.current_device_id)?;
-
-        if success {
-            self.session_start = Some(Utc::now());
-        }
-
-        Ok(success)
-    }
-
     /// Try auto-unlock with stored password entry from database
     pub async fn try_auto_unlock_with_entry(
         &mut self,
@@ -172,18 +154,6 @@ impl MasterPasswordManager {
         }
 
         Ok(success)
-    }
-
-    /// Add device password cho multi-device support
-    pub async fn add_device_password(
-        &mut self,
-        device_id: String,
-        device_name: String,
-        password: String,
-        stored_entry: &MasterPasswordEntry,
-    ) -> EncryptionResult<()> {
-        let mut manager = self.device_key_manager.write().await;
-        manager.add_device_key(device_id, device_name, &password, stored_entry)
     }
 
     /// Change master password
