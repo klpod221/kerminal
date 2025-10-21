@@ -115,7 +115,8 @@ export interface Device {
   osInfo: {
     osType: string;
     osVersion: string;
-    architecture: string;
+    arch: string;
+    hostname: string;
   };
   appVersion: string;
   createdAt: string;

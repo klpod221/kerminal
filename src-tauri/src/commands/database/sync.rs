@@ -85,13 +85,13 @@ pub async fn sync_now(
     app_state: State<'_, AppState>,
 ) -> Result<String, String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     let config = database_service
         .find_external_database_by_id(&database_id)
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "External database not found".to_string())?;
-    
+
     drop(database_service);
 
     let sync_service = &app_state.sync_service;
@@ -130,19 +130,19 @@ pub async fn get_sync_status(
     app_state: State<'_, AppState>,
 ) -> Result<String, String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     let config = database_service
         .find_external_database_by_id(&database_id)
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "External database not found".to_string())?;
-    
+
     let status = if config.is_active {
         format!("Active - Last sync: {:?}", config.last_sync_at)
     } else {
         "Inactive".to_string()
     };
-    
+
     Ok(status)
 }
 
@@ -153,9 +153,9 @@ pub async fn get_sync_logs(
     app_state: State<'_, AppState>,
 ) -> Result<Vec<SyncOperation>, String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     let limit_value = limit.unwrap_or(50);
-    
+
     database_service
         .find_recent_sync_operations(limit_value)
         .await
@@ -168,7 +168,7 @@ pub async fn enable_auto_sync(
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     database_service
         .toggle_external_database_active(&database_id, true)
         .await
@@ -181,7 +181,7 @@ pub async fn disable_auto_sync(
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     database_service
         .toggle_external_database_active(&database_id, false)
         .await
@@ -193,12 +193,12 @@ pub async fn get_sync_statistics(
     app_state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     let databases = database_service
         .find_all_external_databases()
         .await
         .map_err(|e| e.to_string())?;
-    
+
     let total_databases = databases.len();
     let active_databases = databases.iter().filter(|db| db.is_active).count();
     let conflicts = database_service
@@ -206,7 +206,7 @@ pub async fn get_sync_statistics(
         .await
         .map_err(|e| e.to_string())?
         .len();
-    
+
     Ok(serde_json::json!({
         "totalDatabases": total_databases,
         "activeDatabases": active_databases,
@@ -222,7 +222,7 @@ pub async fn get_current_device(
     let database_service = app_state.database_service.lock().await;
     let local_db = database_service.get_local_database();
     let local_db_read = local_db.read().await;
-    
+
     local_db_read
         .get_current_device()
         .await

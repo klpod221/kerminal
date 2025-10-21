@@ -134,7 +134,7 @@
 
       <!-- Master Password  -->
       <Button
-        title="Master Password Settings"
+        title="Top"
         variant="ghost"
         size="sm"Top
         :icon="Shield"

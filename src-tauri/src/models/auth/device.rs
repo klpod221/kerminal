@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 /// Device information for tracking and encryption
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Device {
     pub device_id: String,
     pub device_name: String,
@@ -25,6 +26,7 @@ pub enum DeviceType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OsInfo {
     pub os_type: String,    // "linux", "windows", "macos", etc.
     pub os_version: String, // OS version
