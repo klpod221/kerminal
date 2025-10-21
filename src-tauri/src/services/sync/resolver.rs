@@ -1,8 +1,10 @@
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
-use crate::database::error::{DatabaseError, DatabaseResult};
+use crate::database::error::DatabaseResult;
 use crate::models::sync::conflict::ConflictResolutionStrategy;
 
 /// Represents a conflict between local and remote data
@@ -183,6 +185,7 @@ pub struct ManualResolutionChoice {
     pub choice: ManualChoice,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum ManualChoice {

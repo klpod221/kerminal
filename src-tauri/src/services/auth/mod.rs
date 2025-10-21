@@ -44,6 +44,7 @@ impl AuthService {
         db_service.lock_session().await;
     }
 
+    #[allow(dead_code)]
     /// Check if master password is setup
     pub async fn is_master_password_setup(&self) -> DatabaseResult<bool> {
         let db_service = self.database_service.lock().await;
@@ -69,6 +70,7 @@ impl AuthService {
         Ok(status)
     }
 
+    #[allow(dead_code)]
     /// Get current device information
     pub async fn get_current_device(&self) -> DatabaseResult<serde_json::Value> {
         let db_service = self.database_service.lock().await;

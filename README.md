@@ -1,4 +1,2 @@
 - [ ] Tìm và loại bỏ những command không được sử dụng
-- [ ] Hoàn thành các database provider
-- [ ] Kiểm tra và tìm tất cả các phần TODO, implementation, ... sau đó update cho đầy đủ
 - [ ] Fix toàn bộ warning

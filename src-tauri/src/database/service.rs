@@ -37,6 +37,7 @@ pub struct DatabaseService {
     local_db: Arc<RwLock<SQLiteProvider>>,
 
     /// External databases for sync
+    #[allow(dead_code)]
     external_dbs: Arc<RwLock<HashMap<String, Box<dyn Database>>>>,
 
     /// Master password manager
@@ -53,7 +54,9 @@ pub struct DatabaseService {
 #[derive(Debug, Clone)]
 pub struct DatabaseServiceConfig {
     pub local_db_path: String,
+    #[allow(dead_code)]
     pub auto_sync: bool,
+    #[allow(dead_code)]
     pub sync_interval_minutes: u32,
     pub master_password_config: MasterPasswordConfig,
 }
@@ -534,6 +537,7 @@ impl DatabaseService {
         Ok(mp_manager.get_config().clone())
     }
 
+    #[allow(dead_code)]
     /// Get current device information
     pub async fn get_current_device_info(&self) -> DatabaseResult<DeviceInfo> {
         let local_db = self.local_db.read().await;
@@ -573,6 +577,7 @@ impl DatabaseService {
         local_db.find_all_ssh_groups().await
     }
 
+    #[allow(dead_code)]
     /// Get SSH group by ID
     pub async fn get_ssh_group(&self, id: &str) -> DatabaseResult<SSHGroup> {
         let local_db = self.local_db.read().await;
@@ -992,6 +997,7 @@ impl DatabaseService {
         local_db.delete_ssh_tunnel(id).await
     }
 
+    #[allow(dead_code)]
     /// Delete all tunnels for a profile (used when deleting profiles)
     pub async fn delete_ssh_tunnels_by_profile_id(&self, profile_id: &str) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
@@ -1238,6 +1244,7 @@ impl DatabaseService {
         local_db.delete_saved_command_group(id).await
     }
 
+    #[allow(dead_code)]
     /// Get service statistics
     pub async fn get_sync_stats(&self) -> DatabaseResult<SyncStats> {
         let provider = self.local_db.read().await;
@@ -1262,6 +1269,7 @@ impl DatabaseService {
         })
     }
 
+    #[allow(dead_code)]
     /// Alias for get_sync_stats - returns basic stats as DatabaseStats
     pub async fn get_database_stats(&self) -> DatabaseResult<DatabaseStats> {
         let provider = self.local_db.read().await;
@@ -1282,6 +1290,7 @@ impl DatabaseService {
 }
 
 /// Database statistics
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct DatabaseStats {
     pub groups_count: u32,
@@ -1315,6 +1324,7 @@ impl Default for DatabaseServiceConfig {
     }
 }
 
+#[allow(dead_code)]
 impl DatabaseService {
     pub async fn save_external_database(
         &self,

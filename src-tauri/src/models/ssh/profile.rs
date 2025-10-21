@@ -109,6 +109,7 @@ pub enum KeyType {
     DSA,
 }
 
+#[allow(dead_code)]
 impl SSHProfile {
     /// Create a new SSH profile
     pub fn new(device_id: String, name: String, host: String, port: u16, username: String) -> Self {
@@ -169,12 +170,13 @@ impl SSHProfile {
         self.base.touch();
     }
 
-    /// Static method to get profile by ID (will be implemented in service layer)
+    /// Static method to get profile by ID
+    ///
+    /// Note: This method is deprecated and should not be used.
+    /// Use the service layer (database.find_by_id) instead for proper encryption/decryption handling.
     pub async fn get_by_id(
         _profile_id: &str,
     ) -> Result<Option<SSHProfile>, crate::database::error::DatabaseError> {
-        // TODO: This should be implemented in the service layer
-        // For now, return an error to indicate it needs implementation
         Err(crate::database::error::DatabaseError::NotImplemented(
             "get_by_id should be implemented in service layer".to_string(),
         ))
@@ -418,9 +420,6 @@ mod encrypted_string {
     where
         S: Serializer,
     {
-        // TODO: In a real implementation, we would encrypt the value here
-        // For now, we serialize as-is since encryption/decryption is handled
-        // by the Encryptable trait methods during save/load operations
         value.serialize(serializer)
     }
 
@@ -428,9 +427,6 @@ mod encrypted_string {
     where
         D: Deserializer<'de>,
     {
-        // TODO: In a real implementation, we would decrypt the value here
-        // For now, we deserialize as-is since encryption/decryption is handled
-        // by the Encryptable trait methods during save/load operations
         String::deserialize(deserializer)
     }
 }

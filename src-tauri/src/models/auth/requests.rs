@@ -14,6 +14,7 @@ pub struct ChangeMasterPasswordRequest {
     pub new_password: String,
 }
 
+#[allow(dead_code)]
 /// Request for updating master password configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

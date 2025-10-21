@@ -85,6 +85,7 @@ pub struct SyncOperation {
     pub completed_at: Option<DateTime<Utc>>,
 }
 
+#[allow(dead_code)]
 impl SyncOperation {
     pub fn new(
         operation_type: SyncOperationType,

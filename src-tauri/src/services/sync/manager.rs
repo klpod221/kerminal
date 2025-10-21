@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -111,7 +113,6 @@ impl SyncManager {
     ) -> DatabaseResult<String> {
         let db_service = self.database_service.read().await;
         let manager = db_service.get_master_password_manager_arc();
-        let manager_lock = manager.read().await;
 
         let encryptor =
             crate::database::encryption::external_db::ExternalDbEncryptor::new(manager.clone());
@@ -149,6 +150,7 @@ impl SyncManager {
     }
 }
 
+#[allow(dead_code)]
 /// Connection statistics
 #[derive(Debug, Clone)]
 pub struct ConnectionStats {
@@ -164,11 +166,8 @@ impl Drop for SyncManager {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[tokio::test]
     async fn test_sync_manager_creation() {
-        // This would require a mock DatabaseService
-        // TODO: Implement proper tests with mocks
+        // Test implementation requires mock DatabaseService
     }
 }

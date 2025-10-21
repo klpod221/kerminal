@@ -101,7 +101,7 @@ pub async fn get_sync_status(
 
 #[tauri::command]
 pub async fn get_sync_logs(
-    database_id: String,
+    _database_id: String,
     limit: Option<i32>,
     app_state: State<'_, AppState>,
 ) -> Result<Vec<SyncOperation>, String> {

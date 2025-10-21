@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::database::error::DatabaseResult;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
@@ -252,6 +254,7 @@ pub trait EncryptionService: Send + Sync {
     ) -> DatabaseResult<String>;
 }
 
+#[allow(dead_code)]
 /// Query criteria for filtering data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct QueryCriteria {

@@ -8,7 +8,6 @@ use crate::database::{
     traits::Database,
 };
 use crate::models::{
-    ssh::{SSHGroup, SSHKey, SSHProfile},
     sync::{
         external_db::ExternalDatabaseConfig,
         log::{SyncDirection, SyncLog, SyncStatus},
@@ -17,7 +16,7 @@ use crate::models::{
 };
 use crate::services::sync::{
     manager::SyncManager,
-    resolver::{ConflictResolution, ConflictResolver, DataConflict},
+    resolver::{ConflictResolver, DataConflict},
 };
 
 /// Sync engine for managing data synchronization
@@ -252,7 +251,7 @@ impl SyncEngine {
     async fn save_sync_log(&self, log: &SyncLog) -> DatabaseResult<()> {
         let db_service = self.database_service.read().await;
         let local = db_service.get_local_database();
-        let mut guard = local.write().await;
+        let guard = local.write().await;
         guard.save_sync_log(log).await
     }
 
@@ -290,7 +289,7 @@ impl SyncEngine {
             created_at: Utc::now(),
         };
 
-        let mut guard = local.write().await;
+        let guard = local.write().await;
         guard.save_conflict_resolution(&conflict_resolution).await
     }
 

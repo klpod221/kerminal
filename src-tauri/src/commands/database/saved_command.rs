@@ -7,13 +7,6 @@ use tauri::State;
 
 use crate::commands::database::common::app_result;
 
-/// Macro for saved command service results that return String errors
-macro_rules! saved_command_result {
-    ($expr:expr) => {
-        $expr
-    };
-}
-
 // === Saved Command Commands ===
 
 /// Create new saved command

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -17,7 +19,9 @@ use super::profile::KeyType;
 #[derive(Debug, Clone)]
 pub struct ResolvedSSHKey {
     pub private_key: String,
+    #[allow(dead_code)]
     pub key_type: KeyType,
+    #[allow(dead_code)]
     pub public_key: Option<String>,
     pub passphrase: Option<String>,
 }

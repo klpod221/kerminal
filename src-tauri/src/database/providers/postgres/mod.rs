@@ -6,7 +6,6 @@ mod tunnel;
 use async_trait::async_trait;
 use sqlx::{Column as _, PgPool, Row};
 use std::sync::Arc;
-use std::collections::HashMap;
 use tokio::sync::RwLock;
 
 use crate::database::{

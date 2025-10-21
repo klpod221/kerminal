@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use chrono::{Duration, Utc};
 use std::sync::Arc;
 use tokio::{
@@ -251,6 +253,7 @@ impl SyncScheduler {
     }
 }
 
+#[allow(dead_code)]
 /// Scheduler statistics
 #[derive(Debug, Clone)]
 pub struct SchedulerStats {
@@ -264,8 +267,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_scheduler_start_stop() {
-        // This would require a mock DatabaseService and SyncEngine
-        // TODO: Implement proper tests with mocks
+        // Test implementation requires mock DatabaseService and SyncEngine
     }
 
     #[test]

@@ -66,6 +66,7 @@ impl ExternalDbEncryptor {
         Ok(encrypted)
     }
 
+    #[allow(dead_code)]
     pub async fn decrypt_sync_settings(&self, encrypted: &str) -> DatabaseResult<SyncSettings> {
         let manager = self.master_password_manager.read().await;
         let decrypted = manager.decrypt_string(encrypted, None).await?;

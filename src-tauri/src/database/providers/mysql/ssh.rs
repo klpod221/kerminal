@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use sqlx::Row;
 
 use crate::{

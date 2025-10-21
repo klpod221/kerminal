@@ -102,6 +102,7 @@ macro_rules! impl_syncable {
     };
 }
 
+#[allow(dead_code)]
 /// Device information for tracking which device created/modified records
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
@@ -123,6 +124,7 @@ pub enum DeviceType {
     Unknown,
 }
 
+#[allow(dead_code)]
 impl DeviceInfo {
     pub fn new(device_name: String) -> Self {
         let now = Utc::now();

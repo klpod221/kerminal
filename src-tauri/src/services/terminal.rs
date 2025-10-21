@@ -16,6 +16,7 @@ use uuid::Uuid;
 pub struct TerminalManager {
     terminals: Arc<RwLock<HashMap<String, Arc<Mutex<TerminalWrapper>>>>>,
     output_senders: Arc<RwLock<HashMap<String, mpsc::UnboundedSender<Vec<u8>>>>>,
+    #[allow(dead_code)]
     output_receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<TerminalData>>>>,
     output_sender: mpsc::UnboundedSender<TerminalData>,
     buffer_manager: Arc<TerminalBufferManager>,
@@ -24,6 +25,7 @@ pub struct TerminalManager {
 }
 
 impl TerminalManager {
+    #[allow(dead_code)]
     pub fn new(database_service: Arc<Mutex<DatabaseService>>) -> Self {
         let (output_sender, output_receiver) = mpsc::unbounded_channel();
 

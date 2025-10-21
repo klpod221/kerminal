@@ -1,14 +1,13 @@
+#![allow(dead_code)]
+
 mod engine;
 mod manager;
 mod resolver;
 mod scheduler;
 
 pub use engine::SyncEngine;
-pub use manager::{ConnectionStats, SyncManager};
-pub use resolver::{
-    ConflictResolution, ConflictResolver, DataConflict, ManualChoice, ManualResolutionChoice,
-};
-pub use scheduler::{SchedulerStats, SyncScheduler};
+pub use manager::SyncManager;
+pub use scheduler::SyncScheduler;
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -17,14 +16,12 @@ use crate::database::{
     error::{DatabaseError, DatabaseResult},
     service::DatabaseService,
 };
-use crate::models::sync::{
-    external_db::ExternalDatabaseConfig,
-    log::{SyncLog, SyncStatus},
-};
+use crate::models::sync::log::SyncLog;
 
 /// High-level sync service that orchestrates all sync operations
 pub struct SyncService {
     database_service: Arc<RwLock<DatabaseService>>,
+    #[allow(dead_code)]
     sync_manager: Arc<SyncManager>,
     sync_engine: Arc<SyncEngine>,
     sync_scheduler: Arc<SyncScheduler>,
@@ -295,6 +292,7 @@ pub enum SyncDirection {
     Bidirectional,
 }
 
+#[allow(dead_code)]
 /// Sync service status
 #[derive(Debug, Clone)]
 pub struct SyncServiceStatus {
@@ -303,6 +301,7 @@ pub struct SyncServiceStatus {
     pub scheduler_enabled: bool,
 }
 
+#[allow(dead_code)]
 /// Service-wide statistics
 #[derive(Debug, Clone)]
 pub struct SyncServiceStatistics {
@@ -313,11 +312,8 @@ pub struct SyncServiceStatistics {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_sync_service_creation() {
-        // This would require a mock DatabaseService
-        // TODO: Implement proper tests with mocks
+        // Test implementation requires mock DatabaseService
     }
 }

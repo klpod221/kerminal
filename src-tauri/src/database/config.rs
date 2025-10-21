@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::database::error::DatabaseResult;
 use serde::{Deserialize, Serialize};
 
@@ -49,6 +51,7 @@ pub enum ConnectionConfig {
     },
 }
 
+#[allow(dead_code)]
 /// Sync configuration settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncSettings {

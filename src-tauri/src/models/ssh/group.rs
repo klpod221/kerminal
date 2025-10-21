@@ -123,6 +123,7 @@ impl UpdateSSHGroupRequest {
     }
 }
 
+#[allow(dead_code)]
 /// Group with profile statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SSHGroupWithStats {
@@ -132,6 +133,7 @@ pub struct SSHGroupWithStats {
     pub profiles: Vec<String>, // Profile IDs in this group
 }
 
+#[allow(dead_code)]
 impl SSHGroupWithStats {
     pub fn new(group: SSHGroup, profile_count: u32, profiles: Vec<String>) -> Self {
         Self {

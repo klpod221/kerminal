@@ -34,6 +34,7 @@ pub struct ConflictResolution {
     pub created_at: DateTime<Utc>,
 }
 
+#[allow(dead_code)]
 impl SyncConflict {
     pub fn new(
         entity_type: String,

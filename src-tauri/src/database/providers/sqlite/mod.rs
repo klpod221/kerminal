@@ -749,6 +749,7 @@ impl SQLiteProvider {
         self.find_all_external_databases().await
     }
 
+    #[allow(dead_code)]
     pub async fn get_external_database(
         &self,
         id: &str,
@@ -756,6 +757,7 @@ impl SQLiteProvider {
         self.find_external_database_by_id(id).await
     }
 
+    #[allow(dead_code)]
     pub async fn update_external_database(
         &self,
         config: &crate::models::sync::external_db::ExternalDatabaseConfig,
@@ -765,22 +767,22 @@ impl SQLiteProvider {
 
     pub async fn get_sync_logs(
         &self,
-        database_id: &str,
-        limit: Option<i32>,
+        _database_id: &str,
+        _limit: Option<i32>,
     ) -> DatabaseResult<Vec<crate::models::sync::log::SyncLog>> {
         Ok(Vec::new())
     }
 
     pub async fn save_sync_log(
         &self,
-        log: &crate::models::sync::log::SyncLog,
+        _log: &crate::models::sync::log::SyncLog,
     ) -> DatabaseResult<()> {
         Ok(())
     }
 
     pub async fn save_conflict_resolution(
         &self,
-        resolution: &crate::models::sync::conflict::ConflictResolution,
+        _resolution: &crate::models::sync::conflict::ConflictResolution,
     ) -> DatabaseResult<()> {
         Ok(())
     }
