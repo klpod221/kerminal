@@ -528,7 +528,16 @@ impl Database for MongoDBProvider {
         let db_arc = self.get_database()?;
         let db = db_arc.read().await;
 
-        let collections = vec!["ssh_profiles", "ssh_groups", "ssh_keys", "ssh_tunnels"];
+        let collections = vec![
+            "ssh_profiles",
+            "ssh_groups",
+            "ssh_keys",
+            "ssh_tunnels",
+            "saved_commands",
+            "saved_command_groups",
+            "master_passwords",
+            "devices",
+        ];
 
         for collection_name in collections {
             let _ = db.create_collection(collection_name, None).await.ok();
@@ -541,7 +550,16 @@ impl Database for MongoDBProvider {
         let db_arc = self.get_database()?;
         let db = db_arc.read().await;
 
-        let collections = vec!["ssh_profiles", "ssh_groups", "ssh_keys", "ssh_tunnels"];
+        let collections = vec![
+            "ssh_profiles",
+            "ssh_groups",
+            "ssh_keys",
+            "ssh_tunnels",
+            "saved_commands",
+            "saved_command_groups",
+            "master_passwords",
+            "devices",
+        ];
 
         for collection_name in collections {
             let _ = db
@@ -568,163 +586,367 @@ impl Database for MongoDBProvider {
 
     async fn save_saved_command(
         &self,
-        _model: &crate::models::saved_command::SavedCommand,
+        model: &crate::models::saved_command::SavedCommand,
     ) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB save_saved_command not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("saved_commands").await?;
+        let doc = Self::model_to_document(model)?;
+
+        let filter = doc! { "_id": &model.base.id };
+        collection
+            .replace_one(filter, doc, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn find_saved_command_by_id(
         &self,
-        _id: &str,
+        id: &str,
     ) -> DatabaseResult<Option<crate::models::saved_command::SavedCommand>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB find_saved_command_by_id not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("saved_commands").await?;
+        let filter = doc! { "_id": id };
+
+        let result = collection
+            .find_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        match result {
+            Some(doc) => Ok(Some(Self::document_to_model(doc)?)),
+            None => Ok(None),
+        }
     }
 
     async fn find_all_saved_commands(
         &self,
     ) -> DatabaseResult<Vec<crate::models::saved_command::SavedCommand>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB find_all_saved_commands not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("saved_commands").await?;
+
+        let mut cursor = collection
+            .find(None, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut commands = Vec::new();
+        while cursor.advance().await.map_err(|e| DatabaseError::QueryFailed(e.to_string()))? {
+            let doc = cursor.deserialize_current().map_err(|e| DatabaseError::ParseError(e.to_string()))?;
+            commands.push(Self::document_to_model(doc)?);
+        }
+
+        Ok(commands)
     }
 
     async fn update_saved_command(
         &self,
-        _model: &crate::models::saved_command::SavedCommand,
+        model: &crate::models::saved_command::SavedCommand,
     ) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB update_saved_command not yet implemented".to_string(),
-        ))
+        self.save_saved_command(model).await
     }
 
-    async fn delete_saved_command(&self, _id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB delete_saved_command not yet implemented".to_string(),
-        ))
+    async fn delete_saved_command(&self, id: &str) -> DatabaseResult<()> {
+        let collection = self.get_collection("saved_commands").await?;
+        let filter = doc! { "_id": id };
+
+        collection
+            .delete_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
-    async fn increment_command_usage(&self, _id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB increment_command_usage not yet implemented".to_string(),
-        ))
+    async fn increment_command_usage(&self, id: &str) -> DatabaseResult<()> {
+        let collection = self.get_collection("saved_commands").await?;
+        let filter = doc! { "_id": id };
+        let update = doc! { "$inc": { "usageCount": 1 }, "$set": { "lastUsedAt": chrono::Utc::now().to_rfc3339() } };
+
+        collection
+            .update_one(filter, update, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
-    async fn toggle_command_favorite(&self, _id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB toggle_command_favorite not yet implemented".to_string(),
-        ))
+    async fn toggle_command_favorite(&self, id: &str) -> DatabaseResult<()> {
+        let current = self.find_saved_command_by_id(id).await?;
+        if let Some(mut command) = current {
+            command.is_favorite = !command.is_favorite;
+            self.save_saved_command(&command).await?;
+        }
+
+        Ok(())
     }
 
     async fn save_saved_command_group(
         &self,
-        _model: &crate::models::saved_command::SavedCommandGroup,
+        model: &crate::models::saved_command::SavedCommandGroup,
     ) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB save_saved_command_group not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("saved_command_groups").await?;
+        let doc = Self::model_to_document(model)?;
+
+        let filter = doc! { "_id": &model.base.id };
+        collection
+            .replace_one(filter, doc, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn find_saved_command_group_by_id(
         &self,
-        _id: &str,
+        id: &str,
     ) -> DatabaseResult<Option<crate::models::saved_command::SavedCommandGroup>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB find_saved_command_group_by_id not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("saved_command_groups").await?;
+        let filter = doc! { "_id": id };
+
+        let result = collection
+            .find_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        match result {
+            Some(doc) => Ok(Some(Self::document_to_model(doc)?)),
+            None => Ok(None),
+        }
     }
 
     async fn find_all_saved_command_groups(
         &self,
     ) -> DatabaseResult<Vec<crate::models::saved_command::SavedCommandGroup>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB find_all_saved_command_groups not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("saved_command_groups").await?;
+
+        let mut cursor = collection
+            .find(None, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut groups = Vec::new();
+        while cursor.advance().await.map_err(|e| DatabaseError::QueryFailed(e.to_string()))? {
+            let doc = cursor.deserialize_current().map_err(|e| DatabaseError::ParseError(e.to_string()))?;
+            groups.push(Self::document_to_model(doc)?);
+        }
+
+        Ok(groups)
     }
 
     async fn update_saved_command_group(
         &self,
-        _model: &crate::models::saved_command::SavedCommandGroup,
+        model: &crate::models::saved_command::SavedCommandGroup,
     ) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB update_saved_command_group not yet implemented".to_string(),
-        ))
+        self.save_saved_command_group(model).await
     }
 
-    async fn delete_saved_command_group(&self, _id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB delete_saved_command_group not yet implemented".to_string(),
-        ))
+    async fn delete_saved_command_group(&self, id: &str) -> DatabaseResult<()> {
+        let collection = self.get_collection("saved_command_groups").await?;
+        let filter = doc! { "_id": id };
+
+        collection
+            .delete_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn save_master_password_entry(
         &self,
-        _entry: &crate::database::encryption::device_keys::MasterPasswordEntry,
+        entry: &crate::database::encryption::device_keys::MasterPasswordEntry,
     ) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB save_master_password_entry not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("master_passwords").await?;
+        
+        let mut doc_fields = vec![
+            ("_id", bson::Bson::String(entry.device_id.clone())),
+            ("passwordSalt", bson::Bson::Binary(bson::Binary {
+                subtype: bson::spec::BinarySubtype::Generic,
+                bytes: entry.password_salt.to_vec(),
+            })),
+            ("verificationHash", bson::Bson::String(entry.verification_hash.clone())),
+            ("autoUnlock", bson::Bson::Boolean(entry.auto_unlock)),
+            ("createdAt", bson::Bson::String(entry.created_at.to_rfc3339())),
+        ];
+
+        if let Some(timeout) = entry.auto_lock_timeout {
+            doc_fields.push(("autoLockTimeout", bson::Bson::Int64(timeout as i64)));
+        }
+
+        if let Some(last_verified) = &entry.last_verified_at {
+            doc_fields.push(("lastVerifiedAt", bson::Bson::String(last_verified.to_rfc3339())));
+        }
+
+        let doc: Document = doc_fields.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+
+        let filter = doc! { "_id": &entry.device_id };
+        collection
+            .replace_one(filter, doc, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn get_master_password_entry(
         &self,
     ) -> DatabaseResult<Option<crate::database::encryption::device_keys::MasterPasswordEntry>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB get_master_password_entry not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("master_passwords").await?;
+
+        let result = collection
+            .find_one(None, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        match result {
+            Some(doc) => {
+                let salt_binary = doc.get_binary_generic("passwordSalt")
+                    .map_err(|e| DatabaseError::ParseError(e.to_string()))?;
+                let mut salt_array = [0u8; 32];
+                salt_array.copy_from_slice(&salt_binary[..32]);
+
+                let created_at_str = doc.get_str("createdAt")
+                    .map_err(|e| DatabaseError::ParseError(e.to_string()))?;
+                let created_at = chrono::DateTime::parse_from_rfc3339(created_at_str)
+                    .map_err(|e| DatabaseError::ParseError(e.to_string()))?
+                    .with_timezone(&chrono::Utc);
+
+                let last_verified_at = doc.get_str("lastVerifiedAt").ok()
+                    .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
+                    .map(|dt| dt.with_timezone(&chrono::Utc));
+
+                Ok(Some(crate::database::encryption::device_keys::MasterPasswordEntry {
+                    device_id: doc.get_str("_id")
+                        .map_err(|e| DatabaseError::ParseError(e.to_string()))?.to_string(),
+                    password_salt: salt_array,
+                    verification_hash: doc.get_str("verificationHash")
+                        .map_err(|e| DatabaseError::ParseError(e.to_string()))?.to_string(),
+                    auto_unlock: doc.get_bool("autoUnlock")
+                        .map_err(|e| DatabaseError::ParseError(e.to_string()))?,
+                    auto_lock_timeout: doc.get_i64("autoLockTimeout").ok().map(|t| t as u32),
+                    created_at,
+                    last_verified_at,
+                }))
+            }
+            None => Ok(None),
+        }
     }
 
-    async fn update_master_password_last_verified(&self, _device_id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB update_master_password_last_verified not yet implemented".to_string(),
-        ))
+    async fn update_master_password_last_verified(&self, device_id: &str) -> DatabaseResult<()> {
+        let collection = self.get_collection("master_passwords").await?;
+        let filter = doc! { "_id": device_id };
+        let update = doc! { "$set": { "lastVerifiedAt": chrono::Utc::now().to_rfc3339() } };
+
+        collection
+            .update_one(filter, update, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
-    async fn delete_master_password_entry(&self, _device_id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB delete_master_password_entry not yet implemented".to_string(),
-        ))
+    async fn delete_master_password_entry(&self, device_id: &str) -> DatabaseResult<()> {
+        let collection = self.get_collection("master_passwords").await?;
+        let filter = doc! { "_id": device_id };
+
+        collection
+            .delete_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
-    async fn save_device(&self, _device: &crate::models::auth::Device) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB save_device not yet implemented".to_string(),
-        ))
+    async fn save_device(&self, device: &crate::models::auth::Device) -> DatabaseResult<()> {
+        let collection = self.get_collection("devices").await?;
+        
+        collection
+            .update_many(doc! {}, doc! { "$set": { "isCurrent": false } }, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let doc = Self::model_to_document(device)?;
+
+        let filter = doc! { "_id": &device.device_id };
+        collection
+            .replace_one(filter, doc, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
     async fn get_device_by_id(
         &self,
-        _device_id: &str,
+        device_id: &str,
     ) -> DatabaseResult<Option<crate::models::auth::Device>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB get_device_by_id not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("devices").await?;
+        let filter = doc! { "_id": device_id };
+
+        let result = collection
+            .find_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        match result {
+            Some(doc) => Ok(Some(Self::document_to_model(doc)?)),
+            None => Ok(None),
+        }
     }
 
     async fn get_current_device(&self) -> DatabaseResult<Option<crate::models::auth::Device>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB get_current_device not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("devices").await?;
+        let filter = doc! { "isCurrent": true };
+
+        let result = collection
+            .find_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        match result {
+            Some(doc) => Ok(Some(Self::document_to_model(doc)?)),
+            None => Ok(None),
+        }
     }
 
     async fn get_all_devices(&self) -> DatabaseResult<Vec<crate::models::auth::Device>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB get_all_devices not yet implemented".to_string(),
-        ))
+        let collection = self.get_collection("devices").await?;
+
+        let mut cursor = collection
+            .find(None, FindOptions::builder().sort(doc! { "lastSeenAt": -1 }).build())
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut devices = Vec::new();
+        while cursor.advance().await.map_err(|e| DatabaseError::QueryFailed(e.to_string()))? {
+            let doc = cursor.deserialize_current().map_err(|e| DatabaseError::ParseError(e.to_string()))?;
+            devices.push(Self::document_to_model(doc)?);
+        }
+
+        Ok(devices)
     }
 
-    async fn update_device_last_seen(&self, _device_id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB update_device_last_seen not yet implemented".to_string(),
-        ))
+    async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()> {
+        let collection = self.get_collection("devices").await?;
+        let filter = doc! { "_id": device_id };
+        let update = doc! { "$set": { "lastSeenAt": chrono::Utc::now().to_rfc3339() } };
+
+        collection
+            .update_one(filter, update, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 
-    async fn delete_device(&self, _device_id: &str) -> DatabaseResult<()> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB delete_device not yet implemented".to_string(),
-        ))
+    async fn delete_device(&self, device_id: &str) -> DatabaseResult<()> {
+        let collection = self.get_collection("devices").await?;
+        let filter = doc! { "_id": device_id };
+
+        collection
+            .delete_one(filter, None)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
     }
 }
