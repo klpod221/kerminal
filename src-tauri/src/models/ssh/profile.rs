@@ -54,6 +54,8 @@ pub enum AuthMethod {
     Password,
     /// Reference to stored SSH key (centralized key management)
     KeyReference,
+    /// Certificate-based authentication
+    Certificate,
 }
 
 /// Proxy configuration
@@ -97,8 +99,29 @@ pub enum AuthData {
     /// Reference to a stored SSH key (centralized key management)
     KeyReference {
         #[serde(rename = "keyId")]
-        key_id: String, // Reference to ssh_keys table
+        key_id: String,
     },
+    /// Certificate-based authentication
+    Certificate {
+        #[serde(with = "encrypted_string")]
+        certificate: String,
+        #[serde(with = "encrypted_string", rename = "privateKey")]
+        private_key: String,
+        #[serde(rename = "keyType")]
+        key_type: KeyType,
+        #[serde(rename = "validityPeriod")]
+        validity_period: Option<CertificateValidity>,
+    },
+}
+
+/// Certificate validity information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CertificateValidity {
+    pub valid_from: String,
+    pub valid_to: String,
+    pub serial: Option<String>,
+    pub ca_fingerprint: Option<String>,
 }
 
 /// SSH key types
@@ -175,6 +198,9 @@ impl SSHProfile {
         match (&self.auth_method, &self.auth_data) {
             (AuthMethod::Password, AuthData::Password { password }) => !password.is_empty(),
             (AuthMethod::KeyReference, AuthData::KeyReference { key_id }) => !key_id.is_empty(),
+            (AuthMethod::Certificate, AuthData::Certificate { certificate, private_key, .. }) => {
+                !certificate.is_empty() && !private_key.is_empty()
+            }
             _ => false,
         }
     }
@@ -207,10 +233,8 @@ impl Encryptable for SSHProfile {
     }
 
     fn encrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
-        // Encrypt auth_data fields based on auth method
         match &mut self.auth_data {
             AuthData::Password { password } => {
-                // Encrypt password
                 let encrypted = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service
@@ -220,18 +244,32 @@ impl Encryptable for SSHProfile {
                 })?;
                 *password = encrypted;
             }
-            AuthData::KeyReference { .. } => {
-                // No encryption needed for key references
+            AuthData::KeyReference { .. } => {}
+            AuthData::Certificate { certificate, private_key, .. } => {
+                let encrypted_cert = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service
+                            .encrypt_string(certificate, Some(&self.base.device_id))
+                            .await
+                    })
+                })?;
+                let encrypted_key = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service
+                            .encrypt_string(private_key, Some(&self.base.device_id))
+                            .await
+                    })
+                })?;
+                *certificate = encrypted_cert;
+                *private_key = encrypted_key;
             }
         }
         Ok(())
     }
 
     fn decrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
-        // Decrypt auth_data fields based on auth method
         match &mut self.auth_data {
             AuthData::Password { password } => {
-                // Decrypt password
                 let decrypted = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service
@@ -241,8 +279,24 @@ impl Encryptable for SSHProfile {
                 })?;
                 *password = decrypted;
             }
-            AuthData::KeyReference { .. } => {
-                // No decryption needed for key references
+            AuthData::KeyReference { .. } => {}
+            AuthData::Certificate { certificate, private_key, .. } => {
+                let decrypted_cert = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service
+                            .decrypt_string(certificate, Some(&self.base.device_id))
+                            .await
+                    })
+                })?;
+                let decrypted_key = tokio::task::block_in_place(|| {
+                    tokio::runtime::Handle::current().block_on(async {
+                        encryption_service
+                            .decrypt_string(private_key, Some(&self.base.device_id))
+                            .await
+                    })
+                })?;
+                *certificate = decrypted_cert;
+                *private_key = decrypted_key;
             }
         }
         Ok(())
@@ -252,6 +306,7 @@ impl Encryptable for SSHProfile {
         match &self.auth_data {
             AuthData::Password { .. } => true,
             AuthData::KeyReference { .. } => false,
+            AuthData::Certificate { .. } => true,
         }
     }
 
@@ -459,6 +514,7 @@ impl std::fmt::Display for AuthMethod {
         match self {
             AuthMethod::Password => write!(f, "Password"),
             AuthMethod::KeyReference => write!(f, "SSH Key"),
+            AuthMethod::Certificate => write!(f, "Certificate"),
         }
     }
 }

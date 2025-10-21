@@ -1,9 +1,11 @@
+pub mod connection_pool;
 pub mod key;
 
 use anyhow;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+pub use connection_pool::SSHConnectionPool;
 pub use key::SSHKeyService;
 
 use crate::database::{error::DatabaseResult, service::DatabaseService};
@@ -165,7 +167,7 @@ impl SSHService {
                         })?,
                 )
             }
-            AuthData::Password { .. } => None,
+            AuthData::Password { .. } | AuthData::Certificate { .. } => None,
         };
 
         // Create a temporary terminal config for testing

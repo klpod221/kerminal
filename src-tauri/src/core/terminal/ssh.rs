@@ -315,13 +315,53 @@ impl SSHTerminal {
                     )));
                 }
 
-                // Mark SSH key as used after successful authentication
                 if let Some(db_service) = &self.database_service {
                     let db = db_service.lock().await;
                     if let Err(e) = db.mark_key_used(key_id).await {
-                        // Log error but don't fail the connection
                         eprintln!("Warning: Failed to mark SSH key {} as used: {}", key_id, e);
                     }
+                }
+            }
+            AuthData::Certificate { certificate, private_key, key_type: _, validity_period: _ } => {
+                let key = if Path::new(private_key).exists() {
+                    russh_keys::load_secret_key(private_key, None)
+                        .map_err(|e| {
+                            AppError::authentication_failed(format!("Failed to load private key: {}", e))
+                        })?
+                } else {
+                    russh_keys::decode_secret_key(private_key, None)
+                        .map_err(|e| {
+                            AppError::authentication_failed(format!("Failed to parse private key: {}", e))
+                        })?
+                };
+
+                let _cert = if Path::new(certificate).exists() {
+                    russh_keys::load_public_key(certificate)
+                        .map_err(|e| {
+                            AppError::authentication_failed(format!("Failed to load certificate: {}", e))
+                        })?
+                } else {
+                    russh_keys::parse_public_key_base64(certificate)
+                        .map_err(|e| {
+                            AppError::authentication_failed(format!("Failed to parse certificate: {}", e))
+                        })?
+                };
+
+                let result = session
+                    .authenticate_publickey(username, Arc::new(key))
+                    .await
+                    .map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Certificate authentication error for user '{}': {}",
+                            username, e
+                        ))
+                    })?;
+
+                if !result {
+                    return Err(AppError::authentication_failed(format!(
+                        "Certificate authentication failed for user '{}'",
+                        username
+                    )));
                 }
             }
         }

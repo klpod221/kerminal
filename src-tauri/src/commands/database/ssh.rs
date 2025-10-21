@@ -216,3 +216,20 @@ pub async fn import_ssh_key_from_file(
             .await
     )
 }
+
+#[tauri::command]
+pub async fn cleanup_idle_connections(state: State<'_, AppState>) -> Result<(), String> {
+    state.ssh_connection_pool.cleanup_idle().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn clear_connection_pool(state: State<'_, AppState>) -> Result<(), String> {
+    state.ssh_connection_pool.clear().await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn get_connection_pool_size(state: State<'_, AppState>) -> Result<usize, String> {
+    Ok(state.ssh_connection_pool.pool_size().await)
+}

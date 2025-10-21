@@ -391,7 +391,6 @@ impl TunnelService {
         let mut session =
             russh::client::connect(config, (&profile.host as &str, profile.port), handler).await?;
 
-        // Authenticate
         let authenticated = match &profile.auth_data {
             AuthData::Password { password } => {
                 match session
@@ -406,7 +405,12 @@ impl TunnelService {
             }
             AuthData::KeyReference { .. } => {
                 return Err(anyhow::anyhow!(
-                    "Key-based authentication not implemented yet"
+                    "Key-based authentication not supported for tunnels"
+                ));
+            }
+            AuthData::Certificate { .. } => {
+                return Err(anyhow::anyhow!(
+                    "Certificate-based authentication not supported for tunnels"
                 ));
             }
         };

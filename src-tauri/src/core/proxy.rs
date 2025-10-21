@@ -7,8 +7,29 @@ use russh_config::Stream;
 pub enum ProxyError {
     #[error("Failed to connect to proxy server: {0}")]
     ConnectionFailed(String),
+    #[error("Invalid proxy configuration: {0}")]
+    InvalidConfig(String),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+}
+
+/// Validate proxy configuration
+pub fn validate_proxy_config(proxy_config: &ProxyConfig) -> Result<(), ProxyError> {
+    if proxy_config.host.is_empty() {
+        return Err(ProxyError::InvalidConfig("Proxy host cannot be empty".to_string()));
+    }
+
+    if proxy_config.port == 0 {
+        return Err(ProxyError::InvalidConfig("Proxy port must be greater than 0".to_string()));
+    }
+
+    if let Some(username) = &proxy_config.username {
+        if username.is_empty() {
+            return Err(ProxyError::InvalidConfig("Proxy username cannot be empty if provided".to_string()));
+        }
+    }
+
+    Ok(())
 }
 
 /// Create a proxy command string for russh-config
@@ -17,6 +38,8 @@ pub fn create_proxy_command(
     target_host: &str,
     target_port: u16,
 ) -> Result<String, ProxyError> {
+    validate_proxy_config(proxy_config)?;
+
     match proxy_config.proxy_type {
         ProxyType::Http => create_http_proxy_command(proxy_config, target_host, target_port),
         ProxyType::Socks4 => create_socks4_proxy_command(proxy_config, target_host, target_port),
@@ -43,14 +66,10 @@ fn create_http_proxy_command(
     target_host: &str,
     target_port: u16,
 ) -> Result<String, ProxyError> {
-    // Use nc (netcat) with HTTP CONNECT support
-    if let (Some(_username), Some(_password)) = (&proxy_config.username, &proxy_config.password) {
-        // Note: nc doesn't directly support HTTP auth, we'd need a more sophisticated approach
-        // For now, use a simple connect command and log the auth requirement
-        println!("Warning: HTTP proxy authentication not fully supported in netcat command");
+    if let (Some(username), Some(password)) = (&proxy_config.username, &proxy_config.password) {
         Ok(format!(
-            "nc -X connect -x {}:{} {} {}",
-            proxy_config.host, proxy_config.port, target_host, target_port
+            "socat - PROXY:{}:{},proxyport={},proxyauth={}:{}",
+            proxy_config.host, target_host, proxy_config.port, username, password
         ))
     } else {
         Ok(format!(

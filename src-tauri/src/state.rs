@@ -3,7 +3,7 @@ use crate::database::{DatabaseService, DatabaseServiceConfig};
 use crate::services::{
     auth::AuthService,
     saved_command::SavedCommandService,
-    ssh::{SSHKeyService, SSHService},
+    ssh::{SSHConnectionPool, SSHKeyService, SSHService},
     sync::SyncService,
     terminal::TerminalManager,
     tunnel::TunnelService,
@@ -12,12 +12,12 @@ use futures::FutureExt;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
-// Application state
 pub struct AppState {
     pub database_service: Arc<Mutex<DatabaseService>>,
     pub auth_service: AuthService,
     pub ssh_service: SSHService,
     pub ssh_key_service: Arc<Mutex<SSHKeyService>>,
+    pub ssh_connection_pool: Arc<SSHConnectionPool>,
     pub tunnel_service: TunnelService,
     pub saved_command_service: SavedCommandService,
     pub sync_service: Arc<SyncService>,
@@ -62,16 +62,18 @@ impl AppState {
             ssh_key_service.clone(),
         );
 
-        // Create auth session manager
         let auth_session_manager = Arc::new(Mutex::new(AuthSessionManager::new(
             database_service_arc.clone(),
         )));
+
+        let ssh_connection_pool = Arc::new(SSHConnectionPool::default());
 
         Ok(Self {
             database_service: database_service_arc,
             auth_service,
             ssh_service,
             ssh_key_service,
+            ssh_connection_pool,
             tunnel_service,
             saved_command_service,
             sync_service,
@@ -83,8 +85,6 @@ impl AppState {
 
 impl Default for AppState {
     fn default() -> Self {
-        // For backward compatibility, create empty state
-        // Real initialization should use AppState::new()
         let database_service_arc = Arc::new(Mutex::new(
             DatabaseService::new(DatabaseServiceConfig::default())
                 .now_or_never()
@@ -92,16 +92,13 @@ impl Default for AppState {
                 .unwrap(),
         ));
 
-        // Create service instances
         let auth_service = AuthService::new(database_service_arc.clone());
         let ssh_key_service =
             Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
         let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
-        // Note: Default impl cannot be async, so use regular new() here
         let tunnel_service = TunnelService::new(database_service_arc.clone());
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
 
-        // Create RwLock wrapper for sync service
         let database_service_rw = Arc::new(RwLock::new(
             DatabaseService::new(DatabaseServiceConfig::default())
                 .now_or_never()
@@ -115,16 +112,18 @@ impl Default for AppState {
             ssh_key_service.clone(),
         );
 
-        // Create auth session manager
         let auth_session_manager = Arc::new(Mutex::new(AuthSessionManager::new(
             database_service_arc.clone(),
         )));
+
+        let ssh_connection_pool = Arc::new(SSHConnectionPool::default());
 
         Self {
             database_service: database_service_arc,
             auth_service,
             ssh_service,
             ssh_key_service,
+            ssh_connection_pool,
             tunnel_service,
             saved_command_service,
             sync_service,

@@ -140,3 +140,25 @@ export async function deleteSSHGroup(
 ): Promise<void> {
   return await api.callRaw("delete_ssh_group", id, action);
 }
+
+/**
+ * Cleanup idle SSH connections from the pool
+ */
+export async function cleanupIdleConnections(): Promise<void> {
+  return await api.call("cleanup_idle_connections");
+}
+
+/**
+ * Clear all connections from the pool
+ */
+export async function clearConnectionPool(): Promise<void> {
+  return await api.call("clear_connection_pool");
+}
+
+/**
+ * Get current connection pool size
+ * @returns Number of active connections in pool
+ */
+export async function getConnectionPoolSize(): Promise<number> {
+  return await api.call("get_connection_pool_size");
+}
