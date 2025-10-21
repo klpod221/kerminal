@@ -155,12 +155,12 @@
       <!-- Statistics -->
       <div v-if="statistics" class="grid grid-cols-2 gap-4">
         <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <div class="text-xs text-gray-400 mb-1">Active Databases</div>
-          <div class="text-2xl font-semibold text-gray-100">{{ statistics.activeDatabaseIds.length }}</div>
+          <div class="text-xs text-gray-400 mb-1">Active Connections</div>
+          <div class="text-2xl font-semibold text-gray-100">{{ statistics.activeConnections }}</div>
         </div>
         <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-          <div class="text-xs text-gray-400 mb-1">Total Connections</div>
-          <div class="text-2xl font-semibold text-green-400">{{ statistics.totalConnections }}</div>
+          <div class="text-xs text-gray-400 mb-1">Auto-Sync Enabled</div>
+          <div class="text-2xl font-semibold text-green-400">{{ statistics.autoSyncEnabledCount }}</div>
         </div>
       </div>
     </div>

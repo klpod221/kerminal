@@ -2,7 +2,7 @@
 use chrono::{Duration, Utc};
 use std::sync::Arc;
 use tokio::{
-    sync::{Mutex, RwLock},
+    sync::Mutex,
     time::{interval, Duration as TokioDuration},
 };
 
@@ -15,7 +15,7 @@ use crate::services::sync::engine::SyncEngine;
 
 /// Scheduler for automatic synchronization
 pub struct SyncScheduler {
-    database_service: Arc<RwLock<DatabaseService>>,
+    database_service: Arc<Mutex<DatabaseService>>,
     sync_engine: Arc<SyncEngine>,
     is_running: Arc<Mutex<bool>>,
     enabled_databases: Arc<Mutex<Vec<String>>>,
@@ -23,7 +23,7 @@ pub struct SyncScheduler {
 
 impl SyncScheduler {
     pub fn new(
-        database_service: Arc<RwLock<DatabaseService>>,
+        database_service: Arc<Mutex<DatabaseService>>,
         sync_engine: Arc<SyncEngine>,
     ) -> Self {
         Self {
@@ -112,7 +112,7 @@ impl SyncScheduler {
         }
 
         // Get all external database configs
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let all_configs = local_db.read().await.get_all_external_databases().await?;
 
@@ -142,7 +142,7 @@ impl SyncScheduler {
 
     /// Check if sync is due for a database
     async fn is_sync_due(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<bool> {
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
 
         // Get last sync log
         let local_db = db_service.get_local_database();

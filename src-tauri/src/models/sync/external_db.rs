@@ -165,3 +165,40 @@ impl ExternalDatabaseConfig {
         serde_json::from_str(&self.sync_settings)
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddExternalDatabaseRequest {
+    pub name: String,
+    pub db_type: DatabaseType,
+    pub connection_details: ConnectionDetails,
+    pub auto_sync: bool,
+    pub sync_interval_minutes: u64,
+    pub conflict_resolution_strategy: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateExternalDatabaseRequest {
+    pub id: String,
+    pub name: Option<String>,
+    pub connection_details: Option<ConnectionDetails>,
+    pub auto_sync: Option<bool>,
+    pub sync_interval_minutes: Option<u64>,
+    pub conflict_resolution_strategy: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TestConnectionRequest {
+    pub db_type: DatabaseType,
+    pub connection_details: ConnectionDetails,
+    pub database_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExternalDatabaseWithDetails {
+    pub config: ExternalDatabaseConfig,
+    pub connection_details: ConnectionDetails,
+}

@@ -6,6 +6,8 @@ import type {
   SyncServiceStatus,
   SyncServiceStatistics,
   ConflictResolutionData,
+  ConnectionDetails,
+  SyncSettings,
 } from "../types/sync";
 import { syncService } from "../services/sync";
 
@@ -65,10 +67,18 @@ export const useSyncStore = defineStore("sync", () => {
   /**
    * Add new external database
    */
-  async function addDatabase(config: Omit<ExternalDatabaseConfig, "id">): Promise<ExternalDatabaseConfig> {
+  async function addDatabase(
+    config: Omit<ExternalDatabaseConfig, "id">,
+    connectionDetails: ConnectionDetails,
+    syncSettings: SyncSettings
+  ): Promise<ExternalDatabaseConfig> {
     isLoading.value = true;
     try {
-      const newDb = await syncService.addDatabase(config);
+      const newDb = await syncService.addDatabase(
+        config,
+        connectionDetails,
+        syncSettings
+      );
       databases.value.push(newDb);
       return newDb;
     } finally {
@@ -114,10 +124,14 @@ export const useSyncStore = defineStore("sync", () => {
   /**
    * Test database connection
    */
-  async function testConnection(id: string): Promise<boolean> {
+  async function testConnection(
+    dbType: string,
+    connectionDetails: ConnectionDetails,
+    databaseId?: string
+  ): Promise<boolean> {
     isLoading.value = true;
     try {
-      return await syncService.testConnection(id);
+      return await syncService.testConnection(dbType, connectionDetails, databaseId);
     } finally {
       isLoading.value = false;
     }
@@ -133,6 +147,7 @@ export const useSyncStore = defineStore("sync", () => {
     try {
       await syncService.connect(id);
       await loadSyncStatus(id);
+      await loadDatabases(); // Reload to update isActive status
       currentDatabaseId.value = id;
     } finally {
       isLoading.value = false;

@@ -1,7 +1,7 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::database::{
     error::{DatabaseError, DatabaseResult},
@@ -13,12 +13,12 @@ use crate::models::sync::external_db::{DatabaseType, ExternalDatabaseConfig};
 
 /// Manager for external database connections
 pub struct SyncManager {
-    database_service: Arc<RwLock<DatabaseService>>,
+    database_service: Arc<Mutex<DatabaseService>>,
     active_connections: Arc<RwLock<HashMap<String, Arc<dyn Database>>>>,
 }
 
 impl SyncManager {
-    pub fn new(database_service: Arc<RwLock<DatabaseService>>) -> Self {
+    pub fn new(database_service: Arc<Mutex<DatabaseService>>) -> Self {
         Self {
             database_service,
             active_connections: Arc::new(RwLock::new(HashMap::new())),
@@ -27,20 +27,27 @@ impl SyncManager {
 
     /// Connect to an external database
     pub async fn connect(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<()> {
+        println!("SyncManager::connect: Starting connection for database: {}", config.base.id);
+        println!("SyncManager::connect: Decrypting connection string...");
+
         let connection_string = self.get_decrypted_connection_string(config).await?;
+        println!("SyncManager::connect: Connection string decrypted successfully");
 
         let provider: Box<dyn Database> = match config.db_type {
             DatabaseType::MySQL => {
+                println!("SyncManager::connect: Creating MySQL provider");
                 let mut provider = MySQLProvider::new(connection_string);
                 provider.connect().await?;
                 Box::new(provider)
             }
             DatabaseType::PostgreSQL => {
+                println!("SyncManager::connect: Creating PostgreSQL provider");
                 let mut provider = PostgreSQLProvider::new(connection_string);
                 provider.connect().await?;
                 Box::new(provider)
             }
             DatabaseType::MongoDB => {
+                println!("SyncManager::connect: Creating MongoDB provider");
                 let connection_details = self.decrypt_connection_details(config).await?;
                 let database_name = connection_details.database.clone();
                 let mut provider = MongoDBProvider::new(connection_string, database_name);
@@ -49,12 +56,16 @@ impl SyncManager {
             }
         };
 
+        println!("SyncManager::connect: Testing connection...");
         // Test connection
         provider.test_connection().await?;
+        println!("SyncManager::connect: Connection test successful");
 
+        println!("SyncManager::connect: Storing active connection...");
         // Store in active connections
         let mut connections = self.active_connections.write().await;
         connections.insert(config.base.id.clone(), Arc::from(provider));
+        println!("SyncManager::connect: Connection stored successfully");
 
         Ok(())
     }
@@ -105,7 +116,7 @@ impl SyncManager {
         &self,
         config: &ExternalDatabaseConfig,
     ) -> DatabaseResult<String> {
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let manager = db_service.get_master_password_manager_arc();
 
         let encryptor =
@@ -123,7 +134,7 @@ impl SyncManager {
         &self,
         config: &ExternalDatabaseConfig,
     ) -> DatabaseResult<crate::models::sync::external_db::ConnectionDetails> {
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let manager = db_service.get_master_password_manager_arc();
 
         let encryptor =

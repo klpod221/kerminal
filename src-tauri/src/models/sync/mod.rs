@@ -6,7 +6,11 @@ pub mod metadata;
 pub mod operation;
 
 pub use conflict::{ConflictResolutionStrategy, SyncConflict};
-pub use external_db::{ConnectionDetails, DatabaseType, ExternalDatabaseConfig, SyncSettings};
+pub use external_db::{
+    AddExternalDatabaseRequest, ConnectionDetails, DatabaseType, ExternalDatabaseConfig,
+    ExternalDatabaseWithDetails, SyncSettings, TestConnectionRequest,
+    UpdateExternalDatabaseRequest,
+};
 pub use log::SyncDirection;
 pub use metadata::SyncStats;
 pub use operation::{SyncOperation, SyncOperationStatus, SyncOperationType};

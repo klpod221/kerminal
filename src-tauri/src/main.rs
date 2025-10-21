@@ -101,6 +101,8 @@ async fn main() {
             // External database commands
             commands::database::external_db::add_external_database,
             commands::database::external_db::get_external_databases,
+            commands::database::external_db::get_external_database_with_details,
+            commands::database::external_db::update_external_database,
             commands::database::external_db::delete_external_database,
             commands::database::external_db::test_external_database_connection,
             commands::database::external_db::connect_to_database,

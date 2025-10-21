@@ -14,7 +14,7 @@
         <Button
           variant="primary"
           :icon="Database"
-          @click="openEditDatabaseModal"
+          @click="openAddDatabaseModal"
         >
           Add Database
         </Button>
@@ -217,9 +217,29 @@ const formatEntityType = (type: string): string => {
   return types[type] || type;
 };
 
-const openEditDatabaseModal = () => {
+const openAddDatabaseModal = () => {
   openOverlay("external-database-modal", {
-    databaseId: selectedDatabaseId.value || null,
+    databaseId: null,
+  });
+};
+
+const openEditDatabaseModal = () => {
+  if (!selectedDatabaseId.value) {
+    message.error("Please select a database to edit");
+    return;
+  }
+
+  const dbExists = syncStore.databases.find(
+    (db) => db.id === selectedDatabaseId.value
+  );
+
+  if (!dbExists) {
+    message.error("Selected database not found");
+    return;
+  }
+
+  openOverlay("external-database-modal", {
+    databaseId: selectedDatabaseId.value,
   });
 };
 

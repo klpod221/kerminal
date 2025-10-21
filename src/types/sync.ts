@@ -66,6 +66,11 @@ export interface ExternalDatabaseConfig {
   syncStatus: string;
 }
 
+export interface ExternalDatabaseWithDetails {
+  config: ExternalDatabaseConfig;
+  connectionDetails: ConnectionDetails;
+}
+
 export type SyncDirection = "Push" | "Pull" | "Bidirectional";
 
 export type SyncLogStatus = "InProgress" | "Completed" | "Failed" | "Cancelled";
@@ -102,10 +107,9 @@ export interface SyncServiceStatus {
 }
 
 export interface SyncServiceStatistics {
-  totalConnections: number;
-  activeDatabaseIds: string[];
-  enabledDatabases: number;
-  lastSyncTime?: string;
+  activeConnections: number;
+  schedulerRunning: boolean;
+  autoSyncEnabledCount: number;
 }
 
 export interface Device {

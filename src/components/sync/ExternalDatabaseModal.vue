@@ -119,27 +119,29 @@
         />
       </Collapsible>
 
-      <!-- Actions -->
-      <template #footer>
-        <div class="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            @click="testConnection"
-            :loading="isTesting"
-          >
-            Test Connection
-          </Button>
-          <Button
-            type="submit"
-            variant="primary"
-            :loading="isLoading"
-          >
-            {{ databaseId ? "Update Database" : "Add Database" }}
-          </Button>
-        </div>
-      </template>
     </Form>
+
+    <!-- Actions -->
+    <template #footer>
+      <div class="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          @click="testConnection"
+          :loading="isTesting"
+        >
+          Test Connection
+        </Button>
+        <Button
+          type="submit"
+          variant="primary"
+          :loading="isLoading"
+          @click="handleSubmit"
+        >
+          {{ databaseId ? "Update Database" : "Add Database" }}
+        </Button>
+      </div>
+    </template>
   </Modal>
 </template>
 
@@ -155,6 +157,7 @@ import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
 import { getErrorMessage, safeJsonParse, safeJsonStringify, getCurrentTimestamp } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
+import { syncService } from "../../services/sync";
 import { useOverlay } from "../../composables/useOverlay";
 import type {
   DatabaseType,
@@ -245,28 +248,37 @@ const loadDatabase = async () => {
 
   isLoading.value = true;
   try {
-    const db = syncStore.databases.find((d) => d.id === databaseId.value);
-    if (db) {
-      database.value = {
-        name: db.name,
-        dbType: db.dbType,
-      };
+    const data = await syncService.getDatabaseWithDetails(databaseId.value);
 
+    if (!data || !data.config) {
+      throw new Error("Database not found or invalid data");
+    }
+
+    database.value = {
+      name: data.config.name,
+      dbType: data.config.dbType,
+    };
+
+    connectionDetails.value = {
+      host: data.connectionDetails.host,
+      port: data.connectionDetails.port,
+      username: data.connectionDetails.username,
+      password: "",
+      database: data.connectionDetails.database,
+    };
+
+    syncSettings.value = {
+      autoSync: data.config.autoSyncEnabled,
+      syncIntervalMinutes: 15,
+      conflictResolutionStrategy: "LastWriteWins",
+    };
+
+    if (data.config.syncSettings) {
+      const parsed = safeJsonParse(data.config.syncSettings, {});
       syncSettings.value = {
-        autoSync: db.autoSyncEnabled,
-        syncIntervalMinutes: 15,
-        conflictResolutionStrategy: "LastWriteWins",
+        ...syncSettings.value,
+        ...parsed,
       };
-
-      if (db.syncSettings) {
-        const parsed = safeJsonParse(db.syncSettings, {});
-        syncSettings.value = {
-          ...syncSettings.value,
-          ...parsed,
-        };
-      }
-
-      connectionDetails.value.password = "";
     }
   } catch (error) {
     console.error("Error loading database:", error);
@@ -282,30 +294,11 @@ const testConnection = async () => {
 
   isTesting.value = true;
   try {
-    let testId = databaseId.value;
-
-    if (!testId) {
-      const tempDb = await syncStore.addDatabase({
-        name: `__test_${Date.now()}`,
-        dbType: database.value.dbType,
-        connectionDetailsEncrypted: safeJsonStringify(connectionDetails.value),
-        syncSettings: safeJsonStringify(syncSettings.value),
-        isActive: false,
-        autoSyncEnabled: false,
-        createdAt: getCurrentTimestamp(),
-        updatedAt: getCurrentTimestamp(),
-        deviceId: "",
-        version: 0,
-        syncStatus: "idle",
-      });
-      testId = tempDb.id;
-    }
-
-    const success = await syncStore.testConnection(testId);
-
-    if (!databaseId.value && testId) {
-      await syncStore.deleteDatabase(testId);
-    }
+    const success = await syncStore.testConnection(
+      database.value.dbType,
+      connectionDetails.value,
+      databaseId.value || undefined
+    );
 
     if (success) {
       message.success("Connection successful!");
@@ -329,8 +322,8 @@ const handleSubmit = async () => {
     const dbData = {
       name: database.value.name,
       dbType: database.value.dbType,
-      connectionDetailsEncrypted: safeJsonStringify(connectionDetails.value),
-      syncSettings: safeJsonStringify(syncSettings.value),
+      connectionDetailsEncrypted: "",
+      syncSettings: "",
       isActive: false,
       autoSyncEnabled: syncSettings.value.autoSync,
       createdAt: getCurrentTimestamp(),
@@ -349,7 +342,11 @@ const handleSubmit = async () => {
       });
       message.success("Database updated successfully");
     } else {
-      await syncStore.addDatabase(dbData);
+      await syncStore.addDatabase(
+        dbData,
+        connectionDetails.value,
+        syncSettings.value
+      );
       message.success("Database added successfully");
     }
 

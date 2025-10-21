@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::database::{
     error::{DatabaseError, DatabaseResult},
@@ -21,14 +21,14 @@ use crate::services::sync::{
 
 /// Sync engine for managing data synchronization
 pub struct SyncEngine {
-    database_service: Arc<RwLock<DatabaseService>>,
+    database_service: Arc<Mutex<DatabaseService>>,
     sync_manager: Arc<SyncManager>,
     conflict_resolver: Arc<ConflictResolver>,
 }
 
 impl SyncEngine {
     pub fn new(
-        database_service: Arc<RwLock<DatabaseService>>,
+        database_service: Arc<Mutex<DatabaseService>>,
         sync_manager: Arc<SyncManager>,
     ) -> Self {
         Self {
@@ -112,7 +112,7 @@ impl SyncEngine {
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         let local_guard = local.read().await;
 
@@ -148,7 +148,7 @@ impl SyncEngine {
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         let local_guard = local.write().await;
 
@@ -180,42 +180,52 @@ impl SyncEngine {
 
     /// Internal bidirectional sync with conflict resolution
     async fn sync_internal(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<SyncStats> {
+        println!("SyncEngine::sync_internal: Starting bidirectional sync");
+
         // Ensure connection
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
-        let db_service = self.database_service.read().await;
-        let local = db_service.get_local_database();
+        let local = {
+            let db_service = self.database_service.lock().await;
+            db_service.get_local_database()
+        }; // Drop db_service lock here
 
         let mut stats = SyncStats::default();
 
+        println!("SyncEngine::sync_internal: Getting last sync time");
         // Get last sync time
         let last_sync = self.get_last_sync_time(&config.base.id).await?;
 
+        println!("SyncEngine::sync_internal: Parsing sync settings");
         // Parse sync settings to get conflict resolution strategy
         let sync_settings = config
             .parse_sync_settings()
             .map_err(DatabaseError::SerializationError)?;
         let strategy = sync_settings.conflict_resolution_strategy;
 
+        println!("SyncEngine::sync_internal: Syncing SSH profiles");
         // Sync SSH Profiles with conflict detection
         let profile_stats = self
             .sync_ssh_profiles(&local, &remote, last_sync, strategy)
             .await?;
         stats.merge(profile_stats);
 
+        println!("SyncEngine::sync_internal: Syncing SSH groups");
         // Sync SSH Groups with conflict detection
         let group_stats = self
             .sync_ssh_groups(&local, &remote, last_sync, strategy)
             .await?;
         stats.merge(group_stats);
 
+        println!("SyncEngine::sync_internal: Syncing SSH keys");
         // Sync SSH Keys with conflict detection
         let key_stats = self
             .sync_ssh_keys(&local, &remote, last_sync, strategy)
             .await?;
         stats.merge(key_stats);
 
+        println!("SyncEngine::sync_internal: Sync completed successfully");
         Ok(stats)
     }
 
@@ -225,7 +235,7 @@ impl SyncEngine {
         config: &ExternalDatabaseConfig,
         direction: SyncDirection,
     ) -> DatabaseResult<SyncLog> {
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         let local_guard = local.read().await;
         let device = local_guard
@@ -249,7 +259,7 @@ impl SyncEngine {
 
     /// Save sync log to database
     async fn save_sync_log(&self, log: &SyncLog) -> DatabaseResult<()> {
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         let guard = local.write().await;
         guard.save_sync_log(log).await
@@ -257,7 +267,7 @@ impl SyncEngine {
 
     /// Get last sync time for a database
     async fn get_last_sync_time(&self, database_id: &str) -> DatabaseResult<Option<DateTime<Utc>>> {
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         let guard = local.read().await;
         let logs = guard.get_sync_logs(database_id, Some(1)).await?;
@@ -273,7 +283,7 @@ impl SyncEngine {
     where
         T: serde::Serialize,
     {
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
 
         let conflict_resolution = crate::models::sync::conflict::ConflictResolution {

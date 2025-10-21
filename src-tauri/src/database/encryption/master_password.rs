@@ -119,6 +119,8 @@ impl MasterPasswordManager {
             .as_ref()
             .unwrap_or(&self.current_device_id);
 
+        println!("verify_master_password: Verifying for device: {}", device_id);
+
         // If verifying for different device, need the stored entry for that device
         if device_id != &self.current_device_id {
             return self
@@ -131,7 +133,18 @@ impl MasterPasswordManager {
         let is_valid = manager.verify_master_password(&request.password, stored_entry)?;
 
         if is_valid {
+            println!("verify_master_password: Password valid, starting session");
             self.session_start = Some(Utc::now());
+
+            // Create shared device key for cross-device encryption
+            println!("verify_master_password: Creating shared device key");
+            manager.ensure_shared_device_key(&request.password, stored_entry)?;
+            println!("verify_master_password: Shared key created successfully");
+
+            println!("verify_master_password: Available keys: {:?}",
+                manager.get_loaded_device_ids());
+        } else {
+            println!("verify_master_password: Password invalid");
         }
 
         Ok(is_valid)
@@ -146,11 +159,26 @@ impl MasterPasswordManager {
             return Ok(false);
         }
 
+        println!("try_auto_unlock_with_entry: Attempting auto-unlock for device: {}", self.current_device_id);
+
         let mut manager = self.device_key_manager.write().await;
         let success = manager.try_auto_unlock_with_password(&self.current_device_id, entry)?;
 
         if success {
+            println!("try_auto_unlock_with_entry: Auto-unlock successful");
             self.session_start = Some(Utc::now());
+
+            // Ensure shared device key is created for cross-device compatibility
+            println!("try_auto_unlock_with_entry: Creating shared device key");
+            match manager.ensure_shared_key_from_keychain(&self.current_device_id, entry) {
+                Ok(()) => println!("try_auto_unlock_with_entry: Shared key created successfully"),
+                Err(e) => eprintln!("try_auto_unlock_with_entry: Failed to create shared key: {}", e),
+            }
+
+            println!("try_auto_unlock_with_entry: Available keys after auto-unlock: {:?}",
+                manager.get_loaded_device_ids());
+        } else {
+            println!("try_auto_unlock_with_entry: Auto-unlock failed");
         }
 
         Ok(success)
@@ -450,9 +478,36 @@ impl EncryptionService for MasterPasswordManager {
         device_id: Option<&str>,
     ) -> crate::database::error::DatabaseResult<Vec<u8>> {
         let mut manager = self.device_key_manager.write().await;
+
+        // If encrypting for __shared__ device and it doesn't exist, try to create it
+        if device_id == Some("__shared__") && !manager.has_device_key("__shared__") {
+            println!("encrypt: Shared key missing, attempting to create from current device key");
+
+            // Try to create from current device key (they should be identical)
+            if manager.has_device_key(&self.current_device_id) {
+                println!("encrypt: Current device key exists, creating shared key");
+                manager.ensure_shared_device_key_from_current()
+                    .map_err(|e| {
+                        eprintln!("encrypt: Failed to create shared key: {}", e);
+                        crate::database::error::DatabaseError::EncryptionError(e)
+                    })?;
+                println!("encrypt: Shared key created successfully");
+            } else {
+                eprintln!("encrypt: No current device key available, cannot create shared key");
+                return Err(crate::database::error::DatabaseError::EncryptionError(
+                    crate::database::error::EncryptionError::UnknownDeviceKey(
+                        "No device key available for encryption. Please unlock first.".to_string()
+                    )
+                ));
+            }
+        }
+
         manager
             .encrypt_with_device(data, device_id)
-            .map_err(|e| e.into())
+            .map_err(|e| {
+                eprintln!("encrypt: Encryption failed with device {:?}: {}", device_id, e);
+                e.into()
+            })
     }
 
     async fn decrypt(
@@ -462,18 +517,32 @@ impl EncryptionService for MasterPasswordManager {
     ) -> crate::database::error::DatabaseResult<Vec<u8>> {
         let mut manager = self.device_key_manager.write().await;
 
+        println!("decrypt: Attempting to decrypt with device_id: {:?}", device_id);
+        println!("decrypt: Available keys: {:?}", manager.get_loaded_device_ids());
+
         // Try specific device first
         if let Some(device_id) = device_id {
+            println!("decrypt: Trying specific device: {}", device_id);
             if let Ok(data) = manager.decrypt_with_device(encrypted_data, Some(device_id)) {
+                println!("decrypt: Successfully decrypted with device: {}", device_id);
                 return Ok(data);
+            } else {
+                println!("decrypt: Failed to decrypt with device: {}", device_id);
             }
         }
 
         // Fallback: try any device key
+        println!("decrypt: Trying to decrypt with any available device key");
         manager
             .try_decrypt_with_any_device(encrypted_data)
-            .map(|(data, _device_id)| data)
-            .map_err(|e| e.into())
+            .map(|(data, device_id)| {
+                println!("decrypt: Successfully decrypted with device: {}", device_id);
+                data
+            })
+            .map_err(|e| {
+                eprintln!("decrypt: Failed to decrypt with any device key: {}", e);
+                e.into()
+            })
     }
 
     async fn encrypt_string(

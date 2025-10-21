@@ -153,7 +153,7 @@ import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage, safeJsonStringify, getCurrentTimestamp } from "../../utils/helpers";
+import { getErrorMessage, getCurrentTimestamp } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSyncStore } from "../../stores/sync";
 import type { DatabaseType } from "../../types/sync";
@@ -219,35 +219,18 @@ const handleTestConnection = async () => {
   isTesting.value = true;
 
   try {
-    const tempConfig = {
-      name: "Temp Test",
-      dbType: formData.value.dbType,
-      connectionDetailsEncrypted: safeJsonStringify({
-        host: formData.value.host,
-        port: formData.value.port,
-        username: formData.value.username,
-        password: formData.value.password,
-        database: formData.value.database,
-      }),
-      syncSettings: safeJsonStringify({
-        autoSync: false,
-        syncIntervalMinutes: 15,
-        conflictResolutionStrategy: "LastWriteWins",
-      }),
-      isActive: false,
-      autoSyncEnabled: false,
-      lastSyncAt: undefined,
-      createdAt: getCurrentTimestamp(),
-      updatedAt: getCurrentTimestamp(),
-      deviceId: "",
-      version: 1,
-      syncStatus: "Disconnected",
+    const connectionDetails = {
+      host: formData.value.host,
+      port: formData.value.port,
+      username: formData.value.username,
+      password: formData.value.password,
+      database: formData.value.database,
     };
 
-    const tempDb = await syncStore.addDatabase(tempConfig);
-    const success = await syncStore.testConnection(tempDb.id);
-
-    await syncStore.deleteDatabase(tempDb.id);
+    const success = await syncStore.testConnection(
+      formData.value.dbType,
+      connectionDetails
+    );
 
     if (success) {
       message.success("Connection successful!");
@@ -270,20 +253,10 @@ const handleRestore = async () => {
 
   try {
     const databaseConfig = {
-      name: "Sync Server",
+      name: `${formData.value.dbType} Sync Database`,
       dbType: formData.value.dbType,
-      connectionDetailsEncrypted: safeJsonStringify({
-        host: formData.value.host,
-        port: formData.value.port,
-        username: formData.value.username,
-        password: formData.value.password,
-        database: formData.value.database,
-      }),
-      syncSettings: safeJsonStringify({
-        autoSync: true,
-        syncIntervalMinutes: 15,
-        conflictResolutionStrategy: "LastWriteWins",
-      }),
+      connectionDetailsEncrypted: "",
+      syncSettings: "",
       isActive: false,
       autoSyncEnabled: true,
       lastSyncAt: undefined,
@@ -294,7 +267,21 @@ const handleRestore = async () => {
       syncStatus: "idle",
     };
 
-    const newDb = await syncStore.addDatabase(databaseConfig);
+    const connectionDetails = {
+      host: formData.value.host,
+      port: formData.value.port,
+      username: formData.value.username,
+      password: formData.value.password,
+      database: formData.value.database,
+    };
+
+    const syncSettings = {
+      autoSync: true,
+      syncIntervalMinutes: 15,
+      conflictResolutionStrategy: "LastWriteWins" as const,
+    };
+
+    const newDb = await syncStore.addDatabase(databaseConfig, connectionDetails, syncSettings);
 
     message.info("Connecting to sync server...");
     await syncStore.connect(newDb.id);

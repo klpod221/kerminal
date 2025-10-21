@@ -33,7 +33,8 @@ impl ExternalDbEncryptor {
         })?;
 
         let manager = self.master_password_manager.read().await;
-        let encrypted = manager.encrypt_string(&json, None).await?;
+        // Use "__shared__" device ID for cross-device compatibility
+        let encrypted = manager.encrypt_string(&json, Some("__shared__")).await?;
 
         Ok(encrypted)
     }
@@ -43,7 +44,15 @@ impl ExternalDbEncryptor {
         encrypted: &str,
     ) -> DatabaseResult<ConnectionDetails> {
         let manager = self.master_password_manager.read().await;
-        let decrypted = manager.decrypt_string(encrypted, None).await?;
+
+        // Try __shared__ device ID first
+        let decrypted = match manager.decrypt_string(encrypted, Some("__shared__")).await {
+            Ok(data) => data,
+            Err(_) => {
+                // Fallback: try any device key
+                manager.decrypt_string(encrypted, None).await?
+            }
+        };
 
         let details: ConnectionDetails = serde_json::from_str(&decrypted).map_err(|e| {
             EncryptionError::DecryptionFailed(format!(
@@ -61,7 +70,8 @@ impl ExternalDbEncryptor {
         })?;
 
         let manager = self.master_password_manager.read().await;
-        let encrypted = manager.encrypt_string(&json, None).await?;
+        // Use "__shared__" device ID for cross-device compatibility
+        let encrypted = manager.encrypt_string(&json, Some("__shared__")).await?;
 
         Ok(encrypted)
     }

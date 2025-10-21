@@ -10,7 +10,7 @@ use crate::services::{
 };
 use futures::FutureExt;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 
 pub struct AppState {
     pub database_service: Arc<Mutex<DatabaseService>>,
@@ -43,15 +43,8 @@ impl AppState {
         let tunnel_service = TunnelService::new_with_auto_start(database_service_arc.clone()).await;
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
 
-        // Create RwLock wrapper for sync service (allows parallel reads)
-        let database_service_rw = Arc::new(RwLock::new(
-            DatabaseService::new(DatabaseServiceConfig::default())
-                .await
-                .map_err(|e| format!("Failed to initialize sync database service: {}", e))?,
-        ));
-
-        // Create and initialize sync service
-        let sync_service = Arc::new(SyncService::new(database_service_rw));
+        // Create and initialize sync service using the SAME database_service instance
+        let sync_service = Arc::new(SyncService::new(database_service_arc.clone()));
         sync_service
             .initialize()
             .await
@@ -99,13 +92,7 @@ impl Default for AppState {
         let tunnel_service = TunnelService::new(database_service_arc.clone());
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
 
-        let database_service_rw = Arc::new(RwLock::new(
-            DatabaseService::new(DatabaseServiceConfig::default())
-                .now_or_never()
-                .unwrap()
-                .unwrap(),
-        ));
-        let sync_service = Arc::new(SyncService::new(database_service_rw));
+        let sync_service = Arc::new(SyncService::new(database_service_arc.clone()));
 
         let terminal_manager = TerminalManager::new_with_ssh_key_service(
             database_service_arc.clone(),

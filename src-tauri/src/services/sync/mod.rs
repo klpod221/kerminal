@@ -1,4 +1,5 @@
 
+
 mod engine;
 mod manager;
 mod resolver;
@@ -9,7 +10,7 @@ pub use manager::SyncManager;
 pub use scheduler::SyncScheduler;
 
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::Mutex;
 
 use crate::database::{
     error::{DatabaseError, DatabaseResult},
@@ -19,14 +20,14 @@ use crate::models::sync::{log::SyncLog, SyncDirection};
 
 /// High-level sync service that orchestrates all sync operations
 pub struct SyncService {
-    database_service: Arc<RwLock<DatabaseService>>,
+    database_service: Arc<Mutex<DatabaseService>>,
     sync_manager: Arc<SyncManager>,
     sync_engine: Arc<SyncEngine>,
     sync_scheduler: Arc<SyncScheduler>,
 }
 
 impl SyncService {
-    pub fn new(database_service: Arc<RwLock<DatabaseService>>) -> Self {
+    pub fn new(database_service: Arc<Mutex<DatabaseService>>) -> Self {
         let sync_manager = Arc::new(SyncManager::new(database_service.clone()));
         let sync_engine = Arc::new(SyncEngine::new(
             database_service.clone(),
@@ -47,26 +48,46 @@ impl SyncService {
 
     /// Initialize sync service (start scheduler, load enabled databases)
     pub async fn initialize(&self) -> DatabaseResult<()> {
-        // Load all external database configs
-        let db_service = self.database_service.read().await;
-        let local_db = db_service.get_local_database();
-        let configs = local_db.read().await.get_all_external_databases().await?;
+        println!("SyncService::initialize: Starting sync service initialization");
 
-        // Enable auto-sync for databases that have it configured
+        // Load all external database configs
+        let configs = {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let local_guard = local_db.read().await;
+            local_guard.get_all_external_databases().await?
+        }; // Drop locks
+
+        println!("SyncService::initialize: Found {} database(s)", configs.len());
+
+        // Auto-connect and enable auto-sync for databases that have it configured
         for config in configs {
             let sync_settings = config.parse_sync_settings().ok();
             if let Some(settings) = sync_settings {
+                // Auto-connect to database
                 if settings.auto_sync {
-                    self.sync_scheduler
-                        .enable_database(config.base.id.clone())
-                        .await?;
+                    println!("SyncService::initialize: Auto-connecting to database: {}", config.name);
+                    match self.sync_manager.connect(&config).await {
+                        Ok(_) => {
+                            println!("SyncService::initialize: Successfully connected to: {}", config.name);
+                            self.sync_scheduler
+                                .enable_database(config.base.id.clone())
+                                .await?;
+                        }
+                        Err(e) => {
+                            eprintln!("SyncService::initialize: Failed to connect to {}: {}", config.name, e);
+                            // Continue with other databases even if one fails
+                        }
+                    }
                 }
             }
         }
 
         // Start the scheduler
+        println!("SyncService::initialize: Starting sync scheduler");
         self.sync_scheduler.start().await?;
 
+        println!("SyncService::initialize: Sync service initialized successfully");
         Ok(())
     }
 
@@ -84,20 +105,26 @@ impl SyncService {
 
     /// Connect to an external database
     pub async fn connect(&self, database_id: &str) -> DatabaseResult<()> {
-        let db_service = self.database_service.read().await;
-        let local_db = db_service.get_local_database();
-        let config = local_db
-            .read()
-            .await
-            .find_external_database_by_id(database_id)
-            .await?
-            .ok_or_else(|| {
-                crate::database::error::DatabaseError::NotFound(format!(
-                    "External database not found: {}",
-                    database_id
-                ))
-            })?;
+        println!("SyncService::connect: Connecting to database: {}", database_id);
 
+        let config = {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let local_db_guard = local_db.read().await;
+
+            local_db_guard
+                .find_external_database_by_id(database_id)
+                .await?
+                .ok_or_else(|| {
+                    crate::database::error::DatabaseError::NotFound(format!(
+                        "External database not found: {}",
+                        database_id
+                    ))
+                })?
+                .clone() // Clone to move out of the lock
+        }; // Drop locks here
+
+        println!("SyncService::connect: Config loaded, calling sync_manager.connect()");
         self.sync_manager.connect(&config).await
     }
 
@@ -106,29 +133,9 @@ impl SyncService {
         self.sync_manager.disconnect(database_id).await
     }
 
-    /// Test connection to an external database
-    pub async fn test_connection(&self, database_id: &str) -> DatabaseResult<bool> {
-        let db_service = self.database_service.read().await;
-        let local_db = db_service.get_local_database();
-        let config = local_db
-            .read()
-            .await
-            .find_external_database_by_id(database_id)
-            .await?
-            .ok_or_else(|| {
-                crate::database::error::DatabaseError::NotFound(format!(
-                    "External database not found: {}",
-                    database_id
-                ))
-            })?;
-
-        match self.sync_manager.connect(&config).await {
-            Ok(_) => {
-                self.sync_manager.disconnect(database_id).await?;
-                Ok(true)
-            }
-            Err(_) => Ok(false),
-        }
+    /// Check if database is connected
+    pub async fn is_connected(&self, database_id: &str) -> bool {
+        self.sync_manager.is_connected(database_id).await
     }
 
     /// Perform a sync operation
@@ -137,32 +144,55 @@ impl SyncService {
         database_id: &str,
         direction: SyncDirection,
     ) -> DatabaseResult<SyncLog> {
-        let db_service = self.database_service.read().await;
-        let local_db = db_service.get_local_database();
-        let config = local_db
-            .read()
-            .await
-            .find_external_database_by_id(database_id)
-            .await?
-            .ok_or_else(|| {
-                crate::database::error::DatabaseError::NotFound(format!(
-                    "External database not found: {}",
-                    database_id
-                ))
-            })?;
+        println!("SyncService::sync: Starting sync for database: {} with direction: {:?}", database_id, direction);
 
-        match direction {
-            SyncDirection::Push => self.sync_engine.push(&config).await,
-            SyncDirection::Pull => self.sync_engine.pull(&config).await,
-            SyncDirection::Bidirectional => self.sync_engine.sync(&config).await,
+        let config = {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let local_db_guard = local_db.read().await;
+
+            local_db_guard
+                .find_external_database_by_id(database_id)
+                .await?
+                .ok_or_else(|| {
+                    crate::database::error::DatabaseError::NotFound(format!(
+                        "External database not found: {}",
+                        database_id
+                    ))
+                })?
+                .clone()
+        }; // Drop locks here
+
+        println!("SyncService::sync: Config loaded, starting sync operation");
+
+        let result = match direction {
+            SyncDirection::Push => {
+                println!("SyncService::sync: Executing PUSH");
+                self.sync_engine.push(&config).await
+            },
+            SyncDirection::Pull => {
+                println!("SyncService::sync: Executing PULL");
+                self.sync_engine.pull(&config).await
+            },
+            SyncDirection::Bidirectional => {
+                println!("SyncService::sync: Executing BIDIRECTIONAL");
+                self.sync_engine.sync(&config).await
+            },
+        };
+
+        match &result {
+            Ok(log) => println!("SyncService::sync: Sync completed successfully. Records synced: {}", log.records_synced),
+            Err(e) => eprintln!("SyncService::sync: Sync failed: {}", e),
         }
+
+        result
     }
 
     /// Get sync status for a database
     pub async fn get_status(&self, database_id: &str) -> DatabaseResult<SyncServiceStatus> {
         let is_connected = self.sync_manager.is_connected(database_id).await;
 
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let last_sync_log = local_db
             .read()
@@ -188,7 +218,7 @@ impl SyncService {
     /// Enable auto-sync for a database
     pub async fn enable_auto_sync(&self, database_id: &str) -> DatabaseResult<()> {
         // Update config in database
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let mut config = local_db
             .read()
@@ -224,7 +254,7 @@ impl SyncService {
     /// Disable auto-sync for a database
     pub async fn disable_auto_sync(&self, database_id: &str) -> DatabaseResult<()> {
         // Update config in database
-        let db_service = self.database_service.read().await;
+        let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let mut config = local_db
             .read()

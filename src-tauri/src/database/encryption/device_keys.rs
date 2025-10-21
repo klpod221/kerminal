@@ -11,6 +11,7 @@ use crate::database::{
 
 /// Device-specific encryption key manager
 pub struct DeviceKeyManager {
+    instance_id: uuid::Uuid,
     current_device_id: String,
     device_keys: HashMap<String, DeviceEncryptionKey>,
     keychain: KeychainManager,
@@ -48,7 +49,11 @@ pub struct MasterPasswordEntry {
 impl DeviceKeyManager {
     /// Create new device key manager
     pub fn new(current_device_id: String) -> Self {
+        let instance_id = uuid::Uuid::new_v4();
+        println!("DeviceKeyManager::new: Creating new instance {} for device: {}",
+            instance_id, current_device_id);
         Self {
+            instance_id,
             current_device_id,
             device_keys: HashMap::new(),
             keychain: KeychainManager::new("kerminal".to_string()),
@@ -269,10 +274,14 @@ impl DeviceKeyManager {
 
     /// Get device encryption key
     pub fn get_device_key(&mut self, device_id: &str) -> Option<&DeviceEncryptionKey> {
+        println!("DeviceKeyManager[{}]::get_device_key: Requested '{}', available keys: {:?}",
+            self.instance_id, device_id, self.device_keys.keys().collect::<Vec<_>>());
+
         if let Some(key) = self.device_keys.get_mut(device_id) {
             key.last_used_at = Utc::now();
             Some(key)
         } else {
+            println!("DeviceKeyManager[{}]::get_device_key: Key '{}' not found!", self.instance_id, device_id);
             None
         }
     }
@@ -320,9 +329,45 @@ impl DeviceKeyManager {
             }
         }
 
-        Err(EncryptionError::DecryptionFailed(
+                Err(EncryptionError::DecryptionFailed(
             "No device key could decrypt this data".to_string(),
         ))
+    }
+
+    /// Ensure shared device key exists for cross-device encryption
+    pub fn ensure_shared_device_key(
+        &mut self,
+        password: &str,
+        password_entry: &MasterPasswordEntry,
+    ) -> EncryptionResult<()> {
+        // Check if shared key already exists
+        if self.device_keys.contains_key("__shared__") {
+            return Ok(());
+        }
+
+        // Derive shared key from master password (same as device key derivation)
+        let mut key_material = [0u8; 32];
+        let _ = pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
+            password.as_bytes(),
+            &password_entry.password_salt,
+            100_000, // 100k iterations
+            &mut key_material,
+        );
+
+        let shared_key = DeviceEncryptionKey {
+            device_id: "__shared__".to_string(),
+            device_name: "Shared Cross-Device Key".to_string(),
+            encryption_key: key_material,
+            key_salt: password_entry.password_salt,
+            key_version: 1,
+            created_at: Utc::now(),
+            last_used_at: Utc::now(),
+        };
+
+        self.device_keys
+            .insert("__shared__".to_string(), shared_key);
+
+        Ok(())
     }
 
     /// Change master password cho current device
@@ -349,7 +394,81 @@ impl DeviceKeyManager {
 
     /// Get loaded device IDs
     pub fn get_loaded_device_ids(&self) -> Vec<String> {
-        self.device_keys.keys().cloned().collect()
+        let keys: Vec<String> = self.device_keys.keys().cloned().collect();
+        println!("DeviceKeyManager[{}]::get_loaded_device_ids: {:?} (total: {})",
+            self.instance_id, keys, keys.len());
+        keys
+    }
+
+    /// Try to ensure shared key after auto-unlock
+    pub fn ensure_shared_key_from_keychain(
+        &mut self,
+        device_id: &str,
+        entry: &MasterPasswordEntry,
+    ) -> EncryptionResult<()> {
+        // Check if shared key already exists
+        if self.device_keys.contains_key("__shared__") {
+            return Ok(());
+        }
+
+        // Try to get password from keychain
+        if let Ok(Some(password)) = self.keychain.get_master_password(device_id) {
+            // Create shared key using the password
+            self.ensure_shared_device_key(&password, entry)?;
+        }
+
+        Ok(())
+    }
+
+    /// Check if device key exists
+    pub fn has_device_key(&self, device_id: &str) -> bool {
+        self.device_keys.contains_key(device_id)
+    }
+
+    /// Ensure shared device key from current device key
+    /// Since both are derived from same password+salt, they should be identical
+    pub fn ensure_shared_device_key_from_current(&mut self) -> EncryptionResult<()> {
+        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Current device: {}",
+            self.instance_id, self.current_device_id);
+        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Available keys before: {:?}",
+            self.instance_id, self.device_keys.keys().collect::<Vec<_>>());
+
+        // Check if shared key already exists
+        if self.device_keys.contains_key("__shared__") {
+            println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Shared key already exists",
+                self.instance_id);
+            return Ok(());
+        }
+
+        // Check if current device key exists
+        let current_key = self.device_keys.get(&self.current_device_id)
+            .ok_or_else(|| {
+                eprintln!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Current device key not found!",
+                    self.instance_id);
+                EncryptionError::UnknownDeviceKey(self.current_device_id.clone())
+            })?;
+
+        // Clone the current device's encryption key for shared use
+        // This is safe because both are derived from same password+salt
+        let shared_key = DeviceEncryptionKey {
+            device_id: "__shared__".to_string(),
+            device_name: "Shared Cross-Device Key".to_string(),
+            encryption_key: current_key.encryption_key,
+            key_salt: current_key.key_salt,
+            key_version: current_key.key_version,
+            created_at: Utc::now(),
+            last_used_at: Utc::now(),
+        };
+
+        self.device_keys
+            .insert("__shared__".to_string(), shared_key);
+
+        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Shared key created successfully",
+            self.instance_id);
+        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Available keys after: {:?}",
+            self.instance_id, self.device_keys.keys().collect::<Vec<_>>());
+
+        Ok(())
     }
 
     /// Derive device encryption key from master password

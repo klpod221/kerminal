@@ -88,9 +88,9 @@
       <Button
         type="submit"
         variant="primary"
+        @click="handleSubmit"
         :loading="isLoading"
         :icon="Key"
-        @click="handleSubmit"
       >
         Change Password
       </Button>

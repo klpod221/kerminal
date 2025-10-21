@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Database, CloudOff, Cloud, RefreshCw, AlertTriangle } from "lucide-vue-next";
+import { Database, CloudOff, Cloud } from "lucide-vue-next";
 import Badge from "../ui/Badge.vue";
 import { useSyncStore } from "../../stores/sync";
 
@@ -41,70 +41,39 @@ const syncStore = useSyncStore();
 const statusVariant = computed(() => {
   if (!syncStore.currentDatabase) return "gray";
 
-  const status = syncStore.currentDatabase.syncStatus;
-
-  switch (status) {
-    case "Connected":
-      return "success";
-    case "Syncing":
-      return "info";
-    case "Error":
-      return "danger";
-    case "Disconnected":
-      return "gray";
-    default:
-      return "gray";
+  // Use isActive to determine connection status
+  if (syncStore.currentDatabase.isActive) {
+    return "success";
   }
+
+  return "gray";
 });
 
 const statusIcon = computed(() => {
   if (!syncStore.currentDatabase) return CloudOff;
 
-  const status = syncStore.currentDatabase.syncStatus;
-
-  switch (status) {
-    case "Connected":
-      return Cloud;
-    case "Syncing":
-      return RefreshCw;
-    case "Error":
-      return AlertTriangle;
-    case "Disconnected":
-      return CloudOff;
-    default:
-      return CloudOff;
+  // Use isActive to determine connection status
+  if (syncStore.currentDatabase.isActive) {
+    return Cloud;
   }
+
+  return CloudOff;
 });
 
 const statusIconClass = computed(() => {
-  if (!syncStore.currentDatabase) return "";
-
-  const status = syncStore.currentDatabase.syncStatus;
-
-  if (status === "Syncing") {
-    return "animate-spin-slow";
-  }
-
+  // No animation for now, can add for syncing state later
   return "";
 });
 
 const statusText = computed(() => {
   if (!syncStore.currentDatabase) return "No Database";
 
-  const status = syncStore.currentDatabase.syncStatus;
-
-  switch (status) {
-    case "Connected":
-      return "Connected";
-    case "Syncing":
-      return "Syncing";
-    case "Error":
-      return "Error";
-    case "Disconnected":
-      return "Disconnected";
-    default:
-      return "Unknown";
+  // Use isActive to determine connection status
+  if (syncStore.currentDatabase.isActive) {
+    return "Connected";
   }
+
+  return "Disconnected";
 });
 </script>
 
