@@ -224,11 +224,10 @@ impl LocalTerminal {
                             if let Some(ref exit_sender) = exit_sender {
                                 let exit_event = TerminalExited {
                                     terminal_id: terminal_id.clone(),
-                                    exit_code: None::<i32>, // Explicitly type the None
+                                    exit_code: None::<i32>,
                                     reason: Some("user-closed".to_string()),
                                 };
-                                if let Err(_) = exit_sender.send(exit_event) {
-                                    // Channel closed, receiver has been dropped
+                                if exit_sender.send(exit_event).is_err() {
                                     eprintln!(
                                         "Exit event channel closed for terminal {}",
                                         terminal_id
@@ -243,10 +242,7 @@ impl LocalTerminal {
                             // Process output for title detection
                             if let Some(ref title_sender) = title_sender {
                                 if let Some(new_title) = title_detector.process_output(&data) {
-                                    if let Err(_) = title_sender.send(new_title) {
-                                        // Channel closed, receiver has been dropped
-                                        // This is normal during terminal shutdown
-                                    }
+                                    let _ = title_sender.send(new_title);
                                 }
                             }
 
@@ -257,10 +253,8 @@ impl LocalTerminal {
                         }
                         Err(e) => {
                             eprintln!("Failed to read from PTY: {}", e);
-                            // Send error through channel if possible
                             let error_msg = format!("PTY read error: {}", e).into_bytes();
-                            if let Err(_) = sender.send(error_msg) {
-                                // Channel closed, receiver has been dropped
+                            if sender.send(error_msg).is_err() {
                                 eprintln!("Data channel closed for terminal {}", terminal_id);
                             }
                             break;

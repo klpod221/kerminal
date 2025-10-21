@@ -11,21 +11,13 @@ pub enum TerminalType {
 /// Configuration for local terminal
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct LocalConfig {
     pub shell: Option<String>,
     pub working_dir: Option<String>,
     pub env_vars: Option<HashMap<String, String>>,
 }
 
-impl Default for LocalConfig {
-    fn default() -> Self {
-        Self {
-            shell: None,
-            working_dir: None,
-            env_vars: None,
-        }
-    }
-}
 
 /// Terminal configuration that can be either Local or SSH with profile ID
 #[derive(Debug, Clone, Serialize, Deserialize)]

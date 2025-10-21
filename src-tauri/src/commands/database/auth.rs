@@ -19,11 +19,10 @@ pub async fn setup_master_password(
 
     match result {
         Ok(()) => {
-            // If setup successful, restart the app after a small delay
             let app_clone = app.clone();
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                let _ = app_clone.restart();
+                app_clone.restart();
             });
             Ok(())
         }

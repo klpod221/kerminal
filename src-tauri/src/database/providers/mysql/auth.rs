@@ -34,12 +34,12 @@ pub async fn save_master_password_entry(
     "#,
     )
     .bind(&entry.device_id)
-    .bind(&entry.password_salt.to_vec())
+    .bind(entry.password_salt.to_vec())
     .bind(&entry.verification_hash)
     .bind(entry.auto_unlock)
     .bind(entry.auto_lock_timeout.map(|t| t as i64))
-    .bind(&entry.created_at)
-    .bind(&entry.last_verified_at)
+    .bind(entry.created_at)
+    .bind(entry.last_verified_at)
     .execute(&*pool)
     .await
     .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;

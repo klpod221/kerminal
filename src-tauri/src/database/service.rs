@@ -483,7 +483,7 @@ impl DatabaseService {
                     let is_valid = mp_manager
                         .verify_master_password(verification_req, &entry)
                         .await
-                        .map_err(|e| crate::database::error::DatabaseError::from(e))?;
+                        .map_err(crate::database::error::DatabaseError::from)?;
 
                     if !is_valid {
                         return Err(crate::database::error::DatabaseError::AuthenticationFailed(
@@ -495,11 +495,9 @@ impl DatabaseService {
                 } else {
                     return Err(crate::database::error::DatabaseError::MasterPasswordRequired);
                 }
-            } else {
             }
         }
 
-        // Handle keychain operations by calling the appropriate method
         if password.is_some() {
             mp_manager
                 .update_config_with_keychain(auto_unlock, auto_lock_timeout, password)
@@ -895,7 +893,7 @@ impl DatabaseService {
         // Validate tunnel configuration
         tunnel
             .validate()
-            .map_err(|e| DatabaseError::ValidationError(e))?;
+            .map_err(DatabaseError::ValidationError)?;
 
         let local_db = self.local_db.read().await;
         local_db.save_ssh_tunnel(&tunnel).await?;
@@ -981,7 +979,7 @@ impl DatabaseService {
         // Validate updated configuration
         tunnel
             .validate()
-            .map_err(|e| DatabaseError::ValidationError(e))?;
+            .map_err(DatabaseError::ValidationError)?;
 
         // Update timestamp and version
         tunnel.base.touch();
@@ -1309,7 +1307,7 @@ impl Default for DatabaseServiceConfig {
             .join("kerminal");
 
         // Ensure directory exists
-        if let Err(_) = std::fs::create_dir_all(&data_dir) {
+        if std::fs::create_dir_all(&data_dir).is_err() {
             eprintln!("Warning: Could not create data directory: {:?}", data_dir);
         }
 

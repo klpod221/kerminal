@@ -9,8 +9,8 @@ use tokio::sync::{mpsc, Mutex};
 
 /// Unified terminal wrapper that can handle both local and SSH terminals
 pub enum TerminalWrapper {
-    Local(local::LocalTerminal),
-    SSH(ssh::SSHTerminal),
+    Local(Box<local::LocalTerminal>),
+    Ssh(Box<ssh::SSHTerminal>),
 }
 
 impl TerminalWrapper {
@@ -18,7 +18,7 @@ impl TerminalWrapper {
     pub async fn connect(&mut self) -> Result<(), AppError> {
         match self {
             TerminalWrapper::Local(terminal) => terminal.connect().await,
-            TerminalWrapper::SSH(terminal) => terminal.connect().await,
+            TerminalWrapper::Ssh(terminal) => terminal.connect().await,
         }
     }
 
@@ -29,7 +29,7 @@ impl TerminalWrapper {
     ) -> Result<(), AppError> {
         match self {
             TerminalWrapper::Local(terminal) => terminal.connect().await,
-            TerminalWrapper::SSH(terminal) => {
+            TerminalWrapper::Ssh(terminal) => {
                 terminal.connect_with_resolved_data(resolved_key).await
             }
         }
@@ -39,7 +39,7 @@ impl TerminalWrapper {
     pub async fn disconnect(&mut self) -> Result<(), AppError> {
         match self {
             TerminalWrapper::Local(terminal) => terminal.disconnect().await,
-            TerminalWrapper::SSH(terminal) => terminal.disconnect().await,
+            TerminalWrapper::Ssh(terminal) => terminal.disconnect().await,
         }
     }
 
@@ -47,7 +47,7 @@ impl TerminalWrapper {
     pub async fn write(&mut self, data: &[u8]) -> Result<(), AppError> {
         match self {
             TerminalWrapper::Local(terminal) => terminal.write(data).await,
-            TerminalWrapper::SSH(terminal) => terminal.write(data).await,
+            TerminalWrapper::Ssh(terminal) => terminal.write(data).await,
         }
     }
 
@@ -55,7 +55,7 @@ impl TerminalWrapper {
     pub async fn resize(&mut self, cols: u16, rows: u16) -> Result<(), AppError> {
         match self {
             TerminalWrapper::Local(terminal) => terminal.resize(cols, rows).await,
-            TerminalWrapper::SSH(terminal) => terminal.resize(cols, rows).await,
+            TerminalWrapper::Ssh(terminal) => terminal.resize(cols, rows).await,
         }
     }
 
@@ -63,7 +63,7 @@ impl TerminalWrapper {
     pub fn get_state(&self) -> TerminalState {
         match self {
             TerminalWrapper::Local(terminal) => terminal.get_state(),
-            TerminalWrapper::SSH(terminal) => terminal.get_state(),
+            TerminalWrapper::Ssh(terminal) => terminal.get_state(),
         }
     }
 
@@ -71,7 +71,7 @@ impl TerminalWrapper {
     pub fn get_config(&self) -> &TerminalConfig {
         match self {
             TerminalWrapper::Local(terminal) => terminal.get_config(),
-            TerminalWrapper::SSH(terminal) => terminal.get_config(),
+            TerminalWrapper::Ssh(terminal) => terminal.get_config(),
         }
     }
 
@@ -80,7 +80,7 @@ impl TerminalWrapper {
     pub fn get_id(&self) -> &str {
         match self {
             TerminalWrapper::Local(terminal) => terminal.get_id(),
-            TerminalWrapper::SSH(terminal) => terminal.get_id(),
+            TerminalWrapper::Ssh(terminal) => terminal.get_id(),
         }
     }
 
@@ -89,7 +89,7 @@ impl TerminalWrapper {
     pub fn is_alive(&self) -> bool {
         match self {
             TerminalWrapper::Local(terminal) => terminal.is_alive(),
-            TerminalWrapper::SSH(terminal) => terminal.is_alive(),
+            TerminalWrapper::Ssh(terminal) => terminal.is_alive(),
         }
     }
 
@@ -106,7 +106,7 @@ impl TerminalWrapper {
                     .start_read_loop(sender, title_sender, exit_sender)
                     .await
             }
-            TerminalWrapper::SSH(terminal) => {
+            TerminalWrapper::Ssh(terminal) => {
                 terminal
                     .start_read_loop(sender, title_sender, exit_sender)
                     .await
@@ -128,11 +128,11 @@ impl TerminalFactory {
         match config.terminal_type {
             TerminalType::Local => {
                 let local_config = config.local_config.clone().unwrap_or_default();
-                Ok(TerminalWrapper::Local(local::LocalTerminal::new(
+                Ok(TerminalWrapper::Local(Box::new(local::LocalTerminal::new(
                     id,
                     config,
                     local_config,
-                )?))
+                )?)))
             }
             TerminalType::SSH => {
                 let ssh_profile_id = config.ssh_profile_id.clone().ok_or_else(|| {
@@ -155,12 +155,12 @@ impl TerminalFactory {
                         .map_err(|e| AppError::Database(e.to_string()))?
                 };
 
-                Ok(TerminalWrapper::SSH(ssh::SSHTerminal::new(
+                Ok(TerminalWrapper::Ssh(Box::new(ssh::SSHTerminal::new(
                     id,
                     config,
                     ssh_profile,
                     Some(database_service),
-                )?))
+                )?)))
             }
         }
     }

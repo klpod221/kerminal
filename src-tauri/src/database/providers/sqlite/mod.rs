@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 
 use crate::database::{
     error::{DatabaseError, DatabaseResult},
-    traits::{Database, DatabaseProviderType, SqlValue, ToSqlValue},
+    traits::{Database, DatabaseProviderType},
 };
 
 /// SQLite database provider implementation
@@ -408,44 +408,6 @@ impl Database for SQLiteProvider {
             .map_err(|e| DatabaseError::ConnectionFailed(e.to_string()))?;
 
         Ok(())
-    }
-
-    async fn execute_raw(&self, query: &str, _params: &[&dyn ToSqlValue]) -> DatabaseResult<u64> {
-        let pool_arc = self.get_pool()?;
-        let pool = pool_arc.read().await;
-
-        let result = sqlx::query(query)
-            .execute(&*pool)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(result.rows_affected())
-    }
-
-    async fn fetch_raw(
-        &self,
-        query: &str,
-        _params: &[&dyn ToSqlValue],
-    ) -> DatabaseResult<Vec<std::collections::HashMap<String, SqlValue>>> {
-        let pool_arc = self.get_pool()?;
-        let pool = pool_arc.read().await;
-
-        let rows = sqlx::query(query)
-            .fetch_all(&*pool)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        let mut results = Vec::new();
-        for _row in rows {
-            let mut map = std::collections::HashMap::new();
-            map.insert(
-                "placeholder".to_string(),
-                SqlValue::Text("placeholder".to_string()),
-            );
-            results.push(map);
-        }
-
-        Ok(results)
     }
 
     async fn drop_tables(&self) -> DatabaseResult<()> {

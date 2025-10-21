@@ -44,9 +44,9 @@ impl SQLiteProvider {
         .bind(&config.connection_details_encrypted)
         .bind(&config.sync_settings)
         .bind(config.is_active)
-        .bind(&config.last_sync_at)
-        .bind(&config.base.created_at)
-        .bind(&config.base.updated_at)
+        .bind(config.last_sync_at)
+        .bind(config.base.created_at)
+        .bind(config.base.updated_at)
         .bind(&config.base.device_id)
         .bind(config.base.version as i64)
         .bind(config.base.sync_status.to_string())
@@ -124,8 +124,8 @@ impl SQLiteProvider {
             WHERE id = ?3
         "#,
         )
-        .bind(&last_sync)
-        .bind(&Utc::now())
+        .bind(last_sync)
+        .bind(Utc::now())
         .bind(id)
         .execute(&*pool)
         .await
@@ -150,7 +150,7 @@ impl SQLiteProvider {
         "#,
         )
         .bind(is_active)
-        .bind(&Utc::now())
+        .bind(Utc::now())
         .bind(id)
         .execute(&*pool)
         .await
@@ -200,8 +200,8 @@ impl SQLiteProvider {
         .bind(&operation.target_db)
         .bind(operation.status.to_string())
         .bind(&operation.error_message)
-        .bind(&operation.started_at)
-        .bind(&operation.completed_at)
+        .bind(operation.started_at)
+        .bind(operation.completed_at)
         .execute(&*pool)
         .await
         .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
@@ -296,8 +296,8 @@ impl SQLiteProvider {
         .bind(&conflict.remote_data)
         .bind(&resolution_strategy)
         .bind(conflict.resolved)
-        .bind(&conflict.created_at)
-        .bind(&conflict.resolved_at)
+        .bind(conflict.created_at)
+        .bind(conflict.resolved_at)
         .execute(&*pool)
         .await
         .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
@@ -378,7 +378,7 @@ impl SQLiteProvider {
         "#,
         )
         .bind(strategy.to_string())
-        .bind(&Utc::now())
+        .bind(Utc::now())
         .bind(id)
         .execute(&*pool)
         .await
@@ -448,10 +448,10 @@ impl SQLiteProvider {
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
 
         let db_type = crate::models::sync::DatabaseType::from_str(&db_type_str)
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e))?;
+            .map_err(crate::database::error::DatabaseError::QueryFailed)?;
 
         let sync_status = SyncStatus::from_str(&sync_status_str)
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e))?;
+            .map_err(crate::database::error::DatabaseError::QueryFailed)?;
 
         let last_sync_at_parsed = if let Some(dt_str) = last_sync_at {
             Some(
@@ -523,10 +523,10 @@ impl SQLiteProvider {
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
 
         let operation_type = crate::models::sync::SyncOperationType::from_str(&operation_type_str)
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e))?;
+            .map_err(crate::database::error::DatabaseError::QueryFailed)?;
 
         let status = crate::models::sync::SyncOperationStatus::from_str(&status_str)
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e))?;
+            .map_err(crate::database::error::DatabaseError::QueryFailed)?;
 
         let completed_at_parsed = if let Some(dt_str) = completed_at {
             Some(
@@ -594,7 +594,7 @@ impl SQLiteProvider {
         let resolution_strategy = if let Some(strategy_str) = resolution_strategy_str {
             Some(
                 ConflictResolutionStrategy::from_str(&strategy_str)
-                    .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e))?,
+                    .map_err(crate::database::error::DatabaseError::QueryFailed)?,
             )
         } else {
             None

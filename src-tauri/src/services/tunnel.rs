@@ -581,14 +581,14 @@ impl TunnelService {
                     heartbeat_counter += 1;
 
                     // Periodic status log
-                    if heartbeat_counter % heartbeat_interval == 0 {
+                    if heartbeat_counter.is_multiple_of(heartbeat_interval) {
                         let minutes = heartbeat_counter / 120;
                         println!("📡 Remote forwarding active for {}m: {}:{} -> {}:{} ({} connections handled)",
                                 minutes, remote_host, actual_port, local_host, local_port, connection_count);
                     }
 
                     // Session health check every 5 minutes
-                    if heartbeat_counter % (heartbeat_interval * 5) == 0 {
+                    if heartbeat_counter.is_multiple_of(heartbeat_interval * 5) {
                         let health_check_result = {
                             let session_guard = session.lock().await;
                             tokio::time::timeout(

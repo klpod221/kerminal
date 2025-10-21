@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 
 use crate::database::{
     error::{DatabaseError, DatabaseResult},
-    traits::{Database, DatabaseProviderType, SqlValue, ToSqlValue},
+    traits::{Database, DatabaseProviderType},
 };
 
 pub struct MongoDBProvider {
@@ -98,22 +98,6 @@ impl Database for MongoDBProvider {
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         Ok(())
-    }
-
-    async fn execute_raw(&self, _query: &str, _params: &[&dyn ToSqlValue]) -> DatabaseResult<u64> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB execute_raw not applicable".to_string(),
-        ))
-    }
-
-    async fn fetch_raw(
-        &self,
-        _query: &str,
-        _params: &[&dyn ToSqlValue],
-    ) -> DatabaseResult<Vec<std::collections::HashMap<String, SqlValue>>> {
-        Err(DatabaseError::NotImplemented(
-            "MongoDB fetch_raw not applicable".to_string(),
-        ))
     }
 
     async fn save_ssh_profile(&self, model: &crate::models::ssh::SSHProfile) -> DatabaseResult<()> {
@@ -756,7 +740,7 @@ impl Database for MongoDBProvider {
         entry: &crate::database::encryption::device_keys::MasterPasswordEntry,
     ) -> DatabaseResult<()> {
         let collection = self.get_collection("master_passwords").await?;
-        
+
         let mut doc_fields = vec![
             ("_id", bson::Bson::String(entry.device_id.clone())),
             ("passwordSalt", bson::Bson::Binary(bson::Binary {
@@ -858,7 +842,7 @@ impl Database for MongoDBProvider {
 
     async fn save_device(&self, device: &crate::models::auth::Device) -> DatabaseResult<()> {
         let collection = self.get_collection("devices").await?;
-        
+
         collection
             .update_many(doc! {}, doc! { "$set": { "isCurrent": false } }, None)
             .await

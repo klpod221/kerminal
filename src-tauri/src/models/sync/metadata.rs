@@ -179,6 +179,7 @@ impl ConflictRecord {
 
 /// Sync statistics to display in UI
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct SyncStats {
     pub total_records: u32,
     pub synced_records: u32,
@@ -200,20 +201,6 @@ pub struct DatabaseSyncStats {
     pub error_message: Option<String>,
 }
 
-impl Default for SyncStats {
-    fn default() -> Self {
-        Self {
-            total_records: 0,
-            synced_records: 0,
-            pending_records: 0,
-            failed_records: 0,
-            conflicts: 0,
-            last_sync: None,
-            sync_enabled: false,
-            databases: vec![],
-        }
-    }
-}
 
 impl std::fmt::Display for ConflictType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

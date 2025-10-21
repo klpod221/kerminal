@@ -65,18 +65,15 @@ pub enum TunnelType {
 /// Runtime status of tunnel
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum TunnelStatus {
+    #[default]
     Stopped,
     Starting,
     Running,
     Error,
 }
 
-impl Default for TunnelStatus {
-    fn default() -> Self {
-        TunnelStatus::Stopped
-    }
-}
 
 impl SSHTunnel {
     /// Create a new SSH tunnel

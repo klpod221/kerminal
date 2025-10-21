@@ -103,9 +103,9 @@ pub async fn find_ssh_profile_by_id(
             username: row.get("username"),
             group_id: row.get("group_id"),
             auth_method: serde_json::from_str(&row.get::<String, _>("auth_method"))
-                .map_err(|e| DatabaseError::SerializationError(e))?,
+                .map_err(DatabaseError::SerializationError)?,
             auth_data: serde_json::from_str(&row.get::<String, _>("auth_data"))
-                .map_err(|e| DatabaseError::SerializationError(e))?,
+                .map_err(DatabaseError::SerializationError)?,
             timeout: row.get::<Option<i32>, _>("timeout").map(|t| t as u32),
             keep_alive: row.get("keep_alive"),
             compression: row.get("compression"),
@@ -156,9 +156,9 @@ pub async fn find_all_ssh_profiles(provider: &PostgreSQLProvider) -> DatabaseRes
             username: row.get("username"),
             group_id: row.get("group_id"),
             auth_method: serde_json::from_str(&row.get::<String, _>("auth_method"))
-                .map_err(|e| DatabaseError::SerializationError(e))?,
+                .map_err(DatabaseError::SerializationError)?,
             auth_data: serde_json::from_str(&row.get::<String, _>("auth_data"))
-                .map_err(|e| DatabaseError::SerializationError(e))?,
+                .map_err(DatabaseError::SerializationError)?,
             timeout: row.get::<Option<i32>, _>("timeout").map(|t| t as u32),
             keep_alive: row.get("keep_alive"),
             compression: row.get("compression"),
@@ -410,7 +410,7 @@ pub async fn find_ssh_key_by_id(
             },
             name: row.get("name"),
             key_type: serde_json::from_str(&row.get::<String, _>("key_type"))
-                .map_err(|e| DatabaseError::SerializationError(e))?,
+                .map_err(DatabaseError::SerializationError)?,
             private_key: row.get("private_key"),
             public_key: row.get("public_key"),
             passphrase: row.get("passphrase"),
@@ -460,7 +460,7 @@ pub async fn find_all_ssh_keys(provider: &PostgreSQLProvider) -> DatabaseResult<
             },
             name: row.get("name"),
             key_type: serde_json::from_str(&row.get::<String, _>("key_type"))
-                .map_err(|e| DatabaseError::SerializationError(e))?,
+                .map_err(DatabaseError::SerializationError)?,
             private_key: row.get("private_key"),
             public_key: row.get("public_key"),
             passphrase: row.get("passphrase"),

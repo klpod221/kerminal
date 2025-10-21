@@ -101,14 +101,9 @@ impl KeychainManager {
         }
     }
 
-    /// Check if keychain is available
     pub fn is_available(&self) -> bool {
-        // Try to create a test entry
         let service = format!("{}_test", self.app_name);
-        match Entry::new(&service, "test") {
-            Ok(_) => true,
-            Err(_) => false,
-        }
+        Entry::new(&service, "test").is_ok()
     }
 
     /// Clear all keychain entries for this app

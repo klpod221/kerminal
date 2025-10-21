@@ -4,7 +4,6 @@ use crate::database::error::DatabaseResult;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// Core database trait that all providers must implement
 #[allow(dead_code)]
@@ -21,16 +20,6 @@ pub trait Database: Send + Sync {
 
     /// Test the database connection
     async fn test_connection(&self) -> DatabaseResult<()>;
-
-    /// Execute raw SQL query (for SQL databases)
-    async fn execute_raw(&self, query: &str, params: &[&dyn ToSqlValue]) -> DatabaseResult<u64>;
-
-    /// Fetch raw query results (for SQL databases)
-    async fn fetch_raw(
-        &self,
-        query: &str,
-        params: &[&dyn ToSqlValue],
-    ) -> DatabaseResult<Vec<HashMap<String, SqlValue>>>;
 
     /// Concrete methods for specific types (object-safe)
     async fn save_ssh_profile(&self, model: &crate::models::ssh::SSHProfile) -> DatabaseResult<()>;
@@ -141,8 +130,6 @@ pub trait Database: Send + Sync {
     async fn update_device_last_seen(&self, device_id: &str) -> DatabaseResult<()>;
     async fn delete_device(&self, device_id: &str) -> DatabaseResult<()>;
 
-    /// Transaction support
-
     /// Schema management
     async fn create_tables(&self) -> DatabaseResult<()>;
     async fn drop_tables(&self) -> DatabaseResult<()>;
@@ -151,26 +138,6 @@ pub trait Database: Send + Sync {
     /// Provider-specific info
     fn provider_type(&self) -> DatabaseProviderType;
     fn connection_info(&self) -> String;
-}
-
-/// Transaction trait for atomic operations
-#[allow(dead_code)]
-#[async_trait]
-pub trait DatabaseTransaction: Send + Sync {
-    async fn commit(&mut self) -> DatabaseResult<()>;
-    async fn rollback(&mut self) -> DatabaseResult<()>;
-
-    async fn save<T>(&mut self, model: &T) -> DatabaseResult<()>
-    where
-        T: Syncable + Serialize + Send + Sync;
-
-    async fn update<T>(&mut self, model: &T) -> DatabaseResult<()>
-    where
-        T: Syncable + Serialize + Send + Sync;
-
-    async fn delete<T>(&mut self, id: &str) -> DatabaseResult<()>
-    where
-        T: Syncable + Send + Sync;
 }
 
 /// Trait for models that can be synchronized across databases
@@ -254,50 +221,6 @@ pub trait EncryptionService: Send + Sync {
     ) -> DatabaseResult<String>;
 }
 
-#[allow(dead_code)]
-/// Query criteria for filtering data
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct QueryCriteria {
-    pub filters: HashMap<String, QueryFilter>,
-    pub sort_by: Option<String>,
-    pub sort_direction: SortDirection,
-    pub limit: Option<u32>,
-    pub offset: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum QueryFilter {
-    Equals(SqlValue),
-    NotEquals(SqlValue),
-    In(Vec<SqlValue>),
-    NotIn(Vec<SqlValue>),
-    Like(String),
-    NotLike(String),
-    GreaterThan(SqlValue),
-    LessThan(SqlValue),
-    GreaterThanOrEqual(SqlValue),
-    LessThanOrEqual(SqlValue),
-    Between(SqlValue, SqlValue),
-    IsNull,
-    IsNotNull,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SortDirection {
-    Asc,
-    Desc,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum SqlValue {
-    Text(String),
-    Integer(i64),
-    Real(f64),
-    Boolean(bool),
-    DateTime(DateTime<Utc>),
-    Null,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum SyncStatus {
     Pending,  // Waiting to be synced
@@ -340,86 +263,4 @@ pub enum DatabaseProviderType {
     MySQL,
     PostgreSQL,
     MongoDB,
-}
-
-/// Trait for converting values to SQL parameters
-#[allow(dead_code)]
-pub trait ToSqlValue {
-    fn to_sql_value(&self) -> SqlValue;
-}
-
-// Implementations for common types
-impl ToSqlValue for String {
-    fn to_sql_value(&self) -> SqlValue {
-        SqlValue::Text(self.clone())
-    }
-}
-
-impl ToSqlValue for &str {
-    fn to_sql_value(&self) -> SqlValue {
-        SqlValue::Text(self.to_string())
-    }
-}
-
-impl ToSqlValue for i64 {
-    fn to_sql_value(&self) -> SqlValue {
-        SqlValue::Integer(*self)
-    }
-}
-
-impl ToSqlValue for f64 {
-    fn to_sql_value(&self) -> SqlValue {
-        SqlValue::Real(*self)
-    }
-}
-
-impl ToSqlValue for bool {
-    fn to_sql_value(&self) -> SqlValue {
-        SqlValue::Boolean(*self)
-    }
-}
-
-impl ToSqlValue for DateTime<Utc> {
-    fn to_sql_value(&self) -> SqlValue {
-        SqlValue::DateTime(*self)
-    }
-}
-
-impl Default for QueryCriteria {
-    fn default() -> Self {
-        Self {
-            filters: HashMap::new(),
-            sort_by: None,
-            sort_direction: SortDirection::Asc,
-            limit: None,
-            offset: None,
-        }
-    }
-}
-
-impl QueryCriteria {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn filter(mut self, field: &str, filter: QueryFilter) -> Self {
-        self.filters.insert(field.to_string(), filter);
-        self
-    }
-
-    pub fn sort_by(mut self, field: &str, direction: SortDirection) -> Self {
-        self.sort_by = Some(field.to_string());
-        self.sort_direction = direction;
-        self
-    }
-
-    pub fn limit(mut self, limit: u32) -> Self {
-        self.limit = Some(limit);
-        self
-    }
-
-    pub fn offset(mut self, offset: u32) -> Self {
-        self.offset = Some(offset);
-        self
-    }
 }

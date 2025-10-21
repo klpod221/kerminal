@@ -170,18 +170,6 @@ impl SSHProfile {
         self.base.touch();
     }
 
-    /// Static method to get profile by ID
-    ///
-    /// Note: This method is deprecated and should not be used.
-    /// Use the service layer (database.find_by_id) instead for proper encryption/decryption handling.
-    pub async fn get_by_id(
-        _profile_id: &str,
-    ) -> Result<Option<SSHProfile>, crate::database::error::DatabaseError> {
-        Err(crate::database::error::DatabaseError::NotImplemented(
-            "get_by_id should be implemented in service layer".to_string(),
-        ))
-    }
-
     /// Check if profile has valid authentication data
     pub fn has_valid_auth(&self) -> bool {
         match (&self.auth_method, &self.auth_data) {

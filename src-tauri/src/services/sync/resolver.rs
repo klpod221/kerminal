@@ -62,7 +62,7 @@ impl ConflictResolver {
     ) -> DatabaseResult<Vec<ConflictResolution<T>>> {
         conflicts
             .into_iter()
-            .map(|conflict| self.resolve(conflict, strategy.clone()))
+            .map(|conflict| self.resolve(conflict, strategy))
             .collect()
     }
 

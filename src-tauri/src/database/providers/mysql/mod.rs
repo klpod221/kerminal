@@ -4,13 +4,13 @@ mod ssh;
 mod tunnel;
 
 use async_trait::async_trait;
-use sqlx::{Column as _, MySqlPool, Row};
+use sqlx::MySqlPool;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::database::{
     error::{DatabaseError, DatabaseResult},
-    traits::{Database, SqlValue, ToSqlValue},
+    traits::Database,
 };
 
 pub struct MySQLProvider {
@@ -254,49 +254,6 @@ impl Database for MySQLProvider {
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         Ok(())
-    }
-
-    async fn execute_raw(&self, query: &str, _params: &[&dyn ToSqlValue]) -> DatabaseResult<u64> {
-        let pool_arc = self.get_pool()?;
-        let pool = pool_arc.read().await;
-
-        let result = sqlx::query(query)
-            .execute(&*pool)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        Ok(result.rows_affected())
-    }
-
-    async fn fetch_raw(
-        &self,
-        query: &str,
-        _params: &[&dyn ToSqlValue],
-    ) -> DatabaseResult<Vec<std::collections::HashMap<String, SqlValue>>> {
-        let pool_arc = self.get_pool()?;
-        let pool = pool_arc.read().await;
-
-        let rows = sqlx::query(query)
-            .fetch_all(&*pool)
-            .await
-            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            let mut map = std::collections::HashMap::new();
-            for (i, column) in row.columns().iter().enumerate() {
-                let value: Option<String> = row.try_get(i).ok();
-                map.insert(
-                    column.name().to_string(),
-                    value
-                        .map(SqlValue::Text)
-                        .unwrap_or(SqlValue::Null),
-                );
-            }
-            results.push(map);
-        }
-
-        Ok(results)
     }
 
     async fn save_ssh_profile(
