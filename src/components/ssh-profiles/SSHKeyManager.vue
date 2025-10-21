@@ -5,19 +5,17 @@
     size="xl"
   >
     <!-- Empty State -->
-    <div
+    <EmptyState
       v-if="sshKeyStore.keys.length === 0 && !sshKeyStore.loading"
-      class="text-center py-12"
-    >
-      <Key :size="64" class="mx-auto text-gray-600 mb-4" />
-      <h3 class="text-lg font-semibold text-white mb-2">No SSH Keys</h3>
-      <p class="text-gray-400 mb-6">
-        Add your first SSH key to securely connect to remote servers
-      </p>
-      <Button variant="primary" :icon="Plus" @click="openKeyModal()">
-        Add SSH Key
-      </Button>
-    </div>
+      :icon="Key"
+      :icon-size="64"
+      title="No SSH Keys"
+      description="Add your first SSH key to securely connect to remote servers"
+      action-text="Add SSH Key"
+      :action-icon="Plus"
+      action-variant="primary"
+      @action="openKeyModal()"
+    />
 
     <!-- Key List -->
     <div v-else class="space-y-4">
@@ -126,6 +124,7 @@ import { formatFingerprint, formatDateOrNever } from "../../utils/formatter";
 import Card from "../ui/Card.vue";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
+import EmptyState from "../ui/EmptyState.vue";
 import { Key, Plus, Edit3, Trash2 } from "lucide-vue-next";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";

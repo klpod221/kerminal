@@ -26,12 +26,6 @@ pub async fn get_ssh_groups(state: State<'_, AppState>) -> Result<Vec<SSHGroup>,
     app_result!(state.ssh_service.get_ssh_groups().await)
 }
 
-/// Get SSH group by ID
-#[tauri::command]
-pub async fn get_ssh_group(state: State<'_, AppState>, id: String) -> Result<SSHGroup, String> {
-    app_result!(state.ssh_service.get_ssh_group(&id).await)
-}
-
 /// Update SSH group
 #[tauri::command]
 pub async fn update_ssh_group(
@@ -166,13 +160,6 @@ pub async fn create_ssh_key(
 pub async fn get_ssh_keys(state: State<'_, AppState>) -> Result<Vec<SSHKey>, String> {
     let service = state.ssh_key_service.lock().await;
     app_result!(service.get_ssh_keys().await)
-}
-
-/// Get SSH key by ID
-#[tauri::command]
-pub async fn get_ssh_key(state: State<'_, AppState>, id: String) -> Result<SSHKey, String> {
-    let service = state.ssh_key_service.lock().await;
-    app_result!(service.get_ssh_key(&id).await)
 }
 
 /// Update SSH key (all provided fields)

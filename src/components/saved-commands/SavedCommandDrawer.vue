@@ -21,20 +21,16 @@
       </Form>
     </template>
 
-    <div class="p-4" v-if="!savedCommandStore.hasData">
-      <div class="text-center">
-        <Terminal :size="48" class="mx-auto text-gray-500 mb-4" />
-        <p class="text-sm text-gray-500 mb-4">No saved commands available.</p>
-        <Button
-          variant="outline"
-          size="sm"
-          :icon="Plus"
-          @click="createNewCommand()"
-        >
-          Create Your First Command
-        </Button>
-      </div>
-    </div>
+    <EmptyState
+      v-if="!savedCommandStore.hasData"
+      :icon="Terminal"
+      title="No Saved Commands"
+      description="Create your first saved command to get started."
+      action-text="Create Your First Command"
+      :action-icon="Plus"
+      action-variant="outline"
+      @action="createNewCommand()"
+    />
 
     <div v-else class="space-y-4 p-4">
       <!-- Filter & Sort Bar -->
@@ -234,6 +230,7 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
+import EmptyState from "../ui/EmptyState.vue";
 import SavedCommandItem from "./SavedCommandItem.vue";
 import SavedCommandModal from "./SavedCommandModal.vue";
 import SavedCommandGroupModal from "./SavedCommandGroupModal.vue";

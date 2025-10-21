@@ -21,12 +21,16 @@
       </Form>
     </template>
 
-    <div
-      class="p-4"
+    <EmptyState
       v-if="!sshStore.hasData"
-    >
-      <p class="text-sm text-gray-500">No SSH profiles or groups available.</p>
-    </div>
+      :icon="Server"
+      title="No SSH Profiles"
+      description="Create your first SSH profile to get started."
+      action-text="Create Your First Profile"
+      :action-icon="Plus"
+      action-variant="outline"
+      @action="createNewProfile"
+    />
 
     <div v-else class="space-y-4 p-4">
       <!-- Grouped Profiles -->
@@ -142,6 +146,7 @@ import Drawer from "../ui/Drawer.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
+import EmptyState from "../ui/EmptyState.vue";
 import SSHProfileItem from "./SSHProfileItem.vue";
 import {
   Search,

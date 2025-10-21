@@ -13,9 +13,6 @@ pub mod tunnel;
 /// Saved command management commands
 pub mod saved_command;
 
-/// System and database statistics commands
-pub mod system;
-
 /// External database management commands
 pub mod external_db;
 

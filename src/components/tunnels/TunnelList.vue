@@ -5,19 +5,17 @@
     size="xl"
   >
     <!-- Empty State -->
-    <div
+    <EmptyState
       v-if="tunnelStore.tunnels.length === 0 && !tunnelStore.loading"
-      class="text-center py-12"
-    >
-      <Route :size="64" class="mx-auto text-gray-600 mb-4" />
-      <h3 class="text-lg font-semibold text-white mb-2">No SSH Tunnels</h3>
-      <p class="text-gray-400 mb-6">
-        Create your first tunnel to securely forward ports or create SOCKS proxies
-      </p>
-      <Button variant="primary" :icon="Plus" @click="openTunnelModal()">
-        Create Tunnel
-      </Button>
-    </div>
+      :icon="Route"
+      :icon-size="64"
+      title="No SSH Tunnels"
+      description="Create your first tunnel to securely forward ports or create SOCKS proxies"
+      action-text="Create Tunnel"
+      :action-icon="Plus"
+      action-variant="primary"
+      @action="openTunnelModal()"
+    />
 
     <!-- Tunnel List -->
     <div v-else class="space-y-4">
@@ -167,6 +165,7 @@ import Modal from '../ui/Modal.vue';
 import Button from '../ui/Button.vue';
 import Badge from '../ui/Badge.vue';
 import Card from '../ui/Card.vue';
+import EmptyState from '../ui/EmptyState.vue';
 import TunnelStatusIndicator from './TunnelStatusIndicator.vue';
 import {
   Plus,

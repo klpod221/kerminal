@@ -67,19 +67,6 @@ pub async fn get_external_databases(
 }
 
 #[tauri::command]
-pub async fn get_external_database(
-    id: String,
-    app_state: State<'_, AppState>,
-) -> Result<Option<ExternalDatabaseConfig>, String> {
-    let database_service = app_state.database_service.lock().await;
-
-    database_service
-        .find_external_database_by_id(&id)
-        .await
-        .map_err(|e| format!("Failed to retrieve external database: {}", e))
-}
-
-#[tauri::command]
 pub async fn delete_external_database(
     id: String,
     app_state: State<'_, AppState>,
@@ -92,22 +79,7 @@ pub async fn delete_external_database(
         .map_err(|e| format!("Failed to delete external database: {}", e))
 }
 
-#[tauri::command]
-pub async fn toggle_database_active(
-    id: String,
-    is_active: bool,
-    app_state: State<'_, AppState>,
-) -> Result<(), String> {
-    let database_service = app_state.database_service.lock().await;
-
-    database_service
-        .toggle_external_database_active(&id, is_active)
-        .await
-        .map_err(|e| format!("Failed to toggle database active status: {}", e))
-}
-
-#[tauri::command]
-pub async fn test_external_connection(
+async fn test_external_connection(
     id: String,
     app_state: State<'_, AppState>,
 ) -> Result<String, String> {
@@ -129,7 +101,6 @@ pub async fn test_external_connection(
 
     match config.db_type {
         DatabaseType::MySQL => {
-            // Test MySQL connection
             let conn_str = format!(
                 "mysql://{}:{}@{}:{}/{}",
                 _connection_details.username,
@@ -144,7 +115,6 @@ pub async fn test_external_connection(
             }
         }
         DatabaseType::PostgreSQL => {
-            // Test PostgreSQL connection
             let conn_str = format!(
                 "postgresql://{}:{}@{}:{}/{}",
                 _connection_details.username,
@@ -159,7 +129,6 @@ pub async fn test_external_connection(
             }
         }
         DatabaseType::MongoDB => {
-            // Test MongoDB connection
             let conn_str = format!(
                 "mongodb://{}:{}@{}:{}/{}",
                 _connection_details.username,
@@ -182,28 +151,6 @@ pub async fn test_external_connection(
 }
 
 #[tauri::command]
-pub async fn decrypt_connection_details(
-    id: String,
-    app_state: State<'_, AppState>,
-) -> Result<ConnectionDetails, String> {
-    let database_service = app_state.database_service.lock().await;
-
-    let config = database_service
-        .find_external_database_by_id(&id)
-        .await
-        .map_err(|e| format!("Failed to find database config: {}", e))?
-        .ok_or_else(|| "Database configuration not found".to_string())?;
-
-    let master_password_manager = database_service.get_master_password_manager_arc();
-    let encryptor = ExternalDbEncryptor::new(master_password_manager);
-
-    encryptor
-        .decrypt_connection_details(&config.connection_details_encrypted)
-        .await
-        .map_err(|e| format!("Failed to decrypt connection details: {}", e))
-}
-
-#[tauri::command]
 pub async fn test_external_database_connection(
     id: String,
     app_state: State<'_, AppState>,
@@ -217,7 +164,7 @@ pub async fn connect_to_database(
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     database_service
         .toggle_external_database_active(&database_id, true)
         .await
@@ -230,7 +177,7 @@ pub async fn disconnect_from_database(
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
     let database_service = app_state.database_service.lock().await;
-    
+
     database_service
         .toggle_external_database_active(&database_id, false)
         .await
