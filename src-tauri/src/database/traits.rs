@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 use crate::database::error::DatabaseResult;
 use async_trait::async_trait;

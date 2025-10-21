@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 use crate::models::ssh::profile::{ProxyConfig, ProxyType};
 use russh_config::Stream;

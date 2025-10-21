@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 use crate::models::base::BaseModel;
 use serde::{Deserialize, Serialize};

@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 use chrono::{Duration, Utc};
 use std::sync::Arc;
