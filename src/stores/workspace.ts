@@ -439,6 +439,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    * Split a panel vertically
    * @param panelId - The panel ID to split
    */
+  /**
+   * Split a panel vertically (creates top/bottom panels)
+   * @param panelId - The panel ID to split
+   */
   const splitVertical = (panelId: string): void => {
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
@@ -458,7 +462,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
-          shouldFocusOnReady: true, // Mark this terminal to focus when ready
+          shouldFocusOnReady: true,
         };
         terminals.value.push(newTerminal);
       } else {
@@ -495,7 +499,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   };
 
   /**
-   * Split a panel horizontally
+   * Split a panel horizontally (creates left/right panels)
    * @param panelId - The panel ID to split
    */
   const splitHorizontal = (panelId: string): void => {
@@ -819,9 +823,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     let splitDirection: "horizontal" | "vertical";
     if (direction === "top" || direction === "bottom") {
-      splitDirection = "vertical";
-    } else {
       splitDirection = "horizontal";
+    } else {
+      splitDirection = "vertical";
     }
 
     const success = splitPanelInLayout(
@@ -921,9 +925,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     let splitDirection: "horizontal" | "vertical";
     if (direction === "top" || direction === "bottom") {
-      splitDirection = "vertical";
-    } else {
       splitDirection = "horizontal";
+    } else {
+      splitDirection = "vertical";
     }
 
     const success = splitPanelInLayout(

@@ -81,9 +81,7 @@ impl DeviceKeyManager {
                 .keychain
                 .store_master_password(&self.current_device_id, password)
             {
-                Ok(()) => {
-                    println!("DeviceKeyManager: Successfully stored password in keychain");
-                }
+                Ok(()) => {}
                 Err(e) => {
                     eprintln!("Warning: Failed to store password in keychain: {}", e);
                 }
@@ -93,9 +91,7 @@ impl DeviceKeyManager {
                 .keychain
                 .store_device_key(&self.current_device_id, &device_key.encryption_key)
             {
-                Ok(()) => {
-                    println!("DeviceKeyManager: Successfully stored device key in keychain");
-                }
+                Ok(()) => {}
                 Err(e) => {
                     eprintln!("Warning: Failed to store device key in keychain: {}", e);
                 }
@@ -180,11 +176,9 @@ impl DeviceKeyManager {
                     return Ok(true);
                 }
             }
-            Ok(None) => {
-                println!("DeviceKeyManager: No device key found in keychain");
-            }
+            Ok(None) => {}
             Err(e) => {
-                println!(
+                eprintln!(
                     "DeviceKeyManager: Error retrieving device key from keychain: {}",
                     e
                 );
@@ -253,14 +247,10 @@ impl DeviceKeyManager {
 
     /// Get device encryption key
     pub fn get_device_key(&mut self, device_id: &str) -> Option<&DeviceEncryptionKey> {
-        println!("DeviceKeyManager[{}]::get_device_key: Requested '{}', available keys: {:?}",
-            self.instance_id, device_id, self.device_keys.keys().collect::<Vec<_>>());
-
         if let Some(key) = self.device_keys.get_mut(device_id) {
             key.last_used_at = Utc::now();
             Some(key)
         } else {
-            println!("DeviceKeyManager[{}]::get_device_key: Key '{}' not found!", self.instance_id, device_id);
             None
         }
     }
@@ -369,10 +359,7 @@ impl DeviceKeyManager {
 
     /// Get loaded device IDs
     pub fn get_loaded_device_ids(&self) -> Vec<String> {
-        let keys: Vec<String> = self.device_keys.keys().cloned().collect();
-        println!("DeviceKeyManager[{}]::get_loaded_device_ids: {:?} (total: {})",
-            self.instance_id, keys, keys.len());
-        keys
+        self.device_keys.keys().cloned().collect()
     }
 
     /// Try to ensure shared key after auto-unlock
@@ -400,14 +387,7 @@ impl DeviceKeyManager {
     /// Ensure shared device key from current device key
     /// Since both are derived from same password+salt, they should be identical
     pub fn ensure_shared_device_key_from_current(&mut self) -> EncryptionResult<()> {
-        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Current device: {}",
-            self.instance_id, self.current_device_id);
-        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Available keys before: {:?}",
-            self.instance_id, self.device_keys.keys().collect::<Vec<_>>());
-
         if self.device_keys.contains_key("__shared__") {
-            println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Shared key already exists",
-                self.instance_id);
             return Ok(());
         }
 
@@ -430,11 +410,6 @@ impl DeviceKeyManager {
 
         self.device_keys
             .insert("__shared__".to_string(), shared_key);
-
-        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Shared key created successfully",
-            self.instance_id);
-        println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Available keys after: {:?}",
-            self.instance_id, self.device_keys.keys().collect::<Vec<_>>());
 
         Ok(())
     }

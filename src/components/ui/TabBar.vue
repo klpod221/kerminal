@@ -312,7 +312,7 @@ const scrollActiveTabIntoView = (): void => {
   const visibleLeft = -scrollOffset.value;
   const visibleRight = visibleLeft + containerRect.width;
 
-  const padding = 20; // Add some padding for better UX
+  const padding = 20;
 
   if (tabRelativeLeft < visibleLeft) {
     scrollOffset.value = -(tabRelativeLeft - padding);

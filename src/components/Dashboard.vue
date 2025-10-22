@@ -16,7 +16,7 @@
         </h1>
         <p class="text-center text-sm text-gray-400 mb-2">v{{ appVersion }}</p>
         <p class="text-center text-xl mt-1">
-          Modern Terminal with SSH, Tunneling & Cross-Device Sync
+          Modern Terminal Emulator & SSH Manager
         </p>
         <p class="text-center text-gray-400 mt-1">
           Made with ❤️ by

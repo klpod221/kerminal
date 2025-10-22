@@ -1,7 +1,7 @@
 <template>
   <div
     v-show="showDropZones"
-    class="drop-zones-container"
+    class="absolute top-[32px] left-0 right-0 bottom-0 z-[500] pointer-events-auto"
     @drop="onDrop"
     @dragover="onDragOver"
     @dragenter="onDragEnter"
@@ -9,61 +9,86 @@
   >
     <!-- Top Drop Zone -->
     <div
-      class="drop-zone drop-zone-top"
-      :class="{ 'drop-zone-active': activeZone === 'top' }"
+      class="absolute top-0 left-[20%] right-[20%] h-20 bg-blue-500/20 border-2 border-dashed border-blue-500/60 rounded-lg flex items-center justify-center transition-all duration-200 opacity-90"
+      :class="{
+        'bg-blue-500/40 border-blue-500 opacity-100 scale-[1.02]':
+          activeZone === 'top',
+      }"
       @dragenter="setActiveZone('top')"
     >
-      <div class="drop-zone-indicator">
-        <div class="drop-zone-icon">⬆</div>
-        <div class="drop-zone-text">Split Top</div>
+      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+        <div class="text-2xl mb-1">⬆</div>
+        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded">
+          Split Top
+        </div>
       </div>
     </div>
 
     <!-- Bottom Drop Zone -->
     <div
-      class="drop-zone drop-zone-bottom"
-      :class="{ 'drop-zone-active': activeZone === 'bottom' }"
+      class="absolute bottom-2 left-[20%] right-[20%] h-20 bg-blue-500/20 border-2 border-dashed border-blue-500/60 rounded-lg flex items-center justify-center transition-all duration-200 opacity-90"
+      :class="{
+        'bg-blue-500/40 border-blue-500 opacity-100 scale-[1.02]':
+          activeZone === 'bottom',
+      }"
       @dragenter="setActiveZone('bottom')"
     >
-      <div class="drop-zone-indicator">
-        <div class="drop-zone-icon">⬇</div>
-        <div class="drop-zone-text">Split Bottom</div>
+      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+        <div class="text-2xl mb-1">⬇</div>
+        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded">
+          Split Bottom
+        </div>
       </div>
     </div>
 
     <!-- Left Drop Zone -->
     <div
-      class="drop-zone drop-zone-left"
-      :class="{ 'drop-zone-active': activeZone === 'left' }"
+      class="absolute left-2 top-[20%] bottom-[20%] w-20 bg-blue-500/20 border-2 border-dashed border-blue-500/60 rounded-lg flex items-center justify-center transition-all duration-200 opacity-90"
+      :class="{
+        'bg-blue-500/40 border-blue-500 opacity-100 scale-[1.02]':
+          activeZone === 'left',
+      }"
       @dragenter="setActiveZone('left')"
     >
-      <div class="drop-zone-indicator">
-        <div class="drop-zone-icon">⬅</div>
-        <div class="drop-zone-text text-center">Split Left</div>
+      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+        <div class="text-2xl mb-1">⬅</div>
+        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded text-center">
+          Split Left
+        </div>
       </div>
     </div>
 
     <!-- Right Drop Zone -->
     <div
-      class="drop-zone drop-zone-right"
-      :class="{ 'drop-zone-active': activeZone === 'right' }"
+      class="absolute right-2 top-[20%] bottom-[20%] w-20 bg-blue-500/20 border-2 border-dashed border-blue-500/60 rounded-lg flex items-center justify-center transition-all duration-200 opacity-90"
+      :class="{
+        'bg-blue-500/40 border-blue-500 opacity-100 scale-[1.02]':
+          activeZone === 'right',
+      }"
       @dragenter="setActiveZone('right')"
     >
-      <div class="drop-zone-indicator">
-        <div class="drop-zone-icon">➡</div>
-        <div class="drop-zone-text text-center">Split Right</div>
+      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+        <div class="text-2xl mb-1">➡</div>
+        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded text-center">
+          Split Right
+        </div>
       </div>
     </div>
 
-    <!-- Center Drop Zone (for moving tab to existing panel) -->
+    <!-- Center Drop Zone -->
     <div
-      class="drop-zone drop-zone-center"
-      :class="{ 'drop-zone-active': activeZone === 'center' }"
+      class="absolute top-[30%] bottom-[30%] left-[30%] right-[30%] min-w-[120px] min-h-20 bg-blue-500/20 border-2 border-dashed border-blue-500/60 rounded-lg flex items-center justify-center transition-all duration-200 opacity-90"
+      :class="{
+        'bg-blue-500/40 border-blue-500 opacity-100 scale-[1.02]':
+          activeZone === 'center',
+      }"
       @dragenter="setActiveZone('center')"
     >
-      <div class="drop-zone-indicator">
-        <div class="drop-zone-icon">📁</div>
-        <div class="drop-zone-text">Add to Panel</div>
+      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+        <div class="text-2xl mb-1">📁</div>
+        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded">
+          Add to Panel
+        </div>
       </div>
     </div>
   </div>
@@ -185,97 +210,3 @@ const onDrop = (event: DragEvent): void => {
   activeZone.value = null;
 };
 </script>
-
-<style scoped>
-.drop-zones-container {
-  position: absolute;
-  top: 32px;
-  /* Start below TabBar */
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 500;
-  pointer-events: auto;
-}
-
-.drop-zone {
-  position: absolute;
-  background: rgba(59, 130, 246, 0.2);
-  border: 2px dashed rgba(59, 130, 246, 0.6);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  opacity: 0.9;
-}
-
-.drop-zone-active {
-  background: rgba(59, 130, 246, 0.4);
-  border-color: rgba(59, 130, 246, 1);
-  opacity: 1;
-  transform: scale(1.02);
-}
-
-.drop-zone-top {
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 80px;
-  /* Restored original height */
-}
-
-.drop-zone-bottom {
-  bottom: 8px;
-  left: 20%;
-  right: 20%;
-  height: 80px;
-}
-
-.drop-zone-left {
-  left: 8px;
-  top: 20%;
-  bottom: 20%;
-  width: 80px;
-}
-
-.drop-zone-right {
-  right: 8px;
-  top: 20%;
-  bottom: 20%;
-  width: 80px;
-}
-
-.drop-zone-center {
-  top: 30%;
-  bottom: 30%;
-  left: 30%;
-  right: 30%;
-  min-width: 120px;
-  min-height: 80px;
-}
-
-.drop-zone-indicator {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}
-
-.drop-zone-icon {
-  font-size: 24px;
-  margin-bottom: 4px;
-}
-
-.drop-zone-text {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(0, 0, 0, 0.5);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-</style>
