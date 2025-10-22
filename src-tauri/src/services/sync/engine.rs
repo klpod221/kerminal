@@ -249,18 +249,14 @@ impl SyncEngine {
     async fn sync_internal(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<SyncStats> {
         use crate::models::sync::ConflictResolutionStrategy;
 
-        println!("SyncEngine::sync_internal: Starting bidirectional sync");
-
         // Ensure connection
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
         let mut stats = SyncStats::default();
 
-        println!("SyncEngine::sync_internal: Getting last sync time");
         let last_sync = self.get_last_sync_time(&config.base.id).await?;
 
-        println!("SyncEngine::sync_internal: Getting conflict resolution strategy");
         // Get strategy from sync_settings table
         let strategy = {
             let db_service = self.database_service.lock().await;
@@ -275,7 +271,6 @@ impl SyncEngine {
                 .unwrap_or(ConflictResolutionStrategy::Manual)
         };
 
-        println!("SyncEngine::sync_internal: Syncing SSH profiles");
         let profile_stats = self.sync_table_bidirectional(
             &remote,
             "ssh_profiles",
@@ -284,7 +279,6 @@ impl SyncEngine {
         ).await?;
         stats.merge(profile_stats);
 
-        println!("SyncEngine::sync_internal: Syncing SSH groups");
         let group_stats = self.sync_table_bidirectional(
             &remote,
             "ssh_groups",
@@ -293,7 +287,6 @@ impl SyncEngine {
         ).await?;
         stats.merge(group_stats);
 
-        println!("SyncEngine::sync_internal: Syncing SSH keys");
         let key_stats = self.sync_table_bidirectional(
             &remote,
             "ssh_keys",
@@ -302,7 +295,6 @@ impl SyncEngine {
         ).await?;
         stats.merge(key_stats);
 
-        println!("SyncEngine::sync_internal: Syncing saved command groups");
         let cmd_group_stats = self.sync_table_bidirectional(
             &remote,
             "saved_command_groups",
@@ -311,7 +303,6 @@ impl SyncEngine {
         ).await?;
         stats.merge(cmd_group_stats);
 
-        println!("SyncEngine::sync_internal: Syncing saved commands");
         let cmd_stats = self.sync_table_bidirectional(
             &remote,
             "saved_commands",
@@ -320,7 +311,6 @@ impl SyncEngine {
         ).await?;
         stats.merge(cmd_stats);
 
-        println!("SyncEngine::sync_internal: Sync completed successfully");
         Ok(stats)
     }
 
@@ -345,15 +335,11 @@ impl SyncEngine {
         drop(db_service);
 
         // Get local records
-        println!("SyncEngine::sync_table_bidirectional: Getting local records for table: {}", table);
         let local_records = {
             let local_guard = local.read().await;
-            println!("SyncEngine::sync_table_bidirectional: Acquired local read lock");
             match table {
                 "ssh_profiles" => {
-                    println!("SyncEngine::sync_table_bidirectional: Querying local SSH profiles");
                     let profiles = local_guard.find_all_ssh_profiles().await?;
-                    println!("SyncEngine::sync_table_bidirectional: Got {} local SSH profiles", profiles.len());
                     profiles.iter().filter_map(|p| p.to_json().ok()).collect::<Vec<_>>()
                 }
                 "ssh_groups" => {
@@ -365,15 +351,11 @@ impl SyncEngine {
                     keys.iter().filter_map(|k| k.to_json().ok()).collect::<Vec<_>>()
                 }
                 "saved_command_groups" => {
-                    println!("SyncEngine::sync_table_bidirectional: Querying local saved command groups");
                     let groups = local_guard.find_all_saved_command_groups().await?;
-                    println!("SyncEngine::sync_table_bidirectional: Got {} local saved command groups", groups.len());
                     groups.iter().filter_map(|g| g.to_json().ok()).collect::<Vec<_>>()
                 }
                 "saved_commands" => {
-                    println!("SyncEngine::sync_table_bidirectional: Querying local saved commands");
                     let commands = local_guard.find_all_saved_commands().await?;
-                    println!("SyncEngine::sync_table_bidirectional: Got {} local saved commands", commands.len());
                     commands.iter().filter_map(|c| c.to_json().ok()).collect::<Vec<_>>()
                 }
                 _ => vec![],
@@ -381,9 +363,7 @@ impl SyncEngine {
         };
 
         // Get remote changes since last sync
-        println!("SyncEngine::sync_table_bidirectional: Pulling remote records for table: {}", table);
         let remote_records = remote.pull_records(table, last_sync).await?;
-        println!("SyncEngine::sync_table_bidirectional: Got {} remote records", remote_records.len());
 
         // Get version info for conflict detection
         let local_ids: Vec<String> = local_records
@@ -391,9 +371,7 @@ impl SyncEngine {
             .filter_map(|r| r.get("id").and_then(|v| v.as_str()).map(|s| s.to_string()))
             .collect();
 
-        println!("SyncEngine::sync_table_bidirectional: Getting remote versions for {} local IDs", local_ids.len());
         let remote_versions = remote.get_record_versions(table, local_ids.clone()).await?;
-        println!("SyncEngine::sync_table_bidirectional: Got {} remote versions", remote_versions.len());
 
         // Build local version map
         let local_versions: HashMap<String, u64> = local_records
@@ -409,12 +387,9 @@ impl SyncEngine {
         let mut records_to_push = Vec::new();
         let mut _records_to_pull: Vec<Value> = Vec::new();
 
-        println!("SyncEngine::sync_table_bidirectional: Processing {} local records", local_records.len());
         for local_record in local_records {
             if let Some(id) = local_record.get("id").and_then(|v| v.as_str()) {
-                println!("SyncEngine::sync_table_bidirectional: Processing record ID: {}", id);
                 if let Some(&remote_version) = remote_versions.get(id) {
-                    println!("SyncEngine::sync_table_bidirectional: Record exists on remote with version: {}", remote_version);
                     let local_version = local_versions.get(id).copied().unwrap_or(0);
 
                     if local_version > remote_version {
@@ -471,19 +446,14 @@ impl SyncEngine {
                     // If versions are equal, no action needed
                 } else {
                     // Record doesn't exist on remote, push it
-                    println!("SyncEngine::sync_table_bidirectional: Record {} does not exist on remote, adding to push queue", id);
                     records_to_push.push(local_record);
                 }
-            } else {
-                println!("SyncEngine::sync_table_bidirectional: WARNING - Record has no ID field, skipping");
             }
         }
 
         // Push local changes to remote
-        println!("SyncEngine::sync_table_bidirectional: Pushing {} records to remote", records_to_push.len());
         if !records_to_push.is_empty() {
             let count = remote.push_records(table, records_to_push).await?;
-            println!("SyncEngine::sync_table_bidirectional: Successfully pushed {} records", count);
             stats.total_synced += count;
         }
 

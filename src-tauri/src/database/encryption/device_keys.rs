@@ -50,8 +50,6 @@ impl DeviceKeyManager {
     /// Create new device key manager
     pub fn new(current_device_id: String) -> Self {
         let instance_id = uuid::Uuid::new_v4();
-        println!("DeviceKeyManager::new: Creating new instance {} for device: {}",
-            instance_id, current_device_id);
         Self {
             instance_id,
             current_device_id,
@@ -83,7 +81,6 @@ impl DeviceKeyManager {
 
         // Store in keychain if auto_unlock enabled
         if config.use_keychain && config.auto_unlock {
-            println!("DeviceKeyManager: Attempting to store password in keychain...");
             match self
                 .keychain
                 .store_master_password(&self.current_device_id, password)
@@ -96,7 +93,6 @@ impl DeviceKeyManager {
                 }
             }
 
-            println!("DeviceKeyManager: Attempting to store device key in keychain...");
             match self
                 .keychain
                 .store_device_key(&self.current_device_id, &device_key.encryption_key)
@@ -192,13 +188,7 @@ impl DeviceKeyManager {
                     };
 
                     self.device_keys.insert(device_id.to_string(), device_key);
-                    println!("DeviceKeyManager: Legacy device key loaded, auto-unlock successful");
                     return Ok(true);
-                } else {
-                    println!(
-                        "DeviceKeyManager: Device key found but invalid length: {}",
-                        key_bytes.len()
-                    );
                 }
             }
             Ok(None) => {

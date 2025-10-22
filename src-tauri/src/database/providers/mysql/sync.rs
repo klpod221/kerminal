@@ -43,8 +43,6 @@ pub async fn push_records(
     table: &str,
     records: Vec<Value>,
 ) -> DatabaseResult<usize> {
-    println!("MySQL::push_records: Called with {} records for table {}", records.len(), table);
-
     if records.is_empty() {
         return Ok(0);
     }
@@ -54,8 +52,7 @@ pub async fn push_records(
 
     let mut count = 0;
 
-    for (idx, record) in records.iter().enumerate() {
-        println!("MySQL::push_records: Processing record {}/{}", idx + 1, records.len());
+    for (_idx, record) in records.iter().enumerate() {
         let obj = record
             .as_object()
             .ok_or_else(|| DatabaseError::QueryFailed("Expected JSON object".to_string()))?;
@@ -82,9 +79,6 @@ pub async fn push_records(
             updates.join(", ")
         );
 
-        println!("MySQL::push_records: Generated SQL: {}", sql);
-        println!("MySQL::push_records: DB Columns: {:?}", db_columns);
-
         let mut query = sqlx::query(&sql);
         for (json_key, _) in &column_mapping {
             let value = &obj[json_key];
@@ -93,20 +87,16 @@ pub async fn push_records(
             query = bind_value(query, &converted_value);
         }
 
-        println!("MySQL::push_records: Executing query...");
-        let result = query
+        let _result = query
             .execute(&*pool)
             .await
             .map_err(|e| {
-                println!("MySQL::push_records: ERROR executing query: {}", e);
                 DatabaseError::QueryFailed(e.to_string())
             })?;
 
-        println!("MySQL::push_records: Query executed successfully. Rows affected: {}", result.rows_affected());
         count += 1;
     }
 
-    println!("MySQL::push_records: Completed. Total records pushed: {}", count);
     Ok(count)
 }
 

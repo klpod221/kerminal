@@ -47,7 +47,6 @@ impl SyncService {
 
     /// Initialize sync service (start scheduler, load enabled databases)
     pub async fn initialize(&self) -> DatabaseResult<()> {
-        println!("SyncService::initialize: Starting sync service initialization");
 
         // Check if master password is unlocked
         let is_unlocked = {
@@ -59,8 +58,6 @@ impl SyncService {
         };
 
         if !is_unlocked {
-            println!("SyncService::initialize: Master password not unlocked, skipping auto-connect");
-            println!("SyncService::initialize: Databases will need to be connected manually after unlock");
             return Ok(());
         }
 
@@ -72,7 +69,6 @@ impl SyncService {
             local_guard.get_all_external_databases().await?
         }; // Drop locks
 
-        println!("SyncService::initialize: Found {} database(s)", configs.len());
 
         // Auto-connect based on sync_settings
         let db_service = self.database_service.lock().await;
@@ -89,7 +85,6 @@ impl SyncService {
 
         if auto_sync_enabled {
             for config in configs {
-                println!("SyncService::initialize: Auto-connecting to: {}", config.name);
                 if let Err(e) = self.sync_manager.connect(&config).await {
                     eprintln!("Failed to auto-connect to {}: {}", config.name, e);
                 } else {
@@ -97,15 +92,11 @@ impl SyncService {
                     self.sync_scheduler.enable_database(config.base.id.clone()).await?;
                 }
             }
-        } else {
-            println!("SyncService::initialize: Auto-sync is disabled");
         }
 
         // Start the scheduler
-        println!("SyncService::initialize: Starting sync scheduler");
         self.sync_scheduler.start().await?;
 
-        println!("SyncService::initialize: Sync service initialized successfully");
         Ok(())
     }    /// Shutdown sync service
     #[allow(dead_code)]
@@ -121,8 +112,6 @@ impl SyncService {
 
     /// Connect to an external database
     pub async fn connect(&self, database_id: &str) -> DatabaseResult<()> {
-        println!("SyncService::connect: Connecting to database: {}", database_id);
-
         let config = {
             let db_service = self.database_service.lock().await;
             let local_db = db_service.get_local_database();
@@ -140,7 +129,6 @@ impl SyncService {
                 .clone() // Clone to move out of the lock
         }; // Drop locks here
 
-        println!("SyncService::connect: Config loaded, calling sync_manager.connect()");
         self.sync_manager.connect(&config).await
     }
 
@@ -161,8 +149,6 @@ impl SyncService {
         database_id: &str,
         direction: SyncDirection,
     ) -> DatabaseResult<SyncLog> {
-        println!("SyncService::sync: Starting sync for database: {} with direction: {:?}", database_id, direction);
-
         let config = {
             let db_service = self.database_service.lock().await;
             let local_db = db_service.get_local_database();
@@ -179,8 +165,6 @@ impl SyncService {
                 })?
                 .clone()
         }; // Drop locks here
-
-        println!("SyncService::sync: Config loaded, starting sync operation");
 
         let result = match direction {
             SyncDirection::Push => {
