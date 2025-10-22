@@ -108,7 +108,6 @@ import {
   Trash2,
 } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
-import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import Card from "../ui/Card.vue";
