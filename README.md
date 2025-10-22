@@ -27,23 +27,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 
 ## ✨ Features
 
-### �️ Terminal Emulator
-- **Full-Featured Local Terminal**: Native shell integration (bash, zsh, fish, PowerShell, etc.)
-- **Multiple Tabs & Sessions**: Run unlimited concurrent terminal sessions
-- **Split Panes**: Organize terminals in customizable horizontal and vertical layouts
-- **Advanced Terminal Features**:
-  - WebGL-accelerated rendering for smooth performance
-  - Unicode 11 support for international characters
-  - Search functionality within terminal output
-  - Clickable web links with auto-detection
-  - Terminal history buffer with efficient memory management
-  - Copy/paste with system clipboard integration
-- **Session Persistence**: Maintain terminal state across application restarts
-- **Custom Working Directories**: Start terminals in specific directories
-
-## ✨ Features
-
-### �️ Terminal Emulator
+### 💻 Terminal Emulator
 - Multiple tabs and split panes with unlimited sessions
 - Native shell integration (bash, zsh, fish, PowerShell, etc.)
 - WebGL-accelerated rendering with Unicode 11 support
