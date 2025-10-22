@@ -9,6 +9,7 @@ import type {
   Device,
   ConnectionDetails,
   SyncSettings,
+  ConflictResolutionStrategy,
 } from "../types/sync";
 
 class SyncService {
@@ -39,7 +40,13 @@ class SyncService {
 
   async updateDatabase(
     id: string,
-    config: Partial<ExternalDatabaseConfig>
+    config: {
+      name?: string;
+      connectionDetails?: ConnectionDetails;
+      autoSync?: boolean;
+      syncIntervalMinutes?: number;
+      conflictResolutionStrategy?: ConflictResolutionStrategy;
+    }
   ): Promise<void> {
     return api.call("update_external_database", { id, ...config });
   }

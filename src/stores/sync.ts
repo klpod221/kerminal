@@ -8,6 +8,7 @@ import type {
   ConflictResolutionData,
   ConnectionDetails,
   SyncSettings,
+  ConflictResolutionStrategy,
 } from "../types/sync";
 import { syncService } from "../services/sync";
 
@@ -91,7 +92,13 @@ export const useSyncStore = defineStore("sync", () => {
    */
   async function updateDatabase(
     id: string,
-    config: Partial<ExternalDatabaseConfig>
+    config: {
+      name?: string;
+      connectionDetails?: ConnectionDetails;
+      autoSync?: boolean;
+      syncIntervalMinutes?: number;
+      conflictResolutionStrategy?: ConflictResolutionStrategy;
+    }
   ): Promise<void> {
     isLoading.value = true;
     try {
@@ -243,10 +250,8 @@ export const useSyncStore = defineStore("sync", () => {
    */
   async function enableAutoSync(id: string): Promise<void> {
     await syncService.enableAutoSync(id);
-    const db = databases.value.find((d: ExternalDatabaseConfig) => d.id === id);
-    if (db) {
-      db.autoSyncEnabled = true;
-    }
+    // Reload to get updated status from backend
+    await loadDatabases();
   }
 
   /**
@@ -254,10 +259,8 @@ export const useSyncStore = defineStore("sync", () => {
    */
   async function disableAutoSync(id: string): Promise<void> {
     await syncService.disableAutoSync(id);
-    const db = databases.value.find((d: ExternalDatabaseConfig) => d.id === id);
-    if (db) {
-      db.autoSyncEnabled = false;
-    }
+    // Reload to get updated status from backend
+    await loadDatabases();
   }
 
   // === Statistics Actions ===

@@ -12,10 +12,7 @@ pub use scheduler::SyncScheduler;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-use crate::database::{
-    error::{DatabaseError, DatabaseResult},
-    service::DatabaseService,
-};
+use crate::database::{error::DatabaseResult, service::DatabaseService};
 use crate::models::sync::{log::SyncLog, SyncDirection};
 
 /// High-level sync service that orchestrates all sync operations
@@ -49,6 +46,21 @@ impl SyncService {
     /// Initialize sync service (start scheduler, load enabled databases)
     pub async fn initialize(&self) -> DatabaseResult<()> {
         println!("SyncService::initialize: Starting sync service initialization");
+
+        // Check if master password is unlocked
+        let is_unlocked = {
+            let db_service = self.database_service.lock().await;
+            let manager = db_service.get_master_password_manager_arc();
+            let manager_guard = manager.read().await;
+            let status = manager_guard.get_status().await;
+            status.is_unlocked
+        };
+
+        if !is_unlocked {
+            println!("SyncService::initialize: Master password not unlocked, skipping auto-connect");
+            println!("SyncService::initialize: Databases will need to be connected manually after unlock");
+            return Ok(());
+        }
 
         // Load all external database configs
         let configs = {
@@ -89,9 +101,7 @@ impl SyncService {
 
         println!("SyncService::initialize: Sync service initialized successfully");
         Ok(())
-    }
-
-    /// Shutdown sync service
+    }    /// Shutdown sync service
     #[allow(dead_code)]
     pub async fn shutdown(&self) -> DatabaseResult<()> {
         // Stop scheduler
@@ -219,6 +229,12 @@ impl SyncService {
     pub async fn enable_auto_sync(&self, database_id: &str) -> DatabaseResult<()> {
         // Update config in database
         let db_service = self.database_service.lock().await;
+        let master_password_manager = db_service.get_master_password_manager_arc();
+        drop(db_service);
+
+        let encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
+
+        let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let mut config = local_db
             .read()
@@ -234,10 +250,14 @@ impl SyncService {
 
         let mut sync_settings = config
             .parse_sync_settings()
-            .map_err(DatabaseError::SerializationError)?;
+            .unwrap_or_default();
         sync_settings.auto_sync = true;
-        config.sync_settings =
-            serde_json::to_string(&sync_settings).map_err(DatabaseError::SerializationError)?;
+
+        let encrypted_settings = encryptor
+            .encrypt_sync_settings(&sync_settings)
+            .await?;
+        config.sync_settings = encrypted_settings;
+        config.auto_sync_enabled = true;
 
         local_db
             .write()
@@ -255,6 +275,12 @@ impl SyncService {
     pub async fn disable_auto_sync(&self, database_id: &str) -> DatabaseResult<()> {
         // Update config in database
         let db_service = self.database_service.lock().await;
+        let master_password_manager = db_service.get_master_password_manager_arc();
+        drop(db_service);
+
+        let encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
+
+        let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let mut config = local_db
             .read()
@@ -270,10 +296,14 @@ impl SyncService {
 
         let mut sync_settings = config
             .parse_sync_settings()
-            .map_err(DatabaseError::SerializationError)?;
+            .unwrap_or_default();
         sync_settings.auto_sync = false;
-        config.sync_settings =
-            serde_json::to_string(&sync_settings).map_err(DatabaseError::SerializationError)?;
+
+        let encrypted_settings = encryptor
+            .encrypt_sync_settings(&sync_settings)
+            .await?;
+        config.sync_settings = encrypted_settings;
+        config.auto_sync_enabled = false;
 
         local_db
             .write()

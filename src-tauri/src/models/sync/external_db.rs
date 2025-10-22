@@ -139,6 +139,7 @@ pub struct ExternalDatabaseConfig {
     pub connection_details_encrypted: String,
     pub sync_settings: String,
     pub is_active: bool,
+    pub auto_sync_enabled: bool,
     pub last_sync_at: Option<DateTime<Utc>>,
 }
 
@@ -149,6 +150,7 @@ impl ExternalDatabaseConfig {
         db_type: DatabaseType,
         connection_details_encrypted: String,
         sync_settings: String,
+        auto_sync_enabled: bool,
     ) -> Self {
         Self {
             base: BaseModel::new(device_id),
@@ -157,6 +159,7 @@ impl ExternalDatabaseConfig {
             connection_details_encrypted,
             sync_settings,
             is_active: false,
+            auto_sync_enabled,
             last_sync_at: None,
         }
     }

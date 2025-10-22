@@ -288,6 +288,7 @@ impl Database for SQLiteProvider {
                 connection_details_encrypted TEXT NOT NULL,
                 sync_settings TEXT NOT NULL,
                 is_active BOOLEAN NOT NULL DEFAULT false,
+                auto_sync_enabled BOOLEAN NOT NULL DEFAULT false,
                 last_sync_at TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,

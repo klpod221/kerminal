@@ -114,7 +114,7 @@ import Input from "../ui/Input.vue";
 import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage, safeJsonParse, safeJsonStringify } from "../../utils/helpers";
+import { getErrorMessage, safeJsonParse } from "../../utils/helpers";
 import { formatRelativeTime } from "../../utils/formatter";
 import { useSyncStore } from "../../stores/sync";
 import type { ConflictResolutionStrategy, DatabaseType } from "../../types/sync";
@@ -161,8 +161,10 @@ const getDatabaseTypeLabel = (type: DatabaseType): string => {
 const loadSettings = () => {
   if (!currentDatabase.value) return;
 
+  // Load auto_sync from denormalized field for performance
   autoSyncEnabled.value = currentDatabase.value.autoSyncEnabled;
 
+  // Load other settings from encrypted syncSettings
   if (currentDatabase.value.syncSettings) {
     const settings = safeJsonParse(currentDatabase.value.syncSettings, {
       syncIntervalMinutes: 15,
@@ -171,6 +173,9 @@ const loadSettings = () => {
 
     syncInterval.value = settings.syncIntervalMinutes || 15;
     conflictStrategy.value = settings.conflictResolutionStrategy || "LastWriteWins";
+  } else {
+    syncInterval.value = 15;
+    conflictStrategy.value = "LastWriteWins";
   }
 };
 
@@ -210,15 +215,15 @@ const handleSave = async () => {
 
   isLoading.value = true;
   try {
-    const settings = {
+    // Send individual fields instead of stringified syncSettings
+    await syncStore.updateDatabase(currentDatabase.value.id, {
       autoSync: autoSyncEnabled.value,
       syncIntervalMinutes: syncInterval.value,
       conflictResolutionStrategy: conflictStrategy.value,
-    };
-
-    await syncStore.updateDatabase(currentDatabase.value.id, {
-      syncSettings: safeJsonStringify(settings),
     });
+
+    // Reload databases to get updated settings
+    await syncStore.loadDatabases();
 
     message.success("Settings saved successfully");
   } catch (error) {

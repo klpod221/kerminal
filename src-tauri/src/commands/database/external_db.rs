@@ -4,8 +4,9 @@ use crate::database::encryption::ExternalDbEncryptor;
 use crate::database::providers::{MongoDBProvider, MySQLProvider, PostgreSQLProvider};
 use crate::database::traits::Database;
 use crate::models::sync::{
-    AddExternalDatabaseRequest, DatabaseType, ExternalDatabaseConfig,
-    ExternalDatabaseWithDetails, TestConnectionRequest, UpdateExternalDatabaseRequest,
+    AddExternalDatabaseRequest, ConflictResolutionStrategy, DatabaseType,
+    ExternalDatabaseConfig, ExternalDatabaseWithDetails, SyncSettings, TestConnectionRequest,
+    UpdateExternalDatabaseRequest,
 };
 use crate::state::AppState;
 
@@ -45,6 +46,7 @@ pub async fn add_external_database(
         request.db_type,
         encrypted_connection_details,
         encrypted_sync_settings,
+        request.auto_sync,
     );
 
     database_service
@@ -134,9 +136,14 @@ pub async fn update_external_database(
             config.connection_details_encrypted = encrypted;
         }
 
-        let mut sync_settings = config
-            .parse_sync_settings()
-            .map_err(|e| format!("Failed to parse sync settings: {}", e))?;
+        // Try to parse existing settings, or use defaults if empty/invalid
+        let mut sync_settings = config.parse_sync_settings().unwrap_or_else(|_| {
+            SyncSettings {
+                auto_sync: false,
+                sync_interval_minutes: 15,
+                conflict_resolution_strategy: ConflictResolutionStrategy::LastWriteWins,
+            }
+        });
 
         if let Some(auto_sync) = request.auto_sync {
             sync_settings.auto_sync = auto_sync;
@@ -155,6 +162,9 @@ pub async fn update_external_database(
             .await
             .map_err(|e| format!("Failed to encrypt sync settings: {}", e))?;
         config.sync_settings = encrypted_settings;
+
+        // Update denormalized field for fast queries
+        config.auto_sync_enabled = sync_settings.auto_sync;
     }
 
     config.base.touch();

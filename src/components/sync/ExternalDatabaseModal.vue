@@ -155,7 +155,7 @@ import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage, safeJsonParse, safeJsonStringify, getCurrentTimestamp } from "../../utils/helpers";
+import { getErrorMessage, safeJsonParse, getCurrentTimestamp } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
 import { syncService } from "../../services/sync";
 import { useOverlay } from "../../composables/useOverlay";
@@ -267,18 +267,21 @@ const loadDatabase = async () => {
       database: data.connectionDetails.database,
     };
 
+    // Load auto_sync from denormalized field
     syncSettings.value = {
       autoSync: data.config.autoSyncEnabled,
       syncIntervalMinutes: 15,
       conflictResolutionStrategy: "LastWriteWins",
     };
 
+    // Parse other settings from encrypted string
     if (data.config.syncSettings) {
-      const parsed = safeJsonParse(data.config.syncSettings, {});
-      syncSettings.value = {
-        ...syncSettings.value,
-        ...parsed,
-      };
+      const parsed = safeJsonParse(data.config.syncSettings, {
+        syncIntervalMinutes: 15,
+        conflictResolutionStrategy: "LastWriteWins" as const,
+      });
+      syncSettings.value.syncIntervalMinutes = parsed.syncIntervalMinutes || 15;
+      syncSettings.value.conflictResolutionStrategy = (parsed.conflictResolutionStrategy as ConflictResolutionStrategy) || "LastWriteWins";
     }
   } catch (error) {
     console.error("Error loading database:", error);
@@ -334,12 +337,18 @@ const handleSubmit = async () => {
     };
 
     if (databaseId.value) {
-      await syncStore.updateDatabase(databaseId.value, {
-        ...dbData,
-        ...(connectionDetails.value.password && {
-          connectionDetailsEncrypted: safeJsonStringify(connectionDetails.value),
-        }),
-      });
+      const updatePayload: any = {
+        name: database.value.name,
+        autoSync: syncSettings.value.autoSync,
+        syncIntervalMinutes: syncSettings.value.syncIntervalMinutes,
+        conflictResolutionStrategy: syncSettings.value.conflictResolutionStrategy,
+      };
+
+      if (connectionDetails.value.password) {
+        updatePayload.connectionDetails = connectionDetails.value;
+      }
+
+      await syncStore.updateDatabase(databaseId.value, updatePayload);
       message.success("Database updated successfully");
     } else {
       await syncStore.addDatabase(

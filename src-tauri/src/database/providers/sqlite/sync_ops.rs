@@ -23,14 +23,15 @@ impl SQLiteProvider {
             r#"
             INSERT INTO external_databases (
                 id, name, db_type, connection_details_encrypted, sync_settings,
-                is_active, last_sync_at, created_at, updated_at, device_id, version, sync_status
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+                is_active, auto_sync_enabled, last_sync_at, created_at, updated_at, device_id, version, sync_status
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 db_type = excluded.db_type,
                 connection_details_encrypted = excluded.connection_details_encrypted,
                 sync_settings = excluded.sync_settings,
                 is_active = excluded.is_active,
+                auto_sync_enabled = excluded.auto_sync_enabled,
                 last_sync_at = excluded.last_sync_at,
                 updated_at = excluded.updated_at,
                 version = excluded.version,
@@ -43,6 +44,7 @@ impl SQLiteProvider {
         .bind(&config.connection_details_encrypted)
         .bind(&config.sync_settings)
         .bind(config.is_active)
+        .bind(config.auto_sync_enabled)
         .bind(config.last_sync_at)
         .bind(config.base.created_at)
         .bind(config.base.updated_at)
@@ -228,6 +230,9 @@ impl SQLiteProvider {
         let is_active: bool = row
             .try_get("is_active")
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let auto_sync_enabled: bool = row
+            .try_get("auto_sync_enabled")
+            .unwrap_or(false); // Default to false for backward compatibility
         let last_sync_at: Option<String> = row
             .try_get("last_sync_at")
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
@@ -281,6 +286,7 @@ impl SQLiteProvider {
             connection_details_encrypted,
             sync_settings,
             is_active,
+            auto_sync_enabled,
             last_sync_at: last_sync_at_parsed,
         })
     }

@@ -1,9 +1,21 @@
 use crate::database::encryption::master_password::SetupMasterPasswordRequest;
 use crate::models::auth::{ChangeMasterPasswordRequest, VerifyMasterPasswordRequest};
 use crate::state::AppState;
+use crate::services::sync::SyncService;
+use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 use super::common::app_result;
+
+/// Helper function to auto-connect databases with auto-sync enabled
+async fn auto_connect_sync_databases(sync_service: Arc<SyncService>) -> Result<(), String> {
+    println!("auto_connect_sync_databases: Starting auto-connect for sync databases");
+
+    // This will load and connect databases with auto_sync enabled
+    // Similar to initialize() but can be called after manual unlock
+    sync_service.initialize().await
+        .map_err(|e| format!("Failed to auto-connect databases: {}", e))
+}
 
 /// Setup master password for first time
 #[tauri::command]
@@ -45,7 +57,20 @@ pub async fn verify_master_password(
         .verify_master_password(req.password)
         .await
     {
-        Ok(()) => Ok(true),
+        Ok(()) => {
+            // After successful unlock, trigger auto-connect for databases with auto-sync enabled
+            println!("verify_master_password: Password verified, triggering auto-connect for sync databases");
+
+            // Spawn auto-connect in background so it doesn't block the unlock response
+            let sync_service = state.sync_service.clone();
+            tokio::spawn(async move {
+                if let Err(e) = auto_connect_sync_databases(sync_service).await {
+                    eprintln!("verify_master_password: Failed to auto-connect databases: {}", e);
+                }
+            });
+
+            Ok(true)
+        },
         Err(e) => Err(e.to_string()),
     }
 }
