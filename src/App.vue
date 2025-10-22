@@ -81,7 +81,7 @@ onMounted(async () => {
 
     // if setup is not completed, ensure the setup view is shown
     if (authStore.requiresSetup) {
-      openOverlay("initial-setup");
+      openOverlay("master-password-setup");
       return;
     }
 
@@ -104,7 +104,7 @@ watch(
     }
 
     if (requiresSetup) {
-      openOverlay("initial-setup");
+      openOverlay("master-password-setup");
     } else if (requiresUnlock) {
       openOverlay("master-password-unlock");
     }

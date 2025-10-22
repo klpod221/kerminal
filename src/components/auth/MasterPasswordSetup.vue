@@ -8,17 +8,18 @@
     size="md"
   >
     <div class="flex flex-col gap-4">
-      <Card>
-        <div class="flex items-start gap-4">
-          <Lock :size="80" class="text-blue-400" />
-          <div>
-            <h3 class="text-lg font-semibold text-gray-100 mb-1">
-              Secure Your Data
-            </h3>
-            <p class="text-red-400">This password cannot be recovered.</p>
+      <div class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
+        <div class="flex items-start gap-2">
+          <AlertCircle :size="20" class="text-yellow-500 mt-0.5 flex-shrink-0" />
+          <div class="flex-1">
+            <h4 class="text-sm font-medium text-yellow-200 mb-1">Important for Multi-Device Sync</h4>
+            <p class="text-xs text-yellow-100/80">
+              If you plan to sync data across multiple devices, you MUST use the same master password on all devices.
+              Different passwords will prevent data decryption and sync functionality.
+            </p>
           </div>
         </div>
-      </Card>
+      </div>
 
       <Form ref="masterPasswordSetupForm" @submit="handleSubmit">
         <h4
@@ -111,7 +112,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { Lock, Save } from "lucide-vue-next";
+import { Save, AlertCircle } from "lucide-vue-next";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
@@ -122,7 +123,6 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Select from "../ui/Select.vue";
-import Card from "../ui/Card.vue";
 
 // Import stores and composables
 const { closeOverlay } = useOverlay();
