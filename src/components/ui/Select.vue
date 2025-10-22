@@ -83,7 +83,7 @@
       </div>
     </div>
 
-    <div v-if="helper" class="min-h-[1.25rem]">
+    <div v-if="helper" :class="space && 'min-h-[1.25rem]'">
       <!-- Helper text (only show if no error) -->
       <p v-if="helperText && !errorMessage" class="text-xs text-gray-400">
         {{ helperText }}
@@ -122,6 +122,7 @@ interface SelectProps {
   readonly?: boolean;
   autocomplete?: string;
   helper?: boolean;
+  space?: boolean;
 }
 
 const props = withDefaults(defineProps<SelectProps>(), {
@@ -129,6 +130,7 @@ const props = withDefaults(defineProps<SelectProps>(), {
   disabled: false,
   readonly: false,
   helper: true,
+  space: true,
   options: () => [],
 });
 
