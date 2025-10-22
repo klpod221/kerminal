@@ -15,6 +15,16 @@ Whether you need a powerful local terminal with multiple tabs and split panes, o
 
 Perfect for developers, DevOps engineers, system administrators, and anyone who lives in the terminal and values security, organization, and productivity.
 
+## 📸 Screenshots
+
+### Dashboard
+
+![Dashboard](public/screenshots/Dashboard.png)
+
+### Main Interface
+
+![Kerminal Main Interface](public/screenshots/MainInterface.png)
+
 ## ✨ Features
 
 ### �️ Terminal Emulator
