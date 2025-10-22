@@ -117,6 +117,13 @@ async fn main() {
             commands::database::sync::get_sync_statistics,
             commands::database::sync::get_sync_service_statistics,
             commands::database::sync::resolve_conflict,
+            // Conflict resolution commands
+            commands::database::sync::get_unresolved_conflict_resolutions,
+            commands::database::sync::resolve_conflict_resolution,
+            commands::database::sync::cleanup_resolved_conflicts,
+            // Global sync settings commands
+            commands::database::sync::get_global_sync_settings,
+            commands::database::sync::update_global_sync_settings,
             // Device commands
             commands::database::sync::get_current_device,
             commands::database::sync::get_all_devices,

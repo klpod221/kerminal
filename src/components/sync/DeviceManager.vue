@@ -214,10 +214,10 @@ const loadCurrentDevice = async () => {
 const registerCurrentDevice = async () => {
   isLoading.value = true;
   try {
-    const device = await syncService.registerDevice({
-      deviceName: "Current Device",
-      deviceType: "Desktop",
-    });
+    const device = await syncService.registerDevice(
+      "Current Device",
+      "Desktop"
+    );
     currentDevice.value = device;
     await loadDevices();
     message.success("Device registered successfully");

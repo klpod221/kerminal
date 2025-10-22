@@ -46,18 +46,6 @@
           <div class="p-4 bg-gray-800/50">
             <pre class="text-xs text-gray-300 whitespace-pre-wrap max-h-64 overflow-auto">{{ localDataStr }}</pre>
           </div>
-          <div class="border-t border-gray-700 p-3 bg-gray-800">
-            <Button
-              variant="primary"
-              size="sm"
-              class="w-full"
-              :loading="isResolving && choice === 'local'"
-              :disabled="isResolving"
-              @click="handleResolve('local')"
-            >
-              Keep Local
-            </Button>
-          </div>
         </div>
 
         <!-- Remote -->
@@ -68,18 +56,49 @@
           <div class="p-4 bg-gray-800/50">
             <pre class="text-xs text-gray-300 whitespace-pre-wrap max-h-64 overflow-auto">{{ remoteDataStr }}</pre>
           </div>
-          <div class="border-t border-gray-700 p-3 bg-gray-800">
-            <Button
-              variant="primary"
-              size="sm"
-              class="w-full"
-              :loading="isResolving && choice === 'remote'"
-              :disabled="isResolving"
-              @click="handleResolve('remote')"
-            >
-              Keep Remote
-            </Button>
-          </div>
+        </div>
+      </div>
+
+      <!-- Resolution Actions -->
+      <div class="space-y-3">
+        <div class="text-xs text-gray-400 font-medium uppercase tracking-wide">Choose Resolution Strategy</div>
+        <div class="grid grid-cols-2 gap-2">
+          <Button
+            variant="primary"
+            size="sm"
+            :loading="isResolving && choice === 'LocalWins'"
+            :disabled="isResolving"
+            @click="handleResolveWithStrategy('LocalWins')"
+          >
+            Keep Local
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            :loading="isResolving && choice === 'RemoteWins'"
+            :disabled="isResolving"
+            @click="handleResolveWithStrategy('RemoteWins')"
+          >
+            Keep Remote
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            :loading="isResolving && choice === 'LastWriteWins'"
+            :disabled="isResolving"
+            @click="handleResolveWithStrategy('LastWriteWins')"
+          >
+            Use Latest (Last Write)
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            :loading="isResolving && choice === 'FirstWriteWins'"
+            :disabled="isResolving"
+            @click="handleResolveWithStrategy('FirstWriteWins')"
+          >
+            Use Oldest (First Write)
+          </Button>
         </div>
       </div>
     </div>
@@ -94,6 +113,8 @@ import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
 import { useOverlay } from "../../composables/useOverlay";
+import { syncService } from "../../services/sync";
+import type { ConflictResolutionStrategy } from "../../types/sync";
 
 const props = defineProps<{
   conflictId?: string | null;
@@ -110,7 +131,7 @@ const conflictId = getOverlayProp(
 );
 
 const isResolving = ref(false);
-const choice = ref<"local" | "remote" | null>(null);
+const choice = ref<ConflictResolutionStrategy | null>(null);
 
 const currentConflict = computed(() => {
   if (!conflictId.value) return null;
@@ -145,15 +166,35 @@ const remoteDataStr = computed(() => {
   }
 });
 
-const handleResolve = async (resolution: "local" | "remote") => {
+const handleResolveWithStrategy = async (strategy: ConflictResolutionStrategy) => {
   if (!conflictId.value) return;
 
   isResolving.value = true;
-  choice.value = resolution;
+  choice.value = strategy;
 
   try {
-    await syncStore.resolveConflict(conflictId.value, resolution);
-    message.success(`Conflict resolved: ${resolution === "local" ? "Local" : "Remote"} version kept`);
+    // Use new resolveConflict from store which internally calls resolveConflictResolution
+    // Store already maps 'local'/'remote' to strategies, but we pass strategy directly
+    if (strategy === "LocalWins") {
+      await syncStore.resolveConflict(conflictId.value, "local");
+    } else if (strategy === "RemoteWins") {
+      await syncStore.resolveConflict(conflictId.value, "remote");
+    } else {
+      // For other strategies, call the service directly
+      await syncService.resolveConflictResolution(conflictId.value, strategy);
+      // Remove from store manually
+      syncStore.conflicts = syncStore.conflicts.filter((c) => c.id !== conflictId.value);
+    }
+
+    const strategyLabel = {
+      LocalWins: "Local",
+      RemoteWins: "Remote",
+      LastWriteWins: "Latest (Last Write)",
+      FirstWriteWins: "Oldest (First Write)",
+      Manual: "Manual",
+    }[strategy] || strategy;
+
+    message.success(`Conflict resolved: ${strategyLabel} version kept`);
     closeOverlay("conflict-resolution-modal");
   } catch (error) {
     console.error("Failed to resolve conflict:", error);

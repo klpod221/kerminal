@@ -28,6 +28,29 @@ pub enum SyncDirection {
     Bidirectional,
 }
 
+impl std::fmt::Display for SyncDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SyncDirection::Push => write!(f, "Push"),
+            SyncDirection::Pull => write!(f, "Pull"),
+            SyncDirection::Bidirectional => write!(f, "Bidirectional"),
+        }
+    }
+}
+
+impl std::str::FromStr for SyncDirection {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Push" => Ok(SyncDirection::Push),
+            "Pull" => Ok(SyncDirection::Pull),
+            "Bidirectional" | "Both" => Ok(SyncDirection::Bidirectional),
+            _ => Err(format!("Unknown sync direction: {}", s)),
+        }
+    }
+}
+
 /// Sync status
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]

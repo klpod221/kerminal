@@ -23,6 +23,14 @@
           variant="outline"
           :icon="Settings"
           @click="openEditDatabaseModal"
+          title="Edit database settings"
+        />
+        <Button
+          v-if="selectedDatabaseId"
+          variant="danger"
+          :icon="Trash2"
+          @click="confirmDeleteDatabase"
+          title="Delete database"
         />
         <Button
           v-if="selectedDatabaseId"
@@ -45,9 +53,141 @@
           <SyncStatus />
         </div>
 
-        <!-- Settings Tab -->
+        <!-- Global Sync Settings Tab (Phase 9) -->
         <div v-show="activeTab === 'settings'">
-          <SyncSettings />
+          <Card
+            title="Global Sync Settings"
+            subtitle="Configure sync behavior for all external databases"
+          >
+            <div v-if="isLoadingGlobal" class="flex items-center justify-center py-16 text-gray-400">
+              <RefreshCw class="w-6 h-6 animate-spin mr-3" />
+              Loading settings...
+            </div>
+
+            <div v-else class="space-y-4">
+              <!-- Master Controls -->
+              <div class="border border-gray-700 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <h4 class="text-sm font-medium text-gray-100">Master Controls</h4>
+                    <p class="text-xs text-gray-400 mt-1">Enable or disable the entire sync system</p>
+                  </div>
+                  <Badge :variant="globalLocal.isActive ? 'success' : 'default'">
+                    {{ globalLocal.isActive ? 'Active' : 'Inactive' }}
+                  </Badge>
+                </div>
+
+                <div class="space-y-4">
+                  <Checkbox
+                    id="global-is-active"
+                    v-model="globalLocal.isActive"
+                    label="Enable Sync System"
+                    helper-text="Master switch for all sync operations"
+                    @update:modelValue="markGlobalDirty"
+                  />
+
+                  <Checkbox
+                    id="global-auto-sync"
+                    v-model="globalLocal.autoSyncEnabled"
+                    label="Auto Sync"
+                    helper-text="Automatically sync at intervals"
+                    :disabled="!globalLocal.isActive"
+                    @update:modelValue="markGlobalDirty"
+                  />
+
+                  <div v-if="globalLocal.autoSyncEnabled">
+                    <Input
+                      id="global-interval"
+                      v-model.number="globalLocal.syncIntervalMinutes"
+                      label="Sync Interval (minutes)"
+                      type="number"
+                      :min="1"
+                      :max="1440"
+                      placeholder="15"
+                      helper-text="How often to automatically sync (1-1440 minutes)"
+                      @blur="markGlobalDirty"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Data Types to Sync -->
+              <div class="border border-gray-700 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-gray-100 mb-4">Data Types to Sync</h4>
+
+                <div class="space-y-3">
+                  <Checkbox
+                    id="sync-ssh-profiles"
+                    v-model="globalLocal.syncSshProfiles"
+                    label="SSH Profiles"
+                    @update:modelValue="markGlobalDirty"
+                  />
+                  <Checkbox
+                    id="sync-ssh-groups"
+                    v-model="globalLocal.syncSshGroups"
+                    label="SSH Groups"
+                    @update:modelValue="markGlobalDirty"
+                  />
+                  <Checkbox
+                    id="sync-ssh-keys"
+                    v-model="globalLocal.syncSshKeys"
+                    label="SSH Keys"
+                    @update:modelValue="markGlobalDirty"
+                  />
+                  <Checkbox
+                    id="sync-ssh-tunnels"
+                    v-model="globalLocal.syncSshTunnels"
+                    label="SSH Tunnels"
+                    @update:modelValue="markGlobalDirty"
+                  />
+                  <Checkbox
+                    id="sync-saved-commands"
+                    v-model="globalLocal.syncSavedCommands"
+                    label="Saved Commands"
+                    @update:modelValue="markGlobalDirty"
+                  />
+                </div>
+              </div>
+
+              <!-- Conflict Resolution Strategy -->
+              <div class="border border-gray-700 rounded-lg p-4">
+                <Select
+                  id="global-conflict-strategy"
+                  v-model="globalLocal.conflictStrategy"
+                  label="Conflict Resolution Strategy"
+                  helper-text="Choose how to handle data conflicts when syncing"
+                  :options="globalConflictStrategyOptions"
+                  @update:modelValue="markGlobalDirty"
+                />
+
+                <div class="mt-3 bg-gray-900 rounded-lg p-3 border border-gray-700">
+                  <p class="text-xs text-gray-300">{{ getGlobalStrategyDescription() }}</p>
+                </div>
+              </div>
+
+              <!-- Sync Direction -->
+              <div class="border border-gray-700 rounded-lg p-4">
+                <Select
+                  id="global-sync-direction"
+                  v-model="globalLocal.syncDirection"
+                  label="Sync Direction"
+                  helper-text="Control the direction of data synchronization"
+                  :options="globalSyncDirectionOptions"
+                  @update:modelValue="markGlobalDirty"
+                />
+
+                <div class="mt-3 bg-gray-900 rounded-lg p-3 border border-gray-700">
+                  <p class="text-xs text-gray-300">{{ getGlobalDirectionDescription() }}</p>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex gap-2 justify-end">
+                <Button variant="outline" :disabled="!globalDirty" @click="resetGlobal">Reset</Button>
+                <Button variant="primary" :disabled="!globalDirty || globalSaving" @click="saveGlobal" :loading="globalSaving">Save Settings</Button>
+              </div>
+            </div>
+          </Card>
         </div>
 
         <!-- Conflicts Tab -->
@@ -161,17 +301,21 @@ import {
   Hash,
   Clock,
   GitMerge,
+  Trash2,
 } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import NavigationTabs from "../ui/NavigationTabs.vue";
+import Checkbox from "../ui/Checkbox.vue";
+import Input from "../ui/Input.vue";
 import SyncStatus from "./SyncStatus.vue";
-import SyncSettings from "./SyncSettings.vue";
 import DeviceManager from "./DeviceManager.vue";
 import ExternalDatabaseModal from "./ExternalDatabaseModal.vue";
 import ConflictResolutionModal from "./ConflictResolutionModal.vue";
+import Card from "../ui/Card.vue";
+import { syncService } from "../../services/sync";
 import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { formatDateOrNever } from "../../utils/formatter";
@@ -185,12 +329,32 @@ const activeTab = ref("status");
 const selectedDatabaseId = ref<string>("");
 const isConnecting = ref(false);
 const isLoadingConflicts = ref(false);
+// Global sync settings (Phase 9)
+const isLoadingGlobal = ref(false);
+const globalSaving = ref(false);
+const globalDirty = ref(false);
+const globalSettings = ref<any | null>(null);
+const globalLocal = ref<any>({});
 
 const tabs = [
   { id: "status", label: "Status & Logs", icon: Activity },
   { id: "settings", label: "Settings", icon: Settings },
   { id: "conflicts", label: "Conflicts", icon: AlertTriangle },
   { id: "devices", label: "Devices", icon: Laptop },
+];
+
+const globalConflictStrategyOptions = [
+  { value: "lastWriteWins", label: "Last Write Wins" },
+  { value: "firstWriteWins", label: "First Write Wins" },
+  { value: "localWins", label: "Local Wins" },
+  { value: "remoteWins", label: "Remote Wins" },
+  { value: "manual", label: "Manual Resolution" },
+];
+
+const globalSyncDirectionOptions = [
+  { value: "both", label: "Bidirectional" },
+  { value: "push", label: "Push Only" },
+  { value: "pull", label: "Pull Only" },
 ];
 
 const databaseOptions = computed(() => {
@@ -267,6 +431,33 @@ const toggleConnection = async () => {
   }
 };
 
+const confirmDeleteDatabase = async () => {
+  if (!selectedDatabaseId.value) return;
+
+  const db = syncStore.databases.find((d) => d.id === selectedDatabaseId.value);
+  if (!db) return;
+
+  const confirmed = await window.confirm(
+    `Are you sure you want to delete "${db.name}"?\n\nThis will remove all sync configuration for this database. This action cannot be undone.`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    await syncStore.deleteDatabase(selectedDatabaseId.value);
+    message.success(`Database "${db.name}" deleted successfully`);
+
+    // Clear selection and select first available database
+    selectedDatabaseId.value = "";
+    if (syncStore.databases.length > 0) {
+      selectedDatabaseId.value = syncStore.databases[0].id;
+    }
+  } catch (error) {
+    console.error("Failed to delete database:", error);
+    message.error(getErrorMessage(error, "Failed to delete database"));
+  }
+};
+
 const loadConflicts = async () => {
   isLoadingConflicts.value = true;
   try {
@@ -281,9 +472,19 @@ const loadConflicts = async () => {
 
 watch(
   () => selectedDatabaseId.value,
-  (newId) => {
+  async (newId) => {
     if (newId) {
       syncStore.setCurrentDatabase(newId);
+
+      // Save selected database to global settings for persistence
+      try {
+        await syncService.updateGlobalSyncSettings({
+          selectedDatabaseId: newId,
+        });
+      } catch (error) {
+        console.error("Failed to save selected database:", error);
+        // Non-critical error, just log it
+      }
     }
   },
 );
@@ -300,14 +501,145 @@ watch(
 onMounted(async () => {
   await syncStore.loadDatabases();
 
-  if (syncStore.databases.length > 0 && !selectedDatabaseId.value) {
+  // Load global settings first to restore last selected database
+  try {
+    await loadGlobalSettings();
+
+    // Restore last selected database from global settings
+    if (globalSettings.value?.selectedDatabaseId) {
+      const dbExists = syncStore.databases.find(
+        (db) => db.id === globalSettings.value.selectedDatabaseId
+      );
+      if (dbExists) {
+        selectedDatabaseId.value = globalSettings.value.selectedDatabaseId;
+      }
+    }
+  } catch (e) {
+    // ignore, loadGlobalSettings handles its own errors
+  }
+
+  // Fallback: Select first database if none selected
+  if (!selectedDatabaseId.value && syncStore.databases.length > 0) {
     selectedDatabaseId.value = syncStore.databases[0].id;
   }
 
+  // Override with store's current database if set
   if (syncStore.currentDatabaseId) {
     selectedDatabaseId.value = syncStore.currentDatabaseId;
   }
 
   loadConflicts();
 });
+
+// Load global settings when user switches to the Global tab
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if (tab === "global" && !globalSettings.value) {
+      loadGlobalSettings();
+    }
+  },
+);
+
+async function loadGlobalSettings() {
+  isLoadingGlobal.value = true;
+  try {
+    const data = await syncService.getGlobalSyncSettings();
+    globalSettings.value = data || null;
+    if (data) {
+      globalLocal.value = {
+        isActive: data.isActive ?? false,
+        autoSyncEnabled: data.autoSyncEnabled ?? false,
+        syncIntervalMinutes: data.syncIntervalMinutes ?? 15,
+        syncSshProfiles: data.syncSshProfiles ?? true,
+        syncSshGroups: data.syncSshGroups ?? true,
+        syncSshKeys: data.syncSshKeys ?? true,
+        syncSshTunnels: data.syncSshTunnels ?? false,
+        syncSavedCommands: data.syncSavedCommands ?? false,
+        conflictStrategy: data.conflictStrategy ?? "manual",
+        syncDirection: data.syncDirection ?? "both",
+      };
+    } else {
+      globalLocal.value = {
+        isActive: false,
+        autoSyncEnabled: false,
+        syncIntervalMinutes: 15,
+        syncSshProfiles: true,
+        syncSshGroups: true,
+        syncSshKeys: true,
+        syncSshTunnels: false,
+        syncSavedCommands: false,
+        conflictStrategy: "manual",
+        syncDirection: "both",
+      };
+    }
+    globalDirty.value = false;
+  } catch (error) {
+    console.error("Failed to load global settings:", error);
+    message.error(getErrorMessage(error, "Failed to load global settings"));
+  } finally {
+    isLoadingGlobal.value = false;
+  }
+}
+
+function markGlobalDirty() {
+  globalDirty.value = true;
+}
+
+function resetGlobal() {
+  if (globalSettings.value) {
+    globalLocal.value = { ...globalSettings.value };
+    globalDirty.value = false;
+    message.info("Settings reset to last saved state");
+  }
+}
+
+async function saveGlobal() {
+  if (!globalDirty.value) return;
+  globalSaving.value = true;
+  try {
+    const updates = {
+      isActive: globalLocal.value.isActive,
+      autoSyncEnabled: globalLocal.value.autoSyncEnabled,
+      syncIntervalMinutes: globalLocal.value.syncIntervalMinutes,
+      syncSshProfiles: globalLocal.value.syncSshProfiles,
+      syncSshGroups: globalLocal.value.syncSshGroups,
+      syncSshKeys: globalLocal.value.syncSshKeys,
+      syncSshTunnels: globalLocal.value.syncSshTunnels,
+      syncSavedCommands: globalLocal.value.syncSavedCommands,
+      conflictStrategy: globalLocal.value.conflictStrategy,
+      syncDirection: globalLocal.value.syncDirection,
+    };
+    await syncService.updateGlobalSyncSettings(updates as any);
+    await loadGlobalSettings();
+    message.success("Global sync settings saved successfully");
+  } catch (error) {
+    console.error("Failed to save global settings:", error);
+    message.error(getErrorMessage(error, "Failed to save global settings"));
+  } finally {
+    globalSaving.value = false;
+  }
+}
+
+function getGlobalStrategyDescription(): string {
+  const strategy = globalLocal.value.conflictStrategy;
+  const descriptions: Record<string, string> = {
+    lastWriteWins: "The most recently modified data will be kept",
+    firstWriteWins: "The oldest data will be preserved",
+    localWins: "Local data always wins in conflicts",
+    remoteWins: "Remote data always wins in conflicts",
+    manual: "You will be prompted to manually resolve each conflict",
+  };
+  return descriptions[strategy] || "";
+}
+
+function getGlobalDirectionDescription(): string {
+  const direction = globalLocal.value.syncDirection;
+  const descriptions: Record<string, string> = {
+    both: "Sync data in both directions (local ↔ remote)",
+    push: "Only push local data to remote (local → remote)",
+    pull: "Only pull remote data to local (local ← remote)",
+  };
+  return descriptions[direction] || "";
+}
 </script>

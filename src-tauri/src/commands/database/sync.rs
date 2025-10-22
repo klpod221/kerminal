@@ -1,7 +1,7 @@
 use tauri::State;
 
 use crate::{
-    models::sync::{ConflictResolutionStrategy, SyncConflict, SyncOperation, SyncDirection},
+    models::sync::{ConflictResolutionStrategy, SyncConflict, SyncLog, SyncOperation, SyncDirection},
     state::AppState,
 };
 
@@ -36,17 +36,12 @@ pub async fn sync_now(
     database_id: String,
     direction: SyncDirection,
     app_state: State<'_, AppState>,
-) -> Result<String, String> {
-    let log = app_state
+) -> Result<SyncLog, String> {
+    app_state
         .sync_service
         .sync(&database_id, direction)
         .await
-        .map_err(|e| e.to_string())?;
-
-    Ok(format!(
-        "Sync completed: {} records synced, status: {:?}",
-        log.records_synced, log.status
-    ))
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -175,4 +170,83 @@ pub async fn register_device(
         .map_err(|e| e.to_string())?;
 
     Ok(device)
+}
+
+/// Get all unresolved conflict resolutions for manual resolution
+#[tauri::command]
+pub async fn get_unresolved_conflict_resolutions(
+    app_state: State<'_, AppState>,
+) -> Result<Vec<crate::models::sync::conflict::ConflictResolution>, String> {
+    let database_service = app_state.database_service.lock().await;
+    let local_db = database_service.get_local_database();
+    let local_db_read = local_db.read().await;
+
+    local_db_read
+        .get_unresolved_conflict_resolutions()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Resolve a conflict resolution with specified strategy
+#[tauri::command]
+pub async fn resolve_conflict_resolution(
+    id: String,
+    strategy: ConflictResolutionStrategy,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    let database_service = app_state.database_service.lock().await;
+    let local_db = database_service.get_local_database();
+    let local_db_read = local_db.read().await;
+
+    local_db_read
+        .resolve_conflict_resolution(&id, strategy)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Cleanup resolved conflicts older than specified days
+#[tauri::command]
+pub async fn cleanup_resolved_conflicts(
+    days: i64,
+    app_state: State<'_, AppState>,
+) -> Result<usize, String> {
+    let database_service = app_state.database_service.lock().await;
+    let local_db = database_service.get_local_database();
+    let local_db_read = local_db.read().await;
+
+    local_db_read
+        .cleanup_resolved_conflicts(days)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Get global sync settings
+#[tauri::command]
+pub async fn get_global_sync_settings(
+    app_state: State<'_, AppState>,
+) -> Result<Option<crate::models::sync::SyncSettings>, String> {
+    let database_service = app_state.database_service.lock().await;
+    let local_db = database_service.get_local_database();
+    let local_db_read = local_db.read().await;
+
+    local_db_read
+        .get_global_sync_settings()
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Update global sync settings
+#[tauri::command]
+pub async fn update_global_sync_settings(
+    settings: crate::models::sync::UpdateSyncSettingsRequest,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    let database_service = app_state.database_service.lock().await;
+    let local_db = database_service.get_local_database();
+    let local_db_write = local_db.write().await;
+
+    local_db_write
+        .update_sync_settings(&settings)
+        .await
+        .map_err(|e| e.to_string())
 }

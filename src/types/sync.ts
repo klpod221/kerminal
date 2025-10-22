@@ -36,10 +36,53 @@ export type ConflictResolutionStrategy =
   | "LocalWins"
   | "RemoteWins";
 
-export interface SyncSettings {
+// Legacy sync settings (deprecated - kept for backward compatibility)
+export interface LegacySyncSettings {
   autoSync: boolean;
   syncIntervalMinutes: number;
   conflictResolutionStrategy: ConflictResolutionStrategy;
+}
+
+// Global Sync Settings (Phase 9)
+// Per-database sync settings (used when adding/updating databases)
+export interface DatabaseSyncSettings {
+  autoSync: boolean;
+  syncIntervalMinutes: number;
+  conflictResolutionStrategy: ConflictResolutionStrategy;
+}
+
+// Global sync settings (stored in sync_settings table)
+export interface SyncSettings {
+  id: string; // Always "global"
+  isActive: boolean;
+  autoSyncEnabled: boolean;
+  syncIntervalMinutes: number;
+  syncSshProfiles: boolean;
+  syncSshGroups: boolean;
+  syncSshKeys: boolean;
+  syncSshTunnels: boolean;
+  syncSavedCommands: boolean;
+  conflictStrategy: ConflictResolutionStrategy;
+  syncDirection: SyncDirection;
+  selectedDatabaseId?: string; // Last selected database for UI persistence
+  lastSyncAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// For updating sync settings (partial)
+export interface UpdateSyncSettingsRequest {
+  isActive?: boolean;
+  autoSyncEnabled?: boolean;
+  syncIntervalMinutes?: number;
+  syncSshProfiles?: boolean;
+  syncSshGroups?: boolean;
+  syncSshKeys?: boolean;
+  syncSshTunnels?: boolean;
+  syncSavedCommands?: boolean;
+  conflictStrategy?: string;
+  syncDirection?: string;
+  selectedDatabaseId?: string;
 }
 
 export interface ConnectionDetails {
@@ -47,7 +90,7 @@ export interface ConnectionDetails {
   port: number;
   username: string;
   password: string;
-  database: string;
+  databaseName: string;
 }
 
 export interface ExternalDatabaseConfig {
@@ -71,7 +114,7 @@ export interface ExternalDatabaseWithDetails {
   connectionDetails: ConnectionDetails;
 }
 
-export type SyncDirection = "Push" | "Pull" | "Bidirectional";
+export type SyncDirection = "Push" | "Pull" | "Both";
 
 export type SyncLogStatus = "InProgress" | "Completed" | "Failed" | "Cancelled";
 

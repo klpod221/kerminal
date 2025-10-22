@@ -79,46 +79,11 @@
 
       <Input
         id="db-database"
-        v-model="connectionDetails.database"
+        v-model="connectionDetails.databaseName"
         label="Database Name"
         placeholder="kerminal_sync"
         rules="required"
       />
-
-      <!-- Sync Settings -->
-      <Collapsible
-        title="Sync Settings"
-        subtitle="Configure automatic synchronization"
-        :default-expanded="false"
-      >
-        <Checkbox
-          id="auto-sync"
-          v-model="syncSettings.autoSync"
-          label="Enable Auto Sync"
-        />
-
-        <Input
-          v-if="syncSettings.autoSync"
-          id="sync-interval"
-          v-model.number="syncSettings.syncIntervalMinutes"
-          label="Sync Interval (minutes)"
-          type="number"
-          placeholder="15"
-          :min="1"
-          :max="1440"
-          rules="required|min_value:1|max_value:1440"
-        />
-
-        <Select
-          id="conflict-strategy"
-          v-model="syncSettings.conflictResolutionStrategy"
-          label="Conflict Resolution Strategy"
-          placeholder="Select strategy"
-          :options="conflictStrategyOptions"
-          rules="required"
-        />
-      </Collapsible>
-
     </Form>
 
     <!-- Actions -->
@@ -151,9 +116,7 @@ import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Select from "../ui/Select.vue";
-import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
-import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
 import { getErrorMessage, safeJsonParse, getCurrentTimestamp } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
@@ -162,7 +125,7 @@ import { useOverlay } from "../../composables/useOverlay";
 import type {
   DatabaseType,
   ConnectionDetails,
-  SyncSettings,
+  DatabaseSyncSettings,
   ConflictResolutionStrategy,
 } from "../../types/sync";
 
@@ -194,10 +157,10 @@ const connectionDetails = ref<ConnectionDetails>({
   port: 3306,
   username: "",
   password: "",
-  database: "",
+  databaseName: "",
 });
 
-const syncSettings = ref<SyncSettings>({
+const syncSettings = ref<DatabaseSyncSettings>({
   autoSync: false,
   syncIntervalMinutes: 15,
   conflictResolutionStrategy: "LastWriteWins" as ConflictResolutionStrategy,
@@ -207,14 +170,6 @@ const databaseTypeOptions = [
   { value: "mysql", label: "MySQL" },
   { value: "postgresql", label: "PostgreSQL" },
   { value: "mongodb", label: "MongoDB" },
-];
-
-const conflictStrategyOptions = [
-  { value: "LastWriteWins", label: "Last Write Wins (Newest)" },
-  { value: "FirstWriteWins", label: "First Write Wins (Oldest)" },
-  { value: "LocalWins", label: "Local Wins (Prefer This Device)" },
-  { value: "RemoteWins", label: "Remote Wins (Prefer Server)" },
-  { value: "Manual", label: "Manual Resolution (Ask Me)" },
 ];
 
 const defaultPort = computed(() => {
@@ -264,7 +219,7 @@ const loadDatabase = async () => {
       port: data.connectionDetails.port,
       username: data.connectionDetails.username,
       password: "",
-      database: data.connectionDetails.database,
+      databaseName: data.connectionDetails.databaseName,
     };
 
     // Load auto_sync from denormalized field
@@ -381,7 +336,7 @@ watch(() => databaseId.value, (newId) => {
       port: 3306,
       username: "",
       password: "",
-      database: "",
+      databaseName: "",
     };
     syncSettings.value = {
       autoSync: false,

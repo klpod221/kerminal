@@ -7,7 +7,7 @@ import type {
   SyncServiceStatistics,
   ConflictResolutionData,
   ConnectionDetails,
-  SyncSettings,
+  DatabaseSyncSettings,
   ConflictResolutionStrategy,
 } from "../types/sync";
 import { syncService } from "../services/sync";
@@ -71,7 +71,7 @@ export const useSyncStore = defineStore("sync", () => {
   async function addDatabase(
     config: Omit<ExternalDatabaseConfig, "id">,
     connectionDetails: ConnectionDetails,
-    syncSettings: SyncSettings
+    syncSettings: DatabaseSyncSettings
   ): Promise<ExternalDatabaseConfig> {
     isLoading.value = true;
     try {
@@ -221,7 +221,14 @@ export const useSyncStore = defineStore("sync", () => {
   async function loadConflicts(): Promise<void> {
     isLoading.value = true;
     try {
-      conflicts.value = await syncService.getConflicts();
+      // Use new unresolved conflict resolutions API (Phase 9)
+      // Prefer the newer endpoint which returns persisted conflict resolution records
+      if (typeof syncService.getUnresolvedConflictResolutions === "function") {
+        conflicts.value = await syncService.getUnresolvedConflictResolutions();
+      } else {
+        // Fallback to older API name for backward compatibility
+        conflicts.value = await syncService.getConflicts();
+      }
     } finally {
       isLoading.value = false;
     }
@@ -236,7 +243,15 @@ export const useSyncStore = defineStore("sync", () => {
   ): Promise<void> {
     isLoading.value = true;
     try {
-      await syncService.resolveConflict(id, resolution);
+      // Map old resolution terms to the new ConflictResolutionStrategy
+      // and call the newer resolveConflictResolution when available
+      const strategy: any = resolution === "local" ? "LocalWins" : "RemoteWins";
+      if (typeof syncService.resolveConflictResolution === "function") {
+        await syncService.resolveConflictResolution(id, strategy);
+      } else {
+        // Fallback to older API for backward compatibility
+        await syncService.resolveConflict(id, resolution);
+      }
       conflicts.value = conflicts.value.filter((c: ConflictResolutionData) => c.id !== id);
     } finally {
       isLoading.value = false;

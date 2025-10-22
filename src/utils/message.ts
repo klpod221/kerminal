@@ -85,3 +85,27 @@ class MessageService {
 }
 
 export const message = new MessageService();
+
+// Helper functions for easier usage
+export function showSuccess(content: string, title?: string): Promise<void> {
+  return message.success(content, title);
+}
+
+export function showError(content: string, title?: string): Promise<void> {
+  return message.error(content, title);
+}
+
+export function showWarning(content: string, title?: string): Promise<void> {
+  return message.warning(content, title);
+}
+
+export function showInfo(content: string, title?: string): Promise<void> {
+  return message.info(content, title);
+}
+
+export function showConfirm(title: string, content: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const confirmed = window.confirm(`${title}\n\n${content}`);
+    resolve(confirmed);
+  });
+}

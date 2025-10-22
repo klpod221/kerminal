@@ -3,7 +3,8 @@ use chrono::{DateTime, Utc};
 use sqlx::Row;
 
 use crate::{
-    database::{error::DatabaseResult, traits::SyncStatus},
+    database::error::{DatabaseError, DatabaseResult},
+    database::traits::SyncStatus,
     models::sync::{
         ConflictResolutionStrategy, ExternalDatabaseConfig, SyncConflict, SyncOperation,
     },
@@ -22,17 +23,13 @@ impl SQLiteProvider {
         sqlx::query(
             r#"
             INSERT INTO external_databases (
-                id, name, db_type, connection_details_encrypted, sync_settings,
-                is_active, auto_sync_enabled, last_sync_at, created_at, updated_at, device_id, version, sync_status
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                id, name, db_type, connection_details_encrypted,
+                created_at, updated_at, device_id, version, sync_status
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             ON CONFLICT(id) DO UPDATE SET
                 name = excluded.name,
                 db_type = excluded.db_type,
                 connection_details_encrypted = excluded.connection_details_encrypted,
-                sync_settings = excluded.sync_settings,
-                is_active = excluded.is_active,
-                auto_sync_enabled = excluded.auto_sync_enabled,
-                last_sync_at = excluded.last_sync_at,
                 updated_at = excluded.updated_at,
                 version = excluded.version,
                 sync_status = excluded.sync_status
@@ -42,10 +39,6 @@ impl SQLiteProvider {
         .bind(&config.name)
         .bind(config.db_type.to_string())
         .bind(&config.connection_details_encrypted)
-        .bind(&config.sync_settings)
-        .bind(config.is_active)
-        .bind(config.auto_sync_enabled)
-        .bind(config.last_sync_at)
         .bind(config.base.created_at)
         .bind(config.base.updated_at)
         .bind(&config.base.device_id)
@@ -67,8 +60,8 @@ impl SQLiteProvider {
 
         let row = sqlx::query(
             r#"
-            SELECT id, name, db_type, connection_details_encrypted, sync_settings,
-                is_active, last_sync_at, created_at, updated_at, device_id, version, sync_status
+            SELECT id, name, db_type, connection_details_encrypted,
+                created_at, updated_at, device_id, version, sync_status
             FROM external_databases
             WHERE id = ?1
         "#,
@@ -92,8 +85,8 @@ impl SQLiteProvider {
 
         let rows = sqlx::query(
             r#"
-            SELECT id, name, db_type, connection_details_encrypted, sync_settings,
-                is_active, last_sync_at, created_at, updated_at, device_id, version, sync_status
+            SELECT id, name, db_type, connection_details_encrypted,
+                created_at, updated_at, device_id, version, sync_status
             FROM external_databases
             ORDER BY created_at DESC
         "#,
@@ -102,9 +95,22 @@ impl SQLiteProvider {
         .await
         .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
 
+        // Get global sync settings to check if sync is active
+        let is_active = sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT is_active FROM sync_settings WHERE id = 'global'
+        "#,
+        )
+        .fetch_optional(&*pool)
+        .await
+        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?
+        .unwrap_or(false);
+
         let mut configs = Vec::new();
         for row in rows {
-            configs.push(self.map_external_database_row(&row)?);
+            let mut config = self.map_external_database_row(&row)?;
+            config.is_active = is_active; // Apply global sync active status
+            configs.push(config);
         }
 
         Ok(configs)
@@ -224,18 +230,6 @@ impl SQLiteProvider {
         let connection_details_encrypted: String = row
             .try_get("connection_details_encrypted")
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let sync_settings: String = row
-            .try_get("sync_settings")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let is_active: bool = row
-            .try_get("is_active")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let auto_sync_enabled: bool = row
-            .try_get("auto_sync_enabled")
-            .unwrap_or(false); // Default to false for backward compatibility
-        let last_sync_at: Option<String> = row
-            .try_get("last_sync_at")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
         let created_at: String = row
             .try_get("created_at")
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
@@ -258,16 +252,6 @@ impl SQLiteProvider {
         let sync_status = SyncStatus::from_str(&sync_status_str)
             .map_err(crate::database::error::DatabaseError::QueryFailed)?;
 
-        let last_sync_at_parsed = if let Some(dt_str) = last_sync_at {
-            Some(
-                DateTime::parse_from_rfc3339(&dt_str)
-                    .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?
-                    .with_timezone(&Utc),
-            )
-        } else {
-            None
-        };
-
         Ok(ExternalDatabaseConfig {
             base: crate::models::base::BaseModel {
                 id,
@@ -284,10 +268,7 @@ impl SQLiteProvider {
             name,
             db_type,
             connection_details_encrypted,
-            sync_settings,
-            is_active,
-            auto_sync_enabled,
-            last_sync_at: last_sync_at_parsed,
+            is_active: false, // Will be updated by join or separate query
         })
     }
 
@@ -431,5 +412,385 @@ impl SQLiteProvider {
                 .with_timezone(&Utc),
             resolved_at: resolved_at_parsed,
         })
+    }
+
+    /// Get global sync settings (single instance)
+    #[allow(dead_code)]
+    pub async fn get_global_sync_settings(
+        &self,
+    ) -> DatabaseResult<Option<crate::models::sync::SyncSettings>> {
+        println!("SQLite::get_global_sync_settings: Starting query");
+
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        println!("SQLite::get_global_sync_settings: Pool acquired");
+
+        let row = sqlx::query(
+            r#"
+            SELECT id, is_active, auto_sync_enabled, sync_interval_minutes,
+                sync_ssh_profiles, sync_ssh_groups, sync_ssh_keys,
+                sync_ssh_tunnels, sync_saved_commands,
+                conflict_strategy, sync_direction, selected_database_id, last_sync_at,
+                created_at, updated_at
+            FROM sync_settings
+            WHERE id = 'global'
+        "#,
+        )
+        .fetch_optional(&*pool)
+        .await
+        .map_err(|e| {
+            println!("SQLite::get_global_sync_settings: Query failed: {}", e);
+            crate::database::error::DatabaseError::QueryFailed(e.to_string())
+        })?;
+
+        println!("SQLite::get_global_sync_settings: Query executed successfully");
+
+        if let Some(row) = row {
+            let settings = self.map_sync_settings_row(&row)?;
+            Ok(Some(settings))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Save global sync settings (upsert)
+    #[allow(dead_code)]
+    pub async fn save_global_sync_settings(
+        &self,
+        settings: &crate::models::sync::SyncSettings,
+    ) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        sqlx::query(
+            r#"
+            INSERT INTO sync_settings (
+                id, is_active, auto_sync_enabled, sync_interval_minutes,
+                sync_ssh_profiles, sync_ssh_groups, sync_ssh_keys,
+                sync_ssh_tunnels, sync_saved_commands,
+                conflict_strategy, sync_direction, selected_database_id, last_sync_at,
+                created_at, updated_at
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+            ON CONFLICT(id) DO UPDATE SET
+                is_active = excluded.is_active,
+                auto_sync_enabled = excluded.auto_sync_enabled,
+                sync_interval_minutes = excluded.sync_interval_minutes,
+                sync_ssh_profiles = excluded.sync_ssh_profiles,
+                sync_ssh_groups = excluded.sync_ssh_groups,
+                sync_ssh_keys = excluded.sync_ssh_keys,
+                sync_ssh_tunnels = excluded.sync_ssh_tunnels,
+                sync_saved_commands = excluded.sync_saved_commands,
+                conflict_strategy = excluded.conflict_strategy,
+                sync_direction = excluded.sync_direction,
+                selected_database_id = excluded.selected_database_id,
+                last_sync_at = excluded.last_sync_at,
+                updated_at = excluded.updated_at
+        "#,
+        )
+        .bind(&settings.id)
+        .bind(settings.is_active)
+        .bind(settings.auto_sync_enabled)
+        .bind(settings.sync_interval_minutes as i64)
+        .bind(settings.sync_ssh_profiles)
+        .bind(settings.sync_ssh_groups)
+        .bind(settings.sync_ssh_keys)
+        .bind(settings.sync_ssh_tunnels)
+        .bind(settings.sync_saved_commands)
+        .bind(settings.conflict_strategy.to_string())
+        .bind(settings.sync_direction.to_string())
+        .bind(&settings.selected_database_id)
+        .bind(settings.last_sync_at.map(|dt| dt.to_rfc3339()))
+        .bind(settings.created_at.to_rfc3339())
+        .bind(settings.updated_at.to_rfc3339())
+        .execute(&*pool)
+        .await
+        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Update global sync settings with partial data
+    #[allow(dead_code)]
+    pub async fn update_sync_settings(
+        &self,
+        request: &crate::models::sync::UpdateSyncSettingsRequest,
+    ) -> DatabaseResult<()> {
+        use std::str::FromStr;
+
+        println!("SQLite::update_sync_settings: Starting update");
+
+        // Get current settings
+        let mut settings = self
+            .get_global_sync_settings()
+            .await?
+            .unwrap_or_else(|| crate::models::sync::SyncSettings::new());
+
+        println!("SQLite::update_sync_settings: Current settings loaded");
+
+        // Apply updates
+        if let Some(is_active) = request.is_active {
+            settings.is_active = is_active;
+        }
+        if let Some(auto_sync_enabled) = request.auto_sync_enabled {
+            settings.auto_sync_enabled = auto_sync_enabled;
+        }
+        if let Some(sync_interval_minutes) = request.sync_interval_minutes {
+            settings.sync_interval_minutes = sync_interval_minutes;
+        }
+        if let Some(sync_ssh_profiles) = request.sync_ssh_profiles {
+            settings.sync_ssh_profiles = sync_ssh_profiles;
+        }
+        if let Some(sync_ssh_groups) = request.sync_ssh_groups {
+            settings.sync_ssh_groups = sync_ssh_groups;
+        }
+        if let Some(sync_ssh_keys) = request.sync_ssh_keys {
+            settings.sync_ssh_keys = sync_ssh_keys;
+        }
+        if let Some(sync_ssh_tunnels) = request.sync_ssh_tunnels {
+            settings.sync_ssh_tunnels = sync_ssh_tunnels;
+        }
+        if let Some(sync_saved_commands) = request.sync_saved_commands {
+            settings.sync_saved_commands = sync_saved_commands;
+        }
+        if let Some(ref conflict_strategy) = request.conflict_strategy {
+            settings.conflict_strategy = ConflictResolutionStrategy::from_str(conflict_strategy)
+                .map_err(crate::database::error::DatabaseError::QueryFailed)?;
+        }
+        if let Some(ref sync_direction) = request.sync_direction {
+            settings.sync_direction =
+                crate::models::sync::settings::SyncDirection::from_str(sync_direction)
+                    .map_err(crate::database::error::DatabaseError::QueryFailed)?;
+        }
+        if let Some(ref selected_database_id) = request.selected_database_id {
+            settings.selected_database_id = Some(selected_database_id.clone());
+        }
+
+        settings.touch();
+
+        // Save updated settings
+        self.save_global_sync_settings(&settings).await
+    }
+
+    #[allow(dead_code)]
+    fn map_sync_settings_row(
+        &self,
+        row: &sqlx::sqlite::SqliteRow,
+    ) -> DatabaseResult<crate::models::sync::SyncSettings> {
+        use std::str::FromStr;
+
+        let id: String = row
+            .try_get("id")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let is_active: bool = row
+            .try_get("is_active")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let auto_sync_enabled: bool = row
+            .try_get("auto_sync_enabled")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let sync_interval_minutes: i64 = row
+            .try_get("sync_interval_minutes")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let sync_ssh_profiles: bool = row
+            .try_get("sync_ssh_profiles")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let sync_ssh_groups: bool = row
+            .try_get("sync_ssh_groups")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let sync_ssh_keys: bool = row
+            .try_get("sync_ssh_keys")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let sync_ssh_tunnels: bool = row
+            .try_get("sync_ssh_tunnels")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let sync_saved_commands: bool = row
+            .try_get("sync_saved_commands")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let conflict_strategy_str: String = row
+            .try_get("conflict_strategy")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let sync_direction_str: String = row
+            .try_get("sync_direction")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let selected_database_id: Option<String> = row
+            .try_get("selected_database_id")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let last_sync_at: Option<String> = row
+            .try_get("last_sync_at")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let created_at: String = row
+            .try_get("created_at")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+        let updated_at: String = row
+            .try_get("updated_at")
+            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
+
+        let conflict_strategy = ConflictResolutionStrategy::from_str(&conflict_strategy_str)
+            .map_err(crate::database::error::DatabaseError::QueryFailed)?;
+
+        let sync_direction = crate::models::sync::settings::SyncDirection::from_str(&sync_direction_str)
+            .map_err(crate::database::error::DatabaseError::QueryFailed)?;
+
+        let last_sync_at_parsed = if let Some(dt_str) = last_sync_at {
+            Some(
+                DateTime::parse_from_rfc3339(&dt_str)
+                    .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&Utc),
+            )
+        } else {
+            None
+        };
+
+        Ok(crate::models::sync::SyncSettings {
+            id,
+            is_active,
+            auto_sync_enabled,
+            sync_interval_minutes: sync_interval_minutes as u32,
+            sync_ssh_profiles,
+            sync_ssh_groups,
+            sync_ssh_keys,
+            sync_ssh_tunnels,
+            sync_saved_commands,
+            conflict_strategy,
+            sync_direction,
+            selected_database_id,
+            last_sync_at: last_sync_at_parsed,
+            created_at: DateTime::parse_from_rfc3339(&created_at)
+                .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&Utc),
+            updated_at: DateTime::parse_from_rfc3339(&updated_at)
+                .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?
+                .with_timezone(&Utc),
+        })
+    }
+
+    /// Save conflict resolution for manual resolution
+    pub async fn save_conflict_resolution(
+        &self,
+        resolution: &crate::models::sync::conflict::ConflictResolution,
+    ) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        sqlx::query(
+            r#"
+            INSERT INTO conflict_resolutions (
+                id, entity_type, entity_id, local_data, remote_data,
+                resolution_strategy, resolved_at, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&resolution.id)
+        .bind(&resolution.entity_type)
+        .bind(&resolution.entity_id)
+        .bind(resolution.local_data.to_string())
+        .bind(resolution.remote_data.to_string())
+        .bind(resolution.resolution_strategy.as_ref().map(|s| s.to_string()))
+        .bind(resolution.resolved_at.map(|dt| dt.to_rfc3339()))
+        .bind(resolution.created_at.to_rfc3339())
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Get all unresolved conflict resolutions
+    pub async fn get_unresolved_conflict_resolutions(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::sync::conflict::ConflictResolution>> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let rows = sqlx::query(
+            r#"
+            SELECT id, entity_type, entity_id, local_data, remote_data,
+                   resolution_strategy, resolved_at, created_at
+            FROM conflict_resolutions
+            WHERE resolved_at IS NULL
+            ORDER BY created_at DESC
+            "#,
+        )
+        .fetch_all(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut resolutions = Vec::new();
+        for row in rows {
+            let id: String = row.get("id");
+            let entity_type: String = row.get("entity_type");
+            let entity_id: String = row.get("entity_id");
+            let local_data: String = row.get("local_data");
+            let remote_data: String = row.get("remote_data");
+            let resolution_strategy: Option<String> = row.get("resolution_strategy");
+            let resolved_at: Option<String> = row.get("resolved_at");
+            let created_at: String = row.get("created_at");
+
+            resolutions.push(crate::models::sync::conflict::ConflictResolution {
+                id,
+                entity_type,
+                entity_id,
+                local_data: serde_json::from_str(&local_data)
+                    .map_err(|e| DatabaseError::SerializationError(e))?,
+                remote_data: serde_json::from_str(&remote_data)
+                    .map_err(|e| DatabaseError::SerializationError(e))?,
+                resolution_strategy: resolution_strategy
+                    .and_then(|s| s.parse::<ConflictResolutionStrategy>().ok()),
+                resolved_at: resolved_at
+                    .and_then(|s| DateTime::parse_from_rfc3339(&s).ok())
+                    .map(|dt| dt.with_timezone(&Utc)),
+                created_at: DateTime::parse_from_rfc3339(&created_at)
+                    .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?
+                    .with_timezone(&Utc),
+            });
+        }
+
+        Ok(resolutions)
+    }
+
+    /// Resolve a conflict resolution
+    pub async fn resolve_conflict_resolution(
+        &self,
+        id: &str,
+        strategy: ConflictResolutionStrategy,
+    ) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        sqlx::query(
+            r#"
+            UPDATE conflict_resolutions
+            SET resolution_strategy = ?, resolved_at = ?
+            WHERE id = ?
+            "#,
+        )
+        .bind(strategy.to_string())
+        .bind(Utc::now().to_rfc3339())
+        .bind(id)
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Delete resolved conflict resolutions older than specified days
+    pub async fn cleanup_resolved_conflicts(&self, days: i64) -> DatabaseResult<usize> {
+        let pool = self.get_pool()?;
+        let pool = pool.read().await;
+
+        let cutoff = Utc::now() - chrono::Duration::days(days);
+        let result = sqlx::query(
+            r#"
+            DELETE FROM conflict_resolutions
+            WHERE resolved_at IS NOT NULL AND resolved_at < ?
+            "#,
+        )
+        .bind(cutoff.to_rfc3339())
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(result.rows_affected() as usize)
     }
 }

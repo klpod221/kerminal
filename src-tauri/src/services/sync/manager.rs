@@ -7,14 +7,14 @@ use crate::database::{
     error::{DatabaseError, DatabaseResult},
     providers::{MongoDBProvider, MySQLProvider, PostgreSQLProvider},
     service::DatabaseService,
-    traits::Database,
+    traits_sync::SyncTarget,
 };
 use crate::models::sync::external_db::{DatabaseType, ExternalDatabaseConfig};
 
 /// Manager for external database connections
 pub struct SyncManager {
     database_service: Arc<Mutex<DatabaseService>>,
-    active_connections: Arc<RwLock<HashMap<String, Arc<dyn Database>>>>,
+    active_connections: Arc<RwLock<HashMap<String, Arc<dyn SyncTarget>>>>,
 }
 
 impl SyncManager {
@@ -33,7 +33,7 @@ impl SyncManager {
         let connection_string = self.get_decrypted_connection_string(config).await?;
         println!("SyncManager::connect: Connection string decrypted successfully");
 
-        let provider: Box<dyn Database> = match config.db_type {
+        let provider: Box<dyn SyncTarget> = match config.db_type {
             DatabaseType::MySQL => {
                 println!("SyncManager::connect: Creating MySQL provider");
                 let mut provider = MySQLProvider::new(connection_string);
@@ -49,7 +49,7 @@ impl SyncManager {
             DatabaseType::MongoDB => {
                 println!("SyncManager::connect: Creating MongoDB provider");
                 let connection_details = self.decrypt_connection_details(config).await?;
-                let database_name = connection_details.database.clone();
+                let database_name = connection_details.database_name.clone();
                 let mut provider = MongoDBProvider::new(connection_string, database_name);
                 provider.connect().await?;
                 Box::new(provider)
@@ -67,13 +67,74 @@ impl SyncManager {
         connections.insert(config.base.id.clone(), Arc::from(provider));
         println!("SyncManager::connect: Connection stored successfully");
 
+        // Update database is_active status
+        println!("SyncManager::connect: Updating database is_active status...");
+        {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let local_db_guard = local_db.read().await;
+
+            let update_request = crate::models::sync::settings::UpdateSyncSettingsRequest {
+                is_active: Some(true),
+                auto_sync_enabled: None,
+                sync_interval_minutes: None,
+                sync_ssh_profiles: None,
+                sync_ssh_groups: None,
+                sync_ssh_keys: None,
+                sync_ssh_tunnels: None,
+                sync_saved_commands: None,
+                conflict_strategy: None,
+                sync_direction: None,
+                selected_database_id: None,
+            };
+
+            if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
+                println!("SyncManager::connect: Failed to update is_active status: {}", e);
+                // Don't fail the connection, just log the error
+            } else {
+                println!("SyncManager::connect: Database is_active status updated successfully");
+            }
+        }
+
         Ok(())
     }
 
     /// Disconnect from an external database
     pub async fn disconnect(&self, database_id: &str) -> DatabaseResult<()> {
+        // Remove from active connections
         let mut connections = self.active_connections.write().await;
         connections.remove(database_id);
+        drop(connections); // Release lock early
+
+        // Update database is_active status
+        println!("SyncManager::disconnect: Updating database is_active status...");
+        {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let local_db_guard = local_db.read().await;
+
+            let update_request = crate::models::sync::settings::UpdateSyncSettingsRequest {
+                is_active: Some(false),
+                auto_sync_enabled: None,
+                sync_interval_minutes: None,
+                sync_ssh_profiles: None,
+                sync_ssh_groups: None,
+                sync_ssh_keys: None,
+                sync_ssh_tunnels: None,
+                sync_saved_commands: None,
+                conflict_strategy: None,
+                sync_direction: None,
+                selected_database_id: None,
+            };
+
+            if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
+                println!("SyncManager::disconnect: Failed to update is_active status: {}", e);
+                // Don't fail the disconnection, just log the error
+            } else {
+                println!("SyncManager::disconnect: Database is_active status updated successfully");
+            }
+        }
+
         Ok(())
     }
 
@@ -86,7 +147,7 @@ impl SyncManager {
     }
 
     /// Get a connected provider
-    pub async fn get_provider(&self, database_id: &str) -> DatabaseResult<Arc<dyn Database>> {
+    pub async fn get_provider(&self, database_id: &str) -> DatabaseResult<Arc<dyn SyncTarget>> {
         let connections = self.active_connections.read().await;
 
         connections.get(database_id).cloned().ok_or_else(|| {

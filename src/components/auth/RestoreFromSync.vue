@@ -57,7 +57,7 @@
 
         <Input
           id="database"
-          v-model="formData.database"
+          v-model="formData.databaseName"
           label="Database Name"
           placeholder="kerminal"
           rules="required"
@@ -156,7 +156,7 @@ import { message } from "../../utils/message";
 import { getErrorMessage, getCurrentTimestamp } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSyncStore } from "../../stores/sync";
-import type { DatabaseType } from "../../types/sync";
+import type { DatabaseType, DatabaseSyncSettings } from "../../types/sync";
 
 const { closeOverlay, openOverlay } = useOverlay();
 const syncStore = useSyncStore();
@@ -171,7 +171,7 @@ const formData = ref({
   port: 3306,
   username: "",
   password: "",
-  database: "",
+  databaseName: "",
   deviceName: "",
 });
 
@@ -224,7 +224,7 @@ const handleTestConnection = async () => {
       port: formData.value.port,
       username: formData.value.username,
       password: formData.value.password,
-      database: formData.value.database,
+      databaseName: formData.value.databaseName,
     };
 
     const success = await syncStore.testConnection(
@@ -272,13 +272,13 @@ const handleRestore = async () => {
       port: formData.value.port,
       username: formData.value.username,
       password: formData.value.password,
-      database: formData.value.database,
+      databaseName: formData.value.databaseName,
     };
 
-    const syncSettings = {
+    const syncSettings: DatabaseSyncSettings = {
       autoSync: true,
       syncIntervalMinutes: 15,
-      conflictResolutionStrategy: "LastWriteWins" as const,
+      conflictResolutionStrategy: "LastWriteWins",
     };
 
     const newDb = await syncStore.addDatabase(databaseConfig, connectionDetails, syncSettings);

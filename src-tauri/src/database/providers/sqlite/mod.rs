@@ -286,15 +286,36 @@ impl Database for SQLiteProvider {
                 name TEXT NOT NULL,
                 db_type TEXT NOT NULL,
                 connection_details_encrypted TEXT NOT NULL,
-                sync_settings TEXT NOT NULL,
-                is_active BOOLEAN NOT NULL DEFAULT false,
-                auto_sync_enabled BOOLEAN NOT NULL DEFAULT false,
-                last_sync_at TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 device_id TEXT NOT NULL,
                 version INTEGER NOT NULL DEFAULT 1,
                 sync_status TEXT NOT NULL DEFAULT 'Pending'
+            )
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS sync_settings (
+                id TEXT PRIMARY KEY DEFAULT 'global',
+                is_active BOOLEAN NOT NULL DEFAULT false,
+                auto_sync_enabled BOOLEAN NOT NULL DEFAULT false,
+                sync_interval_minutes INTEGER NOT NULL DEFAULT 15,
+                sync_ssh_profiles BOOLEAN NOT NULL DEFAULT true,
+                sync_ssh_groups BOOLEAN NOT NULL DEFAULT true,
+                sync_ssh_keys BOOLEAN NOT NULL DEFAULT true,
+                sync_ssh_tunnels BOOLEAN NOT NULL DEFAULT true,
+                sync_saved_commands BOOLEAN NOT NULL DEFAULT true,
+                conflict_strategy TEXT NOT NULL DEFAULT 'Manual',
+                sync_direction TEXT NOT NULL DEFAULT 'Bidirectional',
+                selected_database_id TEXT,
+                last_sync_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
         "#,
         )
@@ -377,6 +398,35 @@ impl Database for SQLiteProvider {
             r#"
             CREATE INDEX IF NOT EXISTS idx_sync_conflicts_resolved
             ON sync_conflicts(resolved)
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        // Create conflict_resolutions table for manual conflict resolution
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS conflict_resolutions (
+                id TEXT PRIMARY KEY,
+                entity_type TEXT NOT NULL,
+                entity_id TEXT NOT NULL,
+                local_data TEXT NOT NULL,
+                remote_data TEXT NOT NULL,
+                resolution_strategy TEXT,
+                resolved_at TEXT,
+                created_at TEXT NOT NULL
+            )
+        "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_conflict_resolutions_entity
+            ON conflict_resolutions(entity_type, entity_id)
         "#,
         )
         .execute(&*pool)
@@ -673,34 +723,6 @@ impl SQLiteProvider {
         &self,
         _log: &crate::models::sync::log::SyncLog,
     ) -> DatabaseResult<()> {
-        Ok(())
-    }
-
-    pub async fn save_conflict_resolution(
-        &self,
-        resolution: &crate::models::sync::conflict::ConflictResolution,
-    ) -> DatabaseResult<()> {
-        let pool_arc = self.get_pool()?;
-        let pool = pool_arc.read().await;
-
-        sqlx::query(
-            r#"
-            INSERT INTO sync_conflicts (
-                id, entity_type, entity_id, local_version, remote_version,
-                local_data, remote_data, resolution_strategy, resolved, created_at, resolved_at
-            ) VALUES (?, ?, ?, 0, 0, ?, ?, NULL, false, ?, NULL)
-            "#,
-        )
-        .bind(&resolution.id)
-        .bind(&resolution.entity_type)
-        .bind(&resolution.entity_id)
-        .bind(resolution.local_data.to_string())
-        .bind(resolution.remote_data.to_string())
-        .bind(resolution.created_at.to_rfc3339())
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
         Ok(())
     }
 }

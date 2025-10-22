@@ -7,7 +7,7 @@ use crate::{
         error::{DatabaseResult, EncryptionError},
         traits::EncryptionService,
     },
-    models::sync::{ConnectionDetails, SyncSettings},
+    models::sync::external_db::ConnectionDetails,
 };
 
 pub struct ExternalDbEncryptor {
@@ -62,17 +62,5 @@ impl ExternalDbEncryptor {
         })?;
 
         Ok(details)
-    }
-
-    pub async fn encrypt_sync_settings(&self, settings: &SyncSettings) -> DatabaseResult<String> {
-        let json = serde_json::to_string(settings).map_err(|e| {
-            EncryptionError::EncryptionFailed(format!("Failed to serialize sync settings: {}", e))
-        })?;
-
-        let manager = self.master_password_manager.read().await;
-        // Use "__shared__" device ID for cross-device compatibility
-        let encrypted = manager.encrypt_string(&json, Some("__shared__")).await?;
-
-        Ok(encrypted)
     }
 }

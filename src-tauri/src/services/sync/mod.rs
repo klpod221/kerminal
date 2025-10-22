@@ -4,10 +4,12 @@ mod engine;
 mod manager;
 mod resolver;
 mod scheduler;
+mod serializer;
 
 pub use engine::SyncEngine;
 pub use manager::SyncManager;
 pub use scheduler::SyncScheduler;
+pub use serializer::SyncSerializable;
 
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -72,27 +74,31 @@ impl SyncService {
 
         println!("SyncService::initialize: Found {} database(s)", configs.len());
 
-        // Auto-connect and enable auto-sync for databases that have it configured
-        for config in configs {
-            let sync_settings = config.parse_sync_settings().ok();
-            if let Some(settings) = sync_settings {
-                // Auto-connect to database
-                if settings.auto_sync {
-                    println!("SyncService::initialize: Auto-connecting to database: {}", config.name);
-                    match self.sync_manager.connect(&config).await {
-                        Ok(_) => {
-                            println!("SyncService::initialize: Successfully connected to: {}", config.name);
-                            self.sync_scheduler
-                                .enable_database(config.base.id.clone())
-                                .await?;
-                        }
-                        Err(e) => {
-                            eprintln!("SyncService::initialize: Failed to connect to {}: {}", config.name, e);
-                            // Continue with other databases even if one fails
-                        }
-                    }
+        // Auto-connect based on sync_settings
+        let db_service = self.database_service.lock().await;
+        let local_db = db_service.get_local_database();
+        let sync_settings = {
+            let guard = local_db.read().await;
+            guard.get_global_sync_settings().await?
+        };
+
+        let auto_sync_enabled = sync_settings
+            .as_ref()
+            .map(|s| s.auto_sync_enabled)
+            .unwrap_or(false);
+
+        if auto_sync_enabled {
+            for config in configs {
+                println!("SyncService::initialize: Auto-connecting to: {}", config.name);
+                if let Err(e) = self.sync_manager.connect(&config).await {
+                    eprintln!("Failed to auto-connect to {}: {}", config.name, e);
+                } else {
+                    // Enable auto-sync in scheduler
+                    self.sync_scheduler.enable_database(config.base.id.clone()).await?;
                 }
             }
+        } else {
+            println!("SyncService::initialize: Auto-sync is disabled");
         }
 
         // Start the scheduler
@@ -144,6 +150,7 @@ impl SyncService {
     }
 
     /// Check if database is connected
+    #[allow(dead_code)]
     pub async fn is_connected(&self, database_id: &str) -> bool {
         self.sync_manager.is_connected(database_id).await
     }
@@ -232,11 +239,11 @@ impl SyncService {
         let master_password_manager = db_service.get_master_password_manager_arc();
         drop(db_service);
 
-        let encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
+        let _encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
 
         let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
-        let mut config = local_db
+        let config = local_db
             .read()
             .await
             .find_external_database_by_id(database_id)
@@ -248,26 +255,30 @@ impl SyncService {
                 ))
             })?;
 
-        let mut sync_settings = config
-            .parse_sync_settings()
-            .unwrap_or_default();
-        sync_settings.auto_sync = true;
-
-        let encrypted_settings = encryptor
-            .encrypt_sync_settings(&sync_settings)
-            .await?;
-        config.sync_settings = encrypted_settings;
-        config.auto_sync_enabled = true;
+        // Update global sync_settings to enable auto-sync
+        let update_request = crate::models::sync::UpdateSyncSettingsRequest {
+            is_active: None,
+            auto_sync_enabled: Some(true),
+            sync_interval_minutes: None,
+            sync_ssh_profiles: None,
+            sync_ssh_groups: None,
+            sync_ssh_keys: None,
+            sync_ssh_tunnels: None,
+            sync_saved_commands: None,
+            conflict_strategy: None,
+            sync_direction: None,
+            selected_database_id: None,
+        };
 
         local_db
             .write()
             .await
-            .save_external_database(&config)
+            .update_sync_settings(&update_request)
             .await?;
 
         // Enable in scheduler
         self.sync_scheduler
-            .enable_database(database_id.to_string())
+            .enable_database(config.base.id.clone())
             .await
     }
 
@@ -278,11 +289,11 @@ impl SyncService {
         let master_password_manager = db_service.get_master_password_manager_arc();
         drop(db_service);
 
-        let encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
+        let _encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
 
         let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
-        let mut config = local_db
+        let config = local_db
             .read()
             .await
             .find_external_database_by_id(database_id)
@@ -294,22 +305,28 @@ impl SyncService {
                 ))
             })?;
 
-        let mut sync_settings = config
-            .parse_sync_settings()
-            .unwrap_or_default();
-        sync_settings.auto_sync = false;
-
-        let encrypted_settings = encryptor
-            .encrypt_sync_settings(&sync_settings)
-            .await?;
-        config.sync_settings = encrypted_settings;
-        config.auto_sync_enabled = false;
+        // Update global sync_settings to disable auto-sync
+        let update_request = crate::models::sync::UpdateSyncSettingsRequest {
+            is_active: None,
+            auto_sync_enabled: Some(false),
+            sync_interval_minutes: None,
+            sync_ssh_profiles: None,
+            sync_ssh_groups: None,
+            sync_ssh_keys: None,
+            sync_ssh_tunnels: None,
+            sync_saved_commands: None,
+            conflict_strategy: None,
+            sync_direction: None,
+            selected_database_id: None,
+        };
 
         local_db
             .write()
             .await
-            .save_external_database(&config)
+            .update_sync_settings(&update_request)
             .await?;
+
+        let _ = config; // Suppress unused warning
 
         // Disable in scheduler
         self.sync_scheduler.disable_database(database_id).await

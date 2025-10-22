@@ -9,6 +9,7 @@ import type {
   Device,
   ConnectionDetails,
   SyncSettings,
+  DatabaseSyncSettings,
   ConflictResolutionStrategy,
 } from "../types/sync";
 
@@ -26,7 +27,7 @@ class SyncService {
   async addDatabase(
     config: Omit<ExternalDatabaseConfig, "id">,
     connectionDetails: ConnectionDetails,
-    syncSettings: SyncSettings
+    syncSettings: DatabaseSyncSettings
   ): Promise<ExternalDatabaseConfig> {
     return api.call("add_external_database", {
       name: config.name,
@@ -130,6 +131,31 @@ class SyncService {
 
   async registerDevice(deviceName: string, deviceType: string): Promise<Device> {
     return api.callRaw("register_device", { deviceName, deviceType });
+  }
+
+  // Global Sync Settings (Phase 9)
+  async getGlobalSyncSettings(): Promise<SyncSettings | null> {
+    return api.callRaw("get_global_sync_settings");
+  }
+
+  async updateGlobalSyncSettings(settings: Partial<SyncSettings>): Promise<void> {
+    return api.callRaw("update_global_sync_settings", { settings });
+  }
+
+  // Conflict Resolutions (Phase 9)
+  async getUnresolvedConflictResolutions(): Promise<ConflictResolutionData[]> {
+    return api.callRaw("get_unresolved_conflict_resolutions");
+  }
+
+  async resolveConflictResolution(
+    id: string,
+    strategy: ConflictResolutionStrategy
+  ): Promise<void> {
+    return api.callRaw("resolve_conflict_resolution", { id, strategy });
+  }
+
+  async cleanupResolvedConflicts(days: number): Promise<number> {
+    return api.callRaw("cleanup_resolved_conflicts", { days });
   }
 }
 

@@ -2,11 +2,10 @@ use tauri::State;
 
 use crate::database::encryption::ExternalDbEncryptor;
 use crate::database::providers::{MongoDBProvider, MySQLProvider, PostgreSQLProvider};
-use crate::database::traits::Database;
-use crate::models::sync::{
-    AddExternalDatabaseRequest, ConflictResolutionStrategy, DatabaseType,
-    ExternalDatabaseConfig, ExternalDatabaseWithDetails, SyncSettings, TestConnectionRequest,
-    UpdateExternalDatabaseRequest,
+use crate::database::traits_sync::SyncTarget;
+use crate::models::sync::external_db::{
+    AddExternalDatabaseRequest, DatabaseType, ExternalDatabaseConfig,
+    ExternalDatabaseWithDetails, TestConnectionRequest, UpdateExternalDatabaseRequest,
 };
 use crate::state::AppState;
 
@@ -26,27 +25,12 @@ pub async fn add_external_database(
         .await
         .map_err(|e| format!("Failed to encrypt connection details: {}", e))?;
 
-    let sync_settings = crate::models::sync::SyncSettings {
-        auto_sync: request.auto_sync,
-        sync_interval_minutes: request.sync_interval_minutes,
-        conflict_resolution_strategy: request
-            .conflict_resolution_strategy
-            .parse()
-            .map_err(|e| format!("Invalid conflict resolution strategy: {}", e))?,
-    };
-
-    let encrypted_sync_settings = encryptor
-        .encrypt_sync_settings(&sync_settings)
-        .await
-        .map_err(|e| format!("Failed to encrypt sync settings: {}", e))?;
-
+    // Note: Using global sync_settings (no per-database settings)
     let config = ExternalDatabaseConfig::new(
         device_id,
         request.name,
         request.db_type,
         encrypted_connection_details,
-        encrypted_sync_settings,
-        request.auto_sync,
     );
 
     database_service
@@ -63,15 +47,12 @@ pub async fn get_external_databases(
 ) -> Result<Vec<ExternalDatabaseConfig>, String> {
     let database_service = app_state.database_service.lock().await;
 
-    let mut databases = database_service
+    let databases = database_service
         .find_all_external_databases()
         .await
         .map_err(|e| format!("Failed to retrieve external databases: {}", e))?;
 
-    // Update isActive status based on actual connections
-    for db in &mut databases {
-        db.is_active = app_state.sync_service.is_connected(&db.base.id).await;
-    }
+    // Note: is_active status will be added in Phase 9 (Frontend Integration)
 
     Ok(databases)
 }
@@ -120,52 +101,19 @@ pub async fn update_external_database(
         config.name = name;
     }
 
-    if request.connection_details.is_some()
-        || request.auto_sync.is_some()
-        || request.sync_interval_minutes.is_some()
-        || request.conflict_resolution_strategy.is_some()
-    {
+    if let Some(connection_details) = request.connection_details {
         let master_password_manager = database_service.get_master_password_manager_arc();
         let encryptor = ExternalDbEncryptor::new(master_password_manager);
 
-        if let Some(connection_details) = request.connection_details {
-            let encrypted = encryptor
-                .encrypt_connection_details(&connection_details)
-                .await
-                .map_err(|e| format!("Failed to encrypt connection details: {}", e))?;
-            config.connection_details_encrypted = encrypted;
-        }
-
-        // Try to parse existing settings, or use defaults if empty/invalid
-        let mut sync_settings = config.parse_sync_settings().unwrap_or_else(|_| {
-            SyncSettings {
-                auto_sync: false,
-                sync_interval_minutes: 15,
-                conflict_resolution_strategy: ConflictResolutionStrategy::LastWriteWins,
-            }
-        });
-
-        if let Some(auto_sync) = request.auto_sync {
-            sync_settings.auto_sync = auto_sync;
-        }
-        if let Some(interval) = request.sync_interval_minutes {
-            sync_settings.sync_interval_minutes = interval;
-        }
-        if let Some(strategy) = request.conflict_resolution_strategy {
-            sync_settings.conflict_resolution_strategy = strategy
-                .parse()
-                .map_err(|e| format!("Invalid conflict resolution strategy: {}", e))?;
-        }
-
-        let encrypted_settings = encryptor
-            .encrypt_sync_settings(&sync_settings)
+        let encrypted = encryptor
+            .encrypt_connection_details(&connection_details)
             .await
-            .map_err(|e| format!("Failed to encrypt sync settings: {}", e))?;
-        config.sync_settings = encrypted_settings;
-
-        // Update denormalized field for fast queries
-        config.auto_sync_enabled = sync_settings.auto_sync;
+            .map_err(|e| format!("Failed to encrypt connection details: {}", e))?;
+        config.connection_details_encrypted = encrypted;
     }
+
+    // Note: Sync settings (auto_sync, interval, conflict_strategy) are global
+    // and should be updated via separate sync_settings commands (Phase 9)
 
     config.base.touch();
 
@@ -247,7 +195,7 @@ pub async fn test_external_database_connection(
             Ok(())
         }
         DatabaseType::MongoDB => {
-            let database_name = connection_details.database.clone();
+            let database_name = connection_details.database_name.clone();
             let mut provider = MongoDBProvider::new(connection_string, database_name);
             provider
                 .connect()

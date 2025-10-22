@@ -7,7 +7,7 @@ use tokio::{
 };
 
 use crate::database::{
-    error::{DatabaseError, DatabaseResult},
+    error::DatabaseResult,
     service::DatabaseService,
 };
 use crate::models::sync::external_db::ExternalDatabaseConfig;
@@ -122,14 +122,8 @@ impl SyncScheduler {
                 continue;
             }
 
-            // Check if database has auto-sync enabled
-            let sync_settings = config.parse_sync_settings().ok();
-            if sync_settings.is_none() || !sync_settings.unwrap().auto_sync {
-                continue;
-            }
-
-            // Check if sync is due
-            if !self.is_sync_due(&config).await? {
+            // Check if sync is due based on global sync_settings
+            if self.is_sync_due(&config).await? {
                 // Execute sync
                 if let Err(e) = self.execute_scheduled_sync(&config).await {
                     eprintln!("Failed to sync database {}: {}", config.name, e);
@@ -162,11 +156,16 @@ impl SyncScheduler {
             _ => return Ok(true), // Last sync didn't complete, retry
         };
 
-        // Calculate next sync time based on interval
-        let sync_settings = config
-            .parse_sync_settings()
-            .map_err(DatabaseError::SerializationError)?;
-        let interval_minutes = sync_settings.sync_interval_minutes;
+        // Get interval from sync_settings
+        let db_service = self.database_service.lock().await;
+        let local = db_service.get_local_database();
+        let guard = local.read().await;
+        let sync_settings = guard.get_global_sync_settings().await?;
+        drop(guard);
+
+        let interval_minutes = sync_settings
+            .map(|s| s.sync_interval_minutes)
+            .unwrap_or(15) as u64; // Default to 15 minutes
         let interval_seconds = (interval_minutes * 60) as i64;
         let next_sync = last_sync_time + Duration::seconds(interval_seconds);
 

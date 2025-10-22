@@ -1,6 +1,5 @@
 #![allow(dead_code)]
 
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use crate::models::base::BaseModel;
@@ -39,6 +38,8 @@ impl std::str::FromStr for DatabaseType {
     }
 }
 
+/// Connection details for external database
+/// Note: Password should be encrypted before storage
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectionDetails {
@@ -46,28 +47,54 @@ pub struct ConnectionDetails {
     pub port: u16,
     pub username: String,
     pub password: String,
-    pub database: String,
+    pub database_name: String,
+    #[serde(default)]
+    pub ssl_enabled: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ssl_cert: Option<String>,
 }
 
 impl ConnectionDetails {
+    /// Create new connection details
+    pub fn new(
+        host: String,
+        port: u16,
+        username: String,
+        password: String,
+        database_name: String,
+    ) -> Self {
+        Self {
+            host,
+            port,
+            username,
+            password,
+            database_name,
+            ssl_enabled: false,
+            ssl_cert: None,
+        }
+    }
+
+    /// Build connection string for the database type
     pub fn to_connection_string(&self, db_type: &DatabaseType) -> String {
         match db_type {
             DatabaseType::MySQL => {
                 format!(
                     "mysql://{}:{}@{}:{}/{}",
-                    self.username, self.password, self.host, self.port, self.database
+                    self.username, self.password, self.host, self.port, self.database_name
                 )
             }
             DatabaseType::PostgreSQL => {
+                let ssl_mode = if self.ssl_enabled { "require" } else { "prefer" };
                 format!(
-                    "postgresql://{}:{}@{}:{}/{}",
-                    self.username, self.password, self.host, self.port, self.database
+                    "postgresql://{}:{}@{}:{}/{}?sslmode={}",
+                    self.username, self.password, self.host, self.port, self.database_name, ssl_mode
                 )
             }
             DatabaseType::MongoDB => {
+                let ssl_param = if self.ssl_enabled { "&ssl=true" } else { "" };
                 format!(
-                    "mongodb://{}:{}@{}:{}/{}",
-                    self.username, self.password, self.host, self.port, self.database
+                    "mongodb://{}:{}@{}:{}/{}?authSource=admin{}",
+                    self.username, self.password, self.host, self.port, self.database_name, ssl_param
                 )
             }
         }
@@ -101,71 +128,60 @@ impl std::str::FromStr for ConflictResolutionStrategy {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
+            // PascalCase (for database storage and Display)
             "LastWriteWins" => Ok(ConflictResolutionStrategy::LastWriteWins),
             "FirstWriteWins" => Ok(ConflictResolutionStrategy::FirstWriteWins),
             "Manual" => Ok(ConflictResolutionStrategy::Manual),
             "LocalWins" => Ok(ConflictResolutionStrategy::LocalWins),
             "RemoteWins" => Ok(ConflictResolutionStrategy::RemoteWins),
+            // camelCase (for frontend compatibility)
+            "lastWriteWins" => Ok(ConflictResolutionStrategy::LastWriteWins),
+            "firstWriteWins" => Ok(ConflictResolutionStrategy::FirstWriteWins),
+            "manual" => Ok(ConflictResolutionStrategy::Manual),
+            "localWins" => Ok(ConflictResolutionStrategy::LocalWins),
+            "remoteWins" => Ok(ConflictResolutionStrategy::RemoteWins),
             _ => Err(format!("Unknown conflict resolution strategy: {}", s)),
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SyncSettings {
-    pub auto_sync: bool,
-    pub sync_interval_minutes: u64,
-    pub conflict_resolution_strategy: ConflictResolutionStrategy,
-}
-
-impl Default for SyncSettings {
-    fn default() -> Self {
-        Self {
-            auto_sync: false,
-            sync_interval_minutes: 30,
-            conflict_resolution_strategy: ConflictResolutionStrategy::Manual,
-        }
-    }
-}
-
+/// External database configuration
+/// Stores connection information only (not sync settings)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExternalDatabaseConfig {
     #[serde(flatten)]
     pub base: BaseModel,
+
+    /// Display name for this database
     pub name: String,
+
+    /// Database type
     pub db_type: DatabaseType,
+
+    /// Encrypted connection details (ConnectionDetails serialized + encrypted)
     pub connection_details_encrypted: String,
-    pub sync_settings: String,
+
+    /// Whether this database connection is currently active
+    #[serde(default)]
     pub is_active: bool,
-    pub auto_sync_enabled: bool,
-    pub last_sync_at: Option<DateTime<Utc>>,
 }
 
 impl ExternalDatabaseConfig {
+    /// Create new external database configuration
     pub fn new(
         device_id: String,
         name: String,
         db_type: DatabaseType,
         connection_details_encrypted: String,
-        sync_settings: String,
-        auto_sync_enabled: bool,
     ) -> Self {
         Self {
             base: BaseModel::new(device_id),
             name,
             db_type,
             connection_details_encrypted,
-            sync_settings,
-            is_active: false,
-            auto_sync_enabled,
-            last_sync_at: None,
+            is_active: false, // Default to inactive
         }
-    }
-
-    pub fn parse_sync_settings(&self) -> Result<SyncSettings, serde_json::Error> {
-        serde_json::from_str(&self.sync_settings)
     }
 }
 
