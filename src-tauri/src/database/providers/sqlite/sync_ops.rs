@@ -429,8 +429,6 @@ impl SQLiteProvider {
         let row = sqlx::query(
             r#"
             SELECT id, is_active, auto_sync_enabled, sync_interval_minutes,
-                sync_ssh_profiles, sync_ssh_groups, sync_ssh_keys,
-                sync_ssh_tunnels, sync_saved_commands,
                 conflict_strategy, sync_direction, selected_database_id, last_sync_at,
                 created_at, updated_at
             FROM sync_settings
@@ -467,20 +465,13 @@ impl SQLiteProvider {
             r#"
             INSERT INTO sync_settings (
                 id, is_active, auto_sync_enabled, sync_interval_minutes,
-                sync_ssh_profiles, sync_ssh_groups, sync_ssh_keys,
-                sync_ssh_tunnels, sync_saved_commands,
                 conflict_strategy, sync_direction, selected_database_id, last_sync_at,
                 created_at, updated_at
-            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
             ON CONFLICT(id) DO UPDATE SET
                 is_active = excluded.is_active,
                 auto_sync_enabled = excluded.auto_sync_enabled,
                 sync_interval_minutes = excluded.sync_interval_minutes,
-                sync_ssh_profiles = excluded.sync_ssh_profiles,
-                sync_ssh_groups = excluded.sync_ssh_groups,
-                sync_ssh_keys = excluded.sync_ssh_keys,
-                sync_ssh_tunnels = excluded.sync_ssh_tunnels,
-                sync_saved_commands = excluded.sync_saved_commands,
                 conflict_strategy = excluded.conflict_strategy,
                 sync_direction = excluded.sync_direction,
                 selected_database_id = excluded.selected_database_id,
@@ -492,11 +483,6 @@ impl SQLiteProvider {
         .bind(settings.is_active)
         .bind(settings.auto_sync_enabled)
         .bind(settings.sync_interval_minutes as i64)
-        .bind(settings.sync_ssh_profiles)
-        .bind(settings.sync_ssh_groups)
-        .bind(settings.sync_ssh_keys)
-        .bind(settings.sync_ssh_tunnels)
-        .bind(settings.sync_saved_commands)
         .bind(settings.conflict_strategy.to_string())
         .bind(settings.sync_direction.to_string())
         .bind(&settings.selected_database_id)
@@ -538,21 +524,6 @@ impl SQLiteProvider {
         if let Some(sync_interval_minutes) = request.sync_interval_minutes {
             settings.sync_interval_minutes = sync_interval_minutes;
         }
-        if let Some(sync_ssh_profiles) = request.sync_ssh_profiles {
-            settings.sync_ssh_profiles = sync_ssh_profiles;
-        }
-        if let Some(sync_ssh_groups) = request.sync_ssh_groups {
-            settings.sync_ssh_groups = sync_ssh_groups;
-        }
-        if let Some(sync_ssh_keys) = request.sync_ssh_keys {
-            settings.sync_ssh_keys = sync_ssh_keys;
-        }
-        if let Some(sync_ssh_tunnels) = request.sync_ssh_tunnels {
-            settings.sync_ssh_tunnels = sync_ssh_tunnels;
-        }
-        if let Some(sync_saved_commands) = request.sync_saved_commands {
-            settings.sync_saved_commands = sync_saved_commands;
-        }
         if let Some(ref conflict_strategy) = request.conflict_strategy {
             settings.conflict_strategy = ConflictResolutionStrategy::from_str(conflict_strategy)
                 .map_err(crate::database::error::DatabaseError::QueryFailed)?;
@@ -590,21 +561,6 @@ impl SQLiteProvider {
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
         let sync_interval_minutes: i64 = row
             .try_get("sync_interval_minutes")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let sync_ssh_profiles: bool = row
-            .try_get("sync_ssh_profiles")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let sync_ssh_groups: bool = row
-            .try_get("sync_ssh_groups")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let sync_ssh_keys: bool = row
-            .try_get("sync_ssh_keys")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let sync_ssh_tunnels: bool = row
-            .try_get("sync_ssh_tunnels")
-            .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
-        let sync_saved_commands: bool = row
-            .try_get("sync_saved_commands")
             .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
         let conflict_strategy_str: String = row
             .try_get("conflict_strategy")
@@ -646,11 +602,6 @@ impl SQLiteProvider {
             is_active,
             auto_sync_enabled,
             sync_interval_minutes: sync_interval_minutes as u32,
-            sync_ssh_profiles,
-            sync_ssh_groups,
-            sync_ssh_keys,
-            sync_ssh_tunnels,
-            sync_saved_commands,
             conflict_strategy,
             sync_direction,
             selected_database_id,

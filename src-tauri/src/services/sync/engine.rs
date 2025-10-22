@@ -120,20 +120,8 @@ impl SyncEngine {
         let local = db_service.get_local_database();
         let local_guard = local.read().await;
 
-        // Get sync settings to determine which tables to sync
-        let sync_settings = local_guard.get_global_sync_settings().await?;
-        let sync_profiles = sync_settings.as_ref().map(|s| s.sync_ssh_profiles).unwrap_or(true);
-        let sync_groups = sync_settings.as_ref().map(|s| s.sync_ssh_groups).unwrap_or(true);
-        let sync_keys = sync_settings.as_ref().map(|s| s.sync_ssh_keys).unwrap_or(true);
-        let _sync_tunnels = sync_settings.as_ref().map(|s| s.sync_ssh_tunnels).unwrap_or(false);
-        let _sync_commands = sync_settings.as_ref().map(|s| s.sync_saved_commands).unwrap_or(false);
-
-        // Push SSH Profiles
-        let profiles = if sync_profiles {
-            local_guard.find_all_ssh_profiles().await?
-        } else {
-            vec![]
-        };
+        // Push SSH Profiles (always sync all tables)
+        let profiles = local_guard.find_all_ssh_profiles().await?;
         let json_profiles: Vec<_> = profiles
             .iter()
             .filter_map(|p| p.to_json().ok())
@@ -144,11 +132,7 @@ impl SyncEngine {
         }
 
         // Push SSH Groups
-        let groups = if sync_groups {
-            local_guard.find_all_ssh_groups().await?
-        } else {
-            vec![]
-        };
+        let groups = local_guard.find_all_ssh_groups().await?;
         let json_groups: Vec<_> = groups
             .iter()
             .filter_map(|g| g.to_json().ok())
@@ -159,11 +143,7 @@ impl SyncEngine {
         }
 
         // Push SSH Keys
-        let keys = if sync_keys {
-            local_guard.find_all_ssh_keys().await?
-        } else {
-            vec![]
-        };
+        let keys = local_guard.find_all_ssh_keys().await?;
         let json_keys: Vec<_> = keys
             .iter()
             .filter_map(|k| k.to_json().ok())
@@ -174,12 +154,7 @@ impl SyncEngine {
         }
 
         // Push Saved Command Groups
-        let sync_saved_commands = sync_settings.as_ref().map(|s| s.sync_saved_commands).unwrap_or(false);
-        let cmd_groups = if sync_saved_commands {
-            local_guard.find_all_saved_command_groups().await?
-        } else {
-            vec![]
-        };
+        let cmd_groups = local_guard.find_all_saved_command_groups().await?;
         let json_cmd_groups: Vec<_> = cmd_groups
             .iter()
             .filter_map(|g| g.to_json().ok())
@@ -190,11 +165,7 @@ impl SyncEngine {
         }
 
         // Push Saved Commands
-        let commands = if sync_saved_commands {
-            local_guard.find_all_saved_commands().await?
-        } else {
-            vec![]
-        };
+        let commands = local_guard.find_all_saved_commands().await?;
         let json_commands: Vec<_> = commands
             .iter()
             .filter_map(|c| c.to_json().ok())
@@ -224,23 +195,10 @@ impl SyncEngine {
         let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
 
-        // Get sync settings to determine which tables to sync
-        let sync_settings = {
-            let guard = local.read().await;
-            guard.get_global_sync_settings().await?
-        };
-        let sync_profiles = sync_settings.as_ref().map(|s| s.sync_ssh_profiles).unwrap_or(true);
-        let sync_groups = sync_settings.as_ref().map(|s| s.sync_ssh_groups).unwrap_or(true);
-        let sync_keys = sync_settings.as_ref().map(|s| s.sync_ssh_keys).unwrap_or(true);
-
         let local_guard = local.write().await;
 
-        // Pull SSH Profiles
-        let json_profiles = if sync_profiles {
-            remote.pull_records("ssh_profiles", last_sync).await?
-        } else {
-            vec![]
-        };
+        // Pull SSH Profiles (always sync all tables)
+        let json_profiles = remote.pull_records("ssh_profiles", last_sync).await?;
         for json in json_profiles {
             if let Ok(profile) = crate::models::ssh::SSHProfile::from_json(&json) {
                 local_guard.save_ssh_profile(&profile).await?;
@@ -249,11 +207,7 @@ impl SyncEngine {
         }
 
         // Pull SSH Groups
-        let json_groups = if sync_groups {
-            remote.pull_records("ssh_groups", last_sync).await?
-        } else {
-            vec![]
-        };
+        let json_groups = remote.pull_records("ssh_groups", last_sync).await?;
         for json in json_groups {
             if let Ok(group) = crate::models::ssh::SSHGroup::from_json(&json) {
                 local_guard.save_ssh_group(&group).await?;
@@ -262,11 +216,7 @@ impl SyncEngine {
         }
 
         // Pull SSH Keys
-        let json_keys = if sync_keys {
-            remote.pull_records("ssh_keys", last_sync).await?
-        } else {
-            vec![]
-        };
+        let json_keys = remote.pull_records("ssh_keys", last_sync).await?;
         for json in json_keys {
             if let Ok(key) = crate::models::ssh::SSHKey::from_json(&json) {
                 local_guard.save_ssh_key(&key).await?;
@@ -275,12 +225,7 @@ impl SyncEngine {
         }
 
         // Pull Saved Command Groups
-        let sync_saved_commands = sync_settings.as_ref().map(|s| s.sync_saved_commands).unwrap_or(false);
-        let json_cmd_groups = if sync_saved_commands {
-            remote.pull_records("saved_command_groups", last_sync).await?
-        } else {
-            vec![]
-        };
+        let json_cmd_groups = remote.pull_records("saved_command_groups", last_sync).await?;
         for json in json_cmd_groups {
             if let Ok(group) = crate::models::saved_command::SavedCommandGroup::from_json(&json) {
                 local_guard.save_saved_command_group(&group).await?;
@@ -289,11 +234,7 @@ impl SyncEngine {
         }
 
         // Pull Saved Commands
-        let json_commands = if sync_saved_commands {
-            remote.pull_records("saved_commands", last_sync).await?
-        } else {
-            vec![]
-        };
+        let json_commands = remote.pull_records("saved_commands", last_sync).await?;
         for json in json_commands {
             if let Ok(command) = crate::models::saved_command::SavedCommand::from_json(&json) {
                 local_guard.save_saved_command(&command).await?;

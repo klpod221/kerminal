@@ -57,11 +57,6 @@ export interface SyncSettings {
   isActive: boolean;
   autoSyncEnabled: boolean;
   syncIntervalMinutes: number;
-  syncSshProfiles: boolean;
-  syncSshGroups: boolean;
-  syncSshKeys: boolean;
-  syncSshTunnels: boolean;
-  syncSavedCommands: boolean;
   conflictStrategy: ConflictResolutionStrategy;
   syncDirection: SyncDirection;
   selectedDatabaseId?: string; // Last selected database for UI persistence
@@ -75,11 +70,6 @@ export interface UpdateSyncSettingsRequest {
   isActive?: boolean;
   autoSyncEnabled?: boolean;
   syncIntervalMinutes?: number;
-  syncSshProfiles?: boolean;
-  syncSshGroups?: boolean;
-  syncSshKeys?: boolean;
-  syncSshTunnels?: boolean;
-  syncSavedCommands?: boolean;
   conflictStrategy?: string;
   syncDirection?: string;
   selectedDatabaseId?: string;

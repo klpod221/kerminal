@@ -59,7 +59,10 @@
             title="Global Sync Settings"
             subtitle="Configure sync behavior for all external databases"
           >
-            <div v-if="isLoadingGlobal" class="flex items-center justify-center py-16 text-gray-400">
+            <div
+              v-if="isLoadingGlobal"
+              class="flex items-center justify-center py-16 text-gray-400"
+            >
               <RefreshCw class="w-6 h-6 animate-spin mr-3" />
               Loading settings...
             </div>
@@ -69,122 +72,89 @@
               <div class="border border-gray-700 rounded-lg p-4">
                 <div class="flex items-center justify-between mb-4">
                   <div>
-                    <h4 class="text-sm font-medium text-gray-100">Master Controls</h4>
-                    <p class="text-xs text-gray-400 mt-1">Enable or disable the entire sync system</p>
+                    <h4 class="text-sm font-medium text-gray-100">
+                      Master Controls
+                    </h4>
+                    <p class="text-xs text-gray-400 mt-1">
+                      Enable or disable the entire sync system
+                    </p>
                   </div>
-                  <Badge :variant="globalLocal.isActive ? 'success' : 'default'">
-                    {{ globalLocal.isActive ? 'Active' : 'Inactive' }}
+                  <Badge
+                    :variant="globalLocal.isActive ? 'success' : 'default'"
+                  >
+                    {{ globalLocal.isActive ? "Active" : "Inactive" }}
                   </Badge>
                 </div>
 
-                <div class="space-y-4">
-                  <Checkbox
-                    id="global-is-active"
-                    v-model="globalLocal.isActive"
-                    label="Enable Sync System"
-                    helper-text="Master switch for all sync operations"
-                    @update:modelValue="markGlobalDirty"
-                  />
+                <Checkbox
+                  id="global-is-active"
+                  v-model="globalLocal.isActive"
+                  label="Enable Sync System"
+                  helper-text="Master switch for all sync operations"
+                  @update:modelValue="markGlobalDirty"
+                />
 
-                  <Checkbox
-                    id="global-auto-sync"
-                    v-model="globalLocal.autoSyncEnabled"
-                    label="Auto Sync"
-                    helper-text="Automatically sync at intervals"
-                    :disabled="!globalLocal.isActive"
-                    @update:modelValue="markGlobalDirty"
-                  />
+                <Checkbox
+                  id="global-auto-sync"
+                  v-model="globalLocal.autoSyncEnabled"
+                  label="Auto Sync"
+                  helper-text="Automatically sync at intervals"
+                  :disabled="!globalLocal.isActive"
+                  @update:modelValue="markGlobalDirty"
+                />
 
-                  <div v-if="globalLocal.autoSyncEnabled">
-                    <Input
-                      id="global-interval"
-                      v-model.number="globalLocal.syncIntervalMinutes"
-                      label="Sync Interval (minutes)"
-                      type="number"
-                      :min="1"
-                      :max="1440"
-                      placeholder="15"
-                      helper-text="How often to automatically sync (1-1440 minutes)"
-                      @blur="markGlobalDirty"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- Data Types to Sync -->
-              <div class="border border-gray-700 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-gray-100 mb-4">Data Types to Sync</h4>
-
-                <div class="space-y-3">
-                  <Checkbox
-                    id="sync-ssh-profiles"
-                    v-model="globalLocal.syncSshProfiles"
-                    label="SSH Profiles"
-                    @update:modelValue="markGlobalDirty"
-                  />
-                  <Checkbox
-                    id="sync-ssh-groups"
-                    v-model="globalLocal.syncSshGroups"
-                    label="SSH Groups"
-                    @update:modelValue="markGlobalDirty"
-                  />
-                  <Checkbox
-                    id="sync-ssh-keys"
-                    v-model="globalLocal.syncSshKeys"
-                    label="SSH Keys"
-                    @update:modelValue="markGlobalDirty"
-                  />
-                  <Checkbox
-                    id="sync-ssh-tunnels"
-                    v-model="globalLocal.syncSshTunnels"
-                    label="SSH Tunnels"
-                    @update:modelValue="markGlobalDirty"
-                  />
-                  <Checkbox
-                    id="sync-saved-commands"
-                    v-model="globalLocal.syncSavedCommands"
-                    label="Saved Commands"
-                    @update:modelValue="markGlobalDirty"
+                <div v-if="globalLocal.autoSyncEnabled">
+                  <Input
+                    id="global-interval"
+                    v-model.number="globalLocal.syncIntervalMinutes"
+                    label="Sync Interval (minutes)"
+                    type="number"
+                    :min="1"
+                    :max="1440"
+                    placeholder="15"
+                    helper-text="How often to automatically sync (1-1440 minutes)"
+                    @blur="markGlobalDirty"
                   />
                 </div>
               </div>
 
-              <!-- Conflict Resolution Strategy -->
               <div class="border border-gray-700 rounded-lg p-4">
+                <!-- Conflict Resolution Strategy -->
                 <Select
                   id="global-conflict-strategy"
                   v-model="globalLocal.conflictStrategy"
                   label="Conflict Resolution Strategy"
-                  helper-text="Choose how to handle data conflicts when syncing"
+                  :helper-text="getGlobalStrategyDescription()"
                   :options="globalConflictStrategyOptions"
                   @update:modelValue="markGlobalDirty"
                 />
 
-                <div class="mt-3 bg-gray-900 rounded-lg p-3 border border-gray-700">
-                  <p class="text-xs text-gray-300">{{ getGlobalStrategyDescription() }}</p>
-                </div>
-              </div>
-
-              <!-- Sync Direction -->
-              <div class="border border-gray-700 rounded-lg p-4">
+                <!-- Sync Direction -->
                 <Select
                   id="global-sync-direction"
                   v-model="globalLocal.syncDirection"
                   label="Sync Direction"
-                  helper-text="Control the direction of data synchronization"
+                  :helper-text="getGlobalDirectionDescription()"
                   :options="globalSyncDirectionOptions"
                   @update:modelValue="markGlobalDirty"
                 />
-
-                <div class="mt-3 bg-gray-900 rounded-lg p-3 border border-gray-700">
-                  <p class="text-xs text-gray-300">{{ getGlobalDirectionDescription() }}</p>
-                </div>
               </div>
 
               <!-- Actions -->
               <div class="flex gap-2 justify-end">
-                <Button variant="outline" :disabled="!globalDirty" @click="resetGlobal">Reset</Button>
-                <Button variant="primary" :disabled="!globalDirty || globalSaving" @click="saveGlobal" :loading="globalSaving">Save Settings</Button>
+                <Button
+                  variant="outline"
+                  :disabled="!globalDirty"
+                  @click="resetGlobal"
+                  >Reset</Button
+                >
+                <Button
+                  variant="primary"
+                  :disabled="!globalDirty || globalSaving"
+                  @click="saveGlobal"
+                  :loading="globalSaving"
+                  >Save Settings</Button
+                >
               </div>
             </div>
           </Card>
@@ -241,7 +211,9 @@
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-2">
-                      <FileWarning class="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                      <FileWarning
+                        class="w-4 h-4 text-yellow-500 flex-shrink-0"
+                      />
                       <h4 class="text-sm font-medium text-gray-100 truncate">
                         {{ formatEntityType(conflict.entityType) }}
                       </h4>
@@ -250,7 +222,9 @@
                     <div class="text-xs text-gray-400 space-y-1">
                       <div class="flex items-center gap-1.5">
                         <Hash class="w-3 h-3" />
-                        <span class="font-mono truncate">{{ conflict.entityId }}</span>
+                        <span class="font-mono truncate">{{
+                          conflict.entityId
+                        }}</span>
                       </div>
                       <div class="flex items-center gap-1.5">
                         <Clock class="w-3 h-3" />
@@ -394,7 +368,7 @@ const openEditDatabaseModal = () => {
   }
 
   const dbExists = syncStore.databases.find(
-    (db) => db.id === selectedDatabaseId.value
+    (db) => db.id === selectedDatabaseId.value,
   );
 
   if (!dbExists) {
@@ -438,7 +412,7 @@ const confirmDeleteDatabase = async () => {
   if (!db) return;
 
   const confirmed = await window.confirm(
-    `Are you sure you want to delete "${db.name}"?\n\nThis will remove all sync configuration for this database. This action cannot be undone.`
+    `Are you sure you want to delete "${db.name}"?\n\nThis will remove all sync configuration for this database. This action cannot be undone.`,
   );
 
   if (!confirmed) return;
@@ -508,7 +482,7 @@ onMounted(async () => {
     // Restore last selected database from global settings
     if (globalSettings.value?.selectedDatabaseId) {
       const dbExists = syncStore.databases.find(
-        (db) => db.id === globalSettings.value.selectedDatabaseId
+        (db) => db.id === globalSettings.value.selectedDatabaseId,
       );
       if (dbExists) {
         selectedDatabaseId.value = globalSettings.value.selectedDatabaseId;
@@ -551,11 +525,6 @@ async function loadGlobalSettings() {
         isActive: data.isActive ?? false,
         autoSyncEnabled: data.autoSyncEnabled ?? false,
         syncIntervalMinutes: data.syncIntervalMinutes ?? 15,
-        syncSshProfiles: data.syncSshProfiles ?? true,
-        syncSshGroups: data.syncSshGroups ?? true,
-        syncSshKeys: data.syncSshKeys ?? true,
-        syncSshTunnels: data.syncSshTunnels ?? false,
-        syncSavedCommands: data.syncSavedCommands ?? false,
         conflictStrategy: data.conflictStrategy ?? "manual",
         syncDirection: data.syncDirection ?? "both",
       };
@@ -564,11 +533,6 @@ async function loadGlobalSettings() {
         isActive: false,
         autoSyncEnabled: false,
         syncIntervalMinutes: 15,
-        syncSshProfiles: true,
-        syncSshGroups: true,
-        syncSshKeys: true,
-        syncSshTunnels: false,
-        syncSavedCommands: false,
         conflictStrategy: "manual",
         syncDirection: "both",
       };
@@ -602,15 +566,10 @@ async function saveGlobal() {
       isActive: globalLocal.value.isActive,
       autoSyncEnabled: globalLocal.value.autoSyncEnabled,
       syncIntervalMinutes: globalLocal.value.syncIntervalMinutes,
-      syncSshProfiles: globalLocal.value.syncSshProfiles,
-      syncSshGroups: globalLocal.value.syncSshGroups,
-      syncSshKeys: globalLocal.value.syncSshKeys,
-      syncSshTunnels: globalLocal.value.syncSshTunnels,
-      syncSavedCommands: globalLocal.value.syncSavedCommands,
       conflictStrategy: globalLocal.value.conflictStrategy,
       syncDirection: globalLocal.value.syncDirection,
     };
-    await syncService.updateGlobalSyncSettings(updates as any);
+    await syncService.updateGlobalSyncSettings(updates);
     await loadGlobalSettings();
     message.success("Global sync settings saved successfully");
   } catch (error) {

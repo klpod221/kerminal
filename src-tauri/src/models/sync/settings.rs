@@ -108,13 +108,6 @@ pub struct SyncSettings {
     /// Sync interval in minutes (for auto-sync)
     pub sync_interval_minutes: u32,
 
-    /// Table sync toggles
-    pub sync_ssh_profiles: bool,
-    pub sync_ssh_groups: bool,
-    pub sync_ssh_keys: bool,
-    pub sync_ssh_tunnels: bool,
-    pub sync_saved_commands: bool,
-
     /// Conflict resolution strategy
     pub conflict_strategy: super::external_db::ConflictResolutionStrategy,
 
@@ -143,11 +136,6 @@ impl SyncSettings {
             is_active: false,
             auto_sync_enabled: false,
             sync_interval_minutes: 15,
-            sync_ssh_profiles: true,
-            sync_ssh_groups: true,
-            sync_ssh_keys: true,
-            sync_ssh_tunnels: true,
-            sync_saved_commands: true,
             conflict_strategy: super::external_db::ConflictResolutionStrategy::Manual,
             sync_direction: SyncDirection::Both,
             selected_database_id: None,
@@ -167,38 +155,6 @@ impl SyncSettings {
     pub fn touch(&mut self) {
         self.updated_at = Utc::now();
     }
-
-    /// Check if any table sync is enabled
-    pub fn has_any_table_enabled(&self) -> bool {
-        self.sync_ssh_profiles
-            || self.sync_ssh_groups
-            || self.sync_ssh_keys
-            || self.sync_ssh_tunnels
-            || self.sync_saved_commands
-    }
-
-    /// Get list of enabled table names
-    pub fn get_enabled_tables(&self) -> Vec<String> {
-        let mut tables = Vec::new();
-
-        if self.sync_ssh_profiles {
-            tables.push("ssh_profiles".to_string());
-        }
-        if self.sync_ssh_groups {
-            tables.push("ssh_groups".to_string());
-        }
-        if self.sync_ssh_keys {
-            tables.push("ssh_keys".to_string());
-        }
-        if self.sync_ssh_tunnels {
-            tables.push("ssh_tunnels".to_string());
-        }
-        if self.sync_saved_commands {
-            tables.push("saved_commands".to_string());
-        }
-
-        tables
-    }
 }
 
 /// Request to update global sync settings
@@ -208,11 +164,6 @@ pub struct UpdateSyncSettingsRequest {
     pub is_active: Option<bool>,
     pub auto_sync_enabled: Option<bool>,
     pub sync_interval_minutes: Option<u32>,
-    pub sync_ssh_profiles: Option<bool>,
-    pub sync_ssh_groups: Option<bool>,
-    pub sync_ssh_keys: Option<bool>,
-    pub sync_ssh_tunnels: Option<bool>,
-    pub sync_saved_commands: Option<bool>,
     pub conflict_strategy: Option<String>,
     pub sync_direction: Option<String>,
     pub selected_database_id: Option<String>,
