@@ -18,7 +18,6 @@ pub struct LocalConfig {
     pub env_vars: Option<HashMap<String, String>>,
 }
 
-
 /// Terminal configuration that can be either Local or SSH with profile ID
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

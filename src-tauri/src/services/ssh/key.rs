@@ -156,14 +156,10 @@ impl SSHKeyService {
         &self,
         key_id: &str,
     ) -> DatabaseResult<crate::models::ssh::key::ResolvedSSHKey> {
-        // Get the SSH key
         let ssh_key = self.get_ssh_key(key_id).await?;
 
-        // Return resolved key data
         Ok(crate::models::ssh::key::ResolvedSSHKey {
             private_key: ssh_key.private_key,
-            key_type: ssh_key.key_type,
-            public_key: ssh_key.public_key,
             passphrase: ssh_key.passphrase,
         })
     }

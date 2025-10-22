@@ -174,17 +174,12 @@ impl SyncScheduler {
 
     /// Execute a scheduled sync
     async fn execute_scheduled_sync(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<()> {
-        println!("Starting scheduled sync for database: {}", config.name);
 
         // Execute bidirectional sync
         let result = self.sync_engine.sync(config).await;
 
         match result {
-            Ok(log) => {
-                println!(
-                    "Scheduled sync completed for {}: {} records synced, {} conflicts resolved",
-                    config.name, log.records_synced, log.conflicts_resolved
-                );
+            Ok(_log) => {
                 Ok(())
             }
             Err(e) => {

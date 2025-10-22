@@ -27,27 +27,24 @@ impl SyncManager {
 
     /// Connect to an external database
     pub async fn connect(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<()> {
-        println!("SyncManager::connect: Starting connection for database: {}", config.base.id);
-        println!("SyncManager::connect: Decrypting connection string...");
 
         let connection_string = self.get_decrypted_connection_string(config).await?;
-        println!("SyncManager::connect: Connection string decrypted successfully");
 
         let provider: Box<dyn SyncTarget> = match config.db_type {
             DatabaseType::MySQL => {
-                println!("SyncManager::connect: Creating MySQL provider");
+
                 let mut provider = MySQLProvider::new(connection_string);
                 provider.connect().await?;
                 Box::new(provider)
             }
             DatabaseType::PostgreSQL => {
-                println!("SyncManager::connect: Creating PostgreSQL provider");
+
                 let mut provider = PostgreSQLProvider::new(connection_string);
                 provider.connect().await?;
                 Box::new(provider)
             }
             DatabaseType::MongoDB => {
-                println!("SyncManager::connect: Creating MongoDB provider");
+
                 let connection_details = self.decrypt_connection_details(config).await?;
                 let database_name = connection_details.database_name.clone();
                 let mut provider = MongoDBProvider::new(connection_string, database_name);
@@ -56,19 +53,15 @@ impl SyncManager {
             }
         };
 
-        println!("SyncManager::connect: Testing connection...");
         // Test connection
         provider.test_connection().await?;
-        println!("SyncManager::connect: Connection test successful");
 
-        println!("SyncManager::connect: Storing active connection...");
         // Store in active connections
         let mut connections = self.active_connections.write().await;
         connections.insert(config.base.id.clone(), Arc::from(provider));
-        println!("SyncManager::connect: Connection stored successfully");
 
         // Update database is_active status
-        println!("SyncManager::connect: Updating database is_active status...");
+
         {
             let db_service = self.database_service.lock().await;
             let local_db = db_service.get_local_database();
@@ -83,11 +76,8 @@ impl SyncManager {
                 selected_database_id: None,
             };
 
-            if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
-                println!("SyncManager::connect: Failed to update is_active status: {}", e);
-                // Don't fail the connection, just log the error
+            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {
             } else {
-                println!("SyncManager::connect: Database is_active status updated successfully");
             }
         }
 
@@ -102,7 +92,7 @@ impl SyncManager {
         drop(connections); // Release lock early
 
         // Update database is_active status
-        println!("SyncManager::disconnect: Updating database is_active status...");
+
         {
             let db_service = self.database_service.lock().await;
             let local_db = db_service.get_local_database();
@@ -117,11 +107,8 @@ impl SyncManager {
                 selected_database_id: None,
             };
 
-            if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
-                println!("SyncManager::disconnect: Failed to update is_active status: {}", e);
-                // Don't fail the disconnection, just log the error
+            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {
             } else {
-                println!("SyncManager::disconnect: Database is_active status updated successfully");
             }
         }
 

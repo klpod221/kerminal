@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use serde::{Deserialize, Serialize};
 
 use crate::models::base::BaseModel;
@@ -55,25 +53,6 @@ pub struct ConnectionDetails {
 }
 
 impl ConnectionDetails {
-    /// Create new connection details
-    pub fn new(
-        host: String,
-        port: u16,
-        username: String,
-        password: String,
-        database_name: String,
-    ) -> Self {
-        Self {
-            host,
-            port,
-            username,
-            password,
-            database_name,
-            ssl_enabled: false,
-            ssl_cert: None,
-        }
-    }
-
     /// Build connection string for the database type
     pub fn to_connection_string(&self, db_type: &DatabaseType) -> String {
         match db_type {

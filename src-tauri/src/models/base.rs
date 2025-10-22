@@ -38,7 +38,7 @@ impl BaseModel {
         self.sync_status = SyncStatus::Pending;
     }
 
-    /// Generate a checksum for this model (without metadata fields)
+    #[allow(dead_code)]
     pub fn generate_checksum<T: Serialize>(&self, model: &T) -> String {
         // Serialize the model and create a hash
         let json = serde_json::to_string(model).unwrap_or_default();

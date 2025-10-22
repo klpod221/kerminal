@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 pub mod conflict;
 pub mod external_db;
 pub mod log;

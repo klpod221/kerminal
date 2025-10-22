@@ -419,12 +419,9 @@ impl SQLiteProvider {
     pub async fn get_global_sync_settings(
         &self,
     ) -> DatabaseResult<Option<crate::models::sync::SyncSettings>> {
-        println!("SQLite::get_global_sync_settings: Starting query");
 
         let pool = self.get_pool()?;
         let pool = pool.read().await;
-
-        println!("SQLite::get_global_sync_settings: Pool acquired");
 
         let row = sqlx::query(
             r#"
@@ -438,11 +435,9 @@ impl SQLiteProvider {
         .fetch_optional(&*pool)
         .await
         .map_err(|e| {
-            println!("SQLite::get_global_sync_settings: Query failed: {}", e);
+            
             crate::database::error::DatabaseError::QueryFailed(e.to_string())
         })?;
-
-        println!("SQLite::get_global_sync_settings: Query executed successfully");
 
         if let Some(row) = row {
             let settings = self.map_sync_settings_row(&row)?;
@@ -504,15 +499,11 @@ impl SQLiteProvider {
     ) -> DatabaseResult<()> {
         use std::str::FromStr;
 
-        println!("SQLite::update_sync_settings: Starting update");
-
         // Get current settings
         let mut settings = self
             .get_global_sync_settings()
             .await?
             .unwrap_or_else(|| crate::models::sync::SyncSettings::new());
-
-        println!("SQLite::update_sync_settings: Current settings loaded");
 
         // Apply updates
         if let Some(is_active) = request.is_active {

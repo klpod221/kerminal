@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -156,53 +155,10 @@ impl SSHProfile {
         }
     }
 
-    /// Get profile by ID
-    pub fn get_id(&self) -> &str {
-        &self.base.id
-    }
-
-    /// Set proxy configuration
-    pub fn set_proxy(&mut self, proxy: Option<ProxyConfig>) {
-        self.proxy = proxy;
-        self.base.touch();
-    }
-
-    /// Set authentication method and data
-    pub fn set_authentication(&mut self, method: AuthMethod, data: AuthData) {
-        self.auth_method = method;
-        self.auth_data = data;
-        self.base.touch();
-    }
-
     /// Move to group
     pub fn set_group(&mut self, group_id: Option<String>) {
         self.group_id = group_id;
         self.base.touch();
-    }
-
-    /// Update connection settings
-    pub fn set_connection_settings(
-        &mut self,
-        timeout: Option<u32>,
-        keep_alive: bool,
-        compression: bool,
-    ) {
-        self.timeout = timeout;
-        self.keep_alive = keep_alive;
-        self.compression = compression;
-        self.base.touch();
-    }
-
-    /// Check if profile has valid authentication data
-    pub fn has_valid_auth(&self) -> bool {
-        match (&self.auth_method, &self.auth_data) {
-            (AuthMethod::Password, AuthData::Password { password }) => !password.is_empty(),
-            (AuthMethod::KeyReference, AuthData::KeyReference { key_id }) => !key_id.is_empty(),
-            (AuthMethod::Certificate, AuthData::Certificate { certificate, private_key, .. }) => {
-                !certificate.is_empty() && !private_key.is_empty()
-            }
-            _ => false,
-        }
     }
 
     /// Get display name for UI
@@ -211,15 +167,6 @@ impl SSHProfile {
             format!("{}@{}", self.username, self.host)
         } else {
             self.name.clone()
-        }
-    }
-
-    /// Get connection endpoint
-    pub fn endpoint(&self) -> String {
-        if self.port == 22 {
-            format!("{}@{}", self.username, self.host)
-        } else {
-            format!("{}@{}:{}", self.username, self.host, self.port)
         }
     }
 }

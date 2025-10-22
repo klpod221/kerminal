@@ -436,11 +436,6 @@ impl DatabaseService {
             local_db.save_master_password_entry(&entry).await?;
         }
 
-        println!(
-            "Master password config updated: auto_unlock={}, auto_lock_timeout={:?}",
-            auto_unlock, auto_lock_timeout
-        );
-
         Ok(())
     }
 
@@ -480,8 +475,6 @@ impl DatabaseService {
                             "Invalid master password".to_string(),
                         ));
                     }
-
-                    println!("Password verified successfully, updating keychain...");
                 } else {
                     return Err(crate::database::error::DatabaseError::MasterPasswordRequired);
                 }
@@ -508,11 +501,6 @@ impl DatabaseService {
             entry.auto_lock_timeout = auto_lock_timeout;
             local_db.save_master_password_entry(&entry).await?;
         }
-
-        println!(
-            "Master password config updated with keychain: auto_unlock={}, auto_lock_timeout={:?}",
-            auto_unlock, auto_lock_timeout
-        );
 
         Ok(())
     }

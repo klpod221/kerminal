@@ -9,7 +9,6 @@ use super::common::app_result;
 
 /// Helper function to auto-connect databases with auto-sync enabled
 async fn auto_connect_sync_databases(sync_service: Arc<SyncService>) -> Result<(), String> {
-    println!("auto_connect_sync_databases: Starting auto-connect for sync databases");
 
     // This will load and connect databases with auto_sync enabled
     // Similar to initialize() but can be called after manual unlock
@@ -59,7 +58,6 @@ pub async fn verify_master_password(
     {
         Ok(()) => {
             // After successful unlock, trigger auto-connect for databases with auto-sync enabled
-            println!("verify_master_password: Password verified, triggering auto-connect for sync databases");
 
             // Spawn auto-connect in background so it doesn't block the unlock response
             let sync_service = state.sync_service.clone();

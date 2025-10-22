@@ -47,51 +47,6 @@ impl Default for SyncDirection {
     }
 }
 
-/// Sync operation status
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum SyncStatus {
-    /// Never synced
-    Never,
-    /// Sync in progress
-    InProgress,
-    /// Last sync successful
-    Success,
-    /// Last sync failed
-    Failed,
-}
-
-impl std::fmt::Display for SyncStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SyncStatus::Never => write!(f, "Never"),
-            SyncStatus::InProgress => write!(f, "InProgress"),
-            SyncStatus::Success => write!(f, "Success"),
-            SyncStatus::Failed => write!(f, "Failed"),
-        }
-    }
-}
-
-impl std::str::FromStr for SyncStatus {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Never" => Ok(SyncStatus::Never),
-            "InProgress" => Ok(SyncStatus::InProgress),
-            "Success" => Ok(SyncStatus::Success),
-            "Failed" => Ok(SyncStatus::Failed),
-            _ => Err(format!("Unknown sync status: {}", s)),
-        }
-    }
-}
-
-impl Default for SyncStatus {
-    fn default() -> Self {
-        SyncStatus::Never
-    }
-}
-
 /// Global sync settings (applies to ALL external databases)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -143,12 +98,6 @@ impl SyncSettings {
             created_at: now,
             updated_at: now,
         }
-    }
-
-    /// Update sync timestamp
-    pub fn mark_sync_complete(&mut self) {
-        self.last_sync_at = Some(Utc::now());
-        self.updated_at = Utc::now();
     }
 
     /// Touch updated_at timestamp

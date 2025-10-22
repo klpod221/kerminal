@@ -1,7 +1,5 @@
-#![allow(dead_code)]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -84,42 +82,4 @@ pub struct SyncOperation {
     pub error_message: Option<String>,
     pub started_at: DateTime<Utc>,
     pub completed_at: Option<DateTime<Utc>>,
-}
-
-impl SyncOperation {
-    pub fn new(
-        operation_type: SyncOperationType,
-        entity_type: String,
-        entity_id: String,
-        source_db: String,
-        target_db: String,
-    ) -> Self {
-        Self {
-            id: Uuid::new_v4().to_string(),
-            operation_type,
-            entity_type,
-            entity_id,
-            source_db,
-            target_db,
-            status: SyncOperationStatus::Pending,
-            error_message: None,
-            started_at: Utc::now(),
-            completed_at: None,
-        }
-    }
-
-    pub fn mark_in_progress(&mut self) {
-        self.status = SyncOperationStatus::InProgress;
-    }
-
-    pub fn mark_completed(&mut self) {
-        self.status = SyncOperationStatus::Completed;
-        self.completed_at = Some(Utc::now());
-    }
-
-    pub fn mark_failed(&mut self, error: String) {
-        self.status = SyncOperationStatus::Failed;
-        self.error_message = Some(error);
-        self.completed_at = Some(Utc::now());
-    }
 }

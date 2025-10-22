@@ -475,19 +475,13 @@ impl TunnelService {
 
     /// Start remote port forwarding
     async fn start_remote_forward(
-        local_host: String,
-        local_port: u16,
+        _local_host: String,
+        _local_port: u16,
         remote_host: String,
         remote_port: u16,
         session: Arc<Mutex<Handle<SSHClientHandler>>>,
         cancel_token: CancellationToken,
     ) -> Result<()> {
-        // Request remote port forwarding from SSH server
-        println!(
-            "🔄 Requesting remote port forwarding: {}:{} -> {}:{}",
-            remote_host, remote_port, local_host, local_port
-        );
-
         let forwarded_port = {
             let mut session_guard = session.lock().await;
             match session_guard
@@ -510,40 +504,20 @@ impl TunnelService {
             remote_port
         };
 
-        println!(
-            "✅ Remote port forwarding established: {}:{} -> {}:{}",
-            remote_host, actual_port, local_host, local_port
-        );
-
-        if forwarded_port != remote_port as u32 {
-            println!(
-                "🔄 Server assigned port: {} (requested: {})",
-                forwarded_port, remote_port
-            );
-        }
-
-        println!("💡 Waiting for forwarded connections...");
-
-        // Main event loop for remote forwarding
-        let connection_count = 0u32;
+        let _connection_count = 0u32;
         let mut heartbeat_counter = 0u32;
         let heartbeat_interval = 120; // 60 seconds (500ms * 120)
 
         loop {
             tokio::select! {
                 _ = cancel_token.cancelled() => {
-                    println!("🛑 Stopping remote port forwarding...");
-
-                    // Cancel remote port forwarding
                     let cancel_result = {
                         let session_guard = session.lock().await;
                         session_guard.cancel_tcpip_forward(&remote_host, actual_port as u32).await
                     };
 
                     match cancel_result {
-                        Ok(_) => {
-                            println!("✅ Remote port forwarding cancelled: {}:{}", remote_host, actual_port);
-                        }
+                        Ok(_) => {},
                         Err(e) => {
                             eprintln!("❌ Failed to cancel remote port forwarding: {}", e);
                         }
@@ -553,14 +527,6 @@ impl TunnelService {
                 _ = tokio::time::sleep(tokio::time::Duration::from_millis(500)) => {
                     heartbeat_counter += 1;
 
-                    // Periodic status log
-                    if heartbeat_counter.is_multiple_of(heartbeat_interval) {
-                        let minutes = heartbeat_counter / 120;
-                        println!("📡 Remote forwarding active for {}m: {}:{} -> {}:{} ({} connections handled)",
-                                minutes, remote_host, actual_port, local_host, local_port, connection_count);
-                    }
-
-                    // Session health check every 5 minutes
                     if heartbeat_counter.is_multiple_of(heartbeat_interval * 5) {
                         let health_check_result = {
                             let session_guard = session.lock().await;
@@ -573,7 +539,6 @@ impl TunnelService {
                         match health_check_result {
                             Ok(Ok(test_channel)) => {
                                 let _ = test_channel.close().await;
-                                println!("✅ SSH session health check passed");
                             }
                             Ok(Err(e)) => {
                                 eprintln!("❌ SSH session health check failed: {}", e);
@@ -589,10 +554,6 @@ impl TunnelService {
             }
         }
 
-        println!(
-            "🔚 Remote port forwarding stopped (handled {} connections)",
-            connection_count
-        );
         Ok(())
     }
 

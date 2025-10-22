@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -120,25 +119,6 @@ impl UpdateSSHGroupRequest {
 
         if needs_touch {
             group.base.touch();
-        }
-    }
-}
-
-/// Group with profile statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SSHGroupWithStats {
-    #[serde(flatten)]
-    pub group: SSHGroup,
-    pub profile_count: u32,
-    pub profiles: Vec<String>, // Profile IDs in this group
-}
-
-impl SSHGroupWithStats {
-    pub fn new(group: SSHGroup, profile_count: u32, profiles: Vec<String>) -> Self {
-        Self {
-            group,
-            profile_count,
-            profiles,
         }
     }
 }

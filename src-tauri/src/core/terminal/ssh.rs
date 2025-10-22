@@ -156,10 +156,6 @@ impl SSHTerminal {
         &mut self,
         resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>,
     ) -> Result<(), AppError> {
-        println!(
-            "Connecting to SSH server {}:{}",
-            self.ssh_profile.host, self.ssh_profile.port
-        );
 
         self.state = TerminalState::Connecting;
 
@@ -172,10 +168,6 @@ impl SSHTerminal {
         // Connect to the server (either directly or through proxy)
         let handler = (*self.handler).clone();
         let mut session = if let Some(proxy_config) = &self.ssh_profile.proxy {
-            println!(
-                "Connecting through {} proxy at {}:{}",
-                proxy_config.proxy_type, proxy_config.host, proxy_config.port
-            );
 
             // Create proxy stream using russh-config
             let stream =
@@ -241,7 +233,6 @@ impl SSHTerminal {
         self.channel = Some(channel);
         self.state = TerminalState::Connected;
 
-        println!("Successfully connected to SSH server");
         Ok(())
     }
 
