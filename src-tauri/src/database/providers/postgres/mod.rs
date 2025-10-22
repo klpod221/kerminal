@@ -154,7 +154,6 @@ impl PostgreSQLProvider {
                 .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
         }
 
-        // Create indexes
         let indexes = vec![
             "CREATE INDEX IF NOT EXISTS idx_ssh_profiles_group_id ON ssh_profiles (group_id)",
             "CREATE INDEX IF NOT EXISTS idx_ssh_profiles_updated_at ON ssh_profiles (updated_at)",

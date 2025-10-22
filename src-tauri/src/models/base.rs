@@ -40,7 +40,6 @@ impl BaseModel {
 
     #[allow(dead_code)]
     pub fn generate_checksum<T: Serialize>(&self, model: &T) -> String {
-        // Serialize the model and create a hash
         let json = serde_json::to_string(model).unwrap_or_default();
         let mut hasher = Sha256::new();
         hasher.update(json.as_bytes());

@@ -9,8 +9,6 @@ import type {
   UpdateSSHGroupRequest,
 } from "../types/ssh";
 
-// === SSH Profile Services ===
-
 /**
  * Create a new SSH profile
  * @param request - SSH profile creation request
@@ -85,8 +83,6 @@ export async function duplicateSSHProfile(
 ): Promise<SSHProfile> {
   return await api.callRaw("duplicate_ssh_profile", id, newName);
 }
-
-// === SSH Group Services ===
 
 /**
  * Create a new SSH group

@@ -17,7 +17,6 @@ import * as masterPasswordService from "../services/auth";
  * Manages authentication state, master password operations, and security settings
  */
 export const useAuthStore = defineStore("auth", () => {
-  // State variables
   const status = ref<MasterPasswordStatus>({
     isSetup: false,
     isUnlocked: false,
@@ -41,13 +40,10 @@ export const useAuthStore = defineStore("auth", () => {
     createdAt: "",
   });
 
-  // Auto-lock timer
   let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // Session validity check interval
   let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
 
-  // Computed properties
   const isAuthenticated = computed(() => status.value.isUnlocked);
   const requiresSetup = computed(() => !status.value.isSetup);
   const requiresUnlock = computed(
@@ -79,7 +75,6 @@ export const useAuthStore = defineStore("auth", () => {
   const checkSessionValidity = async (): Promise<boolean> => {
     const isValid = await masterPasswordService.isSessionValid();
     if (!isValid && status.value.isUnlocked) {
-      // Session was expired and locked, update local status
       await checkStatus();
     }
     return isValid;
@@ -94,24 +89,18 @@ export const useAuthStore = defineStore("auth", () => {
   ): Promise<boolean> => {
     await masterPasswordService.setup(setup);
 
-    // Refresh status after setup
     await checkStatus();
 
-    // Load current device information
     await getCurrentDevice();
 
-    // If auto-unlock is enabled, try to unlock
     if (setup.autoUnlock && setup.useKeychain) {
       await tryAutoUnlock();
 
-      // Setup auto-lock timer and session check if unlocked
       if (status.value.isUnlocked) {
         setupAutoLockTimer();
         startSessionValidityCheck();
       }
     } else {
-      // If auto-unlock is not enabled, lock the session
-      // User will need to manually unlock
       await lock();
     }
 
@@ -128,14 +117,11 @@ export const useAuthStore = defineStore("auth", () => {
     try {
       const isValid = await masterPasswordService.verify(verification);
 
-      // Always refresh status after verify attempt
       await checkStatus();
 
       if (isValid) {
-        // Setup auto-lock timer
         setupAutoLockTimer();
 
-        // Start session validity check
         startSessionValidityCheck();
 
         return true;
@@ -143,7 +129,6 @@ export const useAuthStore = defineStore("auth", () => {
         return false;
       }
     } catch (error) {
-      // Refresh status even on error to get current state
       await checkStatus();
       throw error;
     }
@@ -153,13 +138,11 @@ export const useAuthStore = defineStore("auth", () => {
    * Lock the application
    */
   const lock = async (): Promise<void> => {
-    // Clear auto-lock timer and session check
     clearAutoLockTimer();
     stopSessionValidityCheck();
 
     await masterPasswordService.lock();
 
-    // Refresh status after lock
     await checkStatus();
   };
 
@@ -172,10 +155,8 @@ export const useAuthStore = defineStore("auth", () => {
   ): Promise<boolean> => {
     await masterPasswordService.change(changeData);
 
-    // Clear current auto-lock timer
     clearAutoLockTimer();
 
-    // Refresh status after successful password change (backend will lock the session)
     await checkStatus();
 
     return true;
@@ -188,7 +169,6 @@ export const useAuthStore = defineStore("auth", () => {
   const updateMasterPasswordConfig = async (
     config: MasterPasswordConfig | MasterPasswordConfigUpdate,
   ): Promise<boolean> => {
-    // Ensure autoLockTimeout is a number if provided
     const configData = {
       ...config,
       ...(config.autoLockTimeout !== undefined && {
@@ -198,14 +178,11 @@ export const useAuthStore = defineStore("auth", () => {
 
     await masterPasswordService.updateConfig(configData);
 
-    // Reload security settings and status after config update
     await loadSecuritySettings();
     await checkStatus();
 
-    // Restart auto-lock timer with new settings
     setupAutoLockTimer();
 
-    // Restart session validity check with new settings
     startSessionValidityCheck();
 
     return true;
@@ -251,10 +228,8 @@ export const useAuthStore = defineStore("auth", () => {
    * Start periodic session validity check
    */
   const startSessionValidityCheck = (): void => {
-    // Clear existing interval if any
     stopSessionValidityCheck();
 
-    // Only start if authenticated
     if (status.value.isUnlocked) {
       sessionCheckInterval = setInterval(async () => {
         if (status.value.isUnlocked) {
@@ -280,7 +255,6 @@ export const useAuthStore = defineStore("auth", () => {
   const resetMasterPassword = async (): Promise<boolean> => {
     await masterPasswordService.reset();
 
-    // Clear all state after reset
     status.value = {
       isSetup: false,
       isUnlocked: false,
@@ -303,7 +277,6 @@ export const useAuthStore = defineStore("auth", () => {
     await loadSecuritySettings();
     await getCurrentDevice();
 
-    // If already unlocked, setup auto-lock timer and session check
     if (status.value.isUnlocked) {
       setupAutoLockTimer();
       startSessionValidityCheck();
@@ -345,17 +318,14 @@ export const useAuthStore = defineStore("auth", () => {
   };
 
   return {
-    // State
     status,
     securitySettings,
     currentDevice,
 
-    // Computed
     isAuthenticated,
     requiresSetup,
     requiresUnlock,
 
-    // Actions
     checkStatus,
     checkSessionValidity,
     loadSecuritySettings,

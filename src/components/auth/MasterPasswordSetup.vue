@@ -10,12 +10,18 @@
     <div class="flex flex-col gap-4">
       <div class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
         <div class="flex items-start gap-2">
-          <AlertCircle :size="20" class="text-yellow-500 mt-0.5 flex-shrink-0" />
+          <AlertCircle
+            :size="20"
+            class="text-yellow-500 mt-0.5 flex-shrink-0"
+          />
           <div class="flex-1">
-            <h4 class="text-sm font-medium text-yellow-200 mb-1">Important for Multi-Device Sync</h4>
+            <h4 class="text-sm font-medium text-yellow-200 mb-1">
+              Important for Multi-Device Sync
+            </h4>
             <p class="text-xs text-yellow-100/80">
-              If you plan to sync data across multiple devices, you MUST use the same master password on all devices.
-              Different passwords will prevent data decryption and sync functionality.
+              If you plan to sync data across multiple devices, you MUST use the
+              same master password on all devices. Different passwords will
+              prevent data decryption and sync functionality.
             </p>
           </div>
         </div>
@@ -124,11 +130,9 @@ import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Select from "../ui/Select.vue";
 
-// Import stores and composables
 const { closeOverlay } = useOverlay();
 const { setupMasterPassword } = useAuthStore();
 
-// Form state
 const masterPasswordSetupForm = ref<InstanceType<typeof Form> | null>(null);
 const setupForm = ref({
   deviceName: "",
@@ -140,7 +144,6 @@ const setupForm = ref({
 });
 const isLoading = ref(false);
 
-// Timeout options
 const timeoutOptions = [
   { value: 0, label: "Never" },
   { value: 5, label: "5 minutes" },
@@ -151,7 +154,6 @@ const timeoutOptions = [
   { value: 240, label: "4 hours" },
 ];
 
-// Handle form submission
 const handleSubmit = async () => {
   const isValid = await masterPasswordSetupForm.value?.validate();
   if (!isValid) return;
@@ -162,7 +164,8 @@ const handleSubmit = async () => {
     const success = await setupMasterPassword(setupForm.value);
 
     if (success) {
-      const wasAutoUnlock = setupForm.value.autoUnlock && setupForm.value.useKeychain;
+      const wasAutoUnlock =
+        setupForm.value.autoUnlock && setupForm.value.useKeychain;
 
       setupForm.value = {
         deviceName: "",
@@ -175,15 +178,10 @@ const handleSubmit = async () => {
 
       message.success("Master password setup successfully!");
 
-      // Always close setup overlay
       closeOverlay("master-password-setup");
 
-      // If auto unlock was not enabled, the App.vue watch will handle showing unlock modal
       if (!wasAutoUnlock) {
-        // Give a small delay to allow auth store to update status
-        setTimeout(() => {
-          // The watch in App.vue will automatically open unlock modal if needed
-        }, 100);
+        setTimeout(() => {}, 100);
       }
     }
   } catch (error) {

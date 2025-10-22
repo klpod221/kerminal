@@ -9,7 +9,6 @@ use tauri::State;
 
 use super::common::app_result;
 
-// === SSH Group Commands ===
 
 /// Create new SSH group
 #[tauri::command]
@@ -53,7 +52,6 @@ pub async fn delete_ssh_group(
     app_result!(state.ssh_service.delete_ssh_group(&id, action).await)
 }
 
-// === SSH Profile Commands ===
 
 /// Create new SSH profile
 #[tauri::command]
@@ -126,7 +124,6 @@ pub async fn test_ssh_connection(
     app_result!(state.ssh_service.test_ssh_connection(request).await)
 }
 
-// === DTOs for Frontend ===
 
 /// DTO for delete group action from frontend
 #[derive(Debug, Deserialize)]
@@ -149,7 +146,6 @@ impl From<DeleteGroupActionDto> for DeleteGroupAction {
     }
 }
 
-// === SSH Key Commands ===
 
 /// Create new SSH key
 #[tauri::command]

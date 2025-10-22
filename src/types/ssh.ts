@@ -55,12 +55,33 @@ export interface CertificateValidity {
 export type AuthData =
   | { Password: { password: string } }
   | { PrivateKey: { privateKey: string; keyType: KeyType; publicKey?: string } }
-  | { PrivateKeyWithPassphrase: { privateKey: string; passphrase: string; keyType: KeyType; publicKey?: string } }
+  | {
+      PrivateKeyWithPassphrase: {
+        privateKey: string;
+        passphrase: string;
+        keyType: KeyType;
+        publicKey?: string;
+      };
+    }
   | { KeyReference: { keyId: string } }
   | { Agent: { publicKey?: string } }
-  | { Certificate: { certificate: string; privateKey: string; keyType: KeyType; validityPeriod?: CertificateValidity } }
+  | {
+      Certificate: {
+        certificate: string;
+        privateKey: string;
+        keyType: KeyType;
+        validityPeriod?: CertificateValidity;
+      };
+    }
   | { Kerberos: { realm: string; principal: string } }
-  | { PKCS11: { libraryPath: string; slotId?: number; keyId: string; pin?: string } };
+  | {
+      PKCS11: {
+        libraryPath: string;
+        slotId?: number;
+        keyId: string;
+        pin?: string;
+      };
+    };
 
 /**
  * SSH Group interface - matches backend SSHGroup

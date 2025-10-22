@@ -84,7 +84,9 @@
                       {{ device.deviceName }}
                     </h4>
                     <Badge
-                      v-if="device.lastSeen && isRecentlyActive(device.lastSeen)"
+                      v-if="
+                        device.lastSeen && isRecentlyActive(device.lastSeen)
+                      "
                       variant="success"
                     >
                       Online
@@ -100,8 +102,12 @@
                       OS: {{ device.osInfo.osType }}
                       {{ device.osInfo.osVersion }}
                     </div>
-                    <div>Last Seen: {{ formatDateOrNever(device.lastSeen) }}</div>
-                    <div>Registered: {{ formatDateOrNever(device.createdAt) }}</div>
+                    <div>
+                      Last Seen: {{ formatDateOrNever(device.lastSeen) }}
+                    </div>
+                    <div>
+                      Registered: {{ formatDateOrNever(device.createdAt) }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -175,7 +181,8 @@ const otherDevices = computed(() => {
 });
 
 const onlineDevicesCount = computed(() => {
-  return devices.value.filter((d) => d.lastSeen && isRecentlyActive(d.lastSeen)).length;
+  return devices.value.filter((d) => d.lastSeen && isRecentlyActive(d.lastSeen))
+    .length;
 });
 
 const getDeviceIcon = (type: string): string => {
@@ -216,7 +223,7 @@ const registerCurrentDevice = async () => {
   try {
     const device = await syncService.registerDevice(
       "Current Device",
-      "Desktop"
+      "Desktop",
     );
     currentDevice.value = device;
     await loadDevices();

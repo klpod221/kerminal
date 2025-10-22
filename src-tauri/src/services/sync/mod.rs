@@ -48,7 +48,6 @@ impl SyncService {
     /// Initialize sync service (start scheduler, load enabled databases)
     pub async fn initialize(&self) -> DatabaseResult<()> {
 
-        // Check if master password is unlocked
         let is_unlocked = {
             let db_service = self.database_service.lock().await;
             let manager = db_service.get_master_password_manager_arc();
@@ -61,7 +60,6 @@ impl SyncService {
             return Ok(());
         }
 
-        // Load all external database configs
         let configs = {
             let db_service = self.database_service.lock().await;
             let local_db = db_service.get_local_database();
@@ -70,7 +68,6 @@ impl SyncService {
         }; // Drop locks
 
 
-        // Auto-connect based on sync_settings
         let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let sync_settings = {
@@ -88,23 +85,19 @@ impl SyncService {
                 if let Err(e) = self.sync_manager.connect(&config).await {
                     eprintln!("Failed to auto-connect to {}: {}", config.name, e);
                 } else {
-                    // Enable auto-sync in scheduler
                     self.sync_scheduler.enable_database(config.base.id.clone()).await?;
                 }
             }
         }
 
-        // Start the scheduler
         self.sync_scheduler.start().await?;
 
         Ok(())
     }    /// Shutdown sync service
     #[allow(dead_code)]
     pub async fn shutdown(&self) -> DatabaseResult<()> {
-        // Stop scheduler
         self.sync_scheduler.stop().await?;
 
-        // Disconnect all active connections
         self.sync_manager.disconnect_all().await?;
 
         Ok(())
@@ -218,7 +211,6 @@ impl SyncService {
 
     /// Enable auto-sync for a database
     pub async fn enable_auto_sync(&self, database_id: &str) -> DatabaseResult<()> {
-        // Update config in database
         let db_service = self.database_service.lock().await;
         let master_password_manager = db_service.get_master_password_manager_arc();
         drop(db_service);
@@ -239,7 +231,6 @@ impl SyncService {
                 ))
             })?;
 
-        // Update global sync_settings to enable auto-sync
         let update_request = crate::models::sync::UpdateSyncSettingsRequest {
             is_active: None,
             auto_sync_enabled: Some(true),
@@ -255,7 +246,6 @@ impl SyncService {
             .update_sync_settings(&update_request)
             .await?;
 
-        // Enable in scheduler
         self.sync_scheduler
             .enable_database(config.base.id.clone())
             .await
@@ -263,7 +253,6 @@ impl SyncService {
 
     /// Disable auto-sync for a database
     pub async fn disable_auto_sync(&self, database_id: &str) -> DatabaseResult<()> {
-        // Update config in database
         let db_service = self.database_service.lock().await;
         let master_password_manager = db_service.get_master_password_manager_arc();
         drop(db_service);
@@ -284,7 +273,6 @@ impl SyncService {
                 ))
             })?;
 
-        // Update global sync_settings to disable auto-sync
         let update_request = crate::models::sync::UpdateSyncSettingsRequest {
             is_active: None,
             auto_sync_enabled: Some(false),
@@ -302,7 +290,6 @@ impl SyncService {
 
         let _ = config; // Suppress unused warning
 
-        // Disable in scheduler
         self.sync_scheduler.disable_database(database_id).await
     }
 
@@ -341,6 +328,5 @@ pub struct SyncServiceStatistics {
 mod tests {
     #[test]
     fn test_sync_service_creation() {
-        // Test implementation requires mock DatabaseService
     }
 }

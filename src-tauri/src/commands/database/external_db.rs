@@ -25,7 +25,6 @@ pub async fn add_external_database(
         .await
         .map_err(|e| format!("Failed to encrypt connection details: {}", e))?;
 
-    // Note: Using global sync_settings (no per-database settings)
     let config = ExternalDatabaseConfig::new(
         device_id,
         request.name,
@@ -52,7 +51,6 @@ pub async fn get_external_databases(
         .await
         .map_err(|e| format!("Failed to retrieve external databases: {}", e))?;
 
-    // Note: is_active status will be added in Phase 9 (Frontend Integration)
 
     Ok(databases)
 }
@@ -112,8 +110,6 @@ pub async fn update_external_database(
         config.connection_details_encrypted = encrypted;
     }
 
-    // Note: Sync settings (auto_sync, interval, conflict_strategy) are global
-    // and should be updated via separate sync_settings commands (Phase 9)
 
     config.base.touch();
 
@@ -145,7 +141,6 @@ pub async fn test_external_database_connection(
 ) -> Result<bool, String> {
     let database_service = app_state.database_service.lock().await;
 
-    // If password is empty and database_id is provided, fetch existing credentials
     let connection_details = if request.connection_details.password.is_empty()
         && request.database_id.is_some()
     {

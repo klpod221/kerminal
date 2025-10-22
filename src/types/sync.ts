@@ -25,8 +25,6 @@ export interface SyncStatus {
  */
 export type ConflictResolution = "local" | "remote" | "merge" | "ask";
 
-// Multi-database sync types
-
 export type DatabaseType = "mysql" | "postgresql" | "mongodb";
 
 export type ConflictResolutionStrategy =
@@ -36,22 +34,18 @@ export type ConflictResolutionStrategy =
   | "LocalWins"
   | "RemoteWins";
 
-// Legacy sync settings (deprecated - kept for backward compatibility)
 export interface LegacySyncSettings {
   autoSync: boolean;
   syncIntervalMinutes: number;
   conflictResolutionStrategy: ConflictResolutionStrategy;
 }
 
-// Global Sync Settings (Phase 9)
-// Per-database sync settings (used when adding/updating databases)
 export interface DatabaseSyncSettings {
   autoSync: boolean;
   syncIntervalMinutes: number;
   conflictResolutionStrategy: ConflictResolutionStrategy;
 }
 
-// Global sync settings (stored in sync_settings table)
 export interface SyncSettings {
   id: string; // Always "global"
   isActive: boolean;
@@ -65,7 +59,6 @@ export interface SyncSettings {
   updatedAt: string;
 }
 
-// For updating sync settings (partial)
 export interface UpdateSyncSettingsRequest {
   isActive?: boolean;
   autoSyncEnabled?: boolean;

@@ -157,7 +157,6 @@ const close = (): void => {
 onMounted(() => {
   visible.value = true;
 
-  // Auto close after duration (except for loading messages)
   if (props.duration > 0 && props.type !== "loading") {
     timer = window.setTimeout(() => {
       close();
@@ -165,7 +164,6 @@ onMounted(() => {
   }
 });
 
-// Expose methods for programmatic control
 defineExpose({
   close,
 });

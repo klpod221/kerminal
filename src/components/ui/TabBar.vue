@@ -211,18 +211,15 @@ const props = withDefaults(defineProps<TabBarProps>(), {
 const emit = defineEmits<TabBarEmits>();
 const { width: windowWidth } = useWindowSize();
 
-// Refs for scrolling functionality
 const tabsContainer = ref<HTMLElement | null>(null);
 const tabsContent = ref<HTMLElement | null>(null);
 const tabRefs = ref<Record<string, HTMLElement>>({});
 const scrollOffset = ref(0);
 const maxScrollOffset = ref(0);
 
-// Drag and drop state
 const isDragOver = ref(false);
 const dragEnterCounter = ref(0);
 
-// Scroll state
 const canScrollLeft = computed(() => scrollOffset.value < 0);
 const canScrollRight = computed(
   () => scrollOffset.value > -maxScrollOffset.value,
@@ -255,11 +252,9 @@ const updateScrollLimits = (): void => {
 
   const newMaxScrollOffset = Math.max(0, contentWidth - containerWidth);
 
-  // Only update if there's a significant change to avoid flickering
   if (Math.abs(maxScrollOffset.value - newMaxScrollOffset) > 1) {
     maxScrollOffset.value = newMaxScrollOffset;
 
-    // Ensure scroll offset doesn't exceed new limits
     if (scrollOffset.value < -maxScrollOffset.value) {
       scrollOffset.value = -maxScrollOffset.value;
     }
@@ -293,7 +288,6 @@ const scrollRight = (): void => {
 const onWheel = (event: WheelEvent): void => {
   if (maxScrollOffset.value === 0) return;
 
-  // Use deltaX if available (horizontal scroll), otherwise use deltaY
   const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
   const scrollAmount = delta > 0 ? -120 : 120;
   const newOffset = scrollOffset.value + scrollAmount;
@@ -312,33 +306,26 @@ const scrollActiveTabIntoView = (): void => {
   const tabRect = activeTab.getBoundingClientRect();
   const contentRect = tabsContent.value.getBoundingClientRect();
 
-  // Calculate tab position relative to the scrollable content
   const tabRelativeLeft = tabRect.left - contentRect.left;
   const tabRelativeRight = tabRelativeLeft + tabRect.width;
 
-  // Calculate visible area bounds
   const visibleLeft = -scrollOffset.value;
   const visibleRight = visibleLeft + containerRect.width;
 
   const padding = 20; // Add some padding for better UX
 
-  // If tab is completely to the left of visible area
   if (tabRelativeLeft < visibleLeft) {
     scrollOffset.value = -(tabRelativeLeft - padding);
-  }
-  // If tab is completely to the right of visible area
-  else if (tabRelativeRight > visibleRight) {
+  } else if (tabRelativeRight > visibleRight) {
     scrollOffset.value = -(tabRelativeRight - containerRect.width + padding);
   }
 
-  // Ensure scroll offset stays within bounds
   scrollOffset.value = Math.max(
     -maxScrollOffset.value,
     Math.min(0, scrollOffset.value),
   );
 };
 
-// Watch for active tab changes to scroll into view (with debounce)
 const debouncedScrollIntoView = (() => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   return () => {
@@ -359,7 +346,6 @@ watch(
   },
 );
 
-// Watch for tab count changes to update scroll limits (with debounce)
 const debouncedUpdateLimits = (() => {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   return () => {
@@ -379,7 +365,6 @@ watch(
   },
 );
 
-// Update scroll limits when window resizes
 let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
@@ -390,7 +375,6 @@ onMounted(() => {
     resizeObserver.observe(tabsContainer.value);
   }
 
-  // Initial update
   nextTick(() => {
     updateScrollLimits();
   });
@@ -402,7 +386,6 @@ onBeforeUnmount(() => {
   }
 });
 
-// Computed properties for responsive tab sizing
 const tabMinWidth = computed(() => {
   const tabCount = props.panel.tabs.length;
   const addButtonWidth = showScrollButtons.value ? 32 : 36; // Add button width (larger when inside scrollable area)
@@ -416,10 +399,8 @@ const tabMinWidth = computed(() => {
     panelControlsWidth -
     padding;
 
-  // Calculate ideal width per tab
   const idealTabWidth = Math.floor(availableWidth / Math.max(tabCount, 1));
 
-  // Apply breakpoints based on available space and tab count
   if (tabCount <= 4 && idealTabWidth >= 180) return 180;
   if (tabCount <= 6 && idealTabWidth >= 150) return 150;
   if (tabCount <= 8 && idealTabWidth >= 120) return 120;
@@ -467,7 +448,6 @@ const closePanel = (): void => {
  * Handle tab duplication from context menu
  */
 const handleTabDuplicate = (tab: TabType): void => {
-  // Emit custom event for tab duplication - this should be handled by parent component
   emit("duplicateTab", props.panel.id, tab.id);
 };
 
@@ -475,7 +455,6 @@ const handleTabDuplicate = (tab: TabType): void => {
  * Handle close other tabs from context menu
  */
 const handleCloseOthers = (tab: TabType): void => {
-  // Close all tabs except the selected one
   const otherTabs = props.panel.tabs.filter((t) => t.id !== tab.id);
   otherTabs.forEach((otherTab) => {
     emit("closeTab", props.panel.id, otherTab.id);
@@ -499,21 +478,17 @@ const handleCloseToRight = (tab: TabType): void => {
  * Handle move tab to new panel from context menu
  */
 const handleMoveToNewPanel = (tab: TabType): void => {
-  // Emit custom event for moving tab to new panel
   emit("moveTabToNewPanel", props.panel.id, tab.id);
 };
 
 const onTabDragStart = (tab: TabType): void => {
-  // Store the source panel info for drag operations
   console.log("Tab drag started:", tab, "from panel:", props.panel.id);
 };
 
 const onTabDrop = (draggedTab: TabType, targetTab: TabType): void => {
-  // Handle tab reordering within the same panel or moving between panels
   emit("moveTab", props.panel.id, props.panel.id, draggedTab.id, targetTab.id);
 };
 
-// Panel-level drag and drop handlers for cross-panel operations
 const onPanelDragOver = (event: DragEvent): void => {
   event.preventDefault();
   if (event.dataTransfer) {
@@ -545,15 +520,16 @@ const onPanelDrop = (event: DragEvent): void => {
   if (event.dataTransfer) {
     const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
-      const dragData = safeJsonParse<{tab: TabType; sourcePanelId: string} | null>(draggedTabData, null);
+      const dragData = safeJsonParse<{
+        tab: TabType;
+        sourcePanelId: string;
+      } | null>(draggedTabData, null);
       if (!dragData) return;
 
       const draggedTab = dragData.tab;
       const sourcePanelId = dragData.sourcePanelId;
 
-      // Only handle cross-panel drops here (same panel drops are handled by tab-level drop)
       if (sourcePanelId && sourcePanelId !== props.panel.id) {
-        // Move tab to this panel (at the end)
         emit("moveTab", sourcePanelId, props.panel.id, draggedTab.id, "");
       }
     }

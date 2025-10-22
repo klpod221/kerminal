@@ -132,9 +132,11 @@ export function formatFrequency(frequency: number): string {
  * @param {number} maxLength - Maximum length before truncation
  * @returns {string}
  */
-export function formatFingerprint(fingerprint: string, maxLength: number = 60): string {
+export function formatFingerprint(
+  fingerprint: string,
+  maxLength: number = 60,
+): string {
   if (!fingerprint) return "";
-  // Format: SHA256:ab:cd:ef:12:34:56...
   return fingerprint.length > maxLength
     ? fingerprint.substring(0, maxLength) + "..."
     : fingerprint;
@@ -145,7 +147,9 @@ export function formatFingerprint(fingerprint: string, maxLength: number = 60): 
  * @param {string | null | undefined} dateString - Date string to format
  * @returns {string}
  */
-export function formatDateOrNever(dateString: string | null | undefined): string {
+export function formatDateOrNever(
+  dateString: string | null | undefined,
+): string {
   if (!dateString) return "Never";
   return formatRelativeTime(new Date(dateString));
 }

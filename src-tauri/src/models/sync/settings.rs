@@ -28,11 +28,9 @@ impl std::str::FromStr for SyncDirection {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            // PascalCase (original format)
             "Push" => Ok(SyncDirection::Push),
             "Pull" => Ok(SyncDirection::Pull),
             "Both" => Ok(SyncDirection::Both),
-            // camelCase (serde format)
             "push" => Ok(SyncDirection::Push),
             "pull" => Ok(SyncDirection::Pull),
             "both" => Ok(SyncDirection::Both),

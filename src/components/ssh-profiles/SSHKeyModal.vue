@@ -2,9 +2,13 @@
   <Modal id="ssh-key-modal" :title="modalTitle" size="lg">
     <Form ref="keyForm">
       <!-- Edit mode info -->
-      <div v-if="keyId" class="mb-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg">
+      <div
+        v-if="keyId"
+        class="mb-4 p-3 bg-blue-900/20 border border-blue-700 rounded-lg"
+      >
         <p class="text-sm text-blue-300">
-          <strong>Edit Mode:</strong> Key fields are empty for security. Only fill them if you want to update the key data.
+          <strong>Edit Mode:</strong> Key fields are empty for security. Only
+          fill them if you want to update the key data.
         </p>
       </div>
 
@@ -106,22 +110,17 @@ import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
 
-// Props
 const props = defineProps<{
   keyId?: string | null;
 }>();
 
-// Store and composables
 const sshKeyStore = useSshKeyStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
 
-// Use overlay prop with fallback to direct prop
 const keyId = getOverlayProp("ssh-key-modal", "keyId", props.keyId, null);
 
-// State
 const keyForm = ref<InstanceType<typeof Form> | null>(null);
 const isLoading = ref(false);
-// No more mode switching
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref("");
 
@@ -133,7 +132,6 @@ const formData = ref({
   description: "",
 });
 
-// Computed
 const modalTitle = computed(() =>
   keyId.value ? "Edit SSH Key" : "Add SSH Key",
 );
@@ -142,10 +140,6 @@ const submitButtonText = computed(() => {
   if (keyId.value) return "Update Key";
   return "Add Key";
 });
-
-
-
-// Functions
 
 const selectKeyFile = () => {
   fileInput.value?.click();
@@ -178,13 +172,11 @@ const handleSubmit = async () => {
 
   try {
     if (keyId.value) {
-      // Update existing key - only send fields that have values
       const updateRequest: any = {
         name: formData.value.name,
         description: formData.value.description || undefined,
       };
 
-      // Only include key fields if they have new values
       if (formData.value.privateKey.trim()) {
         updateRequest.privateKey = formData.value.privateKey;
       }
@@ -199,7 +191,6 @@ const handleSubmit = async () => {
       message.success("SSH key updated successfully");
       closeOverlay("ssh-key-modal");
     } else {
-      // Always create new key (keyType auto-detected)
       await sshKeyStore.createKey({
         name: formData.value.name,
         privateKey: formData.value.privateKey,
@@ -226,11 +217,10 @@ const loadKey = async () => {
     const key = sshKeyStore.keys.find((k) => k.id === keyId.value);
 
     if (key) {
-      // Only load metadata, keep key fields empty to avoid double encryption
       formData.value = {
         name: key.name,
         privateKey: "", // Keep empty to avoid showing encrypted data
-        publicKey: "",  // Keep empty unless user wants to update
+        publicKey: "", // Keep empty unless user wants to update
         passphrase: "", // Keep empty unless user wants to update
         description: key.description || "",
       };
@@ -243,14 +233,12 @@ const loadKey = async () => {
   }
 };
 
-// Watch for keyId changes
 watch(
   keyId,
   (newKeyId) => {
     if (newKeyId) {
       loadKey();
     } else {
-      // Reset form for new key
       formData.value = {
         name: "",
         privateKey: "",

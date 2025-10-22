@@ -55,7 +55,6 @@ pub async fn push_records(
             .as_object()
             .ok_or_else(|| DatabaseError::QueryFailed("Expected JSON object".to_string()))?;
 
-        // Convert camelCase keys to snake_case for PostgreSQL
         let column_mapping: Vec<(String, String)> = obj
             .keys()
             .map(|k| (k.to_string(), to_snake_case(k)))

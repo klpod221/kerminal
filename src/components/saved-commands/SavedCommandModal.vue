@@ -85,10 +85,7 @@ import TagInput from "../ui/TagInput.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
 import { safeJsonParse, safeJsonStringify } from "../../utils/helpers";
-import type {
-  SavedCommand,
-  SavedCommandGroup,
-} from "../../types/savedCommand";
+import type { SavedCommand, SavedCommandGroup } from "../../types/savedCommand";
 
 interface Props {
   modalId: string;
@@ -107,7 +104,6 @@ const emit = defineEmits<{
 const { closeOverlay, getOverlayProp } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
 
-// Use overlay prop with fallback to direct prop
 const commandId = getOverlayProp(
   props.modalId,
   "commandId",
@@ -136,7 +132,6 @@ const parsedTags = ref<string[]>([]);
 
 const isEditing = computed(() => !!commandId.value);
 
-// Load command data
 const loadCommand = async () => {
   if (!commandId.value) return;
 
@@ -206,7 +201,6 @@ const closeModal = () => {
   closeOverlay(props.modalId);
 };
 
-// Watch for prop changes to reinitialize form
 watch(
   () => [commandId.value, defaultGroupId.value],
   ([newCommandId, newDefaultGroupId]) => {
@@ -218,7 +212,6 @@ watch(
     if (newCommandId) {
       loadCommand();
     } else {
-      // Reset form for new command
       formData.value = {
         name: "",
         command: "",

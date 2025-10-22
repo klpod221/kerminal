@@ -17,7 +17,6 @@ import SSHKeyModal from "./SSHKeyModal.vue";
 
 import { useSSHStore } from "../../stores/ssh";
 
-// Store
 const sshStore = useSSHStore();
 
 const loadAllData = async () => {
@@ -28,6 +27,5 @@ const loadAllData = async () => {
   }
 };
 
-// Load data when component is mounted
 loadAllData();
 </script>

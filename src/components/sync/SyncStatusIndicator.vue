@@ -3,17 +3,9 @@
     v-if="syncStore.databases.length > 0"
     class="flex items-center gap-2 text-xs"
   >
-    <Badge
-      :variant="statusVariant"
-      :size="'sm'"
-      class="animate-pulse-subtle"
-    >
+    <Badge :variant="statusVariant" :size="'sm'" class="animate-pulse-subtle">
       <div class="flex items-center gap-1.5">
-        <component
-          :is="statusIcon"
-          :size="12"
-          :class="statusIconClass"
-        />
+        <component :is="statusIcon" :size="12" :class="statusIconClass" />
         <span>{{ statusText }}</span>
       </div>
     </Badge>
@@ -41,7 +33,6 @@ const syncStore = useSyncStore();
 const statusVariant = computed(() => {
   if (!syncStore.currentDatabase) return "gray";
 
-  // Use isActive to determine connection status
   if (syncStore.currentDatabase.isActive) {
     return "success";
   }
@@ -52,7 +43,6 @@ const statusVariant = computed(() => {
 const statusIcon = computed(() => {
   if (!syncStore.currentDatabase) return CloudOff;
 
-  // Use isActive to determine connection status
   if (syncStore.currentDatabase.isActive) {
     return Cloud;
   }
@@ -61,14 +51,12 @@ const statusIcon = computed(() => {
 });
 
 const statusIconClass = computed(() => {
-  // No animation for now, can add for syncing state later
   return "";
 });
 
 const statusText = computed(() => {
   if (!syncStore.currentDatabase) return "No Database";
 
-  // Use isActive to determine connection status
   if (syncStore.currentDatabase.isActive) {
     return "Connected";
   }
@@ -79,7 +67,8 @@ const statusText = computed(() => {
 
 <style scoped>
 @keyframes pulse-subtle {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {

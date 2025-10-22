@@ -27,12 +27,10 @@ import { useWorkspaceStore } from "../stores/workspace";
 
 const workspaceStore = useWorkspaceStore();
 
-// Setup component
 onMounted(async () => {
   await workspaceStore.initialize();
 });
 
-// Cleanup component
 onBeforeUnmount(() => {
   workspaceStore.cleanup();
 });

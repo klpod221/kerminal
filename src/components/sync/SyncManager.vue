@@ -263,9 +263,7 @@ onMounted(async () => {
         selectedDatabaseId.value = globalSettings.selectedDatabaseId;
       }
     }
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
 
   if (!selectedDatabaseId.value && syncStore.databases.length > 0) {
     selectedDatabaseId.value = syncStore.databases[0].id;

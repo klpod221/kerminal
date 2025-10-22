@@ -1,9 +1,5 @@
 <template>
-  <Modal
-    id="ssh-key-manager-modal"
-    title="SSH Key Manager"
-    size="xl"
-  >
+  <Modal id="ssh-key-manager-modal" title="SSH Key Manager" size="xl">
     <!-- Empty State -->
     <EmptyState
       v-if="sshKeyStore.keys.length === 0 && !sshKeyStore.loading"
@@ -24,14 +20,21 @@
         <div class="text-sm text-gray-400">
           {{ sshKeyStore.keys.length }} key(s) available
         </div>
-        <Button variant="primary" :icon="Plus" size="sm" @click="openKeyModal()">
+        <Button
+          variant="primary"
+          :icon="Plus"
+          size="sm"
+          @click="openKeyModal()"
+        >
           Add SSH Key
         </Button>
       </div>
 
       <!-- Loading -->
       <div v-if="sshKeyStore.loading" class="text-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+        <div
+          class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
+        ></div>
         <p class="text-gray-400 mt-4">Loading SSH keys...</p>
       </div>
 
@@ -47,16 +50,14 @@
             <!-- Header -->
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
-                <h3 class="text-white font-semibold truncate">{{ key.name }}</h3>
+                <h3 class="text-white font-semibold truncate">
+                  {{ key.name }}
+                </h3>
                 <div class="flex items-center gap-2 mt-1">
                   <Badge variant="info" size="xs">
                     {{ key.keyType }}
                   </Badge>
-                  <Badge
-                    v-if="key.passphrase"
-                    variant="warning"
-                    size="xs"
-                  >
+                  <Badge v-if="key.passphrase" variant="warning" size="xs">
                     Protected
                   </Badge>
                 </div>
@@ -95,25 +96,21 @@
             </div>
 
             <!-- Footer -->
-            <div class="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
-              <div>
-                Created: {{ formatDateOrNever(key.createdAt) }}
-              </div>
+            <div
+              class="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700"
+            >
+              <div>Created: {{ formatDateOrNever(key.createdAt) }}</div>
               <div class="flex items-center gap-2">
                 <div v-if="key.lastUsed" class="text-green-400">
                   Last used: {{ formatDateOrNever(key.lastUsed) }}
                 </div>
-                <div v-else class="text-gray-500">
-                  Never used
-                </div>
+                <div v-else class="text-gray-500">Never used</div>
               </div>
             </div>
           </div>
         </Card>
       </div>
     </div>
-
-
   </Modal>
 </template>
 
@@ -130,13 +127,9 @@ import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import type { SSHKey } from "../../types/ssh";
 
-// Store and composables
 const sshKeyStore = useSshKeyStore();
 const { openOverlay, isOverlayVisible } = useOverlay();
 
-
-
-// Functions
 const openKeyModal = (key?: SSHKey) => {
   openOverlay("ssh-key-modal", { keyId: key?.id || null });
 };
@@ -160,19 +153,16 @@ const confirmDelete = async (key: SSHKey) => {
   }
 };
 
-// Load keys on mount
 onMounted(() => {
   sshKeyStore.loadKeys();
 });
 
-// Watch for ssh-key-modal visibility to reload keys when it closes
 watch(
   () => isOverlayVisible("ssh-key-modal"),
   (isVisible, wasVisible) => {
-    // Reload keys when modal closes (was visible, now not visible)
     if (wasVisible && !isVisible) {
       sshKeyStore.loadKeys();
     }
-  }
+  },
 );
 </script>

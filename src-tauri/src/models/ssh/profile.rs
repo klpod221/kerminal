@@ -171,7 +171,6 @@ impl SSHProfile {
     }
 }
 
-// Implement Syncable trait using macro
 impl_syncable!(SSHProfile, "ssh_profiles");
 
 impl Encryptable for SSHProfile {
@@ -428,8 +427,6 @@ mod encrypted_option_string {
     where
         S: Serializer,
     {
-        // For security reasons, we might want to store passwords encrypted at rest
-        // For now, serialize as-is to avoid complications with async encryption
         value.serialize(serializer)
     }
 
@@ -437,7 +434,6 @@ mod encrypted_option_string {
     where
         D: Deserializer<'de>,
     {
-        // Deserialize as-is
         Option::<String>::deserialize(deserializer)
     }
 }

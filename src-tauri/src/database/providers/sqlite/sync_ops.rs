@@ -95,7 +95,6 @@ impl SQLiteProvider {
         .await
         .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
 
-        // Get global sync settings to check if sync is active
         let is_active = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT is_active FROM sync_settings WHERE id = 'global'
@@ -499,13 +498,11 @@ impl SQLiteProvider {
     ) -> DatabaseResult<()> {
         use std::str::FromStr;
 
-        // Get current settings
         let mut settings = self
             .get_global_sync_settings()
             .await?
             .unwrap_or_else(|| crate::models::sync::SyncSettings::new());
 
-        // Apply updates
         if let Some(is_active) = request.is_active {
             settings.is_active = is_active;
         }
@@ -530,7 +527,6 @@ impl SQLiteProvider {
 
         settings.touch();
 
-        // Save updated settings
         self.save_global_sync_settings(&settings).await
     }
 

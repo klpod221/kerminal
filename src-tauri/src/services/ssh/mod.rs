@@ -32,7 +32,6 @@ impl SSHService {
         }
     }
 
-    // === SSH Group Management ===
 
     /// Create new SSH group
     pub async fn create_ssh_group(
@@ -75,7 +74,6 @@ impl SSHService {
         db_service.delete_ssh_group(id, action).await
     }
 
-    // === SSH Profile Management ===
 
     /// Create new SSH profile
     pub async fn create_ssh_profile(
@@ -143,16 +141,13 @@ impl SSHService {
         use crate::models::ssh::profile::AuthData;
         use crate::models::terminal::{TerminalConfig, TerminalType};
 
-        // Get device_id from database service
         let device_id = {
             let db_service = self.database_service.lock().await;
             db_service.get_device_id().to_string()
         };
 
-        // Convert request to temporary profile
         let profile = request.to_profile(device_id);
 
-        // Resolve key reference if needed
         let resolved_key = match &profile.auth_data {
             AuthData::KeyReference { key_id } => {
                 let key_service = self.ssh_key_service.lock().await;
@@ -170,14 +165,12 @@ impl SSHService {
             AuthData::Password { .. } | AuthData::Certificate { .. } => None,
         };
 
-        // Create a temporary terminal config for testing
         let config = TerminalConfig {
             terminal_type: TerminalType::SSH,
             local_config: None,
             ssh_profile_id: Some(profile.base.id.clone()),
         };
 
-        // Create SSH terminal instance for testing
         let mut ssh_terminal = SSHTerminal::new(
             "test-connection".to_string(),
             config,
@@ -188,7 +181,6 @@ impl SSHService {
             crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string()))
         })?;
 
-        // Attempt to connect with resolved data
         let connect_result = if let Some(resolved_key) = resolved_key {
             ssh_terminal
                 .connect_with_resolved_data(Some(resolved_key))
@@ -197,10 +189,8 @@ impl SSHService {
             ssh_terminal.connect().await
         };
 
-        // Always disconnect after test, even if connection failed
         let _ = ssh_terminal.disconnect().await;
 
-        // Return the connection result
         connect_result.map_err(|e| {
             crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string()))
         })?;

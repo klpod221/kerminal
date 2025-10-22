@@ -338,7 +338,6 @@ import { getSystemInfo } from "../services/dashboard";
 declare const __APP_VERSION__: string;
 const appVersion = __APP_VERSION__;
 
-// interface definitions
 interface CPUInfo {
   model: string;
   speed: number; // in MHz
@@ -386,16 +385,13 @@ interface SystemInfo {
   network_interfaces?: NetworkInterface[];
 }
 
-// State
 const loading = ref(false);
 const systemInfo = ref<SystemInfo>({} as SystemInfo);
 const lastUpdated = ref<Date | null>(null);
 
-// Auto refresh interval (in milliseconds) - 5 seconds
 const REFRESH_INTERVAL = 5000;
 let refreshInterval: number | null = null;
 
-// Fetch system info
 const fetchSystemInfo = async () => {
   loading.value = true;
 
@@ -410,7 +406,6 @@ const fetchSystemInfo = async () => {
   }
 };
 
-// Format last updated time
 const formatLastUpdated = (date: Date) => {
   return date.toLocaleTimeString("en-US", {
     hour12: false,
@@ -420,14 +415,11 @@ const formatLastUpdated = (date: Date) => {
   });
 };
 
-// Setup auto refresh
 const startAutoRefresh = () => {
-  // Clear any existing interval
   if (refreshInterval) {
     clearInterval(refreshInterval);
   }
 
-  // Set up new interval
   refreshInterval = setInterval(fetchSystemInfo, REFRESH_INTERVAL);
 };
 
@@ -438,16 +430,12 @@ const stopAutoRefresh = () => {
   }
 };
 
-// Lifecycle hooks
 onMounted(() => {
-  // Initial fetch
   fetchSystemInfo();
-  // Start auto refresh
   startAutoRefresh();
 });
 
 onUnmounted(() => {
-  // Clean up interval when component is unmounted
   stopAutoRefresh();
 });
 </script>

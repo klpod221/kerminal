@@ -86,7 +86,6 @@ class MessageService {
 
 export const message = new MessageService();
 
-// Helper functions for easier usage
 export function showSuccess(content: string, title?: string): Promise<void> {
   return message.success(content, title);
 }

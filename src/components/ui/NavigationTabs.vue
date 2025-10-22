@@ -13,9 +13,9 @@
         @click="$emit('update:modelValue', tab.id)"
       >
         <div class="flex items-center gap-2">
-          <component 
-            :is="tab.icon" 
-            :size="16" 
+          <component
+            :is="tab.icon"
+            :size="16"
             class="transition-transform duration-200"
             :class="{
               'text-blue-400': modelValue === tab.id,
@@ -24,7 +24,7 @@
           />
           <span>{{ tab.label }}</span>
         </div>
-        
+
         <!-- Active indicator -->
         <div
           class="absolute bottom-0 left-0 right-0 h-0.5 transition-all duration-200"

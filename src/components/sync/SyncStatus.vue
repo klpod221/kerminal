@@ -10,7 +10,7 @@
         <div class="flex items-center justify-between mb-3">
           <h4 class="text-sm font-medium text-gray-100">Connection Status</h4>
           <Badge :variant="currentDatabase.isActive ? 'success' : 'default'">
-            {{ currentDatabase.isActive ? 'Connected' : 'Disconnected' }}
+            {{ currentDatabase.isActive ? "Connected" : "Disconnected" }}
           </Badge>
         </div>
         <div class="text-xs text-gray-400">
@@ -51,7 +51,8 @@
           </Button>
         </div>
         <p class="text-xs text-gray-400 mt-3">
-          Push: Upload local changes • Pull: Download remote changes • Sync Both: Two-way sync
+          Push: Upload local changes • Pull: Download remote changes • Sync
+          Both: Two-way sync
         </p>
       </div>
 
@@ -61,11 +62,18 @@
         <div class="space-y-2 text-xs">
           <div class="flex justify-between">
             <span class="text-gray-400">Time:</span>
-            <span class="text-gray-200">{{ formatDateOrNever(syncStatus.lastSync?.completedAt || syncStatus.lastSync?.startedAt) }}</span>
+            <span class="text-gray-200">{{
+              formatDateOrNever(
+                syncStatus.lastSync?.completedAt ||
+                  syncStatus.lastSync?.startedAt,
+              )
+            }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Direction:</span>
-            <span class="text-gray-200">{{ syncStatus.lastSync?.direction }}</span>
+            <span class="text-gray-200">{{
+              syncStatus.lastSync?.direction
+            }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Status:</span>
@@ -75,18 +83,35 @@
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Records Synced:</span>
-            <span class="text-gray-200">{{ syncStatus.lastSync?.recordsSynced || 0 }}</span>
+            <span class="text-gray-200">{{
+              syncStatus.lastSync?.recordsSynced || 0
+            }}</span>
           </div>
-          <div v-if="syncStatus.lastSync?.conflictsResolved" class="flex justify-between">
+          <div
+            v-if="syncStatus.lastSync?.conflictsResolved"
+            class="flex justify-between"
+          >
             <span class="text-gray-400">Conflicts Resolved:</span>
-            <span class="text-gray-200">{{ syncStatus.lastSync.conflictsResolved }}</span>
+            <span class="text-gray-200">{{
+              syncStatus.lastSync.conflictsResolved
+            }}</span>
           </div>
-          <div v-if="syncStatus.lastSync?.manualConflicts" class="flex justify-between">
+          <div
+            v-if="syncStatus.lastSync?.manualConflicts"
+            class="flex justify-between"
+          >
             <span class="text-gray-400">Manual Conflicts:</span>
-            <span class="text-yellow-400">{{ syncStatus.lastSync.manualConflicts }}</span>
+            <span class="text-yellow-400">{{
+              syncStatus.lastSync.manualConflicts
+            }}</span>
           </div>
-          <div v-if="syncStatus.lastSync?.errorMessage" class="mt-2 pt-2 border-t border-gray-700">
-            <span class="text-red-400 text-xs">{{ syncStatus.lastSync.errorMessage }}</span>
+          <div
+            v-if="syncStatus.lastSync?.errorMessage"
+            class="mt-2 pt-2 border-t border-gray-700"
+          >
+            <span class="text-red-400 text-xs">{{
+              syncStatus.lastSync.errorMessage
+            }}</span>
           </div>
         </div>
       </div>
@@ -105,11 +130,17 @@
           </Button>
         </div>
 
-        <div v-if="isLoadingLogs" class="text-center py-4 text-gray-400 text-sm">
+        <div
+          v-if="isLoadingLogs"
+          class="text-center py-4 text-gray-400 text-sm"
+        >
           Loading sync history...
         </div>
 
-        <div v-else-if="!syncLogs.length" class="text-center py-4 text-gray-400 text-sm">
+        <div
+          v-else-if="!syncLogs.length"
+          class="text-center py-4 text-gray-400 text-sm"
+        >
           No sync history yet
         </div>
 
@@ -123,7 +154,9 @@
               <Badge :variant="getStatusVariant(log.status)">
                 {{ log.status }}
               </Badge>
-              <span class="text-xs text-gray-400">{{ formatDateOrNever(log.startedAt) }}</span>
+              <span class="text-xs text-gray-400">{{
+                formatDateOrNever(log.startedAt)
+              }}</span>
             </div>
             <div class="grid grid-cols-3 gap-2 text-xs">
               <div>
@@ -136,7 +169,9 @@
               </div>
               <div>
                 <span class="text-gray-400">Conflicts:</span>
-                <span class="text-gray-200 ml-1">{{ log.conflictsResolved }}</span>
+                <span class="text-gray-200 ml-1">{{
+                  log.conflictsResolved
+                }}</span>
               </div>
             </div>
             <div v-if="log.errorMessage" class="mt-2 text-xs text-red-400">
@@ -156,11 +191,15 @@
       <div v-if="statistics" class="grid grid-cols-2 gap-4">
         <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
           <div class="text-xs text-gray-400 mb-1">Active Connections</div>
-          <div class="text-2xl font-semibold text-gray-100">{{ statistics.activeConnections }}</div>
+          <div class="text-2xl font-semibold text-gray-100">
+            {{ statistics.activeConnections }}
+          </div>
         </div>
         <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
           <div class="text-xs text-gray-400 mb-1">Auto-Sync Enabled</div>
-          <div class="text-2xl font-semibold text-green-400">{{ statistics.autoSyncEnabledCount }}</div>
+          <div class="text-2xl font-semibold text-green-400">
+            {{ statistics.autoSyncEnabledCount }}
+          </div>
         </div>
       </div>
     </div>
@@ -190,7 +229,9 @@ const syncStatus = computed(() => syncStore.syncStatus);
 const syncLogs = computed(() => syncStore.syncLogs);
 const statistics = computed(() => syncStore.statistics);
 
-const getStatusVariant = (status?: SyncLogStatus): "success" | "danger" | "warning" | "default" => {
+const getStatusVariant = (
+  status?: SyncLogStatus,
+): "success" | "danger" | "warning" | "default" => {
   switch (status) {
     case "Completed":
       return "success";
@@ -287,16 +328,20 @@ const stopAutoRefresh = () => {
   }
 };
 
-watch(() => currentDatabase.value, async (newDb) => {
-  if (newDb) {
-    await loadStatus();
-    await loadLogs();
-    await loadStatistics();
-    startAutoRefresh();
-  } else {
-    stopAutoRefresh();
-  }
-}, { immediate: true });
+watch(
+  () => currentDatabase.value,
+  async (newDb) => {
+    if (newDb) {
+      await loadStatus();
+      await loadLogs();
+      await loadStatistics();
+      startAutoRefresh();
+    } else {
+      stopAutoRefresh();
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   if (!syncStore.databases.length) {

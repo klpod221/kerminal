@@ -29,7 +29,6 @@ use crate::models::{
     sync::SyncStats,
 };
 
-// Already imported above, no need to repeat
 /// Main database service - orchestrates all database operations
 pub struct DatabaseService {
     /// Local SQLite database (always available)
@@ -55,23 +54,18 @@ pub struct DatabaseServiceConfig {
 impl DatabaseService {
     /// Create new database service
     pub async fn new(config: DatabaseServiceConfig) -> DatabaseResult<Self> {
-        // Create local SQLite database
         let mut local_db = SQLiteProvider::new(config.local_db_path.clone());
         local_db.connect().await?;
 
-        // Check if device exists, but don't create one until master password is setup
         let current_device = if let Some(device) = local_db.get_current_device().await? {
-            // Update last seen timestamp
             let mut updated_device = device;
             updated_device.update_last_seen();
             local_db.save_device(&updated_device).await?;
             updated_device
         } else {
-            // Create a temporary device that will be replaced during master password setup
             Device::new_current("Temporary Device".to_string())
         };
 
-        // Load master password config from database
         let master_password_config = if let Some(entry) = local_db
             .get_master_password_entry(&current_device.device_id)
             .await?
@@ -86,7 +80,6 @@ impl DatabaseService {
             config.master_password_config.clone()
         };
 
-        // Create master password manager
         let master_password_manager =
             MasterPasswordManager::new(current_device.device_id.clone(), master_password_config);
 
@@ -127,26 +120,20 @@ impl DatabaseService {
         &mut self,
         request: SetupMasterPasswordRequest,
     ) -> DatabaseResult<()> {
-        // Create new device record first with the provided device name
         let new_device = Device::new_current(request.device_name.clone());
         let local_db = self.local_db.read().await;
         local_db.save_device(&new_device).await?;
 
-        // Update current device in service
         self.current_device = new_device.clone();
 
-        // Create new master password manager with the new device_id
         let master_password_config = self.config.master_password_config.clone();
         let mut new_mp_manager =
             MasterPasswordManager::new(new_device.device_id.clone(), master_password_config);
 
-        // Setup master password with new manager
         let entry = new_mp_manager.setup_master_password(request).await?;
 
-        // Save master password entry to database
         local_db.save_master_password_entry(&entry).await?;
 
-        // Replace the old manager with new one
         *self.master_password_manager.write().await = new_mp_manager;
 
         Ok(())
@@ -177,12 +164,10 @@ impl DatabaseService {
             ));
         }
 
-        // Update device last_seen_at on successful unlock
         let mut updated_device = self.current_device.clone();
         updated_device.update_last_seen();
         local_db.save_device(&updated_device).await?;
 
-        // Update last_verified_at in master password entry
         entry.last_verified_at = Some(Utc::now());
         local_db.save_master_password_entry(&entry).await?;
 
@@ -193,7 +178,6 @@ impl DatabaseService {
     pub async fn try_auto_unlock(&self) -> DatabaseResult<bool> {
         let local_db = self.local_db.read().await;
 
-        // First get the master password entry from database
         let entry = match local_db
             .get_master_password_entry(&self.current_device.device_id)
             .await?
@@ -202,7 +186,6 @@ impl DatabaseService {
             None => return Ok(false),
         };
 
-        // Check if auto-unlock is enabled for this entry
         if !entry.auto_unlock {
             return Ok(false);
         }
@@ -213,14 +196,11 @@ impl DatabaseService {
             .await
             .map_err(DatabaseError::from)?;
 
-        // Update device last_seen_at and last_verified_at on successful auto-unlock
         if success {
-            // Update device last_seen_at
             let mut updated_device = self.current_device.clone();
             updated_device.update_last_seen();
             local_db.save_device(&updated_device).await?;
 
-            // Update last_verified_at in master password entry
             let mut updated_entry = entry;
             updated_entry.last_verified_at = Some(Utc::now());
             local_db.save_master_password_entry(&updated_entry).await?;
@@ -253,18 +233,14 @@ impl DatabaseService {
             .await
             .map_err(DatabaseError::from)?;
 
-        // Save new entry to database
         local_db.save_master_password_entry(&new_entry).await?;
 
-        // Update device last_seen_at
         let mut updated_device = self.current_device.clone();
         updated_device.update_last_seen();
         local_db.save_device(&updated_device).await?;
 
-        // Re-encrypt all SSH profiles and groups with new password
         self.re_encrypt_all_data(&new_entry).await?;
 
-        // Lock the session after password change for security
         self.lock_session().await;
 
         Ok(())
@@ -298,22 +274,12 @@ impl DatabaseService {
         let mut re_encrypted_count = 0;
         let mut errors = Vec::new();
 
-        // Get current encryption service (with old password)
         let _old_mp_manager = self.master_password_manager.read().await;
 
-        // For now, we'll re-encrypt by decrypt->encrypt in place since we don't have
-        // a way to create a temporary manager with the new key easily.
-        // This works because the MasterPasswordManager updates its keys after password change.
 
         for mut profile in profiles {
-            // Only process profiles that have encrypted data
             if profile.has_encrypted_data() {
-                // The profile data is currently encrypted with the old password.
-                // We need to decrypt it first, then re-encrypt with the new password.
-                // Since the master password manager has already been updated with the new key,
-                // we can directly decrypt and re-encrypt.
 
-                // Mark as updated for database consistency
                 profile.base.updated_at = chrono::Utc::now();
 
                 match local_db.update_ssh_profile(&profile).await {
@@ -344,13 +310,11 @@ impl DatabaseService {
         let local_db = self.local_db.read().await;
         let mut mp_manager = self.master_password_manager.write().await;
 
-        // 1. Clear all memory and keychain data
         mp_manager
             .reset_master_password()
             .await
             .map_err(DatabaseError::from)?;
 
-        // 2. Delete master password entry from database
         if let Err(e) = local_db
             .delete_master_password_entry(&self.current_device.device_id)
             .await
@@ -358,7 +322,6 @@ impl DatabaseService {
             eprintln!("Warning: Failed to delete master password entry: {}", e);
         }
 
-        // 3. Delete all SSH profiles (they contain encrypted data that cannot be recovered)
         let profiles = local_db.find_all_ssh_profiles().await?;
         for profile in profiles {
             if let Err(e) = local_db.delete_ssh_profile(&profile.base.id).await {
@@ -369,7 +332,6 @@ impl DatabaseService {
             }
         }
 
-        // 4. Delete all SSH groups
         let groups = local_db.find_all_ssh_groups().await?;
         for group in groups {
             if let Err(e) = local_db.delete_ssh_group(&group.base.id).await {
@@ -377,12 +339,10 @@ impl DatabaseService {
             }
         }
 
-        // 5. Update device to reset any stored configurations
         let mut updated_device = self.current_device.clone();
         updated_device.update_last_seen();
         local_db.save_device(&updated_device).await?;
 
-        // Lock the session after reset for security
         self.lock_session().await;
 
         Ok(())
@@ -392,7 +352,6 @@ impl DatabaseService {
     pub async fn is_session_valid(&self) -> DatabaseResult<bool> {
         let mut mp_manager = self.master_password_manager.write().await;
 
-        // Check and auto-lock if session expired
         let was_locked = mp_manager.check_and_auto_lock().await;
 
         if was_locked {
@@ -407,7 +366,6 @@ impl DatabaseService {
     pub async fn get_master_password_status(&self) -> DatabaseResult<MasterPasswordStatus> {
         let mut mp_manager = self.master_password_manager.write().await;
 
-        // Check and auto-lock if session expired
         mp_manager.check_and_auto_lock().await;
 
         Ok(mp_manager.get_status().await)
@@ -419,13 +377,11 @@ impl DatabaseService {
         auto_unlock: bool,
         auto_lock_timeout: Option<u32>,
     ) -> DatabaseResult<()> {
-        // Update the config in the manager
         let mut mp_manager = self.master_password_manager.write().await;
         mp_manager
             .update_config(auto_unlock, auto_lock_timeout)
             .await?;
 
-        // Update the database entry
         let local_db = self.local_db.read().await;
         if let Some(mut entry) = local_db
             .get_master_password_entry(&self.current_device.device_id)
@@ -446,19 +402,15 @@ impl DatabaseService {
         auto_lock_timeout: Option<u32>,
         password: Option<String>,
     ) -> DatabaseResult<()> {
-        // Update the config in the manager
         let mut mp_manager = self.master_password_manager.write().await;
 
-        // If enabling auto-unlock, we need the password to store in keychain
         if auto_unlock {
             if let Some(ref pwd) = password {
-                // Verify password first to ensure it's correct
                 let local_db = self.local_db.read().await;
                 if let Some(entry) = local_db
                     .get_master_password_entry(&self.current_device.device_id)
                     .await?
                 {
-                    // Create a temporary verification request
                     let verification_req =
                         crate::database::encryption::master_password::VerifyMasterPasswordRequest {
                             password: pwd.clone(),
@@ -491,7 +443,6 @@ impl DatabaseService {
                 .await?;
         }
 
-        // Update the database entry
         let local_db = self.local_db.read().await;
         if let Some(mut entry) = local_db
             .get_master_password_entry(&self.current_device.device_id)
@@ -519,7 +470,6 @@ impl DatabaseService {
         local_db.get_all_devices().await
     }
 
-    // === SSH Group Operations ===
 
     /// Create SSH group
     pub async fn create_ssh_group(
@@ -575,30 +525,24 @@ impl DatabaseService {
     ) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
 
-        // Handle profiles in the group
         match action {
             DeleteGroupAction::MoveToGroup(target_group_id) => {
-                // Move profiles to target group
                 self.move_profiles_to_group(Some(id), Some(target_group_id.as_str()))
                     .await?;
             }
             DeleteGroupAction::MoveToUngrouped => {
-                // Move profiles to ungrouped
                 self.move_profiles_to_group(Some(id), None).await?;
             }
             DeleteGroupAction::DeleteProfiles => {
-                // Delete all profiles in group
                 self.delete_profiles_in_group(id).await?;
             }
         }
 
-        // Delete the group
         local_db.delete_ssh_group(id).await?;
 
         Ok(())
     }
 
-    // === SSH Profile Operations ===
 
     /// Create SSH profile
     pub async fn create_ssh_profile(
@@ -607,7 +551,6 @@ impl DatabaseService {
     ) -> DatabaseResult<SSHProfile> {
         let mut profile = request.to_profile(self.current_device.device_id.clone());
 
-        // Encrypt sensitive fields
         if profile.has_encrypted_data() {
             let mp_manager = self.master_password_manager.read().await;
             profile.encrypt_fields(&*mp_manager)?;
@@ -629,13 +572,11 @@ impl DatabaseService {
         let all_profiles = local_db.find_all_ssh_profiles().await?;
 
         if let Some(group_id) = group_id {
-            // Filter profiles by group_id
             Ok(all_profiles
                 .into_iter()
                 .filter(|p| p.group_id.as_ref() == Some(&group_id.to_string()))
                 .collect())
         } else {
-            // Return all profiles
             Ok(all_profiles)
         }
     }
@@ -668,10 +609,8 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH profile {} not found", id)))?;
 
-        // Apply updates
         request.apply_to_profile(&mut profile);
 
-        // Re-encrypt if needed
         if profile.has_encrypted_data() {
             let mp_manager = self.master_password_manager.read().await;
             profile.encrypt_fields(&*mp_manager)?;
@@ -720,12 +659,10 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH profile {} not found", id)))?;
 
-        // Create new profile with new ID
         let mut duplicate = original.clone();
         duplicate.base = crate::models::base::BaseModel::new(self.current_device.device_id.clone());
         duplicate.name = new_name;
 
-        // Re-encrypt
         if duplicate.has_encrypted_data() {
             let mp_manager = self.master_password_manager.read().await;
             duplicate.encrypt_fields(&*mp_manager)?;
@@ -736,13 +673,11 @@ impl DatabaseService {
         Ok(duplicate)
     }
 
-    // === SSH Key Operations ===
 
     /// Create SSH key
     pub async fn create_ssh_key(&self, request: CreateSSHKeyRequest) -> DatabaseResult<SSHKey> {
         let mut key = request.to_key(self.current_device.device_id.clone());
 
-        // Encrypt sensitive fields (private key and passphrase)
         let mp_manager = self.master_password_manager.read().await;
         key.encrypt_fields(&*mp_manager)?;
 
@@ -767,7 +702,6 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH key {} not found", id)))?;
 
-        // Decrypt sensitive fields
         let mp_manager = self.master_password_manager.read().await;
         key.decrypt_fields(&*mp_manager)?;
 
@@ -786,7 +720,6 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH key {} not found", id)))?;
 
-        // Apply updates (only name and description, never key content)
         request.apply_to_key(&mut key);
 
         local_db.save_ssh_key(&key).await?;
@@ -796,7 +729,6 @@ impl DatabaseService {
 
     /// Delete SSH key
     pub async fn delete_ssh_key(&self, id: &str, force: bool) -> DatabaseResult<()> {
-        // Check if any profiles are using this key
         let count = self.count_profiles_using_key(id).await?;
 
         if count > 0 && !force {
@@ -828,14 +760,12 @@ impl DatabaseService {
         local_db.save_ssh_key(&key).await
     }
 
-    // === SSH Tunnel Operations ===
 
     /// Create SSH tunnel
     pub async fn create_ssh_tunnel(
         &self,
         request: crate::models::ssh::CreateSSHTunnelRequest,
     ) -> DatabaseResult<crate::models::ssh::SSHTunnel> {
-        // Validate profile exists
         let _profile = self.get_ssh_profile(&request.profile_id).await?;
 
         let tunnel = crate::models::ssh::SSHTunnel::new(
@@ -849,12 +779,10 @@ impl DatabaseService {
             request.remote_port,
         );
 
-        // Apply optional fields
         let mut tunnel = tunnel;
         tunnel.description = request.description;
         tunnel.auto_start = request.auto_start.unwrap_or(false);
 
-        // Validate tunnel configuration
         tunnel
             .validate()
             .map_err(DatabaseError::ValidationError)?;
@@ -900,7 +828,6 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH tunnel {} not found", id)))?;
 
-        // Apply updates
         if let Some(name) = request.name {
             tunnel.name = name;
         }
@@ -908,7 +835,6 @@ impl DatabaseService {
             tunnel.description = Some(description);
         }
         if let Some(profile_id) = request.profile_id {
-            // Validate profile exists
             let _profile = self.get_ssh_profile(&profile_id).await?;
             tunnel.profile_id = profile_id;
         }
@@ -931,12 +857,10 @@ impl DatabaseService {
             tunnel.auto_start = auto_start;
         }
 
-        // Validate updated configuration
         tunnel
             .validate()
             .map_err(DatabaseError::ValidationError)?;
 
-        // Update timestamp and version
         tunnel.base.touch();
 
         local_db.save_ssh_tunnel(&tunnel).await?;
@@ -950,7 +874,6 @@ impl DatabaseService {
         local_db.delete_ssh_tunnel(id).await
     }
 
-    // === Utility Operations ===
 
     /// Move all profiles from one group to another
     async fn move_profiles_to_group(
@@ -981,7 +904,6 @@ impl DatabaseService {
         Ok(())
     }
 
-    // === Saved Command Operations ===
 
     /// Create saved command
     pub async fn create_saved_command(
@@ -995,7 +917,6 @@ impl DatabaseService {
             request.group_id,
         );
 
-        // Apply optional fields
         let mut command = command;
         command.description = request.description;
         command.tags = request.tags;
@@ -1034,7 +955,6 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("Saved command {} not found", id)))?;
 
-        // Update fields
         if let Some(name) = request.name {
             command.name = name;
         }
@@ -1054,7 +974,6 @@ impl DatabaseService {
             command.is_favorite = is_favorite;
         }
 
-        // Update timestamp
         command.base.updated_at = Utc::now();
         command.base.version += 1;
 
@@ -1101,7 +1020,6 @@ impl DatabaseService {
         Ok(command)
     }
 
-    // === Saved Command Group Operations ===
 
     /// Create saved command group
     pub async fn create_saved_command_group(
@@ -1110,7 +1028,6 @@ impl DatabaseService {
     ) -> DatabaseResult<SavedCommandGroup> {
         let group = SavedCommandGroup::new(self.current_device.device_id.clone(), request.name);
 
-        // Apply optional fields
         let mut group = group;
         group.description = request.description;
         group.color = request.color;
@@ -1151,7 +1068,6 @@ impl DatabaseService {
                 DatabaseError::NotFound(format!("Saved command group {} not found", id))
             })?;
 
-        // Update fields
         if let Some(name) = request.name {
             group.name = name;
         }
@@ -1165,7 +1081,6 @@ impl DatabaseService {
             group.icon = Some(icon);
         }
 
-        // Update timestamp
         group.base.updated_at = Utc::now();
         group.base.version += 1;
 
@@ -1177,7 +1092,6 @@ impl DatabaseService {
     pub async fn delete_saved_command_group(&self, id: &str) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
 
-        // Move commands in this group to ungrouped
         let commands = local_db.find_saved_commands_by_group_id(Some(id)).await?;
         for mut command in commands {
             command.group_id = None;
@@ -1186,7 +1100,6 @@ impl DatabaseService {
             local_db.save_saved_command(&command).await?;
         }
 
-        // Delete the group
         local_db.delete_saved_command_group(id).await
     }
 
@@ -1199,7 +1112,6 @@ impl DatabaseService {
 
         let total_records = (ssh_profiles.len() + ssh_groups.len()) as u32;
 
-        // Track last sync time from sync manager
         let last_sync = None; // For now, no sync manager integration
 
         Ok(SyncStats {
@@ -1218,12 +1130,10 @@ impl DatabaseService {
 
 impl Default for DatabaseServiceConfig {
     fn default() -> Self {
-        // Create database path in user's data directory
         let data_dir = dirs::data_dir()
             .unwrap_or_else(|| std::env::current_dir().unwrap())
             .join("kerminal");
 
-        // Ensure directory exists
         if std::fs::create_dir_all(&data_dir).is_err() {
             eprintln!("Warning: Could not create data directory: {:?}", data_dir);
         }

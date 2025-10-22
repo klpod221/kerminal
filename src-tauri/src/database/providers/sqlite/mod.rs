@@ -399,7 +399,6 @@ impl Database for SQLiteProvider {
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
-        // Create conflict_resolutions table for manual conflict resolution
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS conflict_resolutions (

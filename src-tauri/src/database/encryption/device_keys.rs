@@ -64,22 +64,18 @@ impl DeviceKeyManager {
         password: &str,
         config: &MasterPasswordConfig,
     ) -> EncryptionResult<MasterPasswordEntry> {
-        // Generate salt
         let salt_bytes = AESEncryption::generate_salt();
         let salt = SaltString::encode_b64(&salt_bytes)
             .map_err(|e| EncryptionError::KeyDerivationFailed(e.to_string()))?;
 
-        // Hash password for verification
         let argon2 = Argon2::default();
         let password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
             .map_err(|e| EncryptionError::KeyDerivationFailed(e.to_string()))?
             .to_string();
 
-        // Create device encryption key
         let device_key = self.derive_device_key(password, &salt_bytes)?;
 
-        // Store in keychain if auto_unlock enabled
         if config.use_keychain && config.auto_unlock {
             match self
                 .keychain
@@ -106,7 +102,6 @@ impl DeviceKeyManager {
             }
         }
 
-        // Store device key in memory
         self.device_keys
             .insert(self.current_device_id.clone(), device_key);
 
@@ -127,7 +122,6 @@ impl DeviceKeyManager {
         password: &str,
         entry: &MasterPasswordEntry,
     ) -> EncryptionResult<bool> {
-        // Verify password hash
         let parsed_hash = PasswordHash::new(&entry.verification_hash)
             .map_err(|_e| EncryptionError::MasterPasswordVerificationFailed)?;
 
@@ -137,7 +131,6 @@ impl DeviceKeyManager {
             .is_ok();
 
         if is_valid {
-            // Derive device key and store in memory
             let device_key = self.derive_device_key(password, &entry.password_salt)?;
             self.device_keys.insert(entry.device_id.clone(), device_key);
         }
@@ -155,12 +148,9 @@ impl DeviceKeyManager {
             return Ok(false);
         }
 
-        // First try to get password from keychain and verify with stored entry
         match self.keychain.get_master_password(device_id) {
             Ok(Some(password)) => {
-                // Verify the password against the stored entry
                 if self.verify_password_for_device(&password, entry)? {
-                    // Derive and store device key in memory
                     let device_key = self.derive_device_key(&password, &entry.password_salt)?;
                     self.device_keys.insert(device_id.to_string(), device_key);
                     return Ok(true);
@@ -170,7 +160,6 @@ impl DeviceKeyManager {
             Err(_) => {}
         }
 
-        // Fallback: try to get device key directly from keychain (legacy)
         match self.keychain.get_device_key(device_id) {
             Ok(Some(key_bytes)) => {
                 if key_bytes.len() == 32 {
@@ -330,12 +319,10 @@ impl DeviceKeyManager {
         password: &str,
         password_entry: &MasterPasswordEntry,
     ) -> EncryptionResult<()> {
-        // Check if shared key already exists
         if self.device_keys.contains_key("__shared__") {
             return Ok(());
         }
 
-        // Derive shared key from master password (same as device key derivation)
         let mut key_material = [0u8; 32];
         let _ = pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
             password.as_bytes(),
@@ -368,12 +355,10 @@ impl DeviceKeyManager {
         entry: &MasterPasswordEntry,
         config: &MasterPasswordConfig,
     ) -> EncryptionResult<MasterPasswordEntry> {
-        // Verify old password first
         if !self.verify_password_for_device(old_password, entry)? {
             return Err(EncryptionError::MasterPasswordVerificationFailed);
         }
 
-        // Create new master password entry
         self.create_master_password(new_password, config)
     }
 
@@ -396,14 +381,11 @@ impl DeviceKeyManager {
         device_id: &str,
         entry: &MasterPasswordEntry,
     ) -> EncryptionResult<()> {
-        // Check if shared key already exists
         if self.device_keys.contains_key("__shared__") {
             return Ok(());
         }
 
-        // Try to get password from keychain
         if let Ok(Some(password)) = self.keychain.get_master_password(device_id) {
-            // Create shared key using the password
             self.ensure_shared_device_key(&password, entry)?;
         }
 
@@ -423,14 +405,12 @@ impl DeviceKeyManager {
         println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Available keys before: {:?}",
             self.instance_id, self.device_keys.keys().collect::<Vec<_>>());
 
-        // Check if shared key already exists
         if self.device_keys.contains_key("__shared__") {
             println!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Shared key already exists",
                 self.instance_id);
             return Ok(());
         }
 
-        // Check if current device key exists
         let current_key = self.device_keys.get(&self.current_device_id)
             .ok_or_else(|| {
                 eprintln!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Current device key not found!",
@@ -438,8 +418,6 @@ impl DeviceKeyManager {
                 EncryptionError::UnknownDeviceKey(self.current_device_id.clone())
             })?;
 
-        // Clone the current device's encryption key for shared use
-        // This is safe because both are derived from same password+salt
         let shared_key = DeviceEncryptionKey {
             device_id: "__shared__".to_string(),
             device_name: "Shared Cross-Device Key".to_string(),
@@ -488,7 +466,6 @@ impl DeviceKeyManager {
     ) -> EncryptionResult<[u8; 32]> {
         let mut key = [0u8; 32];
 
-        // Use PBKDF2 to derive key
         let _ = pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
             password.as_bytes(),
             salt,

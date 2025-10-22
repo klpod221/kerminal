@@ -22,9 +22,7 @@ async fn main() {
         .plugin(tauri_plugin_process::init())
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
-            // Dashboard commands
             commands::dashboard::get_system_info,
-            // Terminal commands
             commands::terminal::create_terminal,
             commands::terminal::create_ssh_terminal,
             commands::terminal::write_to_terminal,
@@ -33,19 +31,15 @@ async fn main() {
             commands::terminal::close_terminal,
             commands::terminal::get_terminal_info,
             commands::terminal::list_terminals,
-            // Terminal Buffer commands
             commands::buffer::get_terminal_buffer,
             commands::buffer::get_terminal_buffer_chunk,
             commands::buffer::has_terminal_buffer,
             commands::buffer::get_buffer_stats,
             commands::buffer::cleanup_terminal_buffers,
-            // System commands
             commands::system::get_user_hostname,
-            // Auth event commands
             commands::auth_events::notify_session_unlocked,
             commands::auth_events::notify_session_locked,
             commands::auth_events::get_auth_session_status,
-            // Database commands
             commands::database::auth::setup_master_password,
             commands::database::auth::verify_master_password,
             commands::database::auth::try_auto_unlock,
@@ -98,7 +92,6 @@ async fn main() {
             commands::database::saved_command::get_saved_command_group,
             commands::database::saved_command::update_saved_command_group,
             commands::database::saved_command::delete_saved_command_group,
-            // External database commands
             commands::database::external_db::add_external_database,
             commands::database::external_db::get_external_databases,
             commands::database::external_db::get_external_database_with_details,
@@ -107,7 +100,6 @@ async fn main() {
             commands::database::external_db::test_external_database_connection,
             commands::database::external_db::connect_to_database,
             commands::database::external_db::disconnect_from_database,
-            // Sync commands
             commands::database::sync::get_unresolved_conflicts,
             commands::database::sync::sync_now,
             commands::database::sync::get_sync_status,
@@ -117,14 +109,11 @@ async fn main() {
             commands::database::sync::get_sync_statistics,
             commands::database::sync::get_sync_service_statistics,
             commands::database::sync::resolve_conflict,
-            // Conflict resolution commands
             commands::database::sync::get_unresolved_conflict_resolutions,
             commands::database::sync::resolve_conflict_resolution,
             commands::database::sync::cleanup_resolved_conflicts,
-            // Global sync settings commands
             commands::database::sync::get_global_sync_settings,
             commands::database::sync::update_global_sync_settings,
-            // Device commands
             commands::database::sync::get_current_device,
             commands::database::sync::get_all_devices,
             commands::database::sync::register_device

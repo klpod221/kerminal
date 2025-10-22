@@ -15,9 +15,7 @@
       <h3 class="text-lg font-semibold text-white mb-2">
         No Pending Conflicts
       </h3>
-      <p class="text-sm text-gray-400">
-        All sync conflicts have been resolved
-      </p>
+      <p class="text-sm text-gray-400">All sync conflicts have been resolved</p>
     </div>
 
     <div v-else class="space-y-3">
@@ -56,7 +54,9 @@
               <div class="text-xs text-gray-400 space-y-1">
                 <div class="flex items-center gap-1.5">
                   <Hash class="w-3 h-3" />
-                  <span class="font-mono truncate">{{ conflict.entityId }}</span>
+                  <span class="font-mono truncate">{{
+                    conflict.entityId
+                  }}</span>
                 </div>
                 <div class="flex items-center gap-1.5">
                   <Clock class="w-3 h-3" />

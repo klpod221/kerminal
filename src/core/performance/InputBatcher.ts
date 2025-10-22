@@ -33,17 +33,14 @@ export class InputBatcher {
   public batchInput(terminalId: string, data: string): void {
     if (!terminalId || !data) return;
 
-    // Append to existing pending data
     const currentData = this.pendingData.get(terminalId) || "";
     this.pendingData.set(terminalId, currentData + data);
 
-    // Clear existing timeout if any
     const existingTimeout = this.timeouts.get(terminalId);
     if (existingTimeout) {
       clearTimeout(existingTimeout);
     }
 
-    // Set new timeout to flush the batch
     const timeout = window.setTimeout(() => {
       this.flushInput(terminalId);
     }, this.BATCH_DELAY);
@@ -59,7 +56,6 @@ export class InputBatcher {
     const data = this.pendingData.get(terminalId);
     if (!data) return;
 
-    // Clear pending data and timeout
     this.pendingData.delete(terminalId);
     const timeout = this.timeouts.get(terminalId);
     if (timeout) {
@@ -67,7 +63,6 @@ export class InputBatcher {
       this.timeouts.delete(terminalId);
     }
 
-    // Send the batched data
     try {
       await writeToTerminal({
         terminalId: terminalId,
@@ -91,10 +86,8 @@ export class InputBatcher {
 
     try {
       if (terminalIds.length === 1) {
-        // Single terminal - use regular flush
         await this.flushInput(terminalIds[0]);
       } else {
-        // Multiple terminals - use batch API for better performance
         const requests = terminalIds
           .map((terminalId) => {
             const data = this.pendingData.get(terminalId);
@@ -107,7 +100,6 @@ export class InputBatcher {
           .filter(Boolean) as Array<{ terminalId: string; data: string }>;
 
         if (requests.length > 0) {
-          // Clear all pending data and timeouts first
           terminalIds.forEach((terminalId) => {
             this.pendingData.delete(terminalId);
             const timeout = this.timeouts.get(terminalId);
@@ -117,7 +109,6 @@ export class InputBatcher {
             }
           });
 
-          // Send batch request
           await writeBatchToTerminal(requests);
         }
       }
@@ -177,10 +168,8 @@ export class InputBatcher {
    * Clear all pending data and timeouts
    */
   public clearAll(): void {
-    // Clear all timeouts
     this.timeouts.forEach((timeout) => clearTimeout(timeout));
 
-    // Clear all data
     this.pendingData.clear();
     this.timeouts.clear();
   }

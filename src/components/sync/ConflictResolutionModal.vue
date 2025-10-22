@@ -1,9 +1,5 @@
 <template>
-  <Modal
-    id="conflict-resolution-modal"
-    title="Resolve Sync Conflict"
-    size="lg"
-  >
+  <Modal id="conflict-resolution-modal" title="Resolve Sync Conflict" size="lg">
     <div v-if="!currentConflict" class="text-gray-400 text-center py-8">
       No conflict selected
     </div>
@@ -18,7 +14,9 @@
           </div>
           <div>
             <span class="text-gray-400">Entity ID:</span>
-            <span class="text-gray-200 ml-2 font-mono text-xs">{{ currentConflict.entityId }}</span>
+            <span class="text-gray-200 ml-2 font-mono text-xs">{{
+              currentConflict.entityId
+            }}</span>
           </div>
         </div>
       </div>
@@ -28,9 +26,12 @@
         <div class="flex items-start gap-2">
           <div class="text-yellow-500">⚠️</div>
           <div class="flex-1">
-            <h4 class="text-sm font-medium text-yellow-200 mb-1">Conflict Detected</h4>
+            <h4 class="text-sm font-medium text-yellow-200 mb-1">
+              Conflict Detected
+            </h4>
             <p class="text-xs text-yellow-100/80">
-              Both local and remote versions have been modified. Choose which to keep.
+              Both local and remote versions have been modified. Choose which to
+              keep.
             </p>
           </div>
         </div>
@@ -44,7 +45,10 @@
             <h4 class="text-sm font-medium text-blue-200">Local Version</h4>
           </div>
           <div class="p-4 bg-gray-800/50">
-            <pre class="text-xs text-gray-300 whitespace-pre-wrap max-h-64 overflow-auto">{{ localDataStr }}</pre>
+            <pre
+              class="text-xs text-gray-300 whitespace-pre-wrap max-h-64 overflow-auto"
+              >{{ localDataStr }}</pre
+            >
           </div>
         </div>
 
@@ -54,14 +58,19 @@
             <h4 class="text-sm font-medium text-green-200">Remote Version</h4>
           </div>
           <div class="p-4 bg-gray-800/50">
-            <pre class="text-xs text-gray-300 whitespace-pre-wrap max-h-64 overflow-auto">{{ remoteDataStr }}</pre>
+            <pre
+              class="text-xs text-gray-300 whitespace-pre-wrap max-h-64 overflow-auto"
+              >{{ remoteDataStr }}</pre
+            >
           </div>
         </div>
       </div>
 
       <!-- Resolution Actions -->
       <div class="space-y-3">
-        <div class="text-xs text-gray-400 font-medium uppercase tracking-wide">Choose Resolution Strategy</div>
+        <div class="text-xs text-gray-400 font-medium uppercase tracking-wide">
+          Choose Resolution Strategy
+        </div>
         <div class="grid grid-cols-2 gap-2">
           <Button
             variant="primary"
@@ -145,7 +154,9 @@ const entityLabel = computed(() => {
     ssh_group: "SSH Group",
     ssh_key: "SSH Key",
   };
-  return labels[currentConflict.value.entityType] || currentConflict.value.entityType;
+  return (
+    labels[currentConflict.value.entityType] || currentConflict.value.entityType
+  );
 });
 
 const localDataStr = computed(() => {
@@ -166,33 +177,34 @@ const remoteDataStr = computed(() => {
   }
 });
 
-const handleResolveWithStrategy = async (strategy: ConflictResolutionStrategy) => {
+const handleResolveWithStrategy = async (
+  strategy: ConflictResolutionStrategy,
+) => {
   if (!conflictId.value) return;
 
   isResolving.value = true;
   choice.value = strategy;
 
   try {
-    // Use new resolveConflict from store which internally calls resolveConflictResolution
-    // Store already maps 'local'/'remote' to strategies, but we pass strategy directly
     if (strategy === "LocalWins") {
       await syncStore.resolveConflict(conflictId.value, "local");
     } else if (strategy === "RemoteWins") {
       await syncStore.resolveConflict(conflictId.value, "remote");
     } else {
-      // For other strategies, call the service directly
       await syncService.resolveConflictResolution(conflictId.value, strategy);
-      // Remove from store manually
-      syncStore.conflicts = syncStore.conflicts.filter((c) => c.id !== conflictId.value);
+      syncStore.conflicts = syncStore.conflicts.filter(
+        (c) => c.id !== conflictId.value,
+      );
     }
 
-    const strategyLabel = {
-      LocalWins: "Local",
-      RemoteWins: "Remote",
-      LastWriteWins: "Latest (Last Write)",
-      FirstWriteWins: "Oldest (First Write)",
-      Manual: "Manual",
-    }[strategy] || strategy;
+    const strategyLabel =
+      {
+        LocalWins: "Local",
+        RemoteWins: "Remote",
+        LastWriteWins: "Latest (Last Write)",
+        FirstWriteWins: "Oldest (First Write)",
+        Manual: "Manual",
+      }[strategy] || strategy;
 
     message.success(`Conflict resolved: ${strategyLabel} version kept`);
     closeOverlay("conflict-resolution-modal");
@@ -205,9 +217,11 @@ const handleResolveWithStrategy = async (strategy: ConflictResolutionStrategy) =
   }
 };
 
-watch(() => conflictId.value, () => {
-  isResolving.value = false;
-  choice.value = null;
-});
+watch(
+  () => conflictId.value,
+  () => {
+    isResolving.value = false;
+    choice.value = null;
+  },
+);
 </script>
-

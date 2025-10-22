@@ -89,7 +89,6 @@ impl Handler for ClientHandler {
             let _ = sender.send(eof_msg.to_vec());
         }
 
-        // Emit exit event - this is a graceful close (user typed exit or server closed normally)
         let exit_sender = self.exit_sender.lock().await;
         if let Some(ref sender) = *exit_sender {
             let terminal_id = self.terminal_id.lock().await;
@@ -159,17 +158,14 @@ impl SSHTerminal {
 
         self.state = TerminalState::Connecting;
 
-        // Create SSH configuration
         let config = Arc::new(russh::client::Config {
             inactivity_timeout: Some(std::time::Duration::from_secs(60)),
             ..<russh::client::Config as Default>::default()
         });
 
-        // Connect to the server (either directly or through proxy)
         let handler = (*self.handler).clone();
         let mut session = if let Some(proxy_config) = &self.ssh_profile.proxy {
 
-            // Create proxy stream using russh-config
             let stream =
                 create_proxy_stream(proxy_config, &self.ssh_profile.host, self.ssh_profile.port)
                     .await
@@ -181,10 +177,8 @@ impl SSHTerminal {
                         ))
                     })?;
 
-            // Connect using the proxy stream
             russh::client::connect_stream(config, stream, handler).await
         } else {
-            // Direct connection
             russh::client::connect(
                 config,
                 (self.ssh_profile.host.as_str(), self.ssh_profile.port),
@@ -200,17 +194,14 @@ impl SSHTerminal {
             ))
         })?;
 
-        // Authenticate with resolved data
         self.authenticate_with_resolved_data(&mut session, resolved_key)
             .await?;
 
-        // Create a channel
         let channel = session.channel_open_session().await.map_err(|e| {
             self.state = TerminalState::Disconnected;
             AppError::terminal_error(format!("Failed to open SSH channel: {}", e))
         })?;
 
-        // Request PTY
         let _ = channel
             .request_pty(
                 false,
@@ -226,7 +217,6 @@ impl SSHTerminal {
             )
             .await;
 
-        // Start shell
         let _ = channel.request_shell(false).await;
 
         self.session = Some(session);
@@ -379,7 +369,6 @@ impl SSHTerminal {
 
     /// Write data to the SSH terminal
     pub async fn write(&mut self, data: &[u8]) -> Result<(), AppError> {
-        // Check if session is still valid
         if let Some(session) = &self.session {
             if session.is_closed() {
                 self.state = TerminalState::Disconnected;

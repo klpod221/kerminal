@@ -10,5 +10,5 @@ export type {
   SimpleTerminal,
   TerminalBufferChunk,
   LoadProgressCallback,
-  LoadOptions
+  LoadOptions,
 } from "./IncrementalBufferLoader";

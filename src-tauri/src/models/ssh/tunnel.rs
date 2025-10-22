@@ -103,17 +103,14 @@ impl SSHTunnel {
 
     /// Validate tunnel configuration
     pub fn validate(&self) -> Result<(), String> {
-        // Validate name
         if self.name.trim().is_empty() {
             return Err("Tunnel name cannot be empty".to_string());
         }
 
-        // Validate port ranges
         if self.local_port == 0 {
             return Err("Local port cannot be 0".to_string());
         }
 
-        // Validate remote configuration for Local and Remote tunnels
         match self.tunnel_type {
             TunnelType::Local | TunnelType::Remote => {
                 if self.remote_host.is_none() || self.remote_port.is_none() {
@@ -134,11 +131,9 @@ impl SSHTunnel {
                 }
             }
             TunnelType::Dynamic => {
-                // Dynamic tunnels don't need remote configuration
             }
         }
 
-        // Validate profile_id
         if self.profile_id.trim().is_empty() {
             return Err("Profile ID cannot be empty".to_string());
         }
@@ -177,10 +172,8 @@ pub struct UpdateSSHTunnelRequest {
     pub auto_start: Option<bool>,
 }
 
-// Implement Syncable trait using the macro
 impl_syncable!(SSHTunnel, "ssh_tunnels");
 
-// Implement Encryptable trait (no encrypted fields for tunnels)
 impl Encryptable for SSHTunnel {
     fn encrypted_fields() -> Vec<&'static str> {
         vec![] // No encrypted fields
@@ -190,7 +183,6 @@ impl Encryptable for SSHTunnel {
         &mut self,
         _encryption_service: &dyn EncryptionService,
     ) -> DatabaseResult<()> {
-        // No encrypted fields in SSH tunnels
         Ok(())
     }
 
@@ -198,7 +190,6 @@ impl Encryptable for SSHTunnel {
         &mut self,
         _encryption_service: &dyn EncryptionService,
     ) -> DatabaseResult<()> {
-        // No encrypted fields in SSH tunnels
         Ok(())
     }
 

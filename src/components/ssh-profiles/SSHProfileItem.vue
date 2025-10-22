@@ -7,17 +7,23 @@
     <div class="flex-shrink-0">
       <div
         class="w-1 h-10 rounded-full transition-all duration-200"
-        :style="{ backgroundColor: profile.color || fallbackColor || '#6b7280' }"
+        :style="{
+          backgroundColor: profile.color || fallbackColor || '#6b7280',
+        }"
       />
     </div>
 
     <!-- Profile info -->
     <div class="flex-1 min-w-0 space-y-1">
-      <h4 class="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors truncate">
+      <h4
+        class="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors truncate"
+      >
         {{ profile.name }}
       </h4>
       <div class="flex items-center gap-2 text-xs text-gray-400">
-        <code class="font-mono">{{ profile.username }}@{{ profile.host }}:{{ profile.port }}</code>
+        <code class="font-mono"
+          >{{ profile.username }}@{{ profile.host }}:{{ profile.port }}</code
+        >
       </div>
     </div>
 
@@ -65,8 +71,10 @@ const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
 const handleDelete = () => {
-  if (confirm(`Delete '${props.profile.name}'? This action cannot be undone.`)) {
-    emit('delete', props.profile);
+  if (
+    confirm(`Delete '${props.profile.name}'? This action cannot be undone.`)
+  ) {
+    emit("delete", props.profile);
   }
 };
 </script>

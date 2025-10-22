@@ -121,27 +121,22 @@ const props = defineProps<PanelProps>();
 
 const emit = defineEmits<PanelEmits>();
 
-// Refs
 const terminalManagerRef = ref<TerminalManagerComponent | null>(null);
 
-// Drag and drop state
 const showDropZones = ref(false);
 const dragEnterCounter = ref(0);
 let hideDropZonesTimeout: ReturnType<typeof setTimeout> | null = null;
 
-// Filter terminals that belong to this panel's tabs
 const activeTerminals = computed(() => {
   const tabIds = props.panel.tabs.map((tab) => tab.id);
   return props.terminals.filter((terminal) => tabIds.includes(terminal.id));
 });
 
-// Watch for panel becoming active and auto-focus terminal
 watch(
   () => props.isActive,
   async (isActive) => {
     if (isActive && terminalManagerRef.value) {
       await nextTick();
-      // Add a small delay to ensure proper rendering
       setTimeout(() => {
         terminalManagerRef.value?.focusActiveTerminal();
       }, 50);
@@ -198,9 +193,6 @@ const onTerminalReady = (terminalId: string): void => {
 };
 
 const handlePanelClick = (): void => {
-  // Only activate panel, don't prevent event propagation
-  // This allows clicks on panel background to activate the panel
-  // while still allowing normal interactions with child elements
   emit("setActivePanel", props.panel.id);
 };
 
@@ -222,12 +214,10 @@ const onDragOver = (event: DragEvent): void => {
 const onDragEnter = (event: DragEvent): void => {
   event.preventDefault();
 
-  // Check if dragging a tab
   if (
     event.dataTransfer &&
     event.dataTransfer.types.includes("application/json")
   ) {
-    // Clear any pending hide timeout
     if (hideDropZonesTimeout) {
       clearTimeout(hideDropZonesTimeout);
       hideDropZonesTimeout = null;
@@ -247,11 +237,9 @@ const onDragEnter = (event: DragEvent): void => {
 const onDragLeave = (event: DragEvent): void => {
   event.preventDefault();
 
-  // Get panel element bounds
   const panelElement = event.currentTarget as HTMLElement;
   const rect = panelElement.getBoundingClientRect();
 
-  // Check if actually leaving the panel
   const isLeavingPanel =
     event.clientX < rect.left ||
     event.clientX > rect.right ||
@@ -273,7 +261,6 @@ const onDragLeave = (event: DragEvent): void => {
  */
 const onDrop = (event: DragEvent): void => {
   event.preventDefault();
-  // Reset drop zones when dropping outside specific zones
   showDropZones.value = false;
   dragEnterCounter.value = 0;
 };
@@ -285,7 +272,6 @@ const resetDropZones = (): void => {
   showDropZones.value = false;
   dragEnterCounter.value = 0;
 
-  // Clear any pending timeout
   if (hideDropZonesTimeout) {
     clearTimeout(hideDropZonesTimeout);
     hideDropZonesTimeout = null;
@@ -305,12 +291,9 @@ const onSplitPanel = (
 ): void => {
   resetDropZones();
 
-  // Check if dragging from same panel or different panel
   if (sourcePanelId === props.panel.id) {
-    // Same panel: Clone the tab and split (like clicking split button)
     emit("cloneTabAndSplit", direction, draggedTab.id, props.panel.id);
   } else {
-    // Different panel: Move the tab and split
     emit(
       "splitPanelByDrop",
       direction,
@@ -328,7 +311,6 @@ const onSplitPanel = (
  */
 const onMoveTab = (draggedTab: Tab, sourcePanelId: string): void => {
   resetDropZones();
-  // Move tab to this panel (at the end)
   emit("moveTab", sourcePanelId, props.panel.id, draggedTab.id);
 };
 
@@ -336,7 +318,6 @@ const onMoveTab = (draggedTab: Tab, sourcePanelId: string): void => {
  * Handle global drag end event to reset drop zones
  */
 const onGlobalDragEnd = (): void => {
-  // Add a small delay to allow drop events to complete
   hideDropZonesTimeout = setTimeout(() => {
     resetDropZones();
   }, 100);
@@ -351,7 +332,6 @@ const onEscapeKey = (event: KeyboardEvent): void => {
   }
 };
 
-// Setup global drag end listener
 onMounted(() => {
   document.addEventListener("dragend", onGlobalDragEnd);
   document.addEventListener("keydown", onEscapeKey);

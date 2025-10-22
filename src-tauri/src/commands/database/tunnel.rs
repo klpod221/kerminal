@@ -13,7 +13,6 @@ macro_rules! tunnel_result {
     };
 }
 
-// === SSH Tunnel Commands ===
 
 /// Create new SSH tunnel
 #[tauri::command]

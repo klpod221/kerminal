@@ -1,9 +1,5 @@
 <template>
-  <Modal
-    id="tunnel-manager-modal"
-    title="SSH Tunnel Manager"
-    size="xl"
-  >
+  <Modal id="tunnel-manager-modal" title="SSH Tunnel Manager" size="xl">
     <!-- Empty State -->
     <EmptyState
       v-if="tunnelStore.tunnels.length === 0 && !tunnelStore.loading"
@@ -21,7 +17,7 @@
     <div v-else class="space-y-4">
       <!-- Header -->
       <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-4">
+        <div class="flex items-center gap-4">
           <div class="text-sm text-gray-400">
             {{ tunnelStore.tunnels.length }} tunnel(s) configured
           </div>
@@ -34,14 +30,21 @@
             </Badge>
           </div>
         </div>
-        <Button variant="primary" :icon="Plus" size="sm" @click="openTunnelModal()">
+        <Button
+          variant="primary"
+          :icon="Plus"
+          size="sm"
+          @click="openTunnelModal()"
+        >
           Create Tunnel
         </Button>
       </div>
 
       <!-- Loading -->
       <div v-if="tunnelStore.loading" class="text-center py-8">
-        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+        <div
+          class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
+        ></div>
         <p class="text-gray-400 mt-4">Loading tunnels...</p>
       </div>
 
@@ -58,21 +61,16 @@
             <div class="flex items-start justify-between">
               <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2">
-                  <h3 class="text-white font-semibold truncate">{{ tunnel.name }}</h3>
+                  <h3 class="text-white font-semibold truncate">
+                    {{ tunnel.name }}
+                  </h3>
                   <TunnelStatusIndicator :status="tunnel.status" />
                 </div>
                 <div class="flex items-center gap-2 mt-1">
-                  <Badge
-                    variant="info"
-                    size="xs"
-                  >
+                  <Badge variant="info" size="xs">
                     {{ tunnel.tunnelType }}
                   </Badge>
-                  <Badge
-                    v-if="tunnel.autoStart"
-                    variant="primary"
-                    size="xs"
-                  >
+                  <Badge v-if="tunnel.autoStart" variant="primary" size="xs">
                     Auto-start
                   </Badge>
                 </div>
@@ -121,14 +119,22 @@
             <!-- Connection Details -->
             <div class="space-y-2">
               <div class="text-xs text-gray-400">Configuration:</div>
-              <div class="text-xs font-mono text-gray-300 bg-gray-800 px-2 py-1 rounded">
+              <div
+                class="text-xs font-mono text-gray-300 bg-gray-800 px-2 py-1 rounded"
+              >
                 {{ formatTunnelConfig(tunnel) }}
               </div>
             </div>
 
             <!-- Profile Info -->
-            <div v-if="getProfileName(tunnel.profileId)" class="text-xs text-gray-400">
-              Profile: <span class="text-gray-300">{{ getProfileName(tunnel.profileId) }}</span>
+            <div
+              v-if="getProfileName(tunnel.profileId)"
+              class="text-xs text-gray-400"
+            >
+              Profile:
+              <span class="text-gray-300">{{
+                getProfileName(tunnel.profileId)
+              }}</span>
             </div>
 
             <!-- Description -->
@@ -149,24 +155,21 @@
         </Card>
       </div>
     </div>
-
-
-
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
-import { useTunnelStore } from '../../stores/tunnel';
-import { useSSHStore } from '../../stores/ssh';
-import { useOverlay } from '../../composables/useOverlay';
-import type { TunnelWithStatus } from '../../types/tunnel';
-import Modal from '../ui/Modal.vue';
-import Button from '../ui/Button.vue';
-import Badge from '../ui/Badge.vue';
-import Card from '../ui/Card.vue';
-import EmptyState from '../ui/EmptyState.vue';
-import TunnelStatusIndicator from './TunnelStatusIndicator.vue';
+import { computed, onMounted } from "vue";
+import { useTunnelStore } from "../../stores/tunnel";
+import { useSSHStore } from "../../stores/ssh";
+import { useOverlay } from "../../composables/useOverlay";
+import type { TunnelWithStatus } from "../../types/tunnel";
+import Modal from "../ui/Modal.vue";
+import Button from "../ui/Button.vue";
+import Badge from "../ui/Badge.vue";
+import Card from "../ui/Card.vue";
+import EmptyState from "../ui/EmptyState.vue";
+import TunnelStatusIndicator from "./TunnelStatusIndicator.vue";
 import {
   Plus,
   Route,
@@ -175,59 +178,54 @@ import {
   Copy,
   Play,
   Square,
-} from 'lucide-vue-next';
+} from "lucide-vue-next";
 
 const tunnelStore = useTunnelStore();
 const sshStore = useSSHStore();
 const { openOverlay } = useOverlay();
 
-
-// Computed
 const validTunnels = computed(() => {
-  return tunnelStore.tunnels.filter(tunnel =>
-    tunnel &&
-    tunnel.id &&
-    typeof tunnel.id === 'string'
+  return tunnelStore.tunnels.filter(
+    (tunnel) => tunnel && tunnel.id && typeof tunnel.id === "string",
   );
 });
 
 const activeTunnels = computed(() => tunnelStore.activeTunnels);
 const stoppedTunnels = computed(() => tunnelStore.stoppedTunnels);
 
-// Methods
 const openTunnelModal = (tunnel?: TunnelWithStatus) => {
   openOverlay("tunnel-modal", { tunnelId: tunnel?.id || null });
 };
 
 const startTunnel = async (tunnel: TunnelWithStatus) => {
   if (!tunnel?.id) {
-    console.error('Invalid tunnel data for start operation');
+    console.error("Invalid tunnel data for start operation");
     return;
   }
 
   try {
     await tunnelStore.startTunnel(tunnel.id);
   } catch (error) {
-    console.error('Failed to start tunnel:', error);
+    console.error("Failed to start tunnel:", error);
   }
 };
 
 const stopTunnel = async (tunnel: TunnelWithStatus) => {
   if (!tunnel?.id) {
-    console.error('Invalid tunnel data for stop operation');
+    console.error("Invalid tunnel data for stop operation");
     return;
   }
 
   try {
     await tunnelStore.stopTunnel(tunnel.id);
   } catch (error) {
-    console.error('Failed to stop tunnel:', error);
+    console.error("Failed to stop tunnel:", error);
   }
 };
 
 const duplicateTunnel = async (tunnel: TunnelWithStatus) => {
   if (!tunnel?.id) {
-    console.error('Invalid tunnel data for duplicate operation');
+    console.error("Invalid tunnel data for duplicate operation");
     return;
   }
 
@@ -246,49 +244,47 @@ const duplicateTunnel = async (tunnel: TunnelWithStatus) => {
   try {
     await tunnelStore.createTunnel(duplicateData);
   } catch (error) {
-    console.error('Failed to duplicate tunnel:', error);
+    console.error("Failed to duplicate tunnel:", error);
   }
 };
 
 const confirmDelete = async (tunnel: TunnelWithStatus) => {
-  const confirmed = confirm(`Are you sure you want to delete "${tunnel.name}"?\n\nThis action cannot be undone. The tunnel will be permanently removed.`);
+  const confirmed = confirm(
+    `Are you sure you want to delete "${tunnel.name}"?\n\nThis action cannot be undone. The tunnel will be permanently removed.`,
+  );
 
   if (confirmed && tunnel.id) {
     try {
       await tunnelStore.deleteTunnel(tunnel.id);
     } catch (error) {
-      console.error('Failed to delete tunnel:', error);
+      console.error("Failed to delete tunnel:", error);
     }
   }
 };
 
 const formatTunnelConfig = (tunnel: TunnelWithStatus) => {
   switch (tunnel.tunnelType) {
-    case 'Local':
+    case "Local":
       return `${tunnel.localHost}:${tunnel.localPort} → ${tunnel.remoteHost}:${tunnel.remotePort}`;
-    case 'Remote':
+    case "Remote":
       return `${tunnel.remoteHost}:${tunnel.remotePort} → ${tunnel.localHost}:${tunnel.localPort}`;
-    case 'Dynamic':
+    case "Dynamic":
       return `SOCKS proxy on ${tunnel.localHost}:${tunnel.localPort}`;
     default:
-      return 'Unknown configuration';
+      return "Unknown configuration";
   }
 };
 
 const getProfileName = (profileId: string) => {
   if (!profileId || !sshStore.profiles) {
-    return 'Unknown Profile';
+    return "Unknown Profile";
   }
 
-  const profile = sshStore.profiles.find(p => p?.id === profileId);
-  return profile?.name || 'Unknown Profile';
+  const profile = sshStore.profiles.find((p) => p?.id === profileId);
+  return profile?.name || "Unknown Profile";
 };
 
-// Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    tunnelStore.loadTunnels(),
-    sshStore.loadProfiles()
-  ]);
+  await Promise.all([tunnelStore.loadTunnels(), sshStore.loadProfiles()]);
 });
 </script>

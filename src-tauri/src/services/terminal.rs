@@ -56,14 +56,12 @@ impl TerminalManager {
         )
         .await?;
 
-        // Resolve SSH key if needed
         let resolved_key = if matches!(
             request.config.terminal_type,
             crate::models::terminal::TerminalType::SSH
         ) {
             if let Some(ssh_key_service) = &self.ssh_key_service {
                 if let Some(ssh_profile_id) = &request.config.ssh_profile_id {
-                    // Get SSH profile to check auth data
                     let ssh_profile = {
                         let db_service = self.database_service.lock().await;
                         db_service
@@ -72,7 +70,6 @@ impl TerminalManager {
                             .map_err(|e| AppError::Database(e.to_string()))?
                     };
 
-                    // Resolve key if it's a KeyReference
                     if let crate::models::ssh::profile::AuthData::KeyReference { key_id } =
                         &ssh_profile.auth_data
                     {
@@ -96,7 +93,6 @@ impl TerminalManager {
             None
         };
 
-        // Attempt connection with error handling
         let connect_result = if let Some(resolved_key) = resolved_key {
             terminal
                 .connect_with_resolved_data(Some(resolved_key))
@@ -106,7 +102,6 @@ impl TerminalManager {
         };
 
         if let Err(e) = connect_result {
-            // Send error event to frontend if we have an app handle
             if let Some(handle) = &app_handle {
                 let error_event = TerminalExited {
                     terminal_id: terminal_id.clone(),
@@ -118,7 +113,6 @@ impl TerminalManager {
 
             return Err(e);
         } else {
-            // Connection successful - emit success event for SSH terminals
             if matches!(
                 request.config.terminal_type,
                 crate::models::terminal::TerminalType::SSH

@@ -32,7 +32,11 @@
 
     <template #footer>
       <div class="flex justify-between w-full">
-        <Button type="button" variant="ghost" @click="closeOverlay('ssh-group-modal')">
+        <Button
+          type="button"
+          variant="ghost"
+          @click="closeOverlay('ssh-group-modal')"
+        >
           Cancel
         </Button>
         <Button
@@ -64,19 +68,20 @@ import { useSSHStore } from "../../stores/ssh";
 import { useOverlay } from "../../composables/useOverlay";
 import { SSHGroup } from "../../types/ssh";
 
-// Props
 const props = defineProps<{
   sshGroupId?: string | null;
 }>();
 
-// Store and composables
 const sshStore = useSSHStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
 
-// Use overlay prop with fallback to direct prop
-const sshGroupId = getOverlayProp("ssh-group-modal", "sshGroupId", props.sshGroupId, null);
+const sshGroupId = getOverlayProp(
+  "ssh-group-modal",
+  "sshGroupId",
+  props.sshGroupId,
+  null,
+);
 
-// State
 const sshGroupForm = ref<InstanceType<typeof Form> | null>(null);
 const isLoading = ref(false);
 const sshGroup = ref({
@@ -85,9 +90,6 @@ const sshGroup = ref({
   color: "#000000",
 } as Partial<SSHGroup>);
 
-
-
-// Functions
 const loadGroup = () => {
   if (!sshGroupId.value) return;
 
@@ -130,11 +132,10 @@ const handleSubmit = async () => {
   }
 };
 
-// Watch for prop changes
 watch(
   () => sshGroupId.value,
   (newId) => {
-    console.log('🔍 SSHGroupModal prop changed:', { sshGroupId: newId });
+    console.log("🔍 SSHGroupModal prop changed:", { sshGroupId: newId });
     if (newId) {
       loadGroup();
     } else {

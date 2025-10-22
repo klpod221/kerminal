@@ -23,17 +23,14 @@ export function useKeyboardShortcuts(
   enabled?: Ref<boolean>,
 ) {
   const handleKeydown = (event: KeyboardEvent): void => {
-    // Check if shortcuts are enabled
     if (enabled && !enabled.value) return;
 
-    // Don't trigger shortcuts when user is typing in input fields
     const target = event.target as HTMLElement;
     const isInputElement =
       target.tagName === "INPUT" ||
       target.tagName === "TEXTAREA" ||
       target.contentEditable === "true";
 
-    // Skip shortcuts for most input elements, but allow them in terminals
     if (isInputElement && !target.classList.contains("xterm-helper-textarea")) {
       return;
     }

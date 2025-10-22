@@ -37,10 +37,8 @@ impl SSHGroup {
     }
 }
 
-// Implement Syncable trait using macro
 impl_syncable!(SSHGroup, "ssh_groups");
 
-// SSH Groups have no encrypted data
 impl Encryptable for SSHGroup {
     fn encrypted_fields() -> Vec<&'static str> {
         vec![]

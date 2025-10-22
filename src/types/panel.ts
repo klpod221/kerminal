@@ -36,7 +36,6 @@ export interface TerminalInstance {
   hasError?: boolean; // Whether terminal has an error state
 }
 
-// Backend terminal types
 export type TerminalType = "Local" | "SSH";
 
 export type TerminalState =

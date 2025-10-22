@@ -56,7 +56,6 @@
 import { ref, nextTick } from "vue";
 import { ChevronRight } from "lucide-vue-next";
 
-// Props
 interface Props {
   title: string;
   subtitle?: string;
@@ -68,16 +67,13 @@ const props = withDefaults(defineProps<Props>(), {
   defaultExpanded: false,
 });
 
-// State
 const isExpanded = ref(props.defaultExpanded);
 const contentRef = ref<HTMLElement>();
 
-// Methods
 const toggle = () => {
   isExpanded.value = !isExpanded.value;
 };
 
-// Animation handlers
 const onEnter = (el: Element) => {
   const element = el as HTMLElement;
   element.style.height = "0";
@@ -107,7 +103,6 @@ const onAfterLeave = (el: Element) => {
   element.style.height = "";
 };
 
-// Expose methods
 defineExpose({
   toggle,
   isExpanded,

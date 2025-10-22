@@ -11,7 +11,7 @@ import type {
  * @returns Created SSH key
  */
 export async function createSSHKey(
-  request: CreateSSHKeyRequest
+  request: CreateSSHKeyRequest,
 ): Promise<SSHKey> {
   return invoke<SSHKey>("create_ssh_key", { request });
 }
@@ -41,7 +41,7 @@ export async function getSSHKey(id: string): Promise<SSHKey> {
  */
 export async function updateSSHKey(
   id: string,
-  request: UpdateSSHKeyRequest
+  request: UpdateSSHKeyRequest,
 ): Promise<SSHKey> {
   return invoke<SSHKey>("update_ssh_key", { id, request });
 }
@@ -76,7 +76,7 @@ export async function importSSHKeyFromFile(
   name: string,
   filePath: string,
   passphrase?: string,
-  description?: string
+  description?: string,
 ): Promise<SSHKey> {
   return invoke<SSHKey>("import_ssh_key_from_file", {
     name,

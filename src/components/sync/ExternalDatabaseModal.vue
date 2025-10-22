@@ -6,7 +6,9 @@
   >
     <Form ref="databaseForm" @submit="handleSubmit">
       <!-- Basic Information -->
-      <h4 class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2">
+      <h4
+        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2"
+      >
         Basic Information
       </h4>
 
@@ -30,7 +32,9 @@
       />
 
       <!-- Connection Details -->
-      <h4 class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2 mt-4">
+      <h4
+        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2 mt-4"
+      >
         Connection Details
       </h4>
 
@@ -70,7 +74,9 @@
         v-model="connectionDetails.password"
         label="Password"
         type="password"
-        :placeholder="databaseId ? 'Leave empty to keep current password' : 'Enter password'"
+        :placeholder="
+          databaseId ? 'Leave empty to keep current password' : 'Enter password'
+        "
         :rules="databaseId ? '' : 'required'"
       />
       <div v-if="databaseId" class="text-xs text-gray-400 -mt-2">
@@ -118,7 +124,11 @@ import Input from "../ui/Input.vue";
 import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage, safeJsonParse, getCurrentTimestamp } from "../../utils/helpers";
+import {
+  getErrorMessage,
+  safeJsonParse,
+  getCurrentTimestamp,
+} from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
 import { syncService } from "../../services/sync";
 import { useOverlay } from "../../composables/useOverlay";
@@ -222,21 +232,21 @@ const loadDatabase = async () => {
       databaseName: data.connectionDetails.databaseName,
     };
 
-    // Load auto_sync from denormalized field
     syncSettings.value = {
       autoSync: data.config.autoSyncEnabled,
       syncIntervalMinutes: 15,
       conflictResolutionStrategy: "LastWriteWins",
     };
 
-    // Parse other settings from encrypted string
     if (data.config.syncSettings) {
       const parsed = safeJsonParse(data.config.syncSettings, {
         syncIntervalMinutes: 15,
         conflictResolutionStrategy: "LastWriteWins" as const,
       });
       syncSettings.value.syncIntervalMinutes = parsed.syncIntervalMinutes || 15;
-      syncSettings.value.conflictResolutionStrategy = (parsed.conflictResolutionStrategy as ConflictResolutionStrategy) || "LastWriteWins";
+      syncSettings.value.conflictResolutionStrategy =
+        (parsed.conflictResolutionStrategy as ConflictResolutionStrategy) ||
+        "LastWriteWins";
     }
   } catch (error) {
     console.error("Error loading database:", error);
@@ -255,7 +265,7 @@ const testConnection = async () => {
     const success = await syncStore.testConnection(
       database.value.dbType,
       connectionDetails.value,
-      databaseId.value || undefined
+      databaseId.value || undefined,
     );
 
     if (success) {
@@ -296,7 +306,8 @@ const handleSubmit = async () => {
         name: database.value.name,
         autoSync: syncSettings.value.autoSync,
         syncIntervalMinutes: syncSettings.value.syncIntervalMinutes,
-        conflictResolutionStrategy: syncSettings.value.conflictResolutionStrategy,
+        conflictResolutionStrategy:
+          syncSettings.value.conflictResolutionStrategy,
       };
 
       if (connectionDetails.value.password) {
@@ -309,7 +320,7 @@ const handleSubmit = async () => {
       await syncStore.addDatabase(
         dbData,
         connectionDetails.value,
-        syncSettings.value
+        syncSettings.value,
       );
       message.success("Database added successfully");
     }
@@ -323,28 +334,32 @@ const handleSubmit = async () => {
   }
 };
 
-watch(() => databaseId.value, (newId) => {
-  if (newId) {
-    loadDatabase();
-  } else {
-    database.value = {
-      name: "",
-      dbType: "mysql",
-    };
-    connectionDetails.value = {
-      host: "",
-      port: 3306,
-      username: "",
-      password: "",
-      databaseName: "",
-    };
-    syncSettings.value = {
-      autoSync: false,
-      syncIntervalMinutes: 15,
-      conflictResolutionStrategy: "LastWriteWins",
-    };
-  }
-}, { immediate: true });
+watch(
+  () => databaseId.value,
+  (newId) => {
+    if (newId) {
+      loadDatabase();
+    } else {
+      database.value = {
+        name: "",
+        dbType: "mysql",
+      };
+      connectionDetails.value = {
+        host: "",
+        port: 3306,
+        username: "",
+        password: "",
+        databaseName: "",
+      };
+      syncSettings.value = {
+        autoSync: false,
+        syncIntervalMinutes: 15,
+        conflictResolutionStrategy: "LastWriteWins",
+      };
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   if (!syncStore.databases.length) {

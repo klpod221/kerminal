@@ -148,16 +148,13 @@ const emit = defineEmits([
   "right-icon-click",
 ]);
 
-// Refs
 const errorMessage = ref(props.errorMessage || "");
 const touched = ref(false);
 const inputRef = ref<HTMLInputElement>();
 const isPasswordVisible = ref(false);
 
-// Injected from parent Form
 const formContext = inject<FormContext>("form-context");
 
-// Computed
 const inputId = computed(
   () => props.id || `input-${Math.random().toString(36).substr(2, 9)}`,
 );
@@ -214,7 +211,6 @@ const stateClasses = computed(() => {
   return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500";
 });
 
-// Methods
 const validate = (): string => {
   if (!props.rules || props.rules.length === 0) {
     return "";
@@ -229,7 +225,6 @@ const validate = (): string => {
 
 const togglePasswordVisibility = (): void => {
   isPasswordVisible.value = !isPasswordVisible.value;
-  // Keep focus on input after toggling
   nextTick(() => {
     inputRef.value?.focus();
   });
@@ -258,7 +253,6 @@ const handleKeydown = (event: KeyboardEvent): void => {
   emit("keydown", event);
 };
 
-// Lifecycle hooks
 onMounted(() => {
   if (formContext) {
     formContext.register({
@@ -275,7 +269,6 @@ onUnmounted(() => {
   }
 });
 
-// Expose methods for parent components
 defineExpose({
   focus: () => inputRef.value?.focus(),
   blur: () => inputRef.value?.blur(),

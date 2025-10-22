@@ -10,18 +10,14 @@ import type { FormField, FormContext } from "../../types/form";
 
 const emit = defineEmits(["submit"]);
 
-// Use a reactive Map to store registered fields
 const fields = reactive<Map<string, FormField>>(new Map());
 
-// Computed property to check if the entire form is valid
 const isValid = computed(() => {
   return Array.from(fields.values()).every((field) => field.validate() === "");
 });
 
-// Function to validate all fields
 const validate = (): boolean => {
   let allValid = true;
-  // Trigger validation on all fields
   fields.forEach((field) => {
     if (field.validate() !== "") {
       allValid = false;
@@ -30,7 +26,6 @@ const validate = (): boolean => {
   return allValid;
 };
 
-// Expose validate function and isValid state for parent component to access via template ref
 defineExpose({
   validate,
   isValid,
@@ -57,7 +52,6 @@ const getAllFieldValues = (): Record<string, unknown> => {
   return allValues;
 };
 
-// Provide these functions to all child components within <slot>
 provide<FormContext>("form-context", {
   register,
   unregister,

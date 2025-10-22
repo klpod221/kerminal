@@ -9,14 +9,17 @@
     icon-color="text-red-400"
   >
     <div class="flex flex-col gap-4">
-      <div class="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+      <div
+        class="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-lg"
+      >
         <AlertTriangle class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
         <div class="flex-1">
           <h4 class="text-sm font-medium text-red-400 mb-2">
             ⚠️ This action cannot be undone!
           </h4>
           <p class="text-sm text-gray-300">
-            Resetting your master password will permanently delete all your data including:
+            Resetting your master password will permanently delete all your data
+            including:
           </p>
         </div>
       </div>
@@ -42,7 +45,12 @@
 
       <div class="p-4 bg-gray-800/50 border border-gray-600 rounded-lg">
         <p class="text-sm text-gray-300 mb-3">
-          To confirm this action, please type <code class="px-2 py-1 bg-gray-700 rounded text-red-400 font-mono text-xs">RESET</code> below:
+          To confirm this action, please type
+          <code
+            class="px-2 py-1 bg-gray-700 rounded text-red-400 font-mono text-xs"
+            >RESET</code
+          >
+          below:
         </p>
 
         <Input
@@ -59,9 +67,7 @@
     </div>
 
     <template #footer>
-      <Button variant="ghost" @click="handleCancel">
-        Cancel
-      </Button>
+      <Button variant="ghost" @click="handleCancel"> Cancel </Button>
       <Button
         variant="danger"
         :disabled="confirmationText !== 'RESET' || isLoading"
@@ -87,16 +93,13 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-// State
 const confirmationText = ref("");
 const errorMessage = ref("");
 const isLoading = ref(false);
 const confirmationInput = ref<InstanceType<typeof Input>>();
 
-// Composables
 const { overlayStore, closeOverlay } = useOverlay();
 
-// Methods
 const handleConfirm = () => {
   if (confirmationText.value !== "RESET") {
     errorMessage.value = "Please type RESET to confirm";
@@ -105,7 +108,6 @@ const handleConfirm = () => {
 
   emit("confirm");
   closeOverlay("reset-confirm-modal");
-  // Reset state
   confirmationText.value = "";
   errorMessage.value = "";
 };
@@ -113,12 +115,10 @@ const handleConfirm = () => {
 const handleCancel = () => {
   emit("cancel");
   closeOverlay("reset-confirm-modal");
-  // Reset state
   confirmationText.value = "";
   errorMessage.value = "";
 };
 
-// Focus input when modal opens
 watch(
   () => overlayStore.isVisible("reset-confirm-modal"),
   (isVisible) => {
@@ -130,7 +130,6 @@ watch(
   },
 );
 
-// Clear error when user types
 watch(confirmationText, () => {
   if (errorMessage.value) {
     errorMessage.value = "";

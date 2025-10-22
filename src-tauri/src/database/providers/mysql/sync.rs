@@ -7,7 +7,6 @@ use crate::database::error::{DatabaseError, DatabaseResult};
 
 use super::MySQLProvider;
 
-/// Convert camelCase to snake_case for MySQL column names
 fn to_snake_case(s: &str) -> String {
     let mut result = String::new();
     for (i, ch) in s.chars().enumerate() {
@@ -23,12 +22,9 @@ fn to_snake_case(s: &str) -> String {
     result
 }
 
-/// Convert ISO 8601 datetime to MySQL format (YYYY-MM-DD HH:MM:SS)
 fn convert_datetime_value(value: &Value) -> Value {
     if let Some(s) = value.as_str() {
-        // Check if it's an ISO 8601 datetime with timezone
         if s.contains('T') && (s.ends_with('Z') || s.contains('+') || s.contains('-')) {
-            // Parse and format to MySQL datetime
             if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(s) {
                 return Value::String(dt.format("%Y-%m-%d %H:%M:%S").to_string());
             }
@@ -37,7 +33,6 @@ fn convert_datetime_value(value: &Value) -> Value {
     value.clone()
 }
 
-/// Push records to MySQL database using upsert (INSERT ... ON DUPLICATE KEY UPDATE)
 pub async fn push_records(
     provider: &MySQLProvider,
     table: &str,
@@ -57,7 +52,6 @@ pub async fn push_records(
             .as_object()
             .ok_or_else(|| DatabaseError::QueryFailed("Expected JSON object".to_string()))?;
 
-        // Convert camelCase keys to snake_case for MySQL
         let column_mapping: Vec<(String, String)> = obj
             .keys()
             .map(|k| (k.to_string(), to_snake_case(k)))
@@ -82,7 +76,6 @@ pub async fn push_records(
         let mut query = sqlx::query(&sql);
         for (json_key, _) in &column_mapping {
             let value = &obj[json_key];
-            // Convert datetime values to MySQL format
             let converted_value = convert_datetime_value(value);
             query = bind_value(query, &converted_value);
         }
@@ -100,7 +93,6 @@ pub async fn push_records(
     Ok(count)
 }
 
-/// Pull records from MySQL database modified since timestamp
 pub async fn pull_records(
     provider: &MySQLProvider,
     table: &str,
@@ -137,7 +129,6 @@ pub async fn pull_records(
     Ok(records)
 }
 
-/// Get record versions for conflict detection
 pub async fn get_record_versions(
     provider: &MySQLProvider,
     table: &str,
@@ -177,7 +168,6 @@ pub async fn get_record_versions(
     Ok(versions)
 }
 
-/// Helper function to bind JSON value to SQLx query
 fn bind_value<'q>(
     query: sqlx::query::Query<'q, sqlx::MySql, sqlx::mysql::MySqlArguments>,
     value: &Value,
@@ -201,7 +191,6 @@ fn bind_value<'q>(
     }
 }
 
-/// Convert MySQL row to JSON object
 fn row_to_json(row: &sqlx::mysql::MySqlRow) -> DatabaseResult<Value> {
     use sqlx::Column;
 

@@ -54,11 +54,9 @@ import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 
-// Stores and composables
 const { closeOverlay, openOverlay } = useOverlay();
 const { unlock } = useAuthStore();
 
-// Form state
 const masterPasswordUnlockForm = ref<InstanceType<typeof Form> | null>(null);
 const verificationForm = ref({
   password: "",

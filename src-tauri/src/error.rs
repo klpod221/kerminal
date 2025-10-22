@@ -26,7 +26,6 @@ pub enum AppError {
     /// General application errors
     General(String),
 
-    // Specific error types that need special handling
     ConflictResolutionRequired,
     MasterPasswordRequired,
     TerminalNotFound(String),
@@ -60,14 +59,12 @@ impl From<AppError> for String {
     }
 }
 
-// Convert std::io::Error to AppError
 impl From<std::io::Error> for AppError {
     fn from(error: std::io::Error) -> Self {
         AppError::General(format!("IO error: {}", error))
     }
 }
 
-// Convert specific error types to unified AppError
 impl From<DatabaseError> for AppError {
     fn from(error: DatabaseError) -> Self {
         match error {
@@ -141,7 +138,6 @@ impl From<EncryptionError> for AppError {
 }
 
 impl AppError {
-    // Legacy error constructors for backward compatibility
     pub fn connection_failed(msg: impl Into<String>) -> Self {
         AppError::Network(format!("Connection failed: {}", msg.into()))
     }
@@ -194,7 +190,6 @@ impl AppError {
         AppError::General(format!("Not implemented: {}", msg.into()))
     }
 
-    // Terminal error constructors
     pub fn pty_error(msg: impl Into<String>) -> Self {
         AppError::Terminal(format!("PTY error: {}", msg.into()))
     }
@@ -207,7 +202,6 @@ impl AppError {
         AppError::Config(format!("Invalid configuration: {}", msg.into()))
     }
 
-    // SSH error constructors
     pub fn ssh_connection_failed(msg: impl Into<String>) -> Self {
         AppError::Network(format!("SSH connection failed: {}", msg.into()))
     }
@@ -232,7 +226,6 @@ impl AppError {
         AppError::Config(format!("SSH config error: {}", msg.into()))
     }
 
-    // Encryption error constructors
     pub fn encryption_failed(msg: impl Into<String>) -> Self {
         AppError::Encryption(format!("Encryption failed: {}", msg.into()))
     }

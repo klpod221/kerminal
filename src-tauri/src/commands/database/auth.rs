@@ -10,8 +10,6 @@ use super::common::app_result;
 /// Helper function to auto-connect databases with auto-sync enabled
 async fn auto_connect_sync_databases(sync_service: Arc<SyncService>) -> Result<(), String> {
 
-    // This will load and connect databases with auto_sync enabled
-    // Similar to initialize() but can be called after manual unlock
     sync_service.initialize().await
         .map_err(|e| format!("Failed to auto-connect databases: {}", e))
 }
@@ -25,7 +23,6 @@ pub async fn setup_master_password(
 ) -> Result<(), String> {
     let auth_service = &state.auth_service;
 
-    // Setup master password first
     let result = auth_service.setup_master_password(request).await;
 
     match result {
@@ -57,9 +54,7 @@ pub async fn verify_master_password(
         .await
     {
         Ok(()) => {
-            // After successful unlock, trigger auto-connect for databases with auto-sync enabled
 
-            // Spawn auto-connect in background so it doesn't block the unlock response
             let sync_service = state.sync_service.clone();
             tokio::spawn(async move {
                 if let Err(e) = auto_connect_sync_databases(sync_service).await {
@@ -178,7 +173,6 @@ pub async fn update_master_password_config(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    // If password is provided, use the keychain-aware method
     if password.is_some() {
         app_result!(
             state

@@ -1,4 +1,3 @@
-// SSH Tunnel types
 export type TunnelType = "Local" | "Remote" | "Dynamic";
 export type TunnelStatus = "stopped" | "starting" | "running" | "error";
 

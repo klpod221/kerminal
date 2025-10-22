@@ -101,7 +101,6 @@ interface PanelManagerEmits {
   ];
 }
 
-// Define props and emits
 const props = defineProps<PanelManagerProps>();
 const emit = defineEmits<PanelManagerEmits>();
 
@@ -111,7 +110,6 @@ const getPaneSize = (index: number): number => {
   return Math.max(10, Math.min(90, size * 100)); // Clamp between 10% and 90%
 };
 
-// Event handlers
 const selectTab = (panelId: string, tabId: string): void => {
   emit("selectTab", panelId, tabId);
 };
@@ -182,7 +180,6 @@ const cloneTabAndSplit = (
   emit("cloneTabAndSplit", direction, tabId, panelId);
 };
 
-// Handle splitpanes resize with debounce
 const handlePaneResize = (paneComponents: { size: number }[]): void => {
   if (
     !props.layout.children ||
@@ -191,20 +188,16 @@ const handlePaneResize = (paneComponents: { size: number }[]): void => {
     return;
   }
 
-  // Convert sizes from percentages to ratios
   const newSizes = paneComponents.map((pane) => pane.size / 100);
 
-  // Update layout with new sizes
   const updatedLayout = { ...props.layout, sizes: newSizes };
   emit("layoutUpdated", updatedLayout);
 
-  // Trigger window resize event to make terminals adjust
   setTimeout(() => {
     window.dispatchEvent(new Event("resize"));
   }, 50);
 };
 
-// Debounced version to prevent excessive layout updates
 const onPaneResize = debounce(handlePaneResize, 150);
 </script>
 

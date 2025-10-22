@@ -62,13 +62,12 @@ export function useOverlay() {
     overlayId: string,
     propName: string,
     directValue: T,
-    defaultValue?: T
+    defaultValue?: T,
   ) => {
     return computed(() => {
       const overlay = overlayStore.getOverlayById(overlayId);
       const overlayProps = overlay?.config.props || {};
 
-      // Return overlay prop if exists, then direct prop, then default
       return overlayProps[propName] ?? directValue ?? defaultValue;
     });
   };
@@ -83,18 +82,15 @@ export function useOverlay() {
    */
   const getOverlayProps = <T extends Record<string, any>>(
     overlayId: string,
-    directProps: T
+    directProps: T,
   ) => {
     return computed(() => {
-      // Get props from overlay store
       const overlay = overlayStore.getOverlayById(overlayId);
       const overlayProps = overlay?.config.props || {};
 
-      // Merge props with overlay taking precedence
       const mergedProps = { ...directProps };
 
-      // Override with overlay props where they exist
-      Object.keys(overlayProps).forEach(key => {
+      Object.keys(overlayProps).forEach((key) => {
         if (overlayProps[key] !== undefined && overlayProps[key] !== null) {
           mergedProps[key as keyof T] = overlayProps[key];
         }
@@ -115,16 +111,18 @@ export function useOverlay() {
   const getOverlayPropGetters = <T extends Record<string, any>>(
     overlayId: string,
     propNames: (keyof T)[],
-    directProps: T
+    directProps: T,
   ) => {
     const getters = {} as { [K in keyof T]: ComputedRef<T[K]> };
 
-    propNames.forEach(propName => {
+    propNames.forEach((propName) => {
       getters[propName] = computed(() => {
         const overlay = overlayStore.getOverlayById(overlayId);
         const overlayProps = overlay?.config.props || {};
 
-        return overlayProps[propName as string] ?? directProps[propName] ?? null;
+        return (
+          overlayProps[propName as string] ?? directProps[propName] ?? null
+        );
       });
     });
 
@@ -132,10 +130,8 @@ export function useOverlay() {
   };
 
   return {
-    // Store access
     overlayStore,
 
-    // Actions
     registerOverlay,
     unregisterOverlay,
     openOverlay,
@@ -145,18 +141,15 @@ export function useOverlay() {
     isOverlayTransitioning,
     clearOverlayProps,
 
-    // Props helpers
     getOverlayProp,
     getOverlayProps,
     getOverlayPropGetters,
 
-    // Computed
     activeOverlay: overlayStore.activeOverlay,
     hasActiveOverlay: overlayStore.hasActiveOverlay,
   };
 }
 
-// Helper function to create overlay configs
 export function createOverlayConfig(
   id: string,
   type: "drawer" | "modal",

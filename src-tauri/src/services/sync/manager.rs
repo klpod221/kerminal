@@ -53,14 +53,11 @@ impl SyncManager {
             }
         };
 
-        // Test connection
         provider.test_connection().await?;
 
-        // Store in active connections
         let mut connections = self.active_connections.write().await;
         connections.insert(config.base.id.clone(), Arc::from(provider));
 
-        // Update database is_active status
 
         {
             let db_service = self.database_service.lock().await;
@@ -86,12 +83,10 @@ impl SyncManager {
 
     /// Disconnect from an external database
     pub async fn disconnect(&self, database_id: &str) -> DatabaseResult<()> {
-        // Remove from active connections
         let mut connections = self.active_connections.write().await;
         connections.remove(database_id);
         drop(connections); // Release lock early
 
-        // Update database is_active status
 
         {
             let db_service = self.database_service.lock().await;
@@ -200,7 +195,6 @@ pub struct ConnectionStats {
 
 impl Drop for SyncManager {
     fn drop(&mut self) {
-        // Note: Can't use async in Drop, connections will be cleaned up when Arc is dropped
     }
 }
 
@@ -208,6 +202,5 @@ impl Drop for SyncManager {
 mod tests {
     #[tokio::test]
     async fn test_sync_manager_creation() {
-        // Test implementation requires mock DatabaseService
     }
 }

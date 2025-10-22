@@ -22,30 +22,23 @@ export class TerminalBufferManager {
         return;
       }
 
-      // Initialize buffer if not exists
       if (!this.localBuffers.has(terminalId)) {
         this.localBuffers.set(terminalId, []);
       }
 
       const buffer = this.localBuffers.get(terminalId)!;
 
-      // Split data by lines and add to buffer
       const lines = data.split("\n");
 
-      // If the data doesn't end with newline, the last element should be merged with existing last line
       if (buffer.length > 0 && !data.startsWith("\n") && lines.length > 0) {
         buffer[buffer.length - 1] += lines[0];
         lines.shift(); // Remove first element as it's already merged
       }
 
-      // Add remaining lines
       buffer.push(...lines);
 
-      // Trim buffer to prevent memory overflow
       this.trimLocalBuffer(buffer);
-    } catch (error) {
-      // Handle error silently
-    }
+    } catch (error) {}
   }
 
   /**
@@ -110,11 +103,10 @@ export class TerminalBufferManager {
     terminal: SimpleTerminal,
   ): Promise<boolean> {
     try {
-        // Use incremental loader without feedback (faster)
-        return await this.incrementalLoader.loadBuffer(terminalId, terminal, {
-          chunkSize: 200, // Larger chunks when no progress feedback needed
-          delayBetweenChunks: 1, // Minimal delay
-        });
+      return await this.incrementalLoader.loadBuffer(terminalId, terminal, {
+        chunkSize: 200, // Larger chunks when no progress feedback needed
+        delayBetweenChunks: 1, // Minimal delay
+      });
     } catch (error) {
       console.error(
         `Failed to restore buffer for terminal ${terminalId}:`,
@@ -135,19 +127,16 @@ export class TerminalBufferManager {
     terminal: SimpleTerminal,
   ): Promise<boolean> {
     try {
-      // Check if buffer exists in backend
       const hasBuffer = await this.hasBufferInBackend(terminalId);
       if (!hasBuffer) {
         return false;
       }
 
-      // Get buffer from backend
       const bufferString = await this.getBufferFromBackend(terminalId);
       if (!bufferString) {
         return false;
       }
 
-      // Clear terminal and write buffer
       terminal.clear();
       terminal.write(bufferString);
 
@@ -185,7 +174,6 @@ export class TerminalBufferManager {
    */
   async triggerCleanup(): Promise<void> {
     try {
-      // Get list of active terminal IDs from terminal manager first
       const activeTerminals = await bufferService.listTerminals();
       const activeTerminalIds = Array.isArray(activeTerminals)
         ? activeTerminals.map((t: any) => t.id)

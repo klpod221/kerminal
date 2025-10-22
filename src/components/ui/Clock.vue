@@ -19,7 +19,6 @@ let intervalId: number | null = null;
 const updateDateTime = () => {
   const now = new Date();
 
-  // Format time as HH:MM:SS
   currentTime.value = now.toLocaleTimeString("en-US", {
     hour12: false,
     hour: "2-digit",
@@ -27,7 +26,6 @@ const updateDateTime = () => {
     second: "2-digit",
   });
 
-  // Format date as DD-MM-YYYY
   currentDate.value = now
     .toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -38,10 +36,8 @@ const updateDateTime = () => {
 };
 
 onMounted(() => {
-  // Update immediately
   updateDateTime();
 
-  // Update every second
   intervalId = window.setInterval(updateDateTime, 1000);
 });
 

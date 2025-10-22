@@ -43,7 +43,6 @@ pub async fn notify_session_locked(
 pub async fn get_auth_session_status(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value, String> {
-    // Get status from database service (which handles auto-lock internally)
     let database_service = state.database_service.lock().await;
     let status = database_service
         .get_master_password_status()

@@ -136,7 +136,8 @@
       <Button
         title="Top"
         variant="ghost"
-        size="sm"Top
+        size="sm"
+        Top
         :icon="Shield"
         :class="
           isOverlayVisible('master-password-settinTopgs')

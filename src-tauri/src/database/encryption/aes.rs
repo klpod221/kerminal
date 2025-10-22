@@ -14,17 +14,14 @@ impl AESEncryption {
         let cipher = Aes256Gcm::new_from_slice(key)
             .map_err(|e| EncryptionError::InvalidKey(e.to_string()))?;
 
-        // Generate random 12-byte nonce
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
 
-        // Encrypt the data
         let ciphertext = cipher
             .encrypt(nonce, data)
             .map_err(|e| EncryptionError::EncryptionFailed(e.to_string()))?;
 
-        // Combine nonce + ciphertext
         let mut result = Vec::with_capacity(12 + ciphertext.len());
         result.extend_from_slice(&nonce_bytes);
         result.extend_from_slice(&ciphertext);
@@ -41,11 +38,9 @@ impl AESEncryption {
         let cipher = Aes256Gcm::new_from_slice(key)
             .map_err(|e| EncryptionError::InvalidKey(e.to_string()))?;
 
-        // Extract nonce and ciphertext
         let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
         let nonce = Nonce::from_slice(nonce_bytes);
 
-        // Decrypt the data
         let plaintext = cipher
             .decrypt(nonce, ciphertext)
             .map_err(|e| EncryptionError::DecryptionFailed(e.to_string()))?;

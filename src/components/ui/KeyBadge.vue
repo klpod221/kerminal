@@ -64,7 +64,6 @@ const formatKey = (key: string): string => {
     Home: "Home",
     End: "End",
     Insert: "Ins",
-    // Function keys
     F1: "F1",
     F2: "F2",
     F3: "F3",
@@ -77,7 +76,6 @@ const formatKey = (key: string): string => {
     F10: "F10",
     F11: "F11",
     F12: "F12",
-    // Numbers and letters remain as-is
     "0": "0",
     "1": "1",
     "2": "2",
@@ -88,7 +86,6 @@ const formatKey = (key: string): string => {
     "7": "7",
     "8": "8",
     "9": "9",
-    // Special characters
     "\\": "\\",
     "-": "-",
     "=": "=",

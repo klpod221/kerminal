@@ -118,17 +118,14 @@ const props = withDefaults(defineProps<ColorPickerProps>(), {
 
 const emit = defineEmits(["update:modelValue", "blur", "focus"]);
 
-// Refs
 const pickerRef = ref<HTMLInputElement>();
 const errorMessage = ref(props.errorMessage || "");
 const touched = ref(false);
 const hexInput = ref("");
 const localError = ref("");
 
-// Injected from parent Form
 const formContext = inject<FormContext>("form-context");
 
-// Computed
 const pickerId = computed(
   () => props.id || `color-picker-${Math.random().toString(36).substr(2, 9)}`,
 );
@@ -179,7 +176,6 @@ const hexStateClasses = computed(() => {
   return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500";
 });
 
-// Methods
 const validate = (): string => {
   if (!props.rules || props.rules.length === 0) {
     return "";
@@ -226,7 +222,6 @@ function isValidHex(hex: string): boolean {
   return /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
 }
 
-// Lifecycle hooks
 onMounted(() => {
   if (formContext) {
     formContext.register({
@@ -243,7 +238,6 @@ onUnmounted(() => {
   }
 });
 
-// Sync hex input when modelValue changes externally
 watch(
   () => props.modelValue,
   (val) => {
@@ -255,7 +249,6 @@ watch(
   { immediate: true },
 );
 
-// Expose methods for parent components
 defineExpose({
   focus: () => pickerRef.value?.focus(),
   blur: () => pickerRef.value?.blur(),

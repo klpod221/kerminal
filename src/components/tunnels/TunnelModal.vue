@@ -258,17 +258,14 @@ import Textarea from "../ui/Textarea.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import { Plus, Edit3 } from "lucide-vue-next";
 
-// Props
 const props = defineProps<{
   tunnelId?: string | null;
 }>();
 
-// Store and composables
 const tunnelStore = useTunnelStore();
 const sshStore = useSSHStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
 
-// Use overlay prop with fallback to direct prop
 const tunnelId = getOverlayProp(
   "tunnel-modal",
   "tunnelId",
@@ -277,7 +274,6 @@ const tunnelId = getOverlayProp(
 );
 const isEditing = computed(() => !!tunnelId.value);
 
-// Get tunnel data
 const tunnel = computed(() => {
   if (!tunnelId.value) return null;
   const tunnelWithStatus = tunnelStore.tunnels.find(
@@ -286,7 +282,6 @@ const tunnel = computed(() => {
   return tunnelWithStatus || null;
 });
 
-// Form data
 const form = reactive({
   name: "",
   description: "",
@@ -299,11 +294,9 @@ const form = reactive({
   autoStart: false,
 });
 
-// Form state
 const tunnelForm = ref<InstanceType<typeof Form> | null>(null);
 const submitting = ref(false);
 
-// Tunnel types
 const tunnelTypes = [
   {
     value: "Remote" as TunnelType,
@@ -322,7 +315,6 @@ const tunnelTypes = [
   },
 ];
 
-// Profile options for Select component
 const profileOptions = computed(() =>
   sshStore.profiles.map((profile) => ({
     value: profile.id,
@@ -330,9 +322,6 @@ const profileOptions = computed(() =>
   })),
 );
 
-// Form validation will be handled by Form component with rules
-
-// Actions
 const handleSubmit = async () => {
   const isValid = await tunnelForm.value?.validate();
   if (!isValid) return;
@@ -369,7 +358,6 @@ const handleSubmit = async () => {
   }
 };
 
-// Watch tunnel type changes to set appropriate defaults
 watch(
   () => form.tunnelType,
   (newType) => {
@@ -387,7 +375,6 @@ watch(
   },
 );
 
-// Initialize form
 const initializeForm = () => {
   if (tunnel.value) {
     form.name = tunnel.value.name;
@@ -400,7 +387,6 @@ const initializeForm = () => {
     form.remotePort = tunnel.value.remotePort || 0;
     form.autoStart = tunnel.value.autoStart;
   } else {
-    // Reset to defaults for new tunnel
     form.name = "";
     form.description = "";
     form.profileId = "";
@@ -413,41 +399,32 @@ const initializeForm = () => {
   }
 };
 
-// Watch for tunnel data changes
 watch(
   () => tunnel.value,
   (newTunnel, oldTunnel) => {
-    // Only reinitialize if tunnel actually changed
     if (newTunnel !== oldTunnel) {
       initializeForm();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
-// Watch for tunnelId changes
 watch(
   tunnelId,
   async (newId) => {
-    // Load tunnel data when tunnelId changes
     if (newId) {
       await tunnelStore.loadTunnels();
     }
 
-    // Initialize form after tunnels are loaded
     setTimeout(() => {
       initializeForm();
     }, 100);
   },
-  { immediate: true }
+  { immediate: true },
 );
 
-// Lifecycle
 onMounted(async () => {
-  await Promise.all([
-    sshStore.loadProfiles(),
-    tunnelStore.loadTunnels()
-  ]);
+  await Promise.all([sshStore.loadProfiles(), tunnelStore.loadTunnels()]);
 
   initializeForm();
 });

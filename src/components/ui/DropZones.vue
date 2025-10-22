@@ -91,7 +91,6 @@ interface DropZonesEmits {
 const props = defineProps<DropZonesProps>();
 const emit = defineEmits<DropZonesEmits>();
 
-// Active drop zone state
 const activeZone = ref<"top" | "bottom" | "left" | "right" | "center" | null>(
   null,
 );
@@ -104,7 +103,6 @@ let hideActiveZoneTimeout: ReturnType<typeof setTimeout> | null = null;
 const setActiveZone = (
   zone: "top" | "bottom" | "left" | "right" | "center",
 ): void => {
-  // Clear any pending timeout
   if (hideActiveZoneTimeout) {
     clearTimeout(hideActiveZoneTimeout);
     hideActiveZoneTimeout = null;
@@ -137,7 +135,6 @@ const onDragEnter = (event: DragEvent): void => {
  * @param {DragEvent} event - The drag event
  */
 const onDragLeave = (event: DragEvent): void => {
-  // Only clear active zone if leaving the entire drop zones container
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
   const isLeavingContainer =
     event.clientX < rect.left ||
@@ -146,7 +143,6 @@ const onDragLeave = (event: DragEvent): void => {
     event.clientY > rect.bottom;
 
   if (isLeavingContainer) {
-    // Add a small delay before clearing to prevent flickering
     hideActiveZoneTimeout = setTimeout(() => {
       activeZone.value = null;
     }, 50);
@@ -163,17 +159,18 @@ const onDrop = (event: DragEvent): void => {
   if (event.dataTransfer) {
     const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
-      const dragData = safeJsonParse<{tab: Tab; sourcePanelId: string} | null>(draggedTabData, null);
+      const dragData = safeJsonParse<{
+        tab: Tab;
+        sourcePanelId: string;
+      } | null>(draggedTabData, null);
       if (!dragData) return;
 
       const draggedTab = dragData.tab;
       const sourcePanelId = dragData.sourcePanelId;
 
       if (activeZone.value && activeZone.value !== "center") {
-        // Split panel in the specified direction
         emit("splitPanel", activeZone.value, draggedTab, sourcePanelId);
       } else if (activeZone.value === "center") {
-        // Move tab to existing panel (only if from different panel)
         if (sourcePanelId !== props.panelId) {
           emit("moveTab", draggedTab, sourcePanelId);
         }
@@ -181,7 +178,6 @@ const onDrop = (event: DragEvent): void => {
     }
   }
 
-  // Reset active zone
   if (hideActiveZoneTimeout) {
     clearTimeout(hideActiveZoneTimeout);
     hideActiveZoneTimeout = null;

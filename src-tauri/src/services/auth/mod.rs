@@ -76,7 +76,6 @@ impl AuthService {
         old_password: String,
         new_password: String,
     ) -> DatabaseResult<()> {
-        // Validate that passwords are provided
         if old_password.is_empty() {
             return Err(DatabaseError::ValidationError(
                 "Current password is required".to_string(),
@@ -89,7 +88,6 @@ impl AuthService {
             ));
         }
 
-        // Validate new password strength (basic checks)
         if new_password.len() < 8 {
             return Err(DatabaseError::ValidationError(
                 "New password must be at least 8 characters long".to_string(),

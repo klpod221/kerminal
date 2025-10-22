@@ -69,13 +69,11 @@ export class IncrementalBufferLoader {
     } = options;
 
     try {
-      // Check if terminal has buffer first
       const hasBuffer = await this.checkHasBuffer(terminalId);
       if (!hasBuffer) {
         return false;
       }
 
-      // Clear terminal before loading
       terminal.clear();
 
       let currentLine = 0;
@@ -84,12 +82,10 @@ export class IncrementalBufferLoader {
       let isFirstChunk = true;
 
       while (true) {
-        // Check for cancellation
         if (signal?.aborted) {
           throw new Error("Buffer loading was cancelled");
         }
 
-        // Load chunk
         const chunk = await this.loadChunk(terminalId, currentLine, chunkSize);
 
         if (isFirstChunk) {
@@ -97,14 +93,11 @@ export class IncrementalBufferLoader {
           isFirstChunk = false;
         }
 
-        // If no data in this chunk, we're done
         if (chunk.data.length === 0 && !chunk.hasMore) {
           break;
         }
 
-        // Write chunk data to terminal
         if (chunk.data.length > 0) {
-          // Add newline between chunks if not the first chunk and data doesn't start with newline
           const dataToWrite =
             currentLine > 0 && !chunk.data.startsWith("\n")
               ? "\n" + chunk.data
@@ -113,7 +106,6 @@ export class IncrementalBufferLoader {
           terminal.write(dataToWrite);
         }
 
-        // Update progress
         currentChunk++;
         const loadedLines = chunk.endLine;
         const estimatedTotalChunks = Math.ceil(totalLines / chunkSize);
@@ -128,15 +120,12 @@ export class IncrementalBufferLoader {
           });
         }
 
-        // Move to next chunk
         currentLine = chunk.endLine;
 
-        // Check if we have more data
         if (!chunk.hasMore) {
           break;
         }
 
-        // Small delay to prevent blocking UI
         if (delayBetweenChunks > 0) {
           await this.delay(delayBetweenChunks);
         }
@@ -165,7 +154,6 @@ export class IncrementalBufferLoader {
         return null;
       }
 
-      // Load just the first chunk to get total lines info
       const chunk = await this.loadChunk(terminalId, 0, 1);
       return { totalLines: chunk.totalLines };
     } catch (error) {
@@ -207,8 +195,9 @@ export class IncrementalBufferLoader {
         hasMore: chunk.hasMore || false,
       };
     } catch (error) {
-      message.error(`Failed to load chunk for terminal ${terminalId}: ${error}`);
-      // Return empty chunk on error
+      message.error(
+        `Failed to load chunk for terminal ${terminalId}: ${error}`,
+      );
       return {
         terminalId,
         startLine,

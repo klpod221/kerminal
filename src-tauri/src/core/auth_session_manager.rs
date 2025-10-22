@@ -109,7 +109,6 @@ impl AuthSessionManager {
                 match db_guard.is_session_valid().await {
                     Ok(is_valid) => {
                         if !is_valid {
-                            // Session was expired and auto-locked by backend
                             let _ = event_sender.send(AuthEvent::SessionLocked {
                                 timestamp: Utc::now(),
                                 reason: SessionLockReason::Timeout,
@@ -117,7 +116,6 @@ impl AuthSessionManager {
                         }
                     }
                     Err(_) => {
-                        // Error checking session - consider it locked
                         let _ = event_sender.send(AuthEvent::SessionLocked {
                             timestamp: Utc::now(),
                             reason: SessionLockReason::Error("Session check failed".to_string()),
@@ -141,7 +139,6 @@ impl AuthSessionManager {
 
     /// Handle manual unlock
     pub async fn on_session_unlocked(&self) -> DatabaseResult<()> {
-        // Broadcast session unlocked event
         let _ = self.event_sender.send(AuthEvent::SessionUnlocked {
             timestamp: Utc::now(),
             via_auto_unlock: false,
@@ -152,7 +149,6 @@ impl AuthSessionManager {
 
     /// Handle manual lock
     pub async fn on_session_locked(&self, reason: SessionLockReason) -> DatabaseResult<()> {
-        // Broadcast session locked event
         let _ = self.event_sender.send(AuthEvent::SessionLocked {
             timestamp: Utc::now(),
             reason,
@@ -164,7 +160,6 @@ impl AuthSessionManager {
 
 impl Drop for AuthSessionManager {
     fn drop(&mut self) {
-        // Ensure monitoring is stopped when the manager is dropped
         if let Some(handle) = self.session_check_handle.take() {
             handle.abort();
         }

@@ -1,22 +1,22 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import type { SSHKey, CreateSSHKeyRequest, UpdateSSHKeyRequest } from "../types/ssh";
+import type {
+  SSHKey,
+  CreateSSHKeyRequest,
+  UpdateSSHKeyRequest,
+} from "../types/ssh";
 import * as sshKeyService from "../services/sshKey";
 import { message } from "../utils/message";
 
 export const useSshKeyStore = defineStore("sshKey", () => {
-  // State
   const keys = ref<SSHKey[]>([]);
   const loading = ref(false);
 
-  // Computed
   const keyCount = computed(() => keys.value.length);
 
   const keysByName = computed(() => {
     return [...keys.value].sort((a, b) => a.name.localeCompare(b.name));
   });
-
-  // Actions
 
   /**
    * Load all SSH keys from backend
@@ -54,7 +54,10 @@ export const useSshKeyStore = defineStore("sshKey", () => {
   /**
    * Update an existing SSH key
    */
-  async function updateKey(id: string, request: UpdateSSHKeyRequest): Promise<SSHKey> {
+  async function updateKey(
+    id: string,
+    request: UpdateSSHKeyRequest,
+  ): Promise<SSHKey> {
     loading.value = true;
     try {
       const updatedKey = await sshKeyService.updateSSHKey(id, request);
@@ -78,13 +81,12 @@ export const useSshKeyStore = defineStore("sshKey", () => {
   async function deleteKey(id: string, force = false): Promise<void> {
     loading.value = true;
     try {
-      // Check if any profiles are using this key
       const count = await sshKeyService.countProfilesUsingKey(id);
 
       if (count > 0 && !force) {
         const key = keys.value.find((k) => k.id === id);
         throw new Error(
-          `Cannot delete "${key?.name}": ${count} profile(s) are using it`
+          `Cannot delete "${key?.name}": ${count} profile(s) are using it`,
         );
       }
 
@@ -106,11 +108,10 @@ export const useSshKeyStore = defineStore("sshKey", () => {
   async function importKeyFromFile(
     name: string,
     fileContent: string,
-    passphrase?: string
+    passphrase?: string,
   ): Promise<SSHKey> {
     loading.value = true;
     try {
-      // Create key with file content (keyType auto-detected by backend)
       const key = await sshKeyService.createSSHKey({
         name,
         privateKey: fileContent,
@@ -154,13 +155,10 @@ export const useSshKeyStore = defineStore("sshKey", () => {
   }
 
   return {
-    // State
     keys,
     loading,
-    // Computed
     keyCount,
     keysByName,
-    // Actions
     loadKeys,
     createKey,
     updateKey,

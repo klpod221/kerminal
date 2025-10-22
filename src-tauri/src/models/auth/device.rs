@@ -59,10 +59,8 @@ impl Device {
 
     /// Detect device type from system info
     fn detect_device_type() -> DeviceType {
-        // Simple detection logic - can be improved
         match std::env::consts::OS {
             "linux" => {
-                // Check if running on server (no GUI)
                 if std::env::var("DISPLAY").is_err() && std::env::var("WAYLAND_DISPLAY").is_err() {
                     DeviceType::Server
                 } else {
@@ -86,10 +84,8 @@ impl Device {
 
     /// Get OS version (simplified)
     fn get_os_version() -> String {
-        // This is a simplified version - could use sysinfo crate for more details
         match std::env::consts::OS {
             "linux" => {
-                // Try to read from /etc/os-release
                 std::fs::read_to_string("/etc/os-release")
                     .ok()
                     .and_then(|content| {

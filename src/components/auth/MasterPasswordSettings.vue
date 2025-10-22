@@ -117,10 +117,7 @@
   />
 
   <!-- Reset Confirmation Modal -->
-  <ResetConfirmModal
-    @confirm="onResetConfirmed"
-    @cancel="onResetCancelled"
-  />
+  <ResetConfirmModal @confirm="onResetConfirmed" @cancel="onResetCancelled" />
 </template>
 
 <script setup lang="ts">
@@ -139,12 +136,10 @@ import Card from "../ui/Card.vue";
 import PasswordConfirmModal from "./PasswordConfirmModal.vue";
 import ResetConfirmModal from "./ResetConfirmModal.vue";
 
-// State
 const isLoading = ref(false);
 const autoUnlockEnabled = ref(false);
 const autoLockTimeout = ref(0);
 
-// Timeout options
 const timeoutOptions = [
   { value: 0, label: "Never" },
   { value: 5, label: "5 minutes" },
@@ -155,20 +150,15 @@ const timeoutOptions = [
   { value: 240, label: "4 hours" },
 ];
 
-// Stores and composables
 const authStore = useAuthStore();
 const { openOverlay, closeOverlay } = useOverlay();
 
-// Event handlers
 const handleAutoUnlockToggle = async () => {
   let password = null;
 
-  // If enabling auto-unlock, we need to confirm with password first
   if (autoUnlockEnabled.value) {
-    // Show confirmation modal with password input
     const result = await showPasswordConfirmationModal();
     if (!result.confirmed) {
-      // Revert the toggle if user cancels
       autoUnlockEnabled.value = false;
       return;
     }
@@ -193,25 +183,26 @@ const handleAutoUnlockToggle = async () => {
     message.error(
       getErrorMessage(error, "Failed to update auto-unlock setting."),
     );
-    // Revert the toggle state on error
     autoUnlockEnabled.value = !autoUnlockEnabled.value;
   } finally {
     isLoading.value = false;
   }
 };
 
-// Password confirmation state
-let passwordConfirmResolver: ((result: { confirmed: boolean; password?: string }) => void) | null = null;
+let passwordConfirmResolver:
+  | ((result: { confirmed: boolean; password?: string }) => void)
+  | null = null;
 
-// Show password confirmation modal for enabling auto-unlock
-const showPasswordConfirmationModal = (): Promise<{ confirmed: boolean; password?: string }> => {
+const showPasswordConfirmationModal = (): Promise<{
+  confirmed: boolean;
+  password?: string;
+}> => {
   return new Promise((resolve) => {
     passwordConfirmResolver = resolve;
     openOverlay("password-confirm-modal");
   });
 };
 
-// Handle password confirmation events
 const onPasswordConfirmed = (password: string) => {
   if (passwordConfirmResolver) {
     passwordConfirmResolver({ confirmed: true, password });
@@ -243,11 +234,9 @@ const openChangePasswordModal = () => {
   openOverlay("master-password-change");
 };
 
-// Reset confirmation state
 let resetConfirmResolver: ((confirmed: boolean) => void) | null = null;
 
 const handleResetPassword = async () => {
-  // Show custom confirmation modal
   const confirmed = await showResetConfirmationModal();
   if (!confirmed) return;
 
@@ -271,7 +260,6 @@ const handleResetPassword = async () => {
   }
 };
 
-// Show reset confirmation modal
 const showResetConfirmationModal = (): Promise<boolean> => {
   return new Promise((resolve) => {
     resetConfirmResolver = resolve;
@@ -279,7 +267,6 @@ const showResetConfirmationModal = (): Promise<boolean> => {
   });
 };
 
-// Handle reset confirmation events
 const onResetConfirmed = () => {
   if (resetConfirmResolver) {
     resetConfirmResolver(true);
@@ -297,16 +284,13 @@ const onResetCancelled = () => {
 const handleTimeoutChange = async () => {
   isLoading.value = true;
   try {
-    // Update master password config with both settings
     await authStore.updateMasterPasswordConfig({
       autoUnlock: autoUnlockEnabled.value,
       autoLockTimeout: autoLockTimeout.value,
     });
 
-    // Update local security settings with converted number
     authStore.securitySettings.autoLockTimeout = Number(autoLockTimeout.value);
 
-    // Reset auto-lock timer with new timeout
     authStore.resetAutoLockTimer();
 
     message.success(
@@ -325,7 +309,6 @@ const handleTimeoutChange = async () => {
   }
 };
 
-// Watchers
 watch(
   () => authStore.status.autoUnlockEnabled,
   (newVal) => {

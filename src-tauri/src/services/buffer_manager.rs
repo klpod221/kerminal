@@ -30,28 +30,23 @@ impl TerminalBuffer {
     fn append_data(&mut self, data: &str, max_lines: usize) {
         let new_lines: Vec<&str> = data.split('\n').collect();
 
-        // If buffer is not empty and data doesn't start with newline,
-        // the last element should be merged with existing last line
         if !self.lines.is_empty() && !data.starts_with('\n') && !new_lines.is_empty() {
             if let Some(last_line) = self.lines.last_mut() {
                 last_line.push_str(new_lines[0]);
                 self.total_bytes += new_lines[0].len();
             }
 
-            // Add remaining lines
             for line in new_lines.iter().skip(1) {
                 self.lines.push(line.to_string());
                 self.total_bytes += line.len() + 1; // +1 for newline
             }
         } else {
-            // Add all lines
             for line in new_lines {
                 self.lines.push(line.to_string());
                 self.total_bytes += line.len() + 1; // +1 for newline
             }
         }
 
-        // Trim buffer if it exceeds max lines
         if self.lines.len() > max_lines {
             let lines_to_remove = self.lines.len() - max_lines;
             for _ in 0..lines_to_remove {
@@ -120,11 +115,9 @@ impl TerminalBufferManager {
             let lines = buffer.get_lines();
             let total_lines = lines.len();
 
-            // Calculate actual range
             let end_line = std::cmp::min(start_line + chunk_size, total_lines);
             let has_more = end_line < total_lines;
 
-            // Extract chunk data
             let chunk_lines = if start_line < total_lines {
                 &lines[start_line..end_line]
             } else {
@@ -142,7 +135,6 @@ impl TerminalBufferManager {
                 has_more,
             }
         } else {
-            // Return empty chunk if terminal not found
             TerminalBufferChunk {
                 terminal_id: terminal_id.to_string(),
                 start_line: 0,
@@ -189,7 +181,6 @@ impl TerminalBufferManager {
     pub async fn cleanup_orphaned_buffers(&self, active_terminal_ids: &[String]) {
         let mut buffers = self.buffers.write().await;
 
-        // Collect terminal IDs to remove
         let mut to_remove = Vec::new();
         for terminal_id in buffers.keys() {
             if !active_terminal_ids.contains(terminal_id) {
@@ -197,7 +188,6 @@ impl TerminalBufferManager {
             }
         }
 
-        // Remove orphaned buffers
         for terminal_id in to_remove {
             buffers.remove(&terminal_id);
         }

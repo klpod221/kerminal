@@ -44,7 +44,6 @@ impl SyncScheduler {
         *is_running = true;
         drop(is_running);
 
-        // Spawn background task
         let scheduler = self.clone_for_task();
         tokio::spawn(async move {
             scheduler.run_loop().await;
@@ -84,19 +83,16 @@ impl SyncScheduler {
 
     /// Main scheduler loop
     async fn run_loop(&self) {
-        // Check every minute
         let mut ticker = interval(TokioDuration::from_secs(60));
 
         loop {
             ticker.tick().await;
 
-            // Check if still running
             let is_running = *self.is_running.lock().await;
             if !is_running {
                 break;
             }
 
-            // Process scheduled syncs
             if let Err(e) = self.process_scheduled_syncs().await {
                 eprintln!("Scheduler error: {}", e);
             }
@@ -111,20 +107,16 @@ impl SyncScheduler {
             return Ok(());
         }
 
-        // Get all external database configs
         let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let all_configs = local_db.read().await.get_all_external_databases().await?;
 
         for config in all_configs {
-            // Check if database is enabled for auto-sync
             if !enabled_databases.contains(&config.base.id) {
                 continue;
             }
 
-            // Check if sync is due based on global sync_settings
             if self.is_sync_due(&config).await? {
-                // Execute sync
                 if let Err(e) = self.execute_scheduled_sync(&config).await {
                     eprintln!("Failed to sync database {}: {}", config.name, e);
                 }
@@ -138,7 +130,6 @@ impl SyncScheduler {
     async fn is_sync_due(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<bool> {
         let db_service = self.database_service.lock().await;
 
-        // Get last sync log
         let local_db = db_service.get_local_database();
         let logs = local_db
             .read()
@@ -156,7 +147,6 @@ impl SyncScheduler {
             _ => return Ok(true), // Last sync didn't complete, retry
         };
 
-        // Get interval from sync_settings
         let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         let guard = local.read().await;
@@ -175,7 +165,6 @@ impl SyncScheduler {
     /// Execute a scheduled sync
     async fn execute_scheduled_sync(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<()> {
 
-        // Execute bidirectional sync
         let result = self.sync_engine.sync(config).await;
 
         match result {
@@ -224,7 +213,6 @@ mod tests {
 
     #[tokio::test]
     async fn test_scheduler_start_stop() {
-        // Test implementation requires mock DatabaseService and SyncEngine
     }
 
     #[test]

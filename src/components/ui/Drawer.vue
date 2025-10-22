@@ -140,7 +140,6 @@ const widthClass = computed(() => {
   return widthMap[props.width];
 });
 
-// Use overlay system visibility instead of props.visible
 const isVisible = computed(() => overlayStore.isVisible(props.id));
 const isTransitioning = computed(() => isOverlayTransitioning(props.id));
 
@@ -165,12 +164,16 @@ const handleOverlayClick = (): void => {
  * Handle keyboard events - close drawer on Esc key
  */
 const handleKeydown = (event: KeyboardEvent): void => {
-  if (event.key === "Escape" && props.closeOnEsc && isVisible.value && !isTransitioning.value) {
+  if (
+    event.key === "Escape" &&
+    props.closeOnEsc &&
+    isVisible.value &&
+    !isTransitioning.value
+  ) {
     close();
   }
 };
 
-// Register overlay on mount
 onMounted(() => {
   registerOverlay({
     id: props.id,
@@ -194,13 +197,11 @@ onMounted(() => {
   });
 });
 
-// Unregister on unmount
 onUnmounted(() => {
   unregisterOverlay(props.id);
   document.removeEventListener("keydown", handleKeydown);
 });
 
-// Watch for visibility changes from parent component
 watch(
   () => props.visible,
   (newVisible) => {
@@ -212,13 +213,10 @@ watch(
   },
 );
 
-// Watch for drawer visibility to manage keyboard event listener
 watch(isVisible, (visible) => {
   if (visible) {
-    // Add keyboard event listener when drawer is visible
     document.addEventListener("keydown", handleKeydown);
   } else {
-    // Remove keyboard event listener when drawer is hidden
     document.removeEventListener("keydown", handleKeydown);
   }
 });

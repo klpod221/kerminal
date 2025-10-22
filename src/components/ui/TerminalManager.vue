@@ -41,7 +41,6 @@ const props = defineProps<TerminalManagerProps>();
 const terminalRefs = ref<Record<string, ComponentPublicInstance | null>>({});
 let outputUnlisten: (() => void) | null = null;
 
-// Get buffer manager instance
 const bufferManager = TerminalBufferManager.getInstance();
 
 const emit = defineEmits(["terminal-ready"]);
@@ -75,7 +74,6 @@ const setTerminalRef = (
   terminalId: string,
   el: ComponentPublicInstance | Element | null,
 ): void => {
-  // Check if el is a Vue component instance (has $el property)
   if (el && typeof el === "object" && "$el" in el) {
     terminalRefs.value[terminalId] = el as ComponentPublicInstance;
   } else {
@@ -86,7 +84,6 @@ const setTerminalRef = (
 const onTerminalReady = async (terminalId: string): Promise<void> => {
   emit("terminal-ready", terminalId);
 
-  // Try to restore buffer when terminal is ready
   const terminalInstance = terminalRefs.value[terminalId];
   if (terminalInstance && "restoreBuffer" in terminalInstance) {
     const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
@@ -102,7 +99,6 @@ const onTerminalReady = async (terminalId: string): Promise<void> => {
     }
   }
 
-  // Check if this terminal should be focused when ready (e.g., from split operation)
   const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
   const shouldFocusOnReady =
     matchingTerminal?.shouldFocusOnReady ||
@@ -118,13 +114,11 @@ const onTerminalReady = async (terminalId: string): Promise<void> => {
   }
 };
 
-// Watch for active terminal changes to ensure proper focus
 watch(
   () => props.activeTerminalId,
   async (newActiveId) => {
     if (newActiveId && terminalRefs.value[newActiveId]) {
       await nextTick();
-      // Add a small delay to ensure the terminal is fully visible
       setTimeout(() => {
         const terminalInstance = terminalRefs.value[newActiveId];
         if (terminalInstance && "fitAndFocus" in terminalInstance) {
@@ -136,14 +130,11 @@ watch(
   { immediate: true },
 );
 
-// Listen to terminal output from backend
 onMounted(async () => {
   try {
-    // Listen to terminal output from backend
     outputUnlisten = await listenToTerminalOutput((terminalData) => {
       const backendTerminalId = terminalData.terminalId;
 
-      // Find the terminal instance that matches this backend terminal ID
       const matchingTerminal = props.terminals.find(
         (t) => t.backendTerminalId === backendTerminalId,
       );
@@ -157,9 +148,7 @@ onMounted(async () => {
       }
     });
 
-    // Listen for window focus events to auto-focus active terminal
     const handleWindowFocus = (): void => {
-      // Small delay to ensure proper focus
       setTimeout(() => {
         focusActiveTerminal();
       }, 100);
@@ -167,7 +156,6 @@ onMounted(async () => {
 
     window.addEventListener("focus", handleWindowFocus);
 
-    // Store the cleanup function
     const originalUnlisten = outputUnlisten;
     outputUnlisten = () => {
       if (originalUnlisten) originalUnlisten();
@@ -178,13 +166,11 @@ onMounted(async () => {
   }
 });
 
-// Cleanup output listener
 onBeforeUnmount(() => {
   if (outputUnlisten) {
     outputUnlisten();
   }
 
-  // Cleanup local buffers for terminals that are being unmounted
   Object.keys(terminalRefs.value).forEach((terminalId) => {
     const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
     if (matchingTerminal && matchingTerminal.backendTerminalId) {

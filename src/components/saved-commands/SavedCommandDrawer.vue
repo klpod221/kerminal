@@ -70,7 +70,10 @@
 
         <!-- Stats -->
         <div class="flex items-center gap-4 text-xs text-gray-400">
-          <span>Showing {{ filteredCommandCount }} of {{ savedCommandStore.commandCount }} commands</span>
+          <span
+            >Showing {{ filteredCommandCount }} of
+            {{ savedCommandStore.commandCount }} commands</span
+          >
           <span v-if="activeFilter !== 'all'" class="text-blue-400">
             • Filtered by {{ activeFilterLabel }}
           </span>
@@ -249,12 +252,10 @@ const savedCommandStore = useSavedCommandStore();
 const showSuccess = (msg: string) => message.success(msg);
 const showError = (msg: string) => message.error(msg);
 
-// State
 const searchQuery = ref("");
 const activeFilter = ref<"all" | "favorites" | "recent" | "unused">("all");
 const sortBy = ref<"name" | "lastUsed" | "usageCount" | "createdAt">("name");
 
-// Icon mapping
 const iconComponents: Record<string, any> = {
   folder: Folder,
   terminal: Terminal,
@@ -270,10 +271,8 @@ const iconComponents: Record<string, any> = {
   monitor: Monitor,
 };
 
-// Computed
 const sortOrder = computed(() => {
-  // Name should be ascending (A-Z), others descending (newest/highest first)
-  return sortBy.value === 'name' ? 'asc' : 'desc';
+  return sortBy.value === "name" ? "asc" : "desc";
 });
 
 const filteredCommands = computed(() => {
@@ -299,23 +298,21 @@ const activeFilterLabel = computed(() => {
 });
 
 const filteredGroupsData = computed(() => {
-  // Get sort function based on current sortBy
   const getSortValue = (command: SavedCommand): number | string => {
     switch (sortBy.value) {
-      case 'name':
+      case "name":
         return command.name.toLowerCase();
-      case 'lastUsed':
+      case "lastUsed":
         return command.lastUsedAt ? new Date(command.lastUsedAt).getTime() : 0;
-      case 'usageCount':
+      case "usageCount":
         return command.usageCount;
-      case 'createdAt':
+      case "createdAt":
         return new Date(command.createdAt).getTime();
       default:
         return command.name.toLowerCase();
     }
   };
 
-  // Group the filtered commands
   return savedCommandStore
     .getGroupedCommandsData(searchQuery.value)
     .map((groupData) => {
@@ -323,18 +320,17 @@ const filteredGroupsData = computed(() => {
         filteredCommands.value.some((fc) => fc.id === command.id),
       );
 
-      // Sort commands within the group
       const sortedCommands = [...filteredGroupCommands].sort((a, b) => {
         const aVal = getSortValue(a);
         const bVal = getSortValue(b);
 
-        if (typeof aVal === 'string' && typeof bVal === 'string') {
+        if (typeof aVal === "string" && typeof bVal === "string") {
           const comparison = aVal.localeCompare(bVal);
-          return sortOrder.value === 'asc' ? comparison : -comparison;
+          return sortOrder.value === "asc" ? comparison : -comparison;
         }
 
         const comparison = (aVal as number) - (bVal as number);
-        return sortOrder.value === 'asc' ? comparison : -comparison;
+        return sortOrder.value === "asc" ? comparison : -comparison;
       });
 
       return {
@@ -349,7 +345,6 @@ const filteredGroupsData = computed(() => {
     );
 });
 
-// Methods
 const getIconComponent = (iconName: string) => {
   return iconComponents[iconName] || Terminal;
 };
@@ -451,7 +446,6 @@ const handleError = (error: string) => {
   showError(error);
 };
 
-// Load data on mount
 onMounted(async () => {
   try {
     await savedCommandStore.loadAll();
@@ -461,7 +455,6 @@ onMounted(async () => {
   }
 });
 
-// Watch for overlay visibility to refresh data
 watch(
   () => savedCommandStore.loading,
   (loading) => {

@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import Button from './Button.vue';
+import Button from "./Button.vue";
 
 interface Props {
   icon: any;
@@ -37,15 +37,21 @@ interface Props {
   description?: string;
   actionText?: string;
   actionIcon?: any;
-  actionVariant?: 'primary' | 'secondary' | 'success' | 'danger' | 'outline' | 'ghost';
-  actionSize?: 'sm' | 'md' | 'lg';
+  actionVariant?:
+    | "primary"
+    | "secondary"
+    | "success"
+    | "danger"
+    | "outline"
+    | "ghost";
+  actionSize?: "sm" | "md" | "lg";
 }
 
 withDefaults(defineProps<Props>(), {
   iconSize: 48,
-  iconClass: 'text-gray-500',
-  actionVariant: 'outline',
-  actionSize: 'sm',
+  iconClass: "text-gray-500",
+  actionVariant: "outline",
+  actionSize: "sm",
 });
 
 defineEmits<{

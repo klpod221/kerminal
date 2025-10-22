@@ -28,9 +28,7 @@
     </Form>
 
     <template #footer>
-      <Button variant="ghost" @click="handleCancel">
-        Cancel
-      </Button>
+      <Button variant="ghost" @click="handleCancel"> Cancel </Button>
       <Button
         variant="primary"
         :disabled="!password || isVerifying"
@@ -65,17 +63,14 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-// State
 const password = ref("");
 const errorMessage = ref("");
 const isVerifying = ref(false);
 const passwordInput = ref<InstanceType<typeof Input>>();
 
-// Stores and composables
 const { overlayStore, closeOverlay } = useOverlay();
 const authStore = useAuthStore();
 
-// Methods
 const handleConfirm = async () => {
   if (!password.value) {
     errorMessage.value = "Password is required";
@@ -86,13 +81,11 @@ const handleConfirm = async () => {
   errorMessage.value = "";
 
   try {
-    // Verify password by attempting unlock (this won't change auth state if already unlocked)
     const isValid = await authStore.unlock({ password: password.value });
 
     if (isValid) {
       emit("confirm", password.value);
       closeOverlay("password-confirm-modal");
-      // Reset state
       password.value = "";
       errorMessage.value = "";
     } else {
@@ -108,12 +101,10 @@ const handleConfirm = async () => {
 const handleCancel = () => {
   emit("cancel");
   closeOverlay("password-confirm-modal");
-  // Reset state
   password.value = "";
   errorMessage.value = "";
 };
 
-// Focus password input when modal opens
 watch(
   () => overlayStore.isVisible("password-confirm-modal"),
   (isVisible) => {

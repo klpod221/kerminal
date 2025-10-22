@@ -14,10 +14,19 @@
       <!-- Favorite button - always visible -->
       <Button
         variant="ghost"
-        :title="command.isFavorite ? 'Remove from favorites' : 'Add to favorites'"
+        :title="
+          command.isFavorite ? 'Remove from favorites' : 'Add to favorites'
+        "
         @click.stop="$emit('toggleFavorite', command)"
       >
-        <Star :size="14" :class="{ 'fill-current': command.isFavorite, 'text-yellow-400 hover:text-yellow-300': command.isFavorite, 'text-gray-600 hover:text-yellow-400': !command.isFavorite }" />
+        <Star
+          :size="14"
+          :class="{
+            'fill-current': command.isFavorite,
+            'text-yellow-400 hover:text-yellow-300': command.isFavorite,
+            'text-gray-600 hover:text-yellow-400': !command.isFavorite,
+          }"
+        />
       </Button>
     </div>
 
@@ -25,7 +34,9 @@
     <div class="flex-1 min-w-0 space-y-1.5">
       <!-- Title row -->
       <div class="flex items-center gap-2 flex-wrap">
-        <h4 class="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">
+        <h4
+          class="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors"
+        >
           {{ command.name }}
         </h4>
 
@@ -112,13 +123,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { SavedCommand } from "../../types/savedCommand";
-import {
-  Copy,
-  Star,
-  Edit3,
-  Trash2,
-  Clock,
-} from "lucide-vue-next";
+import { Copy, Star, Edit3, Trash2, Clock } from "lucide-vue-next";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import { safeJsonParse } from "../../utils/helpers";
@@ -140,8 +145,10 @@ const emit = defineEmits<{
 }>();
 
 const handleDelete = () => {
-  if (confirm(`Delete '${props.command.name}'? This action cannot be undone.`)) {
-    emit('delete', props.command);
+  if (
+    confirm(`Delete '${props.command.name}'? This action cannot be undone.`)
+  ) {
+    emit("delete", props.command);
   }
 };
 

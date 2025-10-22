@@ -109,18 +109,15 @@ impl SyncEngine {
     async fn push_internal(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<SyncStats> {
         use crate::services::sync::SyncSerializable;
 
-        // Ensure connection
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
         let mut stats = SyncStats::default();
 
-        // Get local database
         let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         let local_guard = local.read().await;
 
-        // Push SSH Profiles (always sync all tables)
         let profiles = local_guard.find_all_ssh_profiles().await?;
         let json_profiles: Vec<_> = profiles
             .iter()
@@ -131,7 +128,6 @@ impl SyncEngine {
             stats.total_synced += count;
         }
 
-        // Push SSH Groups
         let groups = local_guard.find_all_ssh_groups().await?;
         let json_groups: Vec<_> = groups
             .iter()
@@ -142,7 +138,6 @@ impl SyncEngine {
             stats.total_synced += count;
         }
 
-        // Push SSH Keys
         let keys = local_guard.find_all_ssh_keys().await?;
         let json_keys: Vec<_> = keys
             .iter()
@@ -153,7 +148,6 @@ impl SyncEngine {
             stats.total_synced += count;
         }
 
-        // Push Saved Command Groups
         let cmd_groups = local_guard.find_all_saved_command_groups().await?;
         let json_cmd_groups: Vec<_> = cmd_groups
             .iter()
@@ -164,7 +158,6 @@ impl SyncEngine {
             stats.total_synced += count;
         }
 
-        // Push Saved Commands
         let commands = local_guard.find_all_saved_commands().await?;
         let json_commands: Vec<_> = commands
             .iter()
@@ -182,22 +175,18 @@ impl SyncEngine {
     async fn pull_internal(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<SyncStats> {
         use crate::services::sync::SyncSerializable;
 
-        // Ensure connection
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
         let mut stats = SyncStats::default();
 
-        // Get last sync time for incremental sync
         let last_sync = self.get_last_sync_time(&config.base.id).await?;
 
-        // Get local database with write access
         let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
 
         let local_guard = local.write().await;
 
-        // Pull SSH Profiles (always sync all tables)
         let json_profiles = remote.pull_records("ssh_profiles", last_sync).await?;
         for json in json_profiles {
             if let Ok(profile) = crate::models::ssh::SSHProfile::from_json(&json) {
@@ -206,7 +195,6 @@ impl SyncEngine {
             }
         }
 
-        // Pull SSH Groups
         let json_groups = remote.pull_records("ssh_groups", last_sync).await?;
         for json in json_groups {
             if let Ok(group) = crate::models::ssh::SSHGroup::from_json(&json) {
@@ -215,7 +203,6 @@ impl SyncEngine {
             }
         }
 
-        // Pull SSH Keys
         let json_keys = remote.pull_records("ssh_keys", last_sync).await?;
         for json in json_keys {
             if let Ok(key) = crate::models::ssh::SSHKey::from_json(&json) {
@@ -224,7 +211,6 @@ impl SyncEngine {
             }
         }
 
-        // Pull Saved Command Groups
         let json_cmd_groups = remote.pull_records("saved_command_groups", last_sync).await?;
         for json in json_cmd_groups {
             if let Ok(group) = crate::models::saved_command::SavedCommandGroup::from_json(&json) {
@@ -233,7 +219,6 @@ impl SyncEngine {
             }
         }
 
-        // Pull Saved Commands
         let json_commands = remote.pull_records("saved_commands", last_sync).await?;
         for json in json_commands {
             if let Ok(command) = crate::models::saved_command::SavedCommand::from_json(&json) {
@@ -249,7 +234,6 @@ impl SyncEngine {
     async fn sync_internal(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<SyncStats> {
         use crate::models::sync::ConflictResolutionStrategy;
 
-        // Ensure connection
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
@@ -257,7 +241,6 @@ impl SyncEngine {
 
         let last_sync = self.get_last_sync_time(&config.base.id).await?;
 
-        // Get strategy from sync_settings table
         let strategy = {
             let db_service = self.database_service.lock().await;
             let local = db_service.get_local_database();
@@ -329,12 +312,10 @@ impl SyncEngine {
 
         let mut stats = SyncStats::default();
 
-        // Get local database
         let db_service = self.database_service.lock().await;
         let local = db_service.get_local_database();
         drop(db_service);
 
-        // Get local records
         let local_records = {
             let local_guard = local.read().await;
             match table {
@@ -362,10 +343,8 @@ impl SyncEngine {
             }
         };
 
-        // Get remote changes since last sync
         let remote_records = remote.pull_records(table, last_sync).await?;
 
-        // Get version info for conflict detection
         let local_ids: Vec<String> = local_records
             .iter()
             .filter_map(|r| r.get("id").and_then(|v| v.as_str()).map(|s| s.to_string()))
@@ -373,7 +352,6 @@ impl SyncEngine {
 
         let remote_versions = remote.get_record_versions(table, local_ids.clone()).await?;
 
-        // Build local version map
         let local_versions: HashMap<String, u64> = local_records
             .iter()
             .filter_map(|r| {
@@ -383,7 +361,6 @@ impl SyncEngine {
             })
             .collect();
 
-        // Detect conflicts and resolve
         let mut records_to_push = Vec::new();
         let mut _records_to_pull: Vec<Value> = Vec::new();
 
@@ -393,77 +370,62 @@ impl SyncEngine {
                     let local_version = local_versions.get(id).copied().unwrap_or(0);
 
                     if local_version > remote_version {
-                        // Local is newer, push to remote
                         records_to_push.push(local_record);
                     } else if remote_version > local_version {
-                        // Remote is newer, detected conflict
 
-                        // Apply conflict resolution strategy
                         match strategy {
                             ConflictResolutionStrategy::LocalWins => {
                                 records_to_push.push(local_record);
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::RemoteWins => {
-                                // Will be overwritten by pull
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::LastWriteWins => {
-                                // Compare updated_at timestamps
                                 let local_updated = local_record
                                     .get("updated_at")
                                     .and_then(|v| v.as_str())
                                     .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
                                     .map(|dt| dt.with_timezone(&Utc));
 
-                                // Will check remote timestamp during pull
                                 if local_updated.is_some() {
                                     records_to_push.push(local_record);
                                 }
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::FirstWriteWins => {
-                                // Compare created_at timestamps
                                 let local_created = local_record
                                     .get("created_at")
                                     .and_then(|v| v.as_str())
                                     .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
                                     .map(|dt| dt.with_timezone(&Utc));
 
-                                // Will check remote timestamp during pull
                                 if local_created.is_some() {
                                     records_to_push.push(local_record);
                                 }
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::Manual => {
-                                // Keep both versions (manual resolution needed)
-                                // For now, skip this record
                                 continue;
                             }
                         }
                     }
-                    // If versions are equal, no action needed
                 } else {
-                    // Record doesn't exist on remote, push it
                     records_to_push.push(local_record);
                 }
             }
         }
 
-        // Push local changes to remote
         if !records_to_push.is_empty() {
             let count = remote.push_records(table, records_to_push).await?;
             stats.total_synced += count;
         }
 
-        // Pull remote changes to local
         for remote_record in remote_records {
             if let Some(id) = remote_record.get("id").and_then(|v| v.as_str()) {
                 let remote_version = remote_record.get("version").and_then(|v| v.as_u64()).unwrap_or(0);
                 let local_version = local_versions.get(id).copied().unwrap_or(0);
 
-                // Only pull if remote is newer or doesn't exist locally
                 if remote_version >= local_version {
                     let local_guard = local.write().await;
 
@@ -588,14 +550,12 @@ impl SyncEngine {
     ) -> DatabaseResult<SyncStats> {
         let mut stats = SyncStats::default();
 
-        // Get all local and remote profiles
         let local_guard = local.read().await;
         let local_profiles = local_guard.find_all_ssh_profiles().await?;
         drop(local_guard);
 
         let remote_profiles = remote.find_all_ssh_profiles().await?;
 
-        // Build maps for conflict detection
         let local_data: Vec<_> = local_profiles
             .iter()
             .map(|p| (p.base.id.clone(), p.clone(), p.base.updated_at))
@@ -606,7 +566,6 @@ impl SyncEngine {
             .map(|p| (p.base.id.clone(), p.clone(), p.base.updated_at))
             .collect();
 
-        // Detect conflicts
         let conflicts = self.conflict_resolver.detect_conflicts(
             local_data,
             remote_data,
@@ -614,7 +573,6 @@ impl SyncEngine {
             "SSHProfile".to_string(),
         );
 
-        // Resolve each conflict
         for conflict in &conflicts {
             match self.conflict_resolver.resolve(conflict.clone(), strategy)? {
                 crate::services::sync::resolver::ConflictResolution::UseLocal(item) => {
@@ -630,7 +588,6 @@ impl SyncEngine {
                     stats.conflicts_resolved += 1;
                 }
                 crate::services::sync::resolver::ConflictResolution::UseMerged(item) => {
-                    // Save merged to both
                     remote.save_ssh_profile(&item).await?;
                     let local_guard = local.write().await;
                     local_guard.save_ssh_profile(&item).await?;
@@ -645,9 +602,7 @@ impl SyncEngine {
             }
         }
 
-        // Sync non-conflicting items
         for profile in local_profiles {
-            // Check if this was already handled in conflict resolution
             if conflicts.iter().any(|c| c.entity_id == profile.base.id) {
                 continue;
             }

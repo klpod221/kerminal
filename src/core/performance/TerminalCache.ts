@@ -31,17 +31,14 @@ export interface CacheStats {
 export class TerminalCache {
   private static instance: TerminalCache | null = null;
 
-  // Cache storage
   private terminalInfoCache = new Map<string, CacheEntry<any>>();
   private bufferStatsCache: CacheEntry<any> | null = null;
   private terminalListCache: CacheEntry<any[]> | null = null;
 
-  // Cache configuration
   private readonly DEFAULT_TTL = 5000; // 5 seconds
   private readonly BUFFER_STATS_TTL = 3000; // 3 seconds for stats
   private readonly TERMINAL_LIST_TTL = 2000; // 2 seconds for list
 
-  // Statistics tracking
   private stats = {
     hits: 0,
     misses: 0,
@@ -148,7 +145,6 @@ export class TerminalCache {
    * @returns Promise of boolean
    */
   async hasTerminalBuffer(terminalId: string): Promise<boolean> {
-    // Buffer existence is cached for a shorter time (1 second)
     const cacheKey = `buffer_has_${terminalId}`;
     const cached = this.terminalInfoCache.get(cacheKey);
 
@@ -184,7 +180,6 @@ export class TerminalCache {
     this.terminalInfoCache.delete(terminalId);
     this.terminalInfoCache.delete(`buffer_has_${terminalId}`);
 
-    // Also invalidate terminal list cache since it contains this terminal
     this.terminalListCache = null;
   }
 
@@ -219,7 +214,6 @@ export class TerminalCache {
     const totalRequests = this.stats.hits + this.stats.misses;
     const hitRate = totalRequests > 0 ? this.stats.hits / totalRequests : 0;
 
-    // Estimate memory usage (rough calculation)
     const memoryUsage = this.estimateMemoryUsage();
 
     return {
@@ -246,14 +240,12 @@ export class TerminalCache {
    * Cleanup expired entries
    */
   cleanup(): void {
-    // Clean terminal info cache
     for (const [key, entry] of this.terminalInfoCache.entries()) {
       if (!this.isEntryValid(entry, this.DEFAULT_TTL)) {
         this.terminalInfoCache.delete(key);
       }
     }
 
-    // Clean buffer stats cache
     if (
       this.bufferStatsCache &&
       !this.isEntryValid(this.bufferStatsCache, this.BUFFER_STATS_TTL)
@@ -261,7 +253,6 @@ export class TerminalCache {
       this.bufferStatsCache = null;
     }
 
-    // Clean terminal list cache
     if (
       this.terminalListCache &&
       !this.isEntryValid(this.terminalListCache, this.TERMINAL_LIST_TTL)
@@ -287,20 +278,17 @@ export class TerminalCache {
   private estimateMemoryUsage(): number {
     let size = 0;
 
-    // Estimate terminal info cache
     for (const [key, entry] of this.terminalInfoCache.entries()) {
       size += key.length * 2; // UTF-16 characters
       size += JSON.stringify(entry.data).length * 2;
       size += 8; // timestamp
     }
 
-    // Estimate buffer stats cache
     if (this.bufferStatsCache) {
       size += JSON.stringify(this.bufferStatsCache.data).length * 2;
       size += 8; // timestamp
     }
 
-    // Estimate terminal list cache
     if (this.terminalListCache) {
       size += JSON.stringify(this.terminalListCache.data).length * 2;
       size += 8; // timestamp
@@ -310,5 +298,4 @@ export class TerminalCache {
   }
 }
 
-// Export singleton instance getter
 export const terminalCache = TerminalCache.getInstance();

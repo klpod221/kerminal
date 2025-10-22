@@ -73,18 +73,15 @@ const show = async (x: number, y: number): Promise<void> => {
 
   await nextTick();
 
-  // Adjust position if menu goes outside viewport
   if (contextMenuRef.value) {
     const rect = contextMenuRef.value.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    // Adjust horizontal position
     if (rect.right > viewportWidth) {
       position.value.x = Math.max(0, x - rect.width);
     }
 
-    // Adjust vertical position
     if (rect.bottom > viewportHeight) {
       position.value.y = Math.max(0, y - rect.height);
     }

@@ -17,7 +17,6 @@ import { syncService } from "../services/sync";
  * Manages external database connections, sync operations, and conflict resolution
  */
 export const useSyncStore = defineStore("sync", () => {
-  // === State ===
   const databases = ref<ExternalDatabaseConfig[]>([]);
   const currentDatabaseId = ref<string | null>(null);
   const syncStatus = ref<SyncServiceStatus | null>(null);
@@ -27,14 +26,14 @@ export const useSyncStore = defineStore("sync", () => {
   const isLoading = ref(false);
   const isSyncing = ref(false);
 
-  // === Computed ===
-
   /**
    * Get currently selected database
    */
   const currentDatabase = computed(() => {
     if (!currentDatabaseId.value) return null;
-    return databases.value.find((db: ExternalDatabaseConfig) => db.id === currentDatabaseId.value);
+    return databases.value.find(
+      (db: ExternalDatabaseConfig) => db.id === currentDatabaseId.value,
+    );
   });
 
   /**
@@ -50,8 +49,6 @@ export const useSyncStore = defineStore("sync", () => {
   const pendingConflicts = computed(() => {
     return conflicts.value.filter((c: ConflictResolutionData) => !c.resolvedAt);
   });
-
-  // === Database Actions ===
 
   /**
    * Load all external databases
@@ -71,14 +68,14 @@ export const useSyncStore = defineStore("sync", () => {
   async function addDatabase(
     config: Omit<ExternalDatabaseConfig, "id">,
     connectionDetails: ConnectionDetails,
-    syncSettings: DatabaseSyncSettings
+    syncSettings: DatabaseSyncSettings,
   ): Promise<ExternalDatabaseConfig> {
     isLoading.value = true;
     try {
       const newDb = await syncService.addDatabase(
         config,
         connectionDetails,
-        syncSettings
+        syncSettings,
       );
       databases.value.push(newDb);
       return newDb;
@@ -98,12 +95,14 @@ export const useSyncStore = defineStore("sync", () => {
       autoSync?: boolean;
       syncIntervalMinutes?: number;
       conflictResolutionStrategy?: ConflictResolutionStrategy;
-    }
+    },
   ): Promise<void> {
     isLoading.value = true;
     try {
       await syncService.updateDatabase(id, config);
-      const index = databases.value.findIndex((db: ExternalDatabaseConfig) => db.id === id);
+      const index = databases.value.findIndex(
+        (db: ExternalDatabaseConfig) => db.id === id,
+      );
       if (index !== -1) {
         databases.value[index] = { ...databases.value[index], ...config };
       }
@@ -119,7 +118,9 @@ export const useSyncStore = defineStore("sync", () => {
     isLoading.value = true;
     try {
       await syncService.deleteDatabase(id);
-      databases.value = databases.value.filter((db: ExternalDatabaseConfig) => db.id !== id);
+      databases.value = databases.value.filter(
+        (db: ExternalDatabaseConfig) => db.id !== id,
+      );
       if (currentDatabaseId.value === id) {
         currentDatabaseId.value = null;
       }
@@ -134,17 +135,19 @@ export const useSyncStore = defineStore("sync", () => {
   async function testConnection(
     dbType: string,
     connectionDetails: ConnectionDetails,
-    databaseId?: string
+    databaseId?: string,
   ): Promise<boolean> {
     isLoading.value = true;
     try {
-      return await syncService.testConnection(dbType, connectionDetails, databaseId);
+      return await syncService.testConnection(
+        dbType,
+        connectionDetails,
+        databaseId,
+      );
     } finally {
       isLoading.value = false;
     }
   }
-
-  // === Connection Actions ===
 
   /**
    * Connect to external database
@@ -177,12 +180,13 @@ export const useSyncStore = defineStore("sync", () => {
     }
   }
 
-  // === Sync Actions ===
-
   /**
    * Perform sync operation
    */
-  async function sync(id: string, direction: "push" | "pull" | "bidirectional"): Promise<SyncLog> {
+  async function sync(
+    id: string,
+    direction: "push" | "pull" | "bidirectional",
+  ): Promise<SyncLog> {
     isSyncing.value = true;
     try {
       const log = await syncService.sync(id, direction);
@@ -213,20 +217,15 @@ export const useSyncStore = defineStore("sync", () => {
     }
   }
 
-  // === Conflict Actions ===
-
   /**
    * Load all conflicts
    */
   async function loadConflicts(): Promise<void> {
     isLoading.value = true;
     try {
-      // Use new unresolved conflict resolutions API (Phase 9)
-      // Prefer the newer endpoint which returns persisted conflict resolution records
       if (typeof syncService.getUnresolvedConflictResolutions === "function") {
         conflicts.value = await syncService.getUnresolvedConflictResolutions();
       } else {
-        // Fallback to older API name for backward compatibility
         conflicts.value = await syncService.getConflicts();
       }
     } finally {
@@ -239,33 +238,29 @@ export const useSyncStore = defineStore("sync", () => {
    */
   async function resolveConflict(
     id: string,
-    resolution: "local" | "remote"
+    resolution: "local" | "remote",
   ): Promise<void> {
     isLoading.value = true;
     try {
-      // Map old resolution terms to the new ConflictResolutionStrategy
-      // and call the newer resolveConflictResolution when available
       const strategy: any = resolution === "local" ? "LocalWins" : "RemoteWins";
       if (typeof syncService.resolveConflictResolution === "function") {
         await syncService.resolveConflictResolution(id, strategy);
       } else {
-        // Fallback to older API for backward compatibility
         await syncService.resolveConflict(id, resolution);
       }
-      conflicts.value = conflicts.value.filter((c: ConflictResolutionData) => c.id !== id);
+      conflicts.value = conflicts.value.filter(
+        (c: ConflictResolutionData) => c.id !== id,
+      );
     } finally {
       isLoading.value = false;
     }
   }
-
-  // === Auto-Sync Actions ===
 
   /**
    * Enable auto-sync for database
    */
   async function enableAutoSync(id: string): Promise<void> {
     await syncService.enableAutoSync(id);
-    // Reload to get updated status from backend
     await loadDatabases();
   }
 
@@ -274,11 +269,8 @@ export const useSyncStore = defineStore("sync", () => {
    */
   async function disableAutoSync(id: string): Promise<void> {
     await syncService.disableAutoSync(id);
-    // Reload to get updated status from backend
     await loadDatabases();
   }
-
-  // === Statistics Actions ===
 
   /**
    * Load sync statistics
@@ -286,8 +278,6 @@ export const useSyncStore = defineStore("sync", () => {
   async function loadStatistics(): Promise<void> {
     statistics.value = await syncService.getStatistics();
   }
-
-  // === Utility Actions ===
 
   /**
    * Set current database
@@ -311,7 +301,6 @@ export const useSyncStore = defineStore("sync", () => {
   }
 
   return {
-    // State
     databases,
     currentDatabaseId,
     syncStatus,
@@ -320,11 +309,9 @@ export const useSyncStore = defineStore("sync", () => {
     statistics,
     isLoading,
     isSyncing,
-    // Computed
     currentDatabase,
     hasActiveDatabases,
     pendingConflicts,
-    // Actions
     loadDatabases,
     addDatabase,
     updateDatabase,

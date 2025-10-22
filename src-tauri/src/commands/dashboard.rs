@@ -3,7 +3,6 @@ use sysinfo::{Components, Disks, Networks, System};
 
 #[tauri::command]
 pub fn get_system_info() -> SystemInfo {
-    // Gather system information using sysinfo crate
     let mut sys = System::new_all();
     sys.refresh_all();
 
@@ -17,7 +16,6 @@ pub fn get_system_info() -> SystemInfo {
         })
         .collect();
 
-    // 2. Gather network information
     let networks = Networks::new_with_refreshed_list();
     let network_interfaces = networks
         .iter()
@@ -38,7 +36,6 @@ pub fn get_system_info() -> SystemInfo {
         })
         .collect();
 
-    // 3. Get disk information
     let disks = Disks::new_with_refreshed_list();
     let disks_info: Vec<DiskInfo> = disks
         .iter()
@@ -51,7 +48,6 @@ pub fn get_system_info() -> SystemInfo {
         })
         .collect();
 
-    // 4. Gather temperature information
     let components = Components::new_with_refreshed_list();
     let components_info: Vec<ComponentInfo> = components
         .iter()
@@ -62,7 +58,6 @@ pub fn get_system_info() -> SystemInfo {
         })
         .collect();
 
-    // 5. Aggregate and return
     let load_avg = System::load_average();
 
     SystemInfo {

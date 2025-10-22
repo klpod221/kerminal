@@ -61,7 +61,6 @@ impl ConflictResolver {
             Ordering::Greater => ConflictResolution::UseLocal(conflict.local_data),
             Ordering::Less => ConflictResolution::UseRemote(conflict.remote_data),
             Ordering::Equal => {
-                // If timestamps are equal, prefer local
                 ConflictResolution::UseLocal(conflict.local_data)
             }
         }
@@ -76,7 +75,6 @@ impl ConflictResolver {
             Ordering::Less => ConflictResolution::UseLocal(conflict.local_data),
             Ordering::Greater => ConflictResolution::UseRemote(conflict.remote_data),
             Ordering::Equal => {
-                // If timestamps are equal, prefer local
                 ConflictResolution::UseLocal(conflict.local_data)
             }
         }
@@ -103,13 +101,11 @@ impl ConflictResolver {
         remote_updated_at: DateTime<Utc>,
         last_sync_at: Option<DateTime<Utc>>,
     ) -> bool {
-        // If never synced, consider any difference as conflict
         let last_sync = match last_sync_at {
             Some(sync_time) => sync_time,
             None => return local_updated_at != remote_updated_at,
         };
 
-        // Conflict exists if both were modified after last sync
         local_updated_at > last_sync && remote_updated_at > last_sync
     }
 
@@ -126,7 +122,6 @@ impl ConflictResolver {
     {
         let mut conflicts = Vec::new();
 
-        // Create lookup maps
         let local_map: std::collections::HashMap<_, _> = local_items
             .into_iter()
             .map(|(id, data, updated)| (id, (data, updated)))
@@ -137,7 +132,6 @@ impl ConflictResolver {
             .map(|(id, data, updated)| (id, (data, updated)))
             .collect();
 
-        // Check for conflicts
         for (id, (local_data, local_updated)) in local_map.iter() {
             if let Some((remote_data, remote_updated)) = remote_map.get(id) {
                 if Self::has_conflict(*local_updated, *remote_updated, last_sync_at) {
@@ -212,21 +206,18 @@ mod tests {
         let after_sync = now - chrono::Duration::minutes(30);
         let last_sync = now - chrono::Duration::hours(1);
 
-        // Both modified after sync = conflict
         assert!(ConflictResolver::has_conflict(
             after_sync,
             after_sync,
             Some(last_sync)
         ));
 
-        // Only one modified after sync = no conflict
         assert!(!ConflictResolver::has_conflict(
             before_sync,
             after_sync,
             Some(last_sync)
         ));
 
-        // Never synced, different times = conflict
         assert!(ConflictResolver::has_conflict(now, before_sync, None));
     }
 }

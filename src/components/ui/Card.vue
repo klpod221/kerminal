@@ -96,7 +96,6 @@ interface CardProps {
   customClass?: string;
 }
 
-// Define props with defaults
 withDefaults(defineProps<CardProps>(), {
   size: "md",
   hover: false,
@@ -106,7 +105,6 @@ withDefaults(defineProps<CardProps>(), {
   center: false,
 });
 
-// Define emits
 const emit = defineEmits<{
   (e: "click", event: MouseEvent): void;
 }>();

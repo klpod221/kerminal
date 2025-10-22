@@ -19,7 +19,7 @@ class SyncService {
   }
 
   async getDatabaseWithDetails(
-    id: string
+    id: string,
   ): Promise<ExternalDatabaseWithDetails> {
     return api.callRaw("get_external_database_with_details", { id });
   }
@@ -27,7 +27,7 @@ class SyncService {
   async addDatabase(
     config: Omit<ExternalDatabaseConfig, "id">,
     connectionDetails: ConnectionDetails,
-    syncSettings: DatabaseSyncSettings
+    syncSettings: DatabaseSyncSettings,
   ): Promise<ExternalDatabaseConfig> {
     return api.call("add_external_database", {
       name: config.name,
@@ -47,7 +47,7 @@ class SyncService {
       autoSync?: boolean;
       syncIntervalMinutes?: number;
       conflictResolutionStrategy?: ConflictResolutionStrategy;
-    }
+    },
   ): Promise<void> {
     return api.call("update_external_database", { id, ...config });
   }
@@ -59,7 +59,7 @@ class SyncService {
   async testConnection(
     dbType: string,
     connectionDetails: ConnectionDetails,
-    databaseId?: string
+    databaseId?: string,
   ): Promise<boolean> {
     return api.call("test_external_database_connection", {
       dbType,
@@ -78,9 +78,8 @@ class SyncService {
 
   async sync(
     id: string,
-    direction: "push" | "pull" | "bidirectional"
+    direction: "push" | "pull" | "bidirectional",
   ): Promise<SyncLog> {
-    // Backend expects lowercase direction values
     return api.callRaw("sync_now", {
       databaseId: id,
       direction: direction, // Already lowercase from parameter
@@ -101,7 +100,7 @@ class SyncService {
 
   async resolveConflict(
     id: string,
-    resolution: "local" | "remote"
+    resolution: "local" | "remote",
   ): Promise<void> {
     return api.callRaw("resolve_conflict", {
       conflictId: id,
@@ -129,27 +128,30 @@ class SyncService {
     return api.callRaw("get_all_devices");
   }
 
-  async registerDevice(deviceName: string, deviceType: string): Promise<Device> {
+  async registerDevice(
+    deviceName: string,
+    deviceType: string,
+  ): Promise<Device> {
     return api.callRaw("register_device", { deviceName, deviceType });
   }
 
-  // Global Sync Settings (Phase 9)
   async getGlobalSyncSettings(): Promise<SyncSettings | null> {
     return api.callRaw("get_global_sync_settings");
   }
 
-  async updateGlobalSyncSettings(settings: Partial<SyncSettings>): Promise<void> {
+  async updateGlobalSyncSettings(
+    settings: Partial<SyncSettings>,
+  ): Promise<void> {
     return api.callRaw("update_global_sync_settings", { settings });
   }
 
-  // Conflict Resolutions (Phase 9)
   async getUnresolvedConflictResolutions(): Promise<ConflictResolutionData[]> {
     return api.callRaw("get_unresolved_conflict_resolutions");
   }
 
   async resolveConflictResolution(
     id: string,
-    strategy: ConflictResolutionStrategy
+    strategy: ConflictResolutionStrategy,
   ): Promise<void> {
     return api.callRaw("resolve_conflict_resolution", { id, strategy });
   }

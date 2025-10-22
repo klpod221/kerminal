@@ -90,7 +90,6 @@ impl SSHKey {
         hasher.update(key_data);
         let result = hasher.finalize();
 
-        // Format as colon-separated hex (like SSH does)
         result
             .iter()
             .map(|b| format!("{:02x}", b))
@@ -108,7 +107,6 @@ impl SSHKey {
     }
 }
 
-// Implement Syncable trait using macro
 impl_syncable!(SSHKey, "ssh_keys");
 
 impl Encryptable for SSHKey {
@@ -117,7 +115,6 @@ impl Encryptable for SSHKey {
     }
 
     fn encrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
-        // Encrypt private key
         let encrypted_key = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 encryption_service
@@ -127,7 +124,6 @@ impl Encryptable for SSHKey {
         })?;
         self.private_key = encrypted_key;
 
-        // Encrypt passphrase if present
         if let Some(passphrase) = &self.passphrase {
             if !passphrase.is_empty() {
                 let encrypted_passphrase = tokio::task::block_in_place(|| {
@@ -145,7 +141,6 @@ impl Encryptable for SSHKey {
     }
 
     fn decrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
-        // Decrypt private key
         let decrypted_key = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 encryption_service
@@ -155,7 +150,6 @@ impl Encryptable for SSHKey {
         })?;
         self.private_key = decrypted_key;
 
-        // Decrypt passphrase if present
         if let Some(passphrase) = &self.passphrase {
             if !passphrase.is_empty() {
                 let decrypted_passphrase = tokio::task::block_in_place(|| {
@@ -196,7 +190,6 @@ pub struct CreateSSHKeyRequest {
 
 impl CreateSSHKeyRequest {
     pub fn to_key(self, device_id: String) -> SSHKey {
-        // Auto-detect key type if not provided
         let key_type = self
             .key_type
             .unwrap_or_else(|| Self::detect_key_type(&self.private_key).unwrap_or(KeyType::RSA));
@@ -221,7 +214,6 @@ impl CreateSSHKeyRequest {
         {
             Some(KeyType::RSA)
         } else if key_content.contains("BEGIN OPENSSH PRIVATE KEY") {
-            // OpenSSH format could be Ed25519, ECDSA, or RSA
             if key_content.contains("ssh-ed25519") {
                 Some(KeyType::Ed25519)
             } else if key_content.contains("ecdsa") {
@@ -279,7 +271,6 @@ mod encrypted_string {
     where
         S: Serializer,
     {
-        // Encryption is handled by the Encryptable trait during save operations
         value.serialize(serializer)
     }
 
@@ -287,7 +278,6 @@ mod encrypted_string {
     where
         D: Deserializer<'de>,
     {
-        // Decryption is handled by the Encryptable trait during load operations
         String::deserialize(deserializer)
     }
 }
@@ -299,7 +289,6 @@ mod encrypted_option_string {
     where
         S: Serializer,
     {
-        // Encryption is handled by the Encryptable trait during save operations
         value.serialize(serializer)
     }
 
@@ -307,7 +296,6 @@ mod encrypted_option_string {
     where
         D: Deserializer<'de>,
     {
-        // Decryption is handled by the Encryptable trait during load operations
         Option::<String>::deserialize(deserializer)
     }
 }

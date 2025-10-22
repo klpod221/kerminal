@@ -35,7 +35,6 @@ impl AppState {
 
         let database_service_arc = Arc::new(Mutex::new(database_service));
 
-        // Create service instances
         let auth_service = AuthService::new(database_service_arc.clone());
         let ssh_key_service =
             Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
@@ -43,7 +42,6 @@ impl AppState {
         let tunnel_service = TunnelService::new_with_auto_start(database_service_arc.clone()).await;
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
 
-        // Create and initialize sync service using the SAME database_service instance
         let sync_service = Arc::new(SyncService::new(database_service_arc.clone()));
         sync_service
             .initialize()

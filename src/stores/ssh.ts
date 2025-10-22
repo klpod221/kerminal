@@ -16,11 +16,8 @@ import * as sshService from "../services/sshProfile";
  * Manages SSH profiles and groups with reactive state management and caching
  */
 export const useSSHStore = defineStore("ssh", () => {
-  // === State ===
   const profiles = ref<SSHProfile[]>([]);
   const groups = ref<SSHGroup[]>([]);
-
-  // === Computed ===
 
   /**
    * Optimized data structure containing group info with profiles and fast lookup indices
@@ -30,42 +27,40 @@ export const useSSHStore = defineStore("ssh", () => {
     const groupMap = new Map<string, SSHGroup>();
     const profileMap = new Map<string, SSHProfile>();
 
-    // Create lookup maps
-    groups.value.forEach(group => groupMap.set(group.id, group));
-    profiles.value.forEach(profile => profileMap.set(profile.id, profile));
+    groups.value.forEach((group) => groupMap.set(group.id, group));
+    profiles.value.forEach((profile) => profileMap.set(profile.id, profile));
 
-    // Build grouped structure with full group information
-    const groupedData = new Map<string | null, {
-      group: SSHGroup | null;
-      profiles: SSHProfile[];
-      profileCount: number;
-    }>();
+    const groupedData = new Map<
+      string | null,
+      {
+        group: SSHGroup | null;
+        profiles: SSHProfile[];
+        profileCount: number;
+      }
+    >();
 
-    // Initialize all groups
-    groups.value.forEach(group => {
+    groups.value.forEach((group) => {
       groupedData.set(group.id, {
         group,
         profiles: [],
-        profileCount: 0
+        profileCount: 0,
       });
     });
 
-    // Initialize ungrouped section
     groupedData.set(null, {
       group: null,
       profiles: [],
-      profileCount: 0
+      profileCount: 0,
     });
 
-    // Distribute profiles
-    profiles.value.forEach(profile => {
+    profiles.value.forEach((profile) => {
       const groupId = profile.groupId || null;
       if (!groupedData.has(groupId)) {
         const group = groupId ? groupMap.get(groupId) || null : null;
         groupedData.set(groupId, {
           group,
           profiles: [],
-          profileCount: 0
+          profileCount: 0,
         });
       }
 
@@ -78,11 +73,10 @@ export const useSSHStore = defineStore("ssh", () => {
       groupedData,
       groupMap,
       profileMap,
-      // Helper methods for quick access
       getGroup: (id: string) => groupMap.get(id),
       getProfile: (id: string) => profileMap.get(id),
       getGroupWithProfiles: (id: string | null) => groupedData.get(id),
-      getUngroupedData: () => groupedData.get(null)!
+      getUngroupedData: () => groupedData.get(null)!,
     };
   });
 
@@ -97,7 +91,8 @@ export const useSSHStore = defineStore("ssh", () => {
    * Get profiles by group ID
    */
   const getProfilesByGroupId = computed(() => {
-    return (groupId: string) => groupsWithProfiles.value.getGroupWithProfiles(groupId)?.profiles || [];
+    return (groupId: string) =>
+      groupsWithProfiles.value.getGroupWithProfiles(groupId)?.profiles || [];
   });
 
   /**
@@ -121,8 +116,6 @@ export const useSSHStore = defineStore("ssh", () => {
     return profiles.value.length > 0 || groups.value.length > 0;
   });
 
-  // === Profile Actions ===
-
   /**
    * Load all SSH profiles from backend
    */
@@ -134,7 +127,9 @@ export const useSSHStore = defineStore("ssh", () => {
   /**
    * Create new SSH profile
    */
-  const createProfile = async (request: CreateSSHProfileRequest): Promise<SSHProfile> => {
+  const createProfile = async (
+    request: CreateSSHProfileRequest,
+  ): Promise<SSHProfile> => {
     const newProfile = await sshService.createSSHProfile(request);
     await loadProfiles(); // Reload to ensure data consistency
     return newProfile;
@@ -143,7 +138,10 @@ export const useSSHStore = defineStore("ssh", () => {
   /**
    * Update existing SSH profile
    */
-  const updateProfile = async (id: string, request: UpdateSSHProfileRequest): Promise<SSHProfile> => {
+  const updateProfile = async (
+    id: string,
+    request: UpdateSSHProfileRequest,
+  ): Promise<SSHProfile> => {
     const updatedProfile = await sshService.updateSSHProfile(id, request);
     await loadProfiles(); // Reload to ensure data consistency
     return updatedProfile;
@@ -160,7 +158,10 @@ export const useSSHStore = defineStore("ssh", () => {
   /**
    * Move profile to different group
    */
-  const moveProfileToGroup = async (profileId: string, groupId: string | null): Promise<void> => {
+  const moveProfileToGroup = async (
+    profileId: string,
+    groupId: string | null,
+  ): Promise<void> => {
     await sshService.moveProfileToGroup(profileId, groupId);
     await loadProfiles(); // Reload to ensure data consistency
   };
@@ -168,13 +169,14 @@ export const useSSHStore = defineStore("ssh", () => {
   /**
    * Duplicate SSH profile
    */
-  const duplicateProfile = async (id: string, newName: string): Promise<SSHProfile> => {
+  const duplicateProfile = async (
+    id: string,
+    newName: string,
+  ): Promise<SSHProfile> => {
     const duplicatedProfile = await sshService.duplicateSSHProfile(id, newName);
     await loadProfiles(); // Reload to ensure data consistency
     return duplicatedProfile;
   };
-
-  // === Group Actions ===
 
   /**
    * Load all SSH groups from backend
@@ -188,7 +190,7 @@ export const useSSHStore = defineStore("ssh", () => {
    * Create new SSH group
    */
   const createGroup = async (
-    request: CreateSSHGroupRequest
+    request: CreateSSHGroupRequest,
   ): Promise<SSHGroup> => {
     const newGroup = await sshService.createSSHGroup(request);
     await loadGroups(); // Reload to ensure data consistency
@@ -200,7 +202,7 @@ export const useSSHStore = defineStore("ssh", () => {
    */
   const updateGroup = async (
     id: string,
-    request: UpdateSSHGroupRequest
+    request: UpdateSSHGroupRequest,
   ): Promise<SSHGroup> => {
     const updatedGroup = await sshService.updateSSHGroup(id, request);
     await loadGroups(); // Reload to ensure data consistency
@@ -210,13 +212,13 @@ export const useSSHStore = defineStore("ssh", () => {
   /**
    * Delete SSH group with action for existing profiles
    */
-  const deleteGroup = async (id: string, action: DeleteGroupAction): Promise<void> => {
+  const deleteGroup = async (
+    id: string,
+    action: DeleteGroupAction,
+  ): Promise<void> => {
     await sshService.deleteSSHGroup(id, action);
-    // Backend handles all profile movements/deletions, just reload all data
     await loadAll();
   };
-
-  // === Utility Actions ===
 
   /**
    * Load all data (profiles and groups)
@@ -241,11 +243,9 @@ export const useSSHStore = defineStore("ssh", () => {
   };
 
   return {
-    // State
     profiles,
     groups,
 
-    // Computed
     groupsWithProfiles,
     ungroupedProfiles,
     getProfilesByGroupId,
@@ -253,7 +253,6 @@ export const useSSHStore = defineStore("ssh", () => {
     findGroupById,
     hasData,
 
-    // Profile Actions
     loadProfiles,
     createProfile,
     updateProfile,
@@ -261,13 +260,11 @@ export const useSSHStore = defineStore("ssh", () => {
     moveProfileToGroup,
     duplicateProfile,
 
-    // Group Actions
     loadGroups,
     createGroup,
     updateGroup,
     deleteGroup,
 
-    // Utility Actions
     loadAll,
     refresh,
     clearAll,

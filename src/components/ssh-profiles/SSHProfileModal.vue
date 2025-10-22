@@ -297,13 +297,10 @@ const props = defineProps<{
   groupId?: string | null;
 }>();
 
-// Store and composables
 const sshStore = useSSHStore();
 const sshKeyStore = useSshKeyStore();
 const { closeOverlay, getOverlayProp, openOverlay } = useOverlay();
 
-// Use composable to automatically merge props
-// Use overlay prop with fallback to direct prop
 const sshProfileId = getOverlayProp(
   "ssh-profile-modal",
   "sshProfileId",
@@ -317,12 +314,10 @@ const groupId = getOverlayProp(
   null,
 );
 
-// State
 const sshProfileForm = ref<InstanceType<typeof Form> | null>(null);
 const isLoading = ref(false);
 const isTesting = ref(false);
 
-// Form data
 const sshProfile = ref({
   name: "",
   host: "",
@@ -337,11 +332,9 @@ const sshProfile = ref({
   description: "",
 } as Partial<SSHProfile>);
 
-// Auth-specific data
 const authPassword = ref("");
 const authKeyId = ref("");
 
-// Proxy-specific data
 const enableProxy = ref(false);
 const proxyConfig = ref({
   proxyType: "Http" as "Http" | "Socks4" | "Socks5",
@@ -351,7 +344,6 @@ const proxyConfig = ref({
   password: "",
 });
 
-// Options
 const authMethodOptions = [
   { value: "Password", label: "Password" },
   { value: "KeyReference", label: "SSH Key" },
@@ -378,7 +370,6 @@ const sshKeyOptions = computed(() =>
   })),
 );
 
-// Functions
 const openKeyManager = () => {
   openOverlay("ssh-key-manager-modal");
 };
@@ -392,17 +383,14 @@ const loadProfile = async () => {
     if (profile) {
       sshProfile.value = { ...profile };
 
-      // Parse auth data
       if (profile.authData) {
         if ("Password" in profile.authData) {
-          // Don't show encrypted password in edit mode - keep field empty
           authPassword.value = "";
         } else if ("KeyReference" in profile.authData) {
           authKeyId.value = profile.authData.KeyReference.keyId;
         }
       }
 
-      // Parse proxy config
       if (profile.proxy) {
         enableProxy.value = true;
         proxyConfig.value = {
@@ -433,7 +421,6 @@ const loadProfile = async () => {
 const buildAuthData = (): AuthData | null => {
   switch (sshProfile.value.authMethod) {
     case "Password":
-      // If editing and password is empty, return null to indicate no password update
       if (sshProfileId.value && !authPassword.value.trim()) {
         return null;
       }
@@ -456,16 +443,13 @@ const testConnection = async () => {
     let testRequest;
 
     if (sshProfileId.value) {
-      // Edit mode: Check if user provided new auth data or use existing
       let authData;
 
       const formAuthData = buildAuthData();
       if (formAuthData) {
-        // User provided new auth data (e.g., new password), use form data
         console.log("Edit mode - using new form auth data:", formAuthData);
         authData = formAuthData;
       } else {
-        // No new auth data, use existing encrypted data from database
         const existingProfile = await sshService.getSSHProfile(
           sshProfileId.value,
         );
@@ -496,7 +480,6 @@ const testConnection = async () => {
           : null,
       };
     } else {
-      // Create mode: Use form data
       const authData = buildAuthData();
       console.log("Create mode - form auth data:", authData);
       if (!authData) {
@@ -577,7 +560,6 @@ const handleSubmit = async () => {
   }
 };
 
-// Watch for prop changes
 watch(
   () => [sshProfileId.value, groupId.value],
   ([newId, newGroupId]) => {
@@ -590,7 +572,6 @@ watch(
     if (newId) {
       loadProfile();
     } else {
-      // Reset form for new profile
       sshProfile.value = {
         name: "",
         host: "",
@@ -607,7 +588,6 @@ watch(
       authPassword.value = "";
       authKeyId.value = "";
 
-      // Reset proxy config
       enableProxy.value = false;
       proxyConfig.value = {
         proxyType: "Http",
@@ -621,7 +601,6 @@ watch(
   { immediate: true },
 );
 
-// Load SSH keys on mount
 onMounted(() => {
   sshKeyStore.loadKeys();
 });

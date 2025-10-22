@@ -42,8 +42,6 @@ impl russh::client::Handler for SSHClientHandler {
         &mut self,
         _server_public_key: &key::PublicKey,
     ) -> Result<bool, Self::Error> {
-        // For now, accept all server keys
-        // In production, this should implement proper host key verification
         Ok(true)
     }
 }
@@ -62,10 +60,8 @@ impl TunnelService {
     pub async fn new_with_auto_start(database_service: Arc<Mutex<DatabaseService>>) -> Self {
         let service = Self::new(database_service);
 
-        // Start auto-start tunnels in the background
         let service_clone = service.clone();
         tokio::spawn(async move {
-            // Wait a moment for the app to fully initialize
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
             if let Err(e) = service_clone.start_auto_start_tunnels().await {
@@ -114,7 +110,6 @@ impl TunnelService {
     pub async fn get_tunnel_with_status(&self, id: &str) -> DatabaseResult<TunnelWithStatus> {
         let tunnel = self.get_tunnel(id).await?;
 
-        // Get current status
         let status = {
             let active_tunnels = self.active_tunnels.read().await;
             if let Some(handle) = active_tunnels.get(id) {
@@ -125,7 +120,6 @@ impl TunnelService {
             }
         };
 
-        // Get error message if any
         let error_message = {
             let active_tunnels = self.active_tunnels.read().await;
             if let Some(handle) = active_tunnels.get(id) {
@@ -142,7 +136,6 @@ impl TunnelService {
             error_message: error_message.clone(),
         };
 
-        // Update status in tunnel
         tunnel_with_status.error_message = error_message;
 
         Ok(tunnel_with_status)
@@ -160,19 +153,16 @@ impl TunnelService {
 
     /// Delete SSH tunnel
     pub async fn delete_tunnel(&self, id: &str) -> DatabaseResult<()> {
-        // Stop tunnel if it's running
         if let Err(e) = self.stop_tunnel(id.to_string()).await {
             eprintln!("Failed to stop tunnel before deletion: {}", e);
         }
 
-        // Delete from database
         let db_service = self.database_service.lock().await;
         db_service.delete_ssh_tunnel(id).await
     }
 
     /// Start SSH tunnel
     pub async fn start_tunnel(&self, tunnel_id: String) -> Result<(), String> {
-        // Check if tunnel is already running
         {
             let active_tunnels = self.active_tunnels.read().await;
             if active_tunnels.contains_key(&tunnel_id) {
@@ -180,7 +170,6 @@ impl TunnelService {
             }
         }
 
-        // Get tunnel configuration
         let tunnel = {
             let db_service = self.database_service.lock().await;
             db_service
@@ -189,7 +178,6 @@ impl TunnelService {
                 .map_err(|e| format!("Failed to get tunnel: {}", e))?
         };
 
-        // Get SSH profile
         let profile = {
             let db_service = self.database_service.lock().await;
             db_service
@@ -198,7 +186,6 @@ impl TunnelService {
                 .map_err(|e| format!("Failed to get SSH profile: {}", e))?
         };
 
-        // Create tunnel handle
         let cancel_token = CancellationToken::new();
         let status = Arc::new(RwLock::new(TunnelStatus::Starting));
         let error_message = Arc::new(RwLock::new(None));
@@ -209,13 +196,11 @@ impl TunnelService {
             error_message: error_message.clone(),
         };
 
-        // Insert handle before starting
         {
             let mut active_tunnels = self.active_tunnels.write().await;
             active_tunnels.insert(tunnel_id.clone(), handle);
         }
 
-        // Clone necessary data for the async task
         let tunnel_clone = tunnel.clone();
         let profile_clone = profile.clone();
         let sessions_arc = self.ssh_sessions.clone();
@@ -244,10 +229,8 @@ impl TunnelService {
         let mut active_tunnels = self.active_tunnels.write().await;
 
         if let Some(handle) = active_tunnels.remove(&tunnel_id) {
-            // Signal cancellation
             handle.cancel_token.cancel();
 
-            // Update status
             {
                 let mut status = handle.status.write().await;
                 *status = TunnelStatus::Stopped;
@@ -299,7 +282,6 @@ impl TunnelService {
         error_message: Arc<RwLock<Option<String>>>,
         sessions: Arc<RwLock<HashMap<String, Arc<Mutex<Handle<SSHClientHandler>>>>>>,
     ) -> Result<()> {
-        // Get or create SSH session
         let session = match Self::get_or_create_ssh_session(&profile, sessions).await {
             Ok(s) => s,
             Err(e) => {
@@ -311,13 +293,11 @@ impl TunnelService {
             }
         };
 
-        // Update status to connected
         {
             let mut status_guard = status.write().await;
             *status_guard = TunnelStatus::Running;
         }
 
-        // Start appropriate tunnel type
         let result = match &tunnel.tunnel_type {
             TunnelType::Local => {
                 Self::start_local_forward(
@@ -352,7 +332,6 @@ impl TunnelService {
             }
         };
 
-        // Handle result and update status/error message
         if let Err(e) = result {
             let mut error_msg = error_message.write().await;
             *error_msg = Some(format!("Tunnel error: {}", e));
@@ -361,7 +340,6 @@ impl TunnelService {
             return Err(e);
         }
 
-        // Update status to stopped when tunnel ends
         {
             let mut status_guard = status.write().await;
             *status_guard = TunnelStatus::Stopped;
@@ -377,7 +355,6 @@ impl TunnelService {
     ) -> Result<Arc<Mutex<Handle<SSHClientHandler>>>> {
         let session_key = format!("{}:{}@{}", profile.username, profile.port, profile.host);
 
-        // Check if session already exists
         {
             let sessions_guard = sessions.read().await;
             if let Some(session) = sessions_guard.get(&session_key) {
@@ -385,7 +362,6 @@ impl TunnelService {
             }
         }
 
-        // Create new SSH session
         let config = Arc::new(Config::default());
         let handler = SSHClientHandler;
         let mut session =
@@ -421,7 +397,6 @@ impl TunnelService {
             ));
         }
 
-        // Store session wrapped in Mutex
         let session_arc = Arc::new(Mutex::new(session));
         {
             let mut sessions_guard = sessions.write().await;
@@ -605,7 +580,6 @@ impl TunnelService {
                 _ = cancel_token.cancelled() => {
                     break;
                 }
-                // Read from local and write to remote
                 result = local_reader.read(&mut buffer) => {
                     match result {
                         Ok(0) => break, // EOF
@@ -621,7 +595,6 @@ impl TunnelService {
                         }
                     }
                 }
-                // Read from remote and write to local
                 msg = channel.wait() => {
                     match msg {
                         Some(ChannelMsg::Data { ref data }) => {
@@ -643,7 +616,6 @@ impl TunnelService {
             }
         }
 
-        // Close the channel gracefully
         let _ = channel.eof().await;
         let _ = channel.close().await;
 
@@ -659,28 +631,22 @@ impl TunnelService {
         use std::net::{Ipv4Addr, Ipv6Addr};
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-        // SOCKS5 greeting phase
         let mut buffer = [0u8; 512];
 
-        // Read client greeting
         let n = local_stream.read(&mut buffer).await?;
         if n < 3 || buffer[0] != 0x05 {
             return Err(anyhow::anyhow!("Invalid SOCKS5 greeting"));
         }
 
-        // Send greeting response (no authentication required)
         local_stream.write_all(&[0x05, 0x00]).await?;
 
-        // Read connection request
         let n = local_stream.read(&mut buffer).await?;
         if n < 4 || buffer[0] != 0x05 || buffer[1] != 0x01 {
             return Err(anyhow::anyhow!("Invalid SOCKS5 request"));
         }
 
-        // Parse target address
         let (target_host, target_port) = match buffer[3] {
             0x01 => {
-                // IPv4
                 if n < 10 {
                     return Err(anyhow::anyhow!("Invalid IPv4 request"));
                 }
@@ -689,7 +655,6 @@ impl TunnelService {
                 (ip.to_string(), port)
             }
             0x03 => {
-                // Domain name
                 if n < 7 {
                     return Err(anyhow::anyhow!("Invalid domain name request"));
                 }
@@ -702,7 +667,6 @@ impl TunnelService {
                 (domain, port)
             }
             0x04 => {
-                // IPv6
                 if n < 22 {
                     return Err(anyhow::anyhow!("Invalid IPv6 request"));
                 }
@@ -717,7 +681,6 @@ impl TunnelService {
             }
         };
 
-        // Try to establish SSH channel to target
         let channel_result = {
             let session_guard = session.lock().await;
             session_guard
@@ -727,7 +690,6 @@ impl TunnelService {
 
         match channel_result {
             Ok(channel) => {
-                // Send success response
                 let response = [
                     0x05, 0x00, 0x00, 0x01, // SOCKS5, success, reserved, IPv4
                     0x00, 0x00, 0x00, 0x00, // Bind IP (0.0.0.0)
@@ -735,12 +697,10 @@ impl TunnelService {
                 ];
                 local_stream.write_all(&response).await?;
 
-                // Start proxying data
                 Self::proxy_socks_connection(local_stream, session, channel, cancel_token).await?;
             }
             Err(e) => {
                 eprintln!("Failed to establish SSH channel: {}", e);
-                // Send connection refused response
                 let response = [
                     0x05, 0x05, 0x00, 0x01, // SOCKS5, connection refused, reserved, IPv4
                     0x00, 0x00, 0x00, 0x00, // Bind IP (0.0.0.0)
@@ -771,7 +731,6 @@ impl TunnelService {
                 _ = cancel_token.cancelled() => {
                     break;
                 }
-                // Read from local and write to remote
                 result = local_reader.read(&mut buffer) => {
                     match result {
                         Ok(0) => break, // EOF
@@ -787,7 +746,6 @@ impl TunnelService {
                         }
                     }
                 }
-                // Read from remote and write to local
                 msg = channel.wait() => {
                     match msg {
                         Some(ChannelMsg::Data { ref data }) => {
@@ -809,7 +767,6 @@ impl TunnelService {
             }
         }
 
-        // Close the channel gracefully
         let _ = channel.eof().await;
         let _ = channel.close().await;
 

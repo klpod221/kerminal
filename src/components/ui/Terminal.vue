@@ -42,18 +42,13 @@
           <div
             class="rounded-full h-16 w-16 border-2 border-red-500/50 bg-red-500/10 flex items-center justify-center"
           >
-            <component
-              :is="XCircle"
-              class="h-8 w-8 text-red-400"
-            />
+            <component :is="XCircle" class="h-8 w-8 text-red-400" />
           </div>
         </div>
 
         <!-- Message text -->
         <div class="text-center">
-          <p class="text-lg font-medium text-white mb-2">
-            Connection Lost
-          </p>
+          <p class="text-lg font-medium text-white mb-2">Connection Lost</p>
           <p class="text-sm text-gray-400">
             The terminal connection was unexpectedly closed
           </p>
@@ -91,23 +86,21 @@
           <div
             class="rounded-full h-16 w-16 border-2 border-red-500/50 bg-red-500/10 flex items-center justify-center"
           >
-            <component
-              :is="XCircle"
-              class="h-8 w-8 text-red-400"
-            />
+            <component :is="XCircle" class="h-8 w-8 text-red-400" />
           </div>
         </div>
 
         <!-- Message text -->
         <div class="text-center">
-          <p class="text-lg font-medium text-white mb-2">
-            Connection Failed
-          </p>
+          <p class="text-lg font-medium text-white mb-2">Connection Failed</p>
           <p class="text-sm text-gray-400 mb-4">
             {{ formattedErrorMessage }}
           </p>
           <!-- Show additional error details if available -->
-          <div v-if="currentTerminal?.errorMessage" class="text-xs text-gray-500 bg-gray-800 rounded p-2 font-mono max-w-full overflow-x-auto whitespace-pre-wrap">
+          <div
+            v-if="currentTerminal?.errorMessage"
+            class="text-xs text-gray-500 bg-gray-800 rounded p-2 font-mono max-w-full overflow-x-auto whitespace-pre-wrap"
+          >
             {{ formattedErrorMessage }}
           </div>
         </div>
@@ -136,12 +129,19 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, nextTick, onBeforeUnmount, watch, computed } from "vue";
+import {
+  onMounted,
+  ref,
+  nextTick,
+  onBeforeUnmount,
+  watch,
+  computed,
+} from "vue";
 import { debounce, getErrorMessage } from "../../utils/helpers";
 import { resizeTerminal } from "../../services/terminal";
 import { TerminalBufferManager, InputBatcher } from "../../core";
 import type { SimpleTerminal } from "../../core";
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { XCircle, RefreshCw, X } from "lucide-vue-next";
 import Button from "./Button.vue";
@@ -178,23 +178,23 @@ const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
 
-// Get workspace store for terminal state
 const workspaceStore = useWorkspaceStore();
 
-// Computed properties for overlay display
 const currentTerminal = computed(() =>
-  workspaceStore.terminals.find(t => t.id === props.terminalId)
+  workspaceStore.terminals.find((t) => t.id === props.terminalId),
 );
 
-const showDisconnectedOverlay = computed(() =>
-  currentTerminal.value?.disconnectReason === "connection-lost" &&
-  !currentTerminal.value?.hasError
+const showDisconnectedOverlay = computed(
+  () =>
+    currentTerminal.value?.disconnectReason === "connection-lost" &&
+    !currentTerminal.value?.hasError,
 );
 
-const showErrorOverlay = computed(() =>
-  currentTerminal.value?.hasError &&
-  currentTerminal.value?.errorMessage &&
-  !props.isConnecting
+const showErrorOverlay = computed(
+  () =>
+    currentTerminal.value?.hasError &&
+    currentTerminal.value?.errorMessage &&
+    !props.isConnecting,
 );
 
 const formattedErrorMessage = computed(() => {
@@ -202,28 +202,31 @@ const formattedErrorMessage = computed(() => {
   return getErrorMessage(errorMsg, "Connection error occurred");
 });
 
-const canReconnect = computed(() =>
-  currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId
+const canReconnect = computed(
+  () =>
+    currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId,
 );
 
-// Handler functions for overlay actions
 const handleReconnect = () => {
   console.log(currentTerminal);
 
   if (currentTerminal.value?.sshProfileId) {
-    // Clear terminal if it has errors to start fresh
     if (currentTerminal.value.hasError) {
       clearTerminal();
     }
-    workspaceStore.reconnectSSH(props.terminalId, currentTerminal.value.sshProfileId);
+    workspaceStore.reconnectSSH(
+      props.terminalId,
+      currentTerminal.value.sshProfileId,
+    );
   }
 };
 
 const handleCloseTab = () => {
-  // Find panel containing this terminal
   const findPanelWithTab = (layout: any): string | null => {
     if (layout.type === "panel" && layout.panel) {
-      const hasTab = layout.panel.tabs.some((t: any) => t.id === props.terminalId);
+      const hasTab = layout.panel.tabs.some(
+        (t: any) => t.id === props.terminalId,
+      );
       if (hasTab) return layout.panel.id;
     } else if (layout.type === "split" && layout.children) {
       for (const child of layout.children) {
@@ -240,25 +243,20 @@ const handleCloseTab = () => {
   }
 };
 
-// Get buffer manager instance
 const bufferManager = TerminalBufferManager.getInstance();
 
-// Get input batcher instance
 const inputBatcher = InputBatcher.getInstance();
 
-// Handle terminal input using batching for better performance
 const handleTerminalInput = (data: string): void => {
   if (!props.backendTerminalId) return;
 
   try {
-    // Use InputBatcher to batch rapid input and reduce API calls
     inputBatcher.batchInput(props.backendTerminalId, data);
   } catch (error) {
     console.error("Failed to batch input for terminal:", error);
   }
 };
 
-// Handle terminal resize and notify backend
 const handleTerminalResize = async (): Promise<void> => {
   if (!fitAddon || !props.backendTerminalId) return;
 
@@ -282,7 +280,7 @@ const handleCopy = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(selection);
     } catch (err) {
-      console.warn('Failed to copy to clipboard:', err);
+      console.warn("Failed to copy to clipboard:", err);
     }
   }
 };
@@ -294,7 +292,7 @@ const handlePaste = async (): Promise<void> => {
       term.paste(text);
     }
   } catch (err) {
-    console.warn('Failed to read clipboard:', err);
+    console.warn("Failed to read clipboard:", err);
   }
 };
 
@@ -305,7 +303,6 @@ const handleResize = debounce(async () => {
   }
 }, 100);
 
-// Expose methods for parent components
 const focus = (): void => {
   if (term) {
     term.focus();
@@ -320,19 +317,16 @@ const fitAndFocus = debounce((): void => {
   }
 }, 50);
 
-// Method to write output to terminal (called from parent)
 const writeOutput = (data: string): void => {
   if (term) {
     term.write(data);
 
-    // Save output to local buffer for immediate access
     if (props.backendTerminalId) {
       bufferManager.saveToLocalBuffer(props.backendTerminalId, data);
     }
   }
 };
 
-// Method to restore buffer from backend
 const restoreBuffer = async (): Promise<boolean> => {
   if (!term || !props.backendTerminalId) return false;
 
@@ -341,14 +335,16 @@ const restoreBuffer = async (): Promise<boolean> => {
       clear: () => term.clear(),
       write: (data: string) => term.write(data),
     };
-    return await bufferManager.restoreBuffer(props.backendTerminalId, simpleTerminal);
+    return await bufferManager.restoreBuffer(
+      props.backendTerminalId,
+      simpleTerminal,
+    );
   } catch (error) {
     console.error("Failed to restore buffer:", error);
     return false;
   }
 };
 
-// Method to clear terminal and buffer
 const clearTerminal = async (): Promise<void> => {
   if (term) {
     term.clear();
@@ -359,7 +355,6 @@ const clearTerminal = async (): Promise<void> => {
   }
 };
 
-// Watch for visibility changes
 watch(
   () => props.isVisible,
   (newVisible) => {
@@ -371,7 +366,6 @@ watch(
   },
 );
 
-// Expose methods to parent component
 defineExpose({
   focus,
   fitAndFocus,
@@ -396,71 +390,69 @@ onMounted(async () => {
       cursor: "#ffffff",
     },
     allowProposedApi: true,
-    // Enable right-click context menu for copy/paste
     rightClickSelectsWord: true,
-    // Allow clipboard operations
     allowTransparency: false,
   });
 
-  // --- Load terminal addons ---
-
-  // 1. WebGL (load before open for better performance)
   const webglAddon = new WebglAddon();
   term.loadAddon(webglAddon);
 
-  // 2. Fit Addon (fit terminal to window)
   fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
 
-  // 3. Web Links Addon (enable clickable links with proper handler)
-  const webLinksAddon = new WebLinksAddon(async (event: MouseEvent, uri: string) => {
-    event.preventDefault();
-    try {
-      // Use Tauri's opener plugin for better security in desktop app
-      await openUrl(uri);
-    } catch (error) {
-      console.warn('Failed to open link with Tauri opener, falling back to window.open:', error);
-      // Fallback to window.open if Tauri opener fails
-      window.open(uri, '_blank');
-    }
-  });
+  const webLinksAddon = new WebLinksAddon(
+    async (event: MouseEvent, uri: string) => {
+      event.preventDefault();
+      try {
+        await openUrl(uri);
+      } catch (error) {
+        console.warn(
+          "Failed to open link with Tauri opener, falling back to window.open:",
+          error,
+        );
+        window.open(uri, "_blank");
+      }
+    },
+  );
   term.loadAddon(webLinksAddon);
 
-  // 4. Search Addon (enable text search)
   const searchAddon = new SearchAddon();
   term.loadAddon(searchAddon);
 
-  // 5. Unicode 11 Addon (support wide characters, emoji)
   const unicode11Addon = new Unicode11Addon();
   term.loadAddon(unicode11Addon);
-  // Activate Unicode 11 addon after loading
   term.unicode.activeVersion = "11";
 
-  // Add custom keyboard shortcuts for copy/paste
   term.attachCustomKeyEventHandler((event: KeyboardEvent): boolean => {
-    // Ctrl+Shift+C for copy
-    if (event.ctrlKey && event.shiftKey && event.key === 'C' && event.type === 'keydown') {
+    if (
+      event.ctrlKey &&
+      event.shiftKey &&
+      event.key === "C" &&
+      event.type === "keydown"
+    ) {
       event.preventDefault();
       handleCopy();
       return false;
     }
 
-    // CMD+C for copy on Mac
-    if (event.metaKey && event.key === 'c' && event.type === 'keydown') {
+    if (event.metaKey && event.key === "c" && event.type === "keydown") {
       event.preventDefault();
       handleCopy();
       return false;
     }
 
-    // Ctrl+Shift+V for paste
-    if (event.ctrlKey && event.shiftKey && event.key === 'V' && event.type === 'keydown') {
+    if (
+      event.ctrlKey &&
+      event.shiftKey &&
+      event.key === "V" &&
+      event.type === "keydown"
+    ) {
       event.preventDefault();
       handlePaste();
       return false;
     }
 
-    // CMD+V for paste on Mac
-    if (event.metaKey && event.key === 'v' && event.type === 'keydown') {
+    if (event.metaKey && event.key === "v" && event.type === "keydown") {
       event.preventDefault();
       handlePaste();
       return false;
@@ -469,32 +461,24 @@ onMounted(async () => {
     return true;
   });
 
-  // Open terminal in DOM
   term.open(terminalRef.value);
 
-  // Handle user input and send to backend via InputBatcher
   term.onData((data) => {
     handleTerminalInput(data);
   });
 
-  // Wait for DOM to be ready
   await nextTick();
 
-  // Notify parent that terminal is ready
   emit("terminal-ready", props.terminalId || "default");
 
-  // Handle window resize
   window.addEventListener("resize", handleResize);
 
-  // Initial fit
   handleResize();
 });
 
-// Cleanup on unmount
 onBeforeUnmount(async () => {
   window.removeEventListener("resize", handleResize);
 
-  // Flush any pending input before cleanup
   if (props.backendTerminalId) {
     try {
       await inputBatcher.flushInput(props.backendTerminalId);
@@ -502,7 +486,6 @@ onBeforeUnmount(async () => {
       console.error("Failed to flush input during cleanup:", error);
     }
 
-    // Clear batcher data for this terminal
     inputBatcher.clearTerminal(props.backendTerminalId);
   }
 

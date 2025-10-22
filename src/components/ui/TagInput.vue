@@ -114,16 +114,13 @@ const props = withDefaults(defineProps<TagInputProps>(), {
 
 const emit = defineEmits(["update:modelValue", "blur", "focus"]);
 
-// Refs
 const errorMessage = ref(props.errorMessage || "");
 const touched = ref(false);
 const inputRef = ref<HTMLInputElement>();
 const currentInput = ref("");
 
-// Injected from parent Form
 const formContext = inject<FormContext>("form-context");
 
-// Computed
 const inputId = computed(
   () => props.id || `tag-input-${Math.random().toString(36).substr(2, 9)}`,
 );
@@ -157,7 +154,6 @@ const stateClasses = computed(() => {
   return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500";
 });
 
-// Methods
 const validate = (): string => {
   if (!props.rules || props.rules.length === 0) {
     return "";
@@ -177,7 +173,6 @@ const addTag = () => {
 
   const currentTags = [...tags.value];
 
-  // Check for duplicates
   if (!props.allowDuplicates && currentTags.includes(tag)) {
     currentInput.value = "";
     return;
@@ -214,7 +209,6 @@ const handleFocus = (event: FocusEvent): void => {
   emit("focus", event);
 };
 
-// Lifecycle hooks
 onMounted(() => {
   if (formContext) {
     formContext.register({
@@ -231,7 +225,6 @@ onUnmounted(() => {
   }
 });
 
-// Expose methods for parent components
 defineExpose({
   focus: () => inputRef.value?.focus(),
   blur: () => inputRef.value?.blur(),

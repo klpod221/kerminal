@@ -143,7 +143,6 @@ pub async fn get_record_versions(
 
 /// Helper function to convert JSON Value to BSON Document
 fn json_to_bson_document(value: &Value) -> DatabaseResult<Document> {
-    // Convert camelCase keys to snake_case
     let mut doc = Document::new();
 
     if let Some(obj) = value.as_object() {

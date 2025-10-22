@@ -34,17 +34,14 @@ export function getErrorMessage(
   }
 
   if (error && typeof error === "object") {
-    // Handle Tauri error format
     if ("message" in error && typeof error.message === "string") {
       return error.message;
     }
 
-    // Handle standard Error objects
     if (error instanceof Error) {
       return error.message;
     }
 
-    // Handle other object formats
     if ("error" in error && typeof error.error === "string") {
       return error.error;
     }
@@ -66,7 +63,10 @@ export const bytesToString = (bytes: number[]): string => {
  * @param fallback - Fallback value if parsing fails
  * @returns Parsed value or fallback
  */
-export function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
+export function safeJsonParse<T>(
+  json: string | null | undefined,
+  fallback: T,
+): T {
   if (!json) return fallback;
   try {
     return JSON.parse(json) as T;
@@ -99,7 +99,7 @@ export function safeJsonStringify(value: unknown, fallback = ""): string {
 export function truncateText(
   text: string,
   maxLength: number,
-  ellipsis = "..."
+  ellipsis = "...",
 ): string {
   if (!text || text.length <= maxLength) return text;
   return text.substring(0, maxLength - ellipsis.length) + ellipsis;
@@ -113,11 +113,10 @@ export function truncateText(
  */
 export function isRecentlyActive(
   timestamp: Date | number | string,
-  withinMinutes = 5
+  withinMinutes = 5,
 ): boolean {
-  const time = typeof timestamp === "number"
-    ? timestamp
-    : new Date(timestamp).getTime();
+  const time =
+    typeof timestamp === "number" ? timestamp : new Date(timestamp).getTime();
   const now = Date.now();
   return now - time < withinMinutes * 60 * 1000;
 }
@@ -130,7 +129,7 @@ export function isRecentlyActive(
  */
 export function caseInsensitiveIncludes(
   text: string | null | undefined,
-  query: string
+  query: string,
 ): boolean {
   if (!text) return false;
   return text.toLowerCase().includes(query.toLowerCase());

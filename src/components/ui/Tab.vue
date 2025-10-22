@@ -98,10 +98,8 @@ const props = withDefaults(defineProps<TabProps>(), {
 
 const emit = defineEmits<TabEmits>();
 
-// Refs
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null);
 
-// Drag state
 const isDragging = ref(false);
 
 /**
@@ -188,7 +186,6 @@ const handleContextMenuAction = (item: ContextMenuItem): void => {
 const onDragStart = (event: DragEvent): void => {
   isDragging.value = true;
   if (event.dataTransfer) {
-    // Store both tab data and source panel info
     const dragData = {
       tab: props.tab,
       sourcePanelId: props.panelId,
@@ -215,7 +212,10 @@ const onDrop = (event: DragEvent): void => {
   if (event.dataTransfer) {
     const draggedTabData = event.dataTransfer.getData("application/json");
     if (draggedTabData) {
-      const dragData = safeJsonParse<{tab: Tab; sourcePanelId: string} | null>(draggedTabData, null);
+      const dragData = safeJsonParse<{
+        tab: Tab;
+        sourcePanelId: string;
+      } | null>(draggedTabData, null);
       if (!dragData) return;
 
       const draggedTab = dragData.tab;

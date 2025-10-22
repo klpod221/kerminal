@@ -141,7 +141,6 @@ const emit = defineEmits<{
 const { closeOverlay, getOverlayProp } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
 
-// Use overlay prop with fallback to direct prop
 const groupId = getOverlayProp(props.modalId, "groupId", props.groupId, null);
 
 const groupForm = ref<InstanceType<typeof Form> | null>(null);
@@ -189,7 +188,6 @@ const selectedIconComponent = computed(() => {
   return icon?.component;
 });
 
-// Load group data
 const loadGroup = async () => {
   if (!groupId.value) return;
 
@@ -252,7 +250,6 @@ const closeModal = () => {
   closeOverlay(props.modalId);
 };
 
-// Watch for prop changes to reinitialize form
 watch(
   () => groupId.value,
   (newGroupId) => {
@@ -263,7 +260,6 @@ watch(
     if (newGroupId) {
       loadGroup();
     } else {
-      // Reset form for new group
       formData.value = {
         name: "",
         description: "",

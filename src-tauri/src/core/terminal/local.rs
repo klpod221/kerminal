@@ -51,7 +51,6 @@ impl LocalTerminal {
             })
             .map_err(|e| AppError::pty_error(e.to_string()))?;
 
-        // Determine shell to use with better detection
         let shell = self
             .local_config
             .shell
@@ -61,7 +60,6 @@ impl LocalTerminal {
                 if cfg!(windows) {
                     "cmd.exe".to_string()
                 } else {
-                    // Try to find available shells in order of preference
                     let preferred_shells =
                         ["/bin/zsh", "/usr/bin/zsh", "/bin/bash", "/usr/bin/bash"];
                     for shell_path in &preferred_shells {
@@ -75,31 +73,23 @@ impl LocalTerminal {
 
         let mut cmd = CommandBuilder::new(&shell);
 
-        // For interactive shells, add appropriate flags to load user configuration
         if shell.contains("zsh") {
-            // Use login shell to load .zshrc and all configurations
             cmd.arg("-l");
         } else if shell.contains("bash") {
-            // Use interactive login shell
             cmd.arg("-l");
         }
 
-        // Set working directory if specified
         if let Some(working_dir) = &self.local_config.working_dir {
             cmd.cwd(working_dir);
         }
 
-        // Set essential environment variables for proper terminal operation
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
 
-        // Inherit ALL environment variables from current process
-        // This ensures compatibility with all shell configurations and plugins
         for (key, value) in std::env::vars() {
             cmd.env(&key, &value);
         }
 
-        // Set custom environment variables if specified (these can override inherited ones)
         if let Some(env_vars) = &self.local_config.env_vars {
             for (key, value) in env_vars {
                 cmd.env(key, value);
@@ -125,12 +115,10 @@ impl LocalTerminal {
     /// Disconnect from the terminal
     pub async fn disconnect(&mut self) -> Result<(), AppError> {
         if let Some((_, mut child)) = self.pty_pair.take() {
-            // Try to kill the child process gracefully
             if let Err(e) = child.kill() {
                 eprintln!("Failed to kill child process: {}", e);
             }
 
-            // Wait for the process to exit
             match child.wait() {
                 Ok(_) => {}
                 Err(e) => {
@@ -200,17 +188,14 @@ impl LocalTerminal {
                 .try_clone_reader()
                 .map_err(|e| AppError::pty_error(e.to_string()))?;
 
-            // Move title detector to the spawned task
             let mut title_detector = std::mem::take(&mut self.title_detector);
             let terminal_id = self.id.clone();
 
-            // Spawn a blocking task to read from PTY
             tokio::task::spawn_blocking(move || {
                 let mut buffer = [0u8; 8192];
                 loop {
                     match reader.read(&mut buffer) {
                         Ok(0) => {
-                            // EOF reached, terminal has closed
                             if let Some(ref exit_sender) = exit_sender {
                                 let exit_event = TerminalExited {
                                     terminal_id: terminal_id.clone(),
@@ -229,7 +214,6 @@ impl LocalTerminal {
                         Ok(n) => {
                             let data = buffer[..n].to_vec();
 
-                            // Process output for title detection
                             if let Some(ref title_sender) = title_sender {
                                 if let Some(new_title) = title_detector.process_output(&data) {
                                     let _ = title_sender.send(new_title);
@@ -237,7 +221,6 @@ impl LocalTerminal {
                             }
 
                             if sender.send(data).is_err() {
-                                // Channel closed, stop reading
                                 break;
                             }
                         }
@@ -251,7 +234,6 @@ impl LocalTerminal {
                         }
                     }
 
-                    // Small delay to prevent overwhelming the channel
                     thread::sleep(Duration::from_millis(1));
                 }
             });

@@ -5,7 +5,6 @@ export function useWindowSize() {
   const width = ref(0);
   const height = ref(0);
 
-  // Function to update window size
   const updateSize = async () => {
     const window = getCurrentWindow();
     const size = await window.innerSize();

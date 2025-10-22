@@ -42,14 +42,12 @@ pub async fn create_ssh_terminal(
     app_state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<CreateTerminalResponse, AppError> {
-    // Get SSH profile from database
     let ssh_profile = app_state
         .ssh_service
         .get_ssh_profile(&request.profile_id)
         .await
         .map_err(|e| AppError::Database(e.to_string()))?;
 
-    // Create terminal config with SSH profile ID
     let config = TerminalConfig {
         terminal_type: TerminalType::SSH,
         local_config: None,
@@ -81,7 +79,6 @@ pub async fn write_batch_to_terminal(
     request: WriteBatchTerminalRequest,
     app_state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    // Process each write request in the batch
     for write_request in request.requests {
         app_state
             .terminal_manager

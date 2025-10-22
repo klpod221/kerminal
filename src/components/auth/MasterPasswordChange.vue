@@ -111,11 +111,9 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";
 
-// Import stores and composables
 const { closeOverlay } = useOverlay();
 const { changeMasterPassword } = useAuthStore();
 
-// State
 const changeMasterPasswordForm = ref<InstanceType<typeof Form> | null>(null);
 const isLoading = ref(false);
 const changeForm = ref({
@@ -124,7 +122,6 @@ const changeForm = ref({
   confirmNewPassword: "",
 });
 
-// Handle form submission
 const handleSubmit = async () => {
   const isValid = await changeMasterPasswordForm.value?.validate();
   if (!isValid) return;
@@ -134,7 +131,6 @@ const handleSubmit = async () => {
 
     await changeMasterPassword(changeForm.value);
 
-    // Reset form after successful change
     changeForm.value = {
       oldPassword: "",
       newPassword: "",

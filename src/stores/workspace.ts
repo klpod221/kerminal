@@ -27,7 +27,6 @@ import type {
 export const useWorkspaceStore = defineStore("workspace", () => {
   const viewState = useViewStateStore();
 
-  // State variables
   const panelLayout = ref<PanelLayout>({
     type: "panel",
     id: "panel-1",
@@ -41,14 +40,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const activePanelId = ref<string>("panel-1");
   const terminals = ref<TerminalInstance[]>([]);
 
-  // Counter variables
   let tabCounter = 1;
   let panelCounter = 2; // Start from 2 since panel-1 is already created
 
-// Event listener cleanup functions
-let unlistenTitleChanges: (() => void) | null = null;
-let unlistenTerminalExits: (() => void) | null = null;
-let unlistenSSHConnected: (() => void) | null = null;  /**
+  let unlistenTitleChanges: (() => void) | null = null;
+  let unlistenTerminalExits: (() => void) | null = null;
+  let unlistenSSHConnected: (() => void) | null = null; /**
    * Find a panel in the layout tree by ID
    * @param layout - The layout to search in
    * @param panelId - The panel ID to find
@@ -94,11 +91,9 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       }
 
       if (filteredChildren.length === 1) {
-        // Collapse split with only one child
         return filteredChildren[0];
       }
 
-      // Update sizes proportionally when a child is removed
       const newSizes = layout.sizes
         ? filteredChildren.map(() => 1 / filteredChildren.length)
         : undefined;
@@ -136,22 +131,18 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    * @param panelId - The panel ID to close
    */
   const autoClosePanel = (panelId: string): void => {
-    // Remove panel from layout
     const newLayout = removePanelFromLayout(panelLayout.value, panelId);
     if (newLayout) {
       panelLayout.value = newLayout;
-      // Find a new active panel if the closed panel was active
       if (activePanelId.value === panelId) {
         const firstPanel = findFirstPanel(panelLayout.value);
         if (firstPanel) {
           activePanelId.value = firstPanel.id;
         } else {
-          // No panels left, show dashboard
           viewState.setActiveView("dashboard");
         }
       }
     } else {
-      // All panels closed, show dashboard
       viewState.setActiveView("dashboard");
     }
   };
@@ -174,7 +165,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     if (panel) {
       panel.activeTabId = tabId;
       viewState.setActiveView("workspace");
-      // Note: setActivePanel will be called separately by Panel component
     }
   };
 
@@ -188,7 +178,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
     const newTabId = tabCounter.toString();
 
-    // Get username and hostname from backend
     const defaultTitle = await getUserHostname();
 
     const newTab: Tab = {
@@ -202,17 +191,12 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       shouldFocusOnReady: true, // Focus new tabs when ready
     };
 
-    // Add tab to panel
     panel.tabs.push(newTab);
     panel.activeTabId = newTabId;
 
-    // Add terminal instance
     terminals.value.push(newTerminal);
 
-    // Switch to workspace (setActivePanel will be called separately by Panel component)
     viewState.setActiveView("workspace");
-
-    // DON'T create backend terminal here - wait for terminal component to be ready
 
     tabCounter++;
   };
@@ -248,14 +232,11 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       canReconnect: true, // SSH terminals can reconnect
     };
 
-    // Add tab to panel
     panel.tabs.push(newTab);
     panel.activeTabId = newTabId;
 
-    // Add terminal instance
     terminals.value.push(newTerminal);
 
-    // Switch to workspace
     viewState.setActiveView("workspace");
 
     tabCounter++;
@@ -266,9 +247,11 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    * @param terminalId - The terminal ID that failed to connect
    * @param error - The error message
    */
-  const handleSSHConnectionError = async (terminalId: string, error: string): Promise<void> => {
-    // Find and update terminal state
-    const terminal = terminals.value.find(t => t.id === terminalId);
+  const handleSSHConnectionError = async (
+    terminalId: string,
+    error: string,
+  ): Promise<void> => {
+    const terminal = terminals.value.find((t) => t.id === terminalId);
     if (terminal) {
       terminal.isSSHConnecting = false;
       terminal.hasError = true;
@@ -276,8 +259,9 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       terminal.canReconnect = true; // Enable reconnect for error cases
     }
 
-    // Find the tab that corresponds to this terminal
-    const findTabByTerminalId = (layout: PanelLayout): { panel: Panel; tab: Tab } | undefined => {
+    const findTabByTerminalId = (
+      layout: PanelLayout,
+    ): { panel: Panel; tab: Tab } | undefined => {
       if (layout.type === "panel" && layout.panel) {
         for (const tab of layout.panel.tabs) {
           if (tab.id === terminalId) {
@@ -295,17 +279,16 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
     const result = findTabByTerminalId(panelLayout.value);
     if (result) {
-      // Update tab title to show error
       result.tab.title = `${result.tab.title} (Failed)`;
     }
   };
 
-    /**
+  /**
    * Handle SSH connection success for a terminal
    * @param terminalId - The terminal ID that successfully connected
    */
   const handleSSHConnectionSuccess = (terminalId: string): void => {
-    const terminal = terminals.value.find(t => t.id === terminalId);
+    const terminal = terminals.value.find((t) => t.id === terminalId);
     if (terminal) {
       terminal.isSSHConnecting = false;
       terminal.disconnectReason = undefined; // Clear any previous disconnect reason
@@ -319,21 +302,20 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    * @param terminalId - The terminal ID to reconnect
    * @param profileId - The SSH profile ID to use (currently not used but may be needed for validation)
    */
-  const reconnectSSH = async (terminalId: string, _profileId: string): Promise<void> => {
-    const terminal = terminals.value.find(t => t.id === terminalId);
+  const reconnectSSH = async (
+    terminalId: string,
+    _profileId: string,
+  ): Promise<void> => {
+    const terminal = terminals.value.find((t) => t.id === terminalId);
     if (!terminal) return;
 
-    // Clear disconnected state and mark as connecting
     terminal.disconnectReason = undefined;
     terminal.hasError = false;
     terminal.errorMessage = undefined;
     terminal.isSSHConnecting = true;
     terminal.backendTerminalId = undefined;
 
-    // Trigger terminal ready to recreate backend connection
     try {
-      // The terminalReady handler will automatically create the backend terminal
-      // because backendTerminalId is now undefined
       await terminalReady(terminalId);
     } catch (error) {
       console.error("Failed to reconnect SSH:", error);
@@ -401,7 +383,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     await removeTerminalInstance(tabId);
     panel.tabs.splice(tabIndex, 1);
 
-    // If closed tab was active, set new active tab or close panel
     if (updateActiveTabAfterClose(panel, tabId, tabIndex, panelId)) return;
   };
 
@@ -420,11 +401,8 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     direction: "horizontal" | "vertical",
   ): boolean => {
     if (layout.type === "panel" && layout.panel?.id === panelId) {
-      // This is the panel want to split
-      // We need to replace this layout with a split layout
       const originalPanel = layout.panel;
 
-      // Update layout properties in-place for better reactivity
       layout.type = "split";
       layout.direction = direction;
       layout.children = [
@@ -441,7 +419,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       ];
       layout.sizes = [0.5, 0.5];
 
-      // Clear panel property since we're now a split
       delete (layout as PanelLayout & { panel?: Panel }).panel;
 
       return true;
@@ -466,7 +443,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
 
-    // Clone current active tab or create default tab
     let newTab: Tab;
     if (panel.activeTabId && panel.tabs.length > 0) {
       const activeTab = panel.tabs.find((tab) => tab.id === panel.activeTabId);
@@ -479,7 +455,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
           profileId: activeTab.profileId,
           groupId: activeTab.groupId,
         };
-        // Create terminal for cloned tab
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
@@ -507,7 +482,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       terminals.value.push(newTerminal);
     }
 
-    // Create new panel
     const newPanelId = `panel-${panelCounter++}`;
     const newPanel: Panel = {
       id: newPanelId,
@@ -515,7 +489,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       tabs: [newTab],
     };
 
-    // Split the specific panel in the layout
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "horizontal");
     setActivePanel(newPanelId);
     tabCounter++;
@@ -529,7 +502,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
 
-    // Clone current active tab or create default tab
     let newTab: Tab;
     if (panel.activeTabId && panel.tabs.length > 0) {
       const activeTab = panel.tabs.find((tab) => tab.id === panel.activeTabId);
@@ -542,7 +514,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
           profileId: activeTab.profileId,
           groupId: activeTab.groupId,
         };
-        // Create terminal for cloned tab
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
@@ -570,7 +541,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       terminals.value.push(newTerminal);
     }
 
-    // Create new panel
     const newPanelId = `panel-${panelCounter++}`;
     const newPanel: Panel = {
       id: newPanelId,
@@ -578,7 +548,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       tabs: [newTab],
     };
 
-    // Split the specific panel in the layout
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "vertical");
     setActivePanel(newPanelId);
     tabCounter++;
@@ -592,7 +561,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
 
-    // Close all tabs in the panel (this will also destroy their terminals)
     const tabIds = [...panel.tabs.map((tab) => tab.id)]; // Create a copy to avoid mutation during iteration
 
     for (const tabId of tabIds) {
@@ -604,22 +572,18 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       }
     }
 
-    // Remove panel from layout
     const newLayout = removePanelFromLayout(panelLayout.value, panelId);
     if (newLayout) {
       panelLayout.value = newLayout;
-      // Find a new active panel if the closed panel was active
       if (activePanelId.value === panelId) {
         const firstPanel = findFirstPanel(panelLayout.value);
         if (firstPanel) {
           activePanelId.value = firstPanel.id;
         } else {
-          // No panels left, show dashboard
           viewState.setActiveView("dashboard");
         }
       }
     } else {
-      // All panels closed, show dashboard
       viewState.setActiveView("dashboard");
     }
   };
@@ -757,7 +721,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     tabId: string,
     targetTabId?: string,
   ): void => {
-    // Auto-detect source panel if not provided
     let actualFromPanelId = fromPanelId;
     if (!actualFromPanelId) {
       actualFromPanelId =
@@ -765,7 +728,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     }
 
     if (!actualFromPanelId) {
-      // Silently handle missing panel - not critical
       return;
     }
 
@@ -803,13 +765,11 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       shouldFocusOnReady: true, // Focus duplicated tabs when ready
     };
 
-    // Add tab to panel
     const sourceIndex = panel.tabs.findIndex((tab) => tab.id === tabId);
     panel.tabs.splice(sourceIndex + 1, 0, newTab);
     panel.activeTabId = newTabId;
     terminals.value.push(newTerminal);
 
-    // Set active panel and switch to workspace
     setActivePanel(panelId);
     viewState.setActiveView("workspace");
 
@@ -834,7 +794,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
     if (!sourcePanel || !targetPanel) return;
 
-    // Remove tab from source panel
     const tabIndex = sourcePanel.tabs.findIndex(
       (tab) => tab.id === draggedTab.id,
     );
@@ -842,7 +801,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
     const [tab] = sourcePanel.tabs.splice(tabIndex, 1);
 
-    // Update source panel's active tab if needed
     if (sourcePanel.activeTabId === draggedTab.id) {
       if (sourcePanel.tabs.length > 0) {
         sourcePanel.activeTabId =
@@ -852,7 +810,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       }
     }
 
-    // Create new panel with the moved tab
     const newPanelId = `panel-${panelCounter++}`;
     const newPanel: Panel = {
       id: newPanelId,
@@ -860,7 +817,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       tabs: [tab],
     };
 
-    // Determine split direction based on drop zone
     let splitDirection: "horizontal" | "vertical";
     if (direction === "top" || direction === "bottom") {
       splitDirection = "vertical";
@@ -868,7 +824,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       splitDirection = "horizontal";
     }
 
-    // Split the target panel
     const success = splitPanelInLayout(
       panelLayout.value,
       targetPanelId,
@@ -877,16 +832,13 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     );
 
     if (success) {
-      // If direction is 'top' or 'left', we need to swap the order of panels
       if (direction === "top" || direction === "left") {
-        // Find the newly created split layout and swap its children
         const swapChildrenInLayout = (layout: PanelLayout): boolean => {
           if (
             layout.type === "split" &&
             layout.children &&
             layout.children.length === 2
           ) {
-            // Check if one of the children is our new panel
             const hasNewPanel = layout.children.some(
               (child) =>
                 child.type === "panel" && child.panel?.id === newPanelId,
@@ -901,7 +853,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
             });
 
             if (hasNewPanel && hasTargetPanel) {
-              // Swap the children
               [layout.children[0], layout.children[1]] = [
                 layout.children[1],
                 layout.children[0],
@@ -922,7 +873,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
       setActivePanel(newPanelId);
 
-      // Auto-close source panel if it has no tabs left
       if (sourcePanel.tabs.length === 0) {
         autoClosePanel(sourcePanelId);
       }
@@ -946,7 +896,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     const sourceTab = panel.tabs.find((tab) => tab.id === tabId);
     if (!sourceTab) return;
 
-    // Create new tab (clone of the dragged tab)
     const newTabId = tabCounter.toString();
     const newTab: Tab = {
       id: newTabId,
@@ -956,7 +905,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       groupId: sourceTab.groupId,
     };
 
-    // Create terminal for cloned tab
     const newTerminal: TerminalInstance = {
       id: newTabId,
       ready: false,
@@ -964,7 +912,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     };
     terminals.value.push(newTerminal);
 
-    // Create new panel with the cloned tab
     const newPanelId = `panel-${panelCounter++}`;
     const newPanel: Panel = {
       id: newPanelId,
@@ -972,7 +919,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       tabs: [newTab],
     };
 
-    // Determine split direction based on drop zone
     let splitDirection: "horizontal" | "vertical";
     if (direction === "top" || direction === "bottom") {
       splitDirection = "vertical";
@@ -980,7 +926,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       splitDirection = "horizontal";
     }
 
-    // Split the panel
     const success = splitPanelInLayout(
       panelLayout.value,
       panelId,
@@ -989,16 +934,13 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     );
 
     if (success) {
-      // If direction is 'top' or 'left', we need to swap the order of panels
       if (direction === "top" || direction === "left") {
-        // Find the newly created split layout and swap its children
         const swapChildrenInLayout = (layout: PanelLayout): boolean => {
           if (
             layout.type === "split" &&
             layout.children &&
             layout.children.length === 2
           ) {
-            // Check if one of the children is our new panel
             const hasNewPanel = layout.children.some(
               (child) =>
                 child.type === "panel" && child.panel?.id === newPanelId,
@@ -1013,7 +955,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
             });
 
             if (hasNewPanel && hasTargetPanel) {
-              // Swap the children
               [layout.children[0], layout.children[1]] = [
                 layout.children[1],
                 layout.children[0],
@@ -1049,7 +990,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     const tab = sourcePanel.tabs.find((t) => t.id === tabId);
     if (!tab) return;
 
-    // Create new panel with the moved tab
     const newPanelId = `panel-${panelCounter++}`;
     const newPanel: Panel = {
       id: newPanelId,
@@ -1057,11 +997,9 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       tabs: [tab],
     };
 
-    // Remove tab from source panel
     const tabIndex = sourcePanel.tabs.findIndex((t) => t.id === tabId);
     sourcePanel.tabs.splice(tabIndex, 1);
 
-    // Update source panel's active tab if needed
     if (sourcePanel.activeTabId === tabId) {
       if (sourcePanel.tabs.length > 0) {
         sourcePanel.activeTabId =
@@ -1071,7 +1009,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       }
     }
 
-    // Split the source panel layout to add the new panel
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "horizontal");
     setActivePanel(newPanelId);
   };
@@ -1085,14 +1022,11 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     if (terminal) {
       terminal.ready = true;
 
-      // Clear the shouldFocusOnReady flag after use
       if (terminal.shouldFocusOnReady) {
         terminal.shouldFocusOnReady = false;
       }
 
-      // Create backend terminal now that the frontend is ready
       if (!terminal.backendTerminalId) {
-        // Find the tab to get the title and profile info
         let title = "Terminal";
         let profileId: string | undefined;
 
@@ -1117,34 +1051,26 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
         try {
           let response;
           if (profileId) {
-            // This is an SSH terminal
             response = await createSSHTerminal(profileId);
           } else {
-            // This is a local terminal
-            response = await createLocalTerminal(
-              undefined,
-              undefined,
-              title,
-            );
+            response = await createLocalTerminal(undefined, undefined, title);
           }
 
-          // Store the backend terminal ID
           terminal.backendTerminalId = response.terminalId;
         } catch (error) {
           console.error("Failed to create terminal:", error);
-          // Clear the connecting state if it was an SSH connection
           if (terminal.isSSHConnecting && profileId) {
-            // Handle SSH connection error - properly format error message
             let errorMessage: string;
             if (error instanceof Error) {
               errorMessage = error.message;
-            } else if (typeof error === 'string') {
+            } else if (typeof error === "string") {
               errorMessage = error;
-            } else if (error && typeof error === 'object') {
-              // Handle object errors by stringifying or extracting message
-              errorMessage = (error as any).message || safeJsonStringify(error, 'Unknown error');
+            } else if (error && typeof error === "object") {
+              errorMessage =
+                (error as any).message ||
+                safeJsonStringify(error, "Unknown error");
             } else {
-              errorMessage = 'Unknown connection error occurred';
+              errorMessage = "Unknown connection error occurred";
             }
             await handleSSHConnectionError(terminalId, errorMessage);
           } else if (terminal.isSSHConnecting) {
@@ -1171,9 +1097,7 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    * @param newLayout - The new layout
    */
   const updateLayout = (newLayout: PanelLayout): void => {
-    // Deep clone to ensure reactivity
     panelLayout.value = structuredClone(newLayout);
-    // Trigger terminal resize after layout update
     triggerTerminalResize();
   };
 
@@ -1181,11 +1105,9 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
    * Initialize the workspace store
    */
   const initialize = async (): Promise<void> => {
-    // Setup title change listener
     try {
       unlistenTitleChanges = await listenToTerminalTitleChanged(
         (titleChange: TerminalTitleChanged) => {
-          // Find the terminal and update its tab title
           const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
             if (layout.type === "panel" && layout.panel) {
               return layout.panel.tabs.find((t: Tab) => {
@@ -1210,11 +1132,9 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
         },
       );
 
-      // Setup terminal exit listener
       unlistenTerminalExits = await listenToTerminalExit(
         (exitEvent: TerminalExited) => {
           console.log("Terminal exited:", exitEvent);
-          // Find the tab that corresponds to this terminal
           const findTabByBackendId = (
             layout: PanelLayout,
           ): { panel: Panel; tab: Tab } | undefined => {
@@ -1238,7 +1158,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
 
           const result = findTabByBackendId(panelLayout.value);
           if (result) {
-            // Check if the terminal is already being closed to prevent double close
             const terminal = terminals.value.find(
               (term) => term.id === result.tab.id,
             );
@@ -1246,14 +1165,15 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
               return; // Already being closed, skip
             }
 
-            // If reason is user-closed, auto-close the tab
-            if (exitEvent.reason === "user-closed" || terminal?.disconnectReason === "user-closed") {
+            if (
+              exitEvent.reason === "user-closed" ||
+              terminal?.disconnectReason === "user-closed"
+            ) {
               console.log(
                 `Auto-closing tab ${result.tab.id} due to user-initiated close`,
               );
               closeTab(result.panel.id, result.tab.id);
             } else {
-              // Connection lost - show reconnect UI
               console.log(
                 `Connection lost for tab ${result.tab.id}, showing reconnect UI`,
               );
@@ -1267,36 +1187,54 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
         },
       );
 
-      // Setup SSH connected listener
       try {
         unlistenSSHConnected = await api.listen<{ terminalId: string }>(
           "ssh-connected",
           (data: { terminalId: string }) => {
-            console.log("🎉 SSH Connected event received for terminal:", data.terminalId);
+            console.log(
+              "🎉 SSH Connected event received for terminal:",
+              data.terminalId,
+            );
 
-            // Find the terminal by backend ID or by connecting state if ID not yet set
-            let terminal = terminals.value.find((t) => t.backendTerminalId === data.terminalId);
+            let terminal = terminals.value.find(
+              (t) => t.backendTerminalId === data.terminalId,
+            );
 
             if (!terminal) {
-              // If not found by backend ID, look for SSH connecting terminals without backend ID
-              terminal = terminals.value.find((t) => t.isSSHConnecting && !t.backendTerminalId);
+              terminal = terminals.value.find(
+                (t) => t.isSSHConnecting && !t.backendTerminalId,
+              );
               if (terminal) {
-                console.log("🔗 Linking SSH terminal frontend ID", terminal.id, "with backend ID", data.terminalId);
+                console.log(
+                  "🔗 Linking SSH terminal frontend ID",
+                  terminal.id,
+                  "with backend ID",
+                  data.terminalId,
+                );
                 terminal.backendTerminalId = data.terminalId;
               }
             }
 
             if (terminal) {
-              console.log("✅ Clearing SSH connecting state for terminal:", terminal.id);
+              console.log(
+                "✅ Clearing SSH connecting state for terminal:",
+                terminal.id,
+              );
               terminal.isSSHConnecting = false;
               handleSSHConnectionSuccess(terminal.id);
             } else {
-              console.warn("⚠️ Terminal not found for SSH connected event:", data.terminalId);
-              console.log("📋 Current terminals:", terminals.value.map(t => ({
-                id: t.id,
-                backendId: t.backendTerminalId,
-                isSSHConnecting: t.isSSHConnecting
-              })));
+              console.warn(
+                "⚠️ Terminal not found for SSH connected event:",
+                data.terminalId,
+              );
+              console.log(
+                "📋 Current terminals:",
+                terminals.value.map((t) => ({
+                  id: t.id,
+                  backendId: t.backendTerminalId,
+                  isSSHConnecting: t.isSSHConnecting,
+                })),
+              );
             }
           },
         );
@@ -1307,7 +1245,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       console.error("Failed to setup title change listener:", error);
     }
 
-    // Use requestAnimationFrame to ensure UI is fully rendered
     await new Promise((resolve) => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -1316,7 +1253,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
       });
     });
 
-    // Automatically create the first terminal when app starts if no terminals exist
     if (terminals.value.length === 0) {
       const firstPanel = findFirstPanel(panelLayout.value);
       if (firstPanel) {
@@ -1344,12 +1280,10 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
   };
 
   return {
-    // State
     panelLayout,
     activePanelId,
     terminals,
 
-    // Actions
     setActivePanel,
     selectTab,
     addTab,
@@ -1371,7 +1305,6 @@ let unlistenSSHConnected: (() => void) | null = null;  /**
     handleSSHConnectionSuccess,
     reconnectSSH,
 
-    // Getters/Computed
     findPanelInLayout: (panelId: string) =>
       findPanelInLayout(panelLayout.value, panelId),
   };

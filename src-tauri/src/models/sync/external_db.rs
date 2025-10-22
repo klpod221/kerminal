@@ -107,13 +107,11 @@ impl std::str::FromStr for ConflictResolutionStrategy {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            // PascalCase (for database storage and Display)
             "LastWriteWins" => Ok(ConflictResolutionStrategy::LastWriteWins),
             "FirstWriteWins" => Ok(ConflictResolutionStrategy::FirstWriteWins),
             "Manual" => Ok(ConflictResolutionStrategy::Manual),
             "LocalWins" => Ok(ConflictResolutionStrategy::LocalWins),
             "RemoteWins" => Ok(ConflictResolutionStrategy::RemoteWins),
-            // camelCase (for frontend compatibility)
             "lastWriteWins" => Ok(ConflictResolutionStrategy::LastWriteWins),
             "firstWriteWins" => Ok(ConflictResolutionStrategy::FirstWriteWins),
             "manual" => Ok(ConflictResolutionStrategy::Manual),

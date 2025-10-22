@@ -10,7 +10,6 @@ import type {
   TerminalData,
 } from "../types/panel";
 
-// Terminal service listeners for cleanup
 let outputUnlisten: (() => void) | null = null;
 let titleUnlisten: (() => void) | null = null;
 let exitUnlisten: (() => void) | null = null;
@@ -110,7 +109,6 @@ export async function closeTerminal(terminalId: string): Promise<void> {
       terminalId,
     });
 
-    // Invalidate cache for this terminal
     terminalCache.invalidateTerminal(terminalId);
 
     return result;

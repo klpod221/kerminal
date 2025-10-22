@@ -63,7 +63,6 @@ impl SSHKeyService {
         passphrase: Option<String>,
         description: Option<String>,
     ) -> DatabaseResult<SSHKey> {
-        // Read key from file
         let private_key = std::fs::read_to_string(file_path).map_err(|e| {
             crate::database::error::DatabaseError::Internal(anyhow::anyhow!(
                 "Failed to read key file: {}",
@@ -71,13 +70,10 @@ impl SSHKeyService {
             ))
         })?;
 
-        // Detect key type from key content
         let key_type = Self::detect_key_type(&private_key)?;
 
-        // Try to extract public key if it exists
         let public_key = Self::extract_public_key(file_path);
 
-        // Create request and save
         let request = CreateSSHKeyRequest {
             name,
             key_type: Some(key_type),
@@ -99,14 +95,11 @@ impl SSHKeyService {
         {
             Ok(KeyType::RSA)
         } else if key_content.contains("BEGIN OPENSSH PRIVATE KEY") {
-            // OpenSSH format could be Ed25519, ECDSA, or RSA
-            // Try to detect from the key data
             if key_content.contains("ssh-ed25519") {
                 Ok(KeyType::Ed25519)
             } else if key_content.contains("ecdsa") {
                 Ok(KeyType::ECDSA)
             } else {
-                // Default to RSA if we can't determine
                 Ok(KeyType::RSA)
             }
         } else if key_content.contains("BEGIN EC PRIVATE KEY") {

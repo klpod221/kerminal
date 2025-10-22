@@ -144,7 +144,6 @@ const sizeClass = computed(() => {
   return sizeClasses[props.size];
 });
 
-// Use overlay system visibility instead of props.visible
 const isVisible = computed(() => overlayStore.isVisible(props.id));
 const isTransitioning = computed(() => isOverlayTransitioning(props.id));
 
@@ -175,12 +174,16 @@ function handleBackdropClick(): void {
  * Handle keyboard events - close modal on Esc key
  */
 function handleKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape" && props.closeOnEsc && isVisible.value && !isTransitioning.value) {
+  if (
+    event.key === "Escape" &&
+    props.closeOnEsc &&
+    isVisible.value &&
+    !isTransitioning.value
+  ) {
     handleClose();
   }
 }
 
-// Register overlay on mount
 onMounted(() => {
   registerOverlay({
     id: props.id,
@@ -203,12 +206,10 @@ onMounted(() => {
   });
 });
 
-// Unregister on unmount
 onUnmounted(() => {
   unregisterOverlay(props.id);
 });
 
-// Watch for visibility changes from parent component
 watch(
   () => props.visible,
   (newVisible) => {
@@ -220,20 +221,16 @@ watch(
   },
 );
 
-// Watch for modal visibility to control body scroll
 watch(isVisible, (visible) => {
   if (visible) {
     document.body.style.overflow = "hidden";
-    // Add keyboard event listener when modal is visible
     document.addEventListener("keydown", handleKeydown);
   } else {
     document.body.style.overflow = "";
-    // Remove keyboard event listener when modal is hidden
     document.removeEventListener("keydown", handleKeydown);
   }
 });
 
-// Cleanup on unmount
 onUnmounted(() => {
   document.body.style.overflow = "";
   document.removeEventListener("keydown", handleKeydown);
