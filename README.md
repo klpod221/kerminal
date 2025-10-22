@@ -1,3 +1,5 @@
+# This branch has been marked as archived and is now kept for reference purposes only.
+
 <div align="center">
     <h1>Kerminal: Modern Terminal with SSH, Tunneling & Cross-Device Sync</h1>
     <p>A powerful, cross-platform terminal application with advanced SSH management, comprehensive tunneling capabilities, and seamless data synchronization across all your devices.</p>
