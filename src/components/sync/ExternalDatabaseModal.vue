@@ -38,6 +38,14 @@
         Connection Details
       </h4>
 
+      <Input
+        id="db-protocol"
+        v-model="connectionDetails.protocol"
+        label="Protocol (Optional)"
+        :placeholder="defaultProtocol"
+        :helper-text="`Leave empty to use default protocol (${defaultProtocol})`"
+      />
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="md:col-span-2">
           <Input
@@ -55,9 +63,9 @@
           label="Port"
           type="number"
           :placeholder="defaultPort"
-          :min="1"
+          :min="0"
           :max="65535"
-          rules="required|min_value:1|max_value:65535"
+          rules="required|min_value:0|max_value:65535"
         />
       </div>
 
@@ -90,6 +98,16 @@
         placeholder="kerminal_sync"
         rules="required"
       />
+
+      <Input
+        id="db-options"
+        v-model="connectionDetails.options"
+        label="Connection Options (Optional)"
+        placeholder="retryWrites=true&w=majority&appName=Cluster0"
+      />
+      <div class="text-xs text-gray-400 -mt-2">
+        Query parameters for the connection string (e.g., sslmode=require, retryWrites=true)
+      </div>
     </Form>
 
     <!-- Actions -->
@@ -168,6 +186,8 @@ const connectionDetails = ref<ConnectionDetails>({
   username: "",
   password: "",
   databaseName: "",
+  protocol: "",
+  options: "",
 });
 
 const syncSettings = ref<DatabaseSyncSettings>({
@@ -192,6 +212,19 @@ const defaultPort = computed(() => {
       return "27017";
     default:
       return "3306";
+  }
+});
+
+const defaultProtocol = computed(() => {
+  switch (database.value.dbType) {
+    case "mysql":
+      return "mysql";
+    case "postgresql":
+      return "postgresql";
+    case "mongodb":
+      return "mongodb";
+    default:
+      return "";
   }
 });
 
@@ -230,6 +263,8 @@ const loadDatabase = async () => {
       username: data.connectionDetails.username,
       password: "",
       databaseName: data.connectionDetails.databaseName,
+      protocol: data.connectionDetails.protocol || "",
+      options: data.connectionDetails.options || "",
     };
 
     syncSettings.value = {
@@ -350,6 +385,8 @@ watch(
         username: "",
         password: "",
         databaseName: "",
+        protocol: "",
+        options: "",
       };
       syncSettings.value = {
         autoSync: false,

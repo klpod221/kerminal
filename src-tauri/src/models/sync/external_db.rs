@@ -50,33 +50,44 @@ pub struct ConnectionDetails {
     pub ssl_enabled: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ssl_cert: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub options: Option<String>,
 }
 
 impl ConnectionDetails {
     /// Build connection string for the database type
     pub fn to_connection_string(&self, db_type: &DatabaseType) -> String {
-        match db_type {
-            DatabaseType::MySQL => {
-                format!(
-                    "mysql://{}:{}@{}:{}/{}",
-                    self.username, self.password, self.host, self.port, self.database_name
-                )
+        let protocol = self.protocol.as_deref().unwrap_or_else(|| {
+            match db_type {
+                DatabaseType::MySQL => "mysql",
+                DatabaseType::PostgreSQL => "postgresql",
+                DatabaseType::MongoDB => "mongodb",
             }
-            DatabaseType::PostgreSQL => {
-                let ssl_mode = if self.ssl_enabled { "require" } else { "prefer" };
-                format!(
-                    "postgresql://{}:{}@{}:{}/{}?sslmode={}",
-                    self.username, self.password, self.host, self.port, self.database_name, ssl_mode
-                )
-            }
-            DatabaseType::MongoDB => {
-                let ssl_param = if self.ssl_enabled { "&ssl=true" } else { "" };
-                format!(
-                    "mongodb://{}:{}@{}:{}/{}?authSource=admin{}",
-                    self.username, self.password, self.host, self.port, self.database_name, ssl_param
-                )
+        });
+
+        // Build base URL with or without port
+        let base_url = if self.port == 0 || protocol.contains("+srv") {
+            format!(
+                "{}://{}:{}@{}/{}",
+                protocol, self.username, self.password, self.host, self.database_name
+            )
+        } else {
+            format!(
+                "{}://{}:{}@{}:{}/{}",
+                protocol, self.username, self.password, self.host, self.port, self.database_name
+            )
+        };
+
+        // Add options if provided
+        if let Some(options) = &self.options {
+            if !options.is_empty() {
+                return format!("{}?{}", base_url, options);
             }
         }
+
+        base_url
     }
 }
 

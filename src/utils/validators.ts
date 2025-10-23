@@ -14,10 +14,14 @@ export function validate(
 
     switch (ruleName) {
       case "required":
-        if (!value && typeof value !== "boolean")
+        if (
+          value === null ||
+          value === undefined ||
+          (typeof value === "string" && value.trim() === "") ||
+          (Array.isArray(value) && value.length === 0)
+        ) {
           return "This field is required.";
-        if (typeof value === "boolean" && !value)
-          return "You must select this option.";
+        }
         break;
 
       case "min":

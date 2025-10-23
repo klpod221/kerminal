@@ -74,6 +74,8 @@ export interface ConnectionDetails {
   username: string;
   password: string;
   databaseName: string;
+  protocol?: string;
+  options?: string;
 }
 
 export interface ExternalDatabaseConfig {

@@ -69,3 +69,71 @@ jobs:
           releaseBody: 'New release of Kerminal App'
           releaseDraft: false
           prerelease: false
+
+  publish-aur:
+    name: Publish to AUR (${{ matrix.repo }})
+    needs: build-tauri
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ['kerminal', 'kerminal-bin']
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies and Create User
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm git openssh base-devel pacman-contrib sudo
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          git config --global core.sshCommand "ssh -i ~/.ssh/aur -o StrictHostKeyChecking=no"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.actor }}@users.noreply.github.com"
+
+      - name: Clone AUR Repository
+        run: git clone ssh://aur@aur.archlinux.org/${{ matrix.repo }}.git /tmp/aur-repo
+
+      - name: Change Repo Ownership
+        run: chown -R builder:builder /tmp/aur-repo
+
+      - name: Update PKGBUILD as non-root user
+        run: |
+          sudo -u builder bash -c '
+            cd /tmp/aur-repo
+            VERSION=${{ github.ref_name }}
+            CLEAN_VERSION=${VERSION#v}
+            sed -i "s/^pkgver=.*/pkgver=$CLEAN_VERSION/" PKGBUILD
+            updpkgsums
+          '
+
+      - name: Update .SRCINFO as non-root user
+        run: |
+          sudo -u builder bash -c '
+            cd /tmp/aur-repo
+            makepkg --printsrcinfo > .SRCINFO
+          '
+
+      - name: Commit and Push to AUR
+        run: |
+          cd /tmp/aur-repo
+          git config --global --add safe.directory /tmp/aur-repo
+          if ! git diff-index --quiet HEAD; then
+            git add PKGBUILD .SRCINFO
+            git commit -m "Update to version ${{ github.ref_name }}"
+            git push
+          else
+            echo "No changes to commit."
+          fi

@@ -161,15 +161,12 @@ impl SyncService {
 
         let result = match direction {
             SyncDirection::Push => {
-                println!("SyncService::sync: Executing PUSH");
                 self.sync_engine.push(&config).await
             },
             SyncDirection::Pull => {
-                println!("SyncService::sync: Executing PULL");
                 self.sync_engine.pull(&config).await
             },
             SyncDirection::Bidirectional => {
-                println!("SyncService::sync: Executing BIDIRECTIONAL");
                 self.sync_engine.sync(&config).await
             },
         };

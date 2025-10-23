@@ -76,7 +76,16 @@ impl MasterPasswordManager {
 
         self.config.auto_unlock = request.auto_unlock && request.use_keychain;
         self.config.use_keychain = request.use_keychain;
-        self.config.session_timeout_minutes = request.auto_lock_timeout;
+        self.config.session_timeout_minutes =
+            request.auto_lock_timeout.and_then(
+                |timeout| {
+                    if timeout == 0 {
+                        None
+                    } else {
+                        Some(timeout)
+                    }
+                },
+            );
 
         let mut manager = self.device_key_manager.write().await;
         let entry = manager.create_master_password(&request.password, &self.config)?;
@@ -86,14 +95,11 @@ impl MasterPasswordManager {
         }
 
         if request.use_keychain && request.auto_unlock {
-            println!("MasterPasswordManager: Attempting to store password in keychain...");
             match self
                 .keychain_manager
                 .store_master_password(&self.current_device_id, &request.password)
             {
-                Ok(()) => {
-                    println!("MasterPasswordManager: Successfully stored password in keychain");
-                }
+                Ok(()) => {}
                 Err(e) => {
                     eprintln!("Warning: Failed to store password in keychain: {}", e);
                 }
@@ -114,8 +120,6 @@ impl MasterPasswordManager {
             .as_ref()
             .unwrap_or(&self.current_device_id);
 
-        println!("verify_master_password: Verifying for device: {}", device_id);
-
         if device_id != &self.current_device_id {
             return self
                 .verify_device_password(&request.password, stored_entry)
@@ -126,17 +130,9 @@ impl MasterPasswordManager {
         let is_valid = manager.verify_master_password(&request.password, stored_entry)?;
 
         if is_valid {
-            println!("verify_master_password: Password valid, starting session");
             self.session_start = Some(Utc::now());
 
-            println!("verify_master_password: Creating shared device key");
             manager.ensure_shared_device_key(&request.password, stored_entry)?;
-            println!("verify_master_password: Shared key created successfully");
-
-            println!("verify_master_password: Available keys: {:?}",
-                manager.get_loaded_device_ids());
-        } else {
-            println!("verify_master_password: Password invalid");
         }
 
         Ok(is_valid)
@@ -151,25 +147,21 @@ impl MasterPasswordManager {
             return Ok(false);
         }
 
-        println!("try_auto_unlock_with_entry: Attempting auto-unlock for device: {}", self.current_device_id);
-
         let mut manager = self.device_key_manager.write().await;
         let success = manager.try_auto_unlock_with_password(&self.current_device_id, entry)?;
 
         if success {
-            println!("try_auto_unlock_with_entry: Auto-unlock successful");
             self.session_start = Some(Utc::now());
 
-            println!("try_auto_unlock_with_entry: Creating shared device key");
             match manager.ensure_shared_key_from_keychain(&self.current_device_id, entry) {
-                Ok(()) => println!("try_auto_unlock_with_entry: Shared key created successfully"),
-                Err(e) => eprintln!("try_auto_unlock_with_entry: Failed to create shared key: {}", e),
+                Ok(()) => {}
+                Err(e) => eprintln!(
+                    "try_auto_unlock_with_entry: Failed to create shared key: {}",
+                    e
+                ),
             }
-
-            println!("try_auto_unlock_with_entry: Available keys after auto-unlock: {:?}",
-                manager.get_loaded_device_ids());
         } else {
-            println!("try_auto_unlock_with_entry: Auto-unlock failed");
+            eprintln!("Auto-unlock failed");
         }
 
         Ok(success)
@@ -261,12 +253,10 @@ impl MasterPasswordManager {
         self.config.auto_unlock = auto_unlock;
         self.config.require_on_startup = !auto_unlock;
 
-        if let Some(timeout) = auto_lock_timeout {
-            self.config.session_timeout_minutes = if timeout == 0 { None } else { Some(timeout) };
-        }
+        self.config.session_timeout_minutes =
+            auto_lock_timeout.and_then(|timeout| if timeout == 0 { None } else { Some(timeout) });
 
         if !auto_unlock {
-            println!("Auto-unlock disabled, removing credentials from keychain");
             if let Err(e) = self
                 .keychain_manager
                 .delete_master_password(&self.current_device_id)
@@ -280,8 +270,6 @@ impl MasterPasswordManager {
             {
                 eprintln!("Warning: Failed to remove device key from keychain: {}", e);
             }
-        } else {
-            println!("Auto-unlock enabled, but password needs to be provided separately to store in keychain");
         }
 
         Ok(())
@@ -297,12 +285,10 @@ impl MasterPasswordManager {
         self.config.auto_unlock = auto_unlock;
         self.config.require_on_startup = !auto_unlock;
 
-        if let Some(timeout) = auto_lock_timeout {
-            self.config.session_timeout_minutes = if timeout == 0 { None } else { Some(timeout) };
-        }
+        self.config.session_timeout_minutes =
+            auto_lock_timeout.and_then(|timeout| if timeout == 0 { None } else { Some(timeout) });
 
         if !auto_unlock {
-            println!("Auto-unlock disabled, removing credentials from keychain");
             if let Err(e) = self
                 .keychain_manager
                 .delete_master_password(&self.current_device_id)
@@ -454,32 +440,30 @@ impl EncryptionService for MasterPasswordManager {
         let mut manager = self.device_key_manager.write().await;
 
         if device_id == Some("__shared__") && !manager.has_device_key("__shared__") {
-            println!("encrypt: Shared key missing, attempting to create from current device key");
-
             if manager.has_device_key(&self.current_device_id) {
-                println!("encrypt: Current device key exists, creating shared key");
-                manager.ensure_shared_device_key_from_current()
+                manager
+                    .ensure_shared_device_key_from_current()
                     .map_err(|e| {
                         eprintln!("encrypt: Failed to create shared key: {}", e);
                         crate::database::error::DatabaseError::EncryptionError(e)
                     })?;
-                println!("encrypt: Shared key created successfully");
             } else {
                 eprintln!("encrypt: No current device key available, cannot create shared key");
                 return Err(crate::database::error::DatabaseError::EncryptionError(
                     crate::database::error::EncryptionError::UnknownDeviceKey(
-                        "No device key available for encryption. Please unlock first.".to_string()
-                    )
+                        "No device key available for encryption. Please unlock first.".to_string(),
+                    ),
                 ));
             }
         }
 
-        manager
-            .encrypt_with_device(data, device_id)
-            .map_err(|e| {
-                eprintln!("encrypt: Encryption failed with device {:?}: {}", device_id, e);
-                e.into()
-            })
+        manager.encrypt_with_device(data, device_id).map_err(|e| {
+            eprintln!(
+                "encrypt: Encryption failed with device {:?}: {}",
+                device_id, e
+            );
+            e.into()
+        })
     }
 
     async fn decrypt(
@@ -488,27 +472,17 @@ impl EncryptionService for MasterPasswordManager {
         device_id: Option<&str>,
     ) -> crate::database::error::DatabaseResult<Vec<u8>> {
         let mut manager = self.device_key_manager.write().await;
-
-        println!("decrypt: Attempting to decrypt with device_id: {:?}", device_id);
-        println!("decrypt: Available keys: {:?}", manager.get_loaded_device_ids());
-
         if let Some(device_id) = device_id {
-            println!("decrypt: Trying specific device: {}", device_id);
             if let Ok(data) = manager.decrypt_with_device(encrypted_data, Some(device_id)) {
-                println!("decrypt: Successfully decrypted with device: {}", device_id);
                 return Ok(data);
             } else {
-                println!("decrypt: Failed to decrypt with device: {}", device_id);
+                eprintln!("decrypt: Failed to decrypt with device: {}", device_id);
             }
         }
 
-        println!("decrypt: Trying to decrypt with any available device key");
         manager
             .try_decrypt_with_any_device(encrypted_data)
-            .map(|(data, device_id)| {
-                println!("decrypt: Successfully decrypted with device: {}", device_id);
-                data
-            })
+            .map(|(data, _device_id)| data)
             .map_err(|e| {
                 eprintln!("decrypt: Failed to decrypt with any device key: {}", e);
                 e.into()
