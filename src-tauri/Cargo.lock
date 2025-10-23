@@ -3,6 +3,46 @@
 version = 4
 
 [[package]]
+name = "Kerminal"
+version = "2.0.1"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "argon2",
+ "async-trait",
+ "base64 0.22.1",
+ "bson",
+ "chrono",
+ "dashmap",
+ "dirs 5.0.1",
+ "futures",
+ "gethostname",
+ "hmac",
+ "keyring",
+ "mongodb",
+ "pbkdf2 0.12.2",
+ "portable-pty",
+ "rand 0.8.5",
+ "regex 1.11.2",
+ "russh",
+ "russh-config",
+ "russh-keys",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-util",
+ "uuid",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.24.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2689,46 +2729,6 @@ checksum = "5dea2b27dd239b2556ed7a25ba842fe47fd602e7fc7433c2a8d6106d4d9edd70"
 dependencies = [
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "kerminal"
-version = "2.0.1"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "argon2",
- "async-trait",
- "base64 0.22.1",
- "bson",
- "chrono",
- "dashmap",
- "dirs 5.0.1",
- "futures",
- "gethostname",
- "hmac",
- "keyring",
- "mongodb",
- "pbkdf2 0.12.2",
- "portable-pty",
- "rand 0.8.5",
- "regex 1.11.2",
- "russh",
- "russh-config",
- "russh-keys",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "thiserror 1.0.69",
- "tokio",
- "tokio-util",
- "uuid",
 ]
 
 [[package]]
