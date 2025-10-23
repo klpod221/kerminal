@@ -64,8 +64,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Kerminal v${{ github.ref_name }}'
+          tagName: v__VERSION__
+          releaseName: 'Kerminal v__VERSION__'
           releaseBody: 'New release of Kerminal App'
           releaseDraft: false
           prerelease: false
