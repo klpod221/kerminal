@@ -1,7 +1,7 @@
 
 # Kerminal Landing Page
 
-This is the official landing page for **Kerminal** – a modern terminal-inspired project by klpod221.
+This is the official landing page for **Kerminal** – Modern Terminal Emulator & SSH Manager by klpod221.
 
 ## Structure
 - `index.html`: Main HTML file
