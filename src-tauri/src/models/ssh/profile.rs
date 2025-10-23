@@ -191,7 +191,11 @@ impl Encryptable for SSHProfile {
                 *password = encrypted;
             }
             AuthData::KeyReference { .. } => {}
-            AuthData::Certificate { certificate, private_key, .. } => {
+            AuthData::Certificate {
+                certificate,
+                private_key,
+                ..
+            } => {
                 let encrypted_cert = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service
@@ -226,7 +230,11 @@ impl Encryptable for SSHProfile {
                 *password = decrypted;
             }
             AuthData::KeyReference { .. } => {}
-            AuthData::Certificate { certificate, private_key, .. } => {
+            AuthData::Certificate {
+                certificate,
+                private_key,
+                ..
+            } => {
                 let decrypted_cert = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service

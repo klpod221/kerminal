@@ -7,7 +7,6 @@ use tauri::State;
 
 use crate::commands::database::common::app_result;
 
-
 /// Create new saved command
 #[tauri::command]
 pub async fn create_saved_command(
@@ -67,7 +66,6 @@ pub async fn toggle_command_favorite(
 ) -> Result<SavedCommand, String> {
     app_result!(state.saved_command_service.toggle_favorite(&id).await)
 }
-
 
 /// Create new saved command group
 #[tauri::command]

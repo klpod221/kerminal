@@ -7,12 +7,10 @@ use crate::database::{
     service::DatabaseService,
     traits::Database,
 };
-use crate::models::{
-    sync::{
-        external_db::ExternalDatabaseConfig,
-        log::{SyncDirection, SyncLog, SyncStatus},
-        ConflictResolutionStrategy,
-    },
+use crate::models::sync::{
+    external_db::ExternalDatabaseConfig,
+    log::{SyncDirection, SyncLog, SyncStatus},
+    ConflictResolutionStrategy,
 };
 use crate::services::sync::{
     manager::SyncManager,
@@ -85,7 +83,9 @@ impl SyncEngine {
 
     /// Full bidirectional sync with conflict resolution
     pub async fn sync(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<SyncLog> {
-        let mut sync_log = self.create_sync_log(config, SyncDirection::Bidirectional).await?;
+        let mut sync_log = self
+            .create_sync_log(config, SyncDirection::Bidirectional)
+            .await?;
 
         match self.sync_internal(config).await {
             Ok(stats) => {
@@ -119,50 +119,37 @@ impl SyncEngine {
         let local_guard = local.read().await;
 
         let profiles = local_guard.find_all_ssh_profiles().await?;
-        let json_profiles: Vec<_> = profiles
-            .iter()
-            .filter_map(|p| p.to_json().ok())
-            .collect();
+        let json_profiles: Vec<_> = profiles.iter().filter_map(|p| p.to_json().ok()).collect();
         if !json_profiles.is_empty() {
             let count = remote.push_records("ssh_profiles", json_profiles).await?;
             stats.total_synced += count;
         }
 
         let groups = local_guard.find_all_ssh_groups().await?;
-        let json_groups: Vec<_> = groups
-            .iter()
-            .filter_map(|g| g.to_json().ok())
-            .collect();
+        let json_groups: Vec<_> = groups.iter().filter_map(|g| g.to_json().ok()).collect();
         if !json_groups.is_empty() {
             let count = remote.push_records("ssh_groups", json_groups).await?;
             stats.total_synced += count;
         }
 
         let keys = local_guard.find_all_ssh_keys().await?;
-        let json_keys: Vec<_> = keys
-            .iter()
-            .filter_map(|k| k.to_json().ok())
-            .collect();
+        let json_keys: Vec<_> = keys.iter().filter_map(|k| k.to_json().ok()).collect();
         if !json_keys.is_empty() {
             let count = remote.push_records("ssh_keys", json_keys).await?;
             stats.total_synced += count;
         }
 
         let cmd_groups = local_guard.find_all_saved_command_groups().await?;
-        let json_cmd_groups: Vec<_> = cmd_groups
-            .iter()
-            .filter_map(|g| g.to_json().ok())
-            .collect();
+        let json_cmd_groups: Vec<_> = cmd_groups.iter().filter_map(|g| g.to_json().ok()).collect();
         if !json_cmd_groups.is_empty() {
-            let count = remote.push_records("saved_command_groups", json_cmd_groups).await?;
+            let count = remote
+                .push_records("saved_command_groups", json_cmd_groups)
+                .await?;
             stats.total_synced += count;
         }
 
         let commands = local_guard.find_all_saved_commands().await?;
-        let json_commands: Vec<_> = commands
-            .iter()
-            .filter_map(|c| c.to_json().ok())
-            .collect();
+        let json_commands: Vec<_> = commands.iter().filter_map(|c| c.to_json().ok()).collect();
         if !json_commands.is_empty() {
             let count = remote.push_records("saved_commands", json_commands).await?;
             stats.total_synced += count;
@@ -211,7 +198,9 @@ impl SyncEngine {
             }
         }
 
-        let json_cmd_groups = remote.pull_records("saved_command_groups", last_sync).await?;
+        let json_cmd_groups = remote
+            .pull_records("saved_command_groups", last_sync)
+            .await?;
         for json in json_cmd_groups {
             if let Ok(group) = crate::models::saved_command::SavedCommandGroup::from_json(&json) {
                 local_guard.save_saved_command_group(&group).await?;
@@ -254,44 +243,29 @@ impl SyncEngine {
                 .unwrap_or(ConflictResolutionStrategy::Manual)
         };
 
-        let profile_stats = self.sync_table_bidirectional(
-            &remote,
-            "ssh_profiles",
-            last_sync,
-            strategy,
-        ).await?;
+        let profile_stats = self
+            .sync_table_bidirectional(&remote, "ssh_profiles", last_sync, strategy)
+            .await?;
         stats.merge(profile_stats);
 
-        let group_stats = self.sync_table_bidirectional(
-            &remote,
-            "ssh_groups",
-            last_sync,
-            strategy,
-        ).await?;
+        let group_stats = self
+            .sync_table_bidirectional(&remote, "ssh_groups", last_sync, strategy)
+            .await?;
         stats.merge(group_stats);
 
-        let key_stats = self.sync_table_bidirectional(
-            &remote,
-            "ssh_keys",
-            last_sync,
-            strategy,
-        ).await?;
+        let key_stats = self
+            .sync_table_bidirectional(&remote, "ssh_keys", last_sync, strategy)
+            .await?;
         stats.merge(key_stats);
 
-        let cmd_group_stats = self.sync_table_bidirectional(
-            &remote,
-            "saved_command_groups",
-            last_sync,
-            strategy,
-        ).await?;
+        let cmd_group_stats = self
+            .sync_table_bidirectional(&remote, "saved_command_groups", last_sync, strategy)
+            .await?;
         stats.merge(cmd_group_stats);
 
-        let cmd_stats = self.sync_table_bidirectional(
-            &remote,
-            "saved_commands",
-            last_sync,
-            strategy,
-        ).await?;
+        let cmd_stats = self
+            .sync_table_bidirectional(&remote, "saved_commands", last_sync, strategy)
+            .await?;
         stats.merge(cmd_stats);
 
         Ok(stats)
@@ -305,8 +279,8 @@ impl SyncEngine {
         last_sync: Option<DateTime<Utc>>,
         strategy: ConflictResolutionStrategy,
     ) -> DatabaseResult<SyncStats> {
-        use chrono::{DateTime, Utc};
         use crate::services::sync::SyncSerializable;
+        use chrono::{DateTime, Utc};
         use serde_json::Value;
         use std::collections::HashMap;
 
@@ -321,23 +295,37 @@ impl SyncEngine {
             match table {
                 "ssh_profiles" => {
                     let profiles = local_guard.find_all_ssh_profiles().await?;
-                    profiles.iter().filter_map(|p| p.to_json().ok()).collect::<Vec<_>>()
+                    profiles
+                        .iter()
+                        .filter_map(|p| p.to_json().ok())
+                        .collect::<Vec<_>>()
                 }
                 "ssh_groups" => {
                     let groups = local_guard.find_all_ssh_groups().await?;
-                    groups.iter().filter_map(|g| g.to_json().ok()).collect::<Vec<_>>()
+                    groups
+                        .iter()
+                        .filter_map(|g| g.to_json().ok())
+                        .collect::<Vec<_>>()
                 }
                 "ssh_keys" => {
                     let keys = local_guard.find_all_ssh_keys().await?;
-                    keys.iter().filter_map(|k| k.to_json().ok()).collect::<Vec<_>>()
+                    keys.iter()
+                        .filter_map(|k| k.to_json().ok())
+                        .collect::<Vec<_>>()
                 }
                 "saved_command_groups" => {
                     let groups = local_guard.find_all_saved_command_groups().await?;
-                    groups.iter().filter_map(|g| g.to_json().ok()).collect::<Vec<_>>()
+                    groups
+                        .iter()
+                        .filter_map(|g| g.to_json().ok())
+                        .collect::<Vec<_>>()
                 }
                 "saved_commands" => {
                     let commands = local_guard.find_all_saved_commands().await?;
-                    commands.iter().filter_map(|c| c.to_json().ok()).collect::<Vec<_>>()
+                    commands
+                        .iter()
+                        .filter_map(|c| c.to_json().ok())
+                        .collect::<Vec<_>>()
                 }
                 _ => vec![],
             }
@@ -372,7 +360,6 @@ impl SyncEngine {
                     if local_version > remote_version {
                         records_to_push.push(local_record);
                     } else if remote_version > local_version {
-
                         match strategy {
                             ConflictResolutionStrategy::LocalWins => {
                                 records_to_push.push(local_record);
@@ -423,7 +410,10 @@ impl SyncEngine {
 
         for remote_record in remote_records {
             if let Some(id) = remote_record.get("id").and_then(|v| v.as_str()) {
-                let remote_version = remote_record.get("version").and_then(|v| v.as_u64()).unwrap_or(0);
+                let remote_version = remote_record
+                    .get("version")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0);
                 let local_version = local_versions.get(id).copied().unwrap_or(0);
 
                 if remote_version >= local_version {
@@ -431,13 +421,17 @@ impl SyncEngine {
 
                     match table {
                         "ssh_profiles" => {
-                            if let Ok(profile) = crate::models::ssh::SSHProfile::from_json(&remote_record) {
+                            if let Ok(profile) =
+                                crate::models::ssh::SSHProfile::from_json(&remote_record)
+                            {
                                 local_guard.save_ssh_profile(&profile).await?;
                                 stats.total_synced += 1;
                             }
                         }
                         "ssh_groups" => {
-                            if let Ok(group) = crate::models::ssh::SSHGroup::from_json(&remote_record) {
+                            if let Ok(group) =
+                                crate::models::ssh::SSHGroup::from_json(&remote_record)
+                            {
                                 local_guard.save_ssh_group(&group).await?;
                                 stats.total_synced += 1;
                             }
@@ -532,8 +526,7 @@ impl SyncEngine {
 
         eprintln!(
             "[INFO] Saved conflict for manual resolution: {} ({})",
-            conflict_resolution.entity_type,
-            conflict_resolution.entity_id
+            conflict_resolution.entity_type, conflict_resolution.entity_id
         );
 
         Ok(())

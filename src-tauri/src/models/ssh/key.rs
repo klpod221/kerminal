@@ -299,4 +299,3 @@ mod encrypted_option_string {
         Option::<String>::deserialize(deserializer)
     }
 }
-

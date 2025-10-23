@@ -32,7 +32,6 @@ impl SSHService {
         }
     }
 
-
     /// Create new SSH group
     pub async fn create_ssh_group(
         &self,
@@ -73,7 +72,6 @@ impl SSHService {
         let db_service = self.database_service.lock().await;
         db_service.delete_ssh_group(id, action).await
     }
-
 
     /// Create new SSH profile
     pub async fn create_ssh_profile(

@@ -60,8 +60,13 @@ pub async fn push_records(
             .map(|k| (k.to_string(), to_snake_case(k)))
             .collect();
 
-        let db_columns: Vec<String> = column_mapping.iter().map(|(_, db_col)| db_col.clone()).collect();
-        let placeholders: Vec<String> = (0..db_columns.len()).map(|i| format!("${}", i + 1)).collect();
+        let db_columns: Vec<String> = column_mapping
+            .iter()
+            .map(|(_, db_col)| db_col.clone())
+            .collect();
+        let placeholders: Vec<String> = (0..db_columns.len())
+            .map(|i| format!("${}", i + 1))
+            .collect();
         let updates: Vec<String> = db_columns
             .iter()
             .filter(|c| c.as_str() != "id")
@@ -163,8 +168,12 @@ pub async fn get_record_versions(
 
     let mut versions = HashMap::new();
     for row in rows {
-        let id: String = row.try_get("id").map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-        let version: i64 = row.try_get("version").map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+        let id: String = row
+            .try_get("id")
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+        let version: i64 = row
+            .try_get("version")
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
         versions.insert(id, version as u64);
     }
 

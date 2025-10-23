@@ -4,7 +4,7 @@ use crate::models::ssh::key::ResolvedSSHKey;
 use crate::models::ssh::{AuthData, SSHProfile};
 use crate::models::terminal::{TerminalConfig, TerminalState};
 use async_trait::async_trait;
-use russh::client::{Handle, Handler, Session};
+use russh::client::{DisconnectReason, Handle, Handler, Session};
 use russh::{client::Msg, Channel, ChannelId, Disconnect};
 use russh_keys::key::PublicKey;
 use std::path::Path;
@@ -110,6 +110,56 @@ impl Handler for ClientHandler {
     ) -> Result<(), Self::Error> {
         Ok(())
     }
+
+    async fn disconnected(
+        &mut self,
+        reason: DisconnectReason<Self::Error>,
+    ) -> Result<(), Self::Error> {
+        let (message, exit_code, reason_str) = match &reason {
+            DisconnectReason::ReceivedDisconnect(disconnect) => {
+                let msg = if disconnect.message.is_empty() {
+                    "[SSH: Connection disconnected by server]\r\n".to_string()
+                } else {
+                    format!(
+                        "[SSH: Connection disconnected - {}]\r\n",
+                        disconnect.message
+                    )
+                };
+                (msg, Some(1), "server-disconnect")
+            }
+            DisconnectReason::Error(e) => {
+                let msg = if format!("{:?}", e).contains("timeout")
+                    || format!("{:?}", e).contains("Timeout")
+                {
+                    "[SSH: Connection timeout - No response from server]\r\n".to_string()
+                } else {
+                    format!("[SSH: Connection error - {}]\r\n", e)
+                };
+                (msg, Some(1), "connection-error")
+            }
+        };
+
+        let output_sender = self.output_sender.lock().await;
+        if let Some(sender) = output_sender.as_ref() {
+            let _ = sender.send(message.as_bytes().to_vec());
+        }
+
+        let exit_sender = self.exit_sender.lock().await;
+        if let Some(sender) = exit_sender.as_ref() {
+            let terminal_id = self.terminal_id.lock().await;
+            let exit_event = crate::models::terminal::TerminalExited {
+                terminal_id: terminal_id.clone(),
+                exit_code,
+                reason: Some(reason_str.to_string()),
+            };
+            let _ = sender.send(exit_event);
+        }
+
+        match reason {
+            DisconnectReason::ReceivedDisconnect(_) => Ok(()),
+            DisconnectReason::Error(e) => Err(e),
+        }
+    }
 }
 
 /// SSH terminal implementation using russh
@@ -155,17 +205,28 @@ impl SSHTerminal {
         &mut self,
         resolved_key: Option<crate::models::ssh::key::ResolvedSSHKey>,
     ) -> Result<(), AppError> {
-
         self.state = TerminalState::Connecting;
 
+        let keepalive_interval = if self.ssh_profile.keep_alive {
+            Some(std::time::Duration::from_secs(15))
+        } else {
+            None
+        };
+
+        let inactivity_timeout = self
+            .ssh_profile
+            .timeout
+            .map(|t| std::time::Duration::from_secs(t as u64));
+
         let config = Arc::new(russh::client::Config {
-            inactivity_timeout: Some(std::time::Duration::from_secs(60)),
+            inactivity_timeout,
+            keepalive_interval,
+            keepalive_max: 10,
             ..<russh::client::Config as Default>::default()
         });
 
         let handler = (*self.handler).clone();
         let mut session = if let Some(proxy_config) = &self.ssh_profile.proxy {
-
             let stream =
                 create_proxy_stream(proxy_config, &self.ssh_profile.host, self.ssh_profile.port)
                     .await
@@ -303,29 +364,42 @@ impl SSHTerminal {
                     }
                 }
             }
-            AuthData::Certificate { certificate, private_key, key_type: _, validity_period: _ } => {
+            AuthData::Certificate {
+                certificate,
+                private_key,
+                key_type: _,
+                validity_period: _,
+            } => {
                 let key = if Path::new(private_key).exists() {
-                    russh_keys::load_secret_key(private_key, None)
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!("Failed to load private key: {}", e))
-                        })?
+                    russh_keys::load_secret_key(private_key, None).map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Failed to load private key: {}",
+                            e
+                        ))
+                    })?
                 } else {
-                    russh_keys::decode_secret_key(private_key, None)
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!("Failed to parse private key: {}", e))
-                        })?
+                    russh_keys::decode_secret_key(private_key, None).map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Failed to parse private key: {}",
+                            e
+                        ))
+                    })?
                 };
 
                 let _cert = if Path::new(certificate).exists() {
-                    russh_keys::load_public_key(certificate)
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!("Failed to load certificate: {}", e))
-                        })?
+                    russh_keys::load_public_key(certificate).map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Failed to load certificate: {}",
+                            e
+                        ))
+                    })?
                 } else {
-                    russh_keys::parse_public_key_base64(certificate)
-                        .map_err(|e| {
-                            AppError::authentication_failed(format!("Failed to parse certificate: {}", e))
-                        })?
+                    russh_keys::parse_public_key_base64(certificate).map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Failed to parse certificate: {}",
+                            e
+                        ))
+                    })?
                 };
 
                 let result = session

@@ -1178,11 +1178,15 @@ export const useWorkspaceStore = defineStore("workspace", () => {
               );
               closeTab(result.panel.id, result.tab.id);
             } else {
+              const reason = exitEvent.reason || "connection-lost";
               console.log(
-                `Connection lost for tab ${result.tab.id}, showing reconnect UI`,
+                `Connection lost for tab ${result.tab.id} (reason: ${reason}), showing reconnect UI`,
               );
               if (terminal) {
-                terminal.disconnectReason = "connection-lost";
+                terminal.disconnectReason = reason as
+                  | "connection-lost"
+                  | "server-disconnect"
+                  | "connection-error";
                 terminal.isSSHConnecting = false;
                 terminal.backendTerminalId = undefined; // Clear backend ID for reconnect
               }

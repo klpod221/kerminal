@@ -1,7 +1,9 @@
 use tauri::State;
 
 use crate::{
-    models::sync::{ConflictResolutionStrategy, SyncConflict, SyncLog, SyncOperation, SyncDirection},
+    models::sync::{
+        ConflictResolutionStrategy, SyncConflict, SyncDirection, SyncLog, SyncOperation,
+    },
     state::AppState,
 };
 

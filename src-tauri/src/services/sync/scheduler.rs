@@ -1,4 +1,3 @@
-
 use chrono::{Duration, Utc};
 use std::sync::Arc;
 use tokio::{
@@ -6,10 +5,7 @@ use tokio::{
     time::{interval, Duration as TokioDuration},
 };
 
-use crate::database::{
-    error::DatabaseResult,
-    service::DatabaseService,
-};
+use crate::database::{error::DatabaseResult, service::DatabaseService};
 use crate::models::sync::external_db::ExternalDatabaseConfig;
 use crate::services::sync::engine::SyncEngine;
 
@@ -153,9 +149,7 @@ impl SyncScheduler {
         let sync_settings = guard.get_global_sync_settings().await?;
         drop(guard);
 
-        let interval_minutes = sync_settings
-            .map(|s| s.sync_interval_minutes)
-            .unwrap_or(15) as u64; // Default to 15 minutes
+        let interval_minutes = sync_settings.map(|s| s.sync_interval_minutes).unwrap_or(15) as u64; // Default to 15 minutes
         let interval_seconds = (interval_minutes * 60) as i64;
         let next_sync = last_sync_time + Duration::seconds(interval_seconds);
 
@@ -164,13 +158,10 @@ impl SyncScheduler {
 
     /// Execute a scheduled sync
     async fn execute_scheduled_sync(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<()> {
-
         let result = self.sync_engine.sync(config).await;
 
         match result {
-            Ok(_log) => {
-                Ok(())
-            }
+            Ok(_log) => Ok(()),
             Err(e) => {
                 eprintln!("Scheduled sync failed for {}: {}", config.name, e);
                 Err(e)
@@ -212,8 +203,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_scheduler_start_stop() {
-    }
+    async fn test_scheduler_start_stop() {}
 
     #[test]
     fn test_sync_interval_calculation() {

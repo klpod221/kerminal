@@ -72,7 +72,6 @@ pub enum TunnelStatus {
     Error,
 }
 
-
 impl SSHTunnel {
     /// Create a new SSH tunnel
     pub fn new(
@@ -130,8 +129,7 @@ impl SSHTunnel {
                     }
                 }
             }
-            TunnelType::Dynamic => {
-            }
+            TunnelType::Dynamic => {}
         }
 
         if self.profile_id.trim().is_empty() {

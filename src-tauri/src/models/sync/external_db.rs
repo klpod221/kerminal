@@ -59,12 +59,10 @@ pub struct ConnectionDetails {
 impl ConnectionDetails {
     /// Build connection string for the database type
     pub fn to_connection_string(&self, db_type: &DatabaseType) -> String {
-        let protocol = self.protocol.as_deref().unwrap_or_else(|| {
-            match db_type {
-                DatabaseType::MySQL => "mysql",
-                DatabaseType::PostgreSQL => "postgresql",
-                DatabaseType::MongoDB => "mongodb",
-            }
+        let protocol = self.protocol.as_deref().unwrap_or_else(|| match db_type {
+            DatabaseType::MySQL => "mysql",
+            DatabaseType::PostgreSQL => "postgresql",
+            DatabaseType::MongoDB => "mongodb",
         });
 
         // Build base URL with or without port

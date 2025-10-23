@@ -4,8 +4,8 @@ use crate::database::encryption::ExternalDbEncryptor;
 use crate::database::providers::{MongoDBProvider, MySQLProvider, PostgreSQLProvider};
 use crate::database::traits_sync::SyncTarget;
 use crate::models::sync::external_db::{
-    AddExternalDatabaseRequest, DatabaseType, ExternalDatabaseConfig,
-    ExternalDatabaseWithDetails, TestConnectionRequest, UpdateExternalDatabaseRequest,
+    AddExternalDatabaseRequest, DatabaseType, ExternalDatabaseConfig, ExternalDatabaseWithDetails,
+    TestConnectionRequest, UpdateExternalDatabaseRequest,
 };
 use crate::state::AppState;
 
@@ -50,7 +50,6 @@ pub async fn get_external_databases(
         .find_all_external_databases()
         .await
         .map_err(|e| format!("Failed to retrieve external databases: {}", e))?;
-
 
     Ok(databases)
 }
@@ -110,7 +109,6 @@ pub async fn update_external_database(
         config.connection_details_encrypted = encrypted;
     }
 
-
     config.base.touch();
 
     database_service
@@ -141,26 +139,25 @@ pub async fn test_external_database_connection(
 ) -> Result<bool, String> {
     let database_service = app_state.database_service.lock().await;
 
-    let connection_details = if request.connection_details.password.is_empty()
-        && request.database_id.is_some()
-    {
-        let db_id = request.database_id.as_ref().unwrap();
-        let config = database_service
-            .find_external_database_by_id(db_id)
-            .await
-            .map_err(|e| format!("Failed to get existing database: {}", e))?
-            .ok_or_else(|| format!("Database not found: {}", db_id))?;
+    let connection_details =
+        if request.connection_details.password.is_empty() && request.database_id.is_some() {
+            let db_id = request.database_id.as_ref().unwrap();
+            let config = database_service
+                .find_external_database_by_id(db_id)
+                .await
+                .map_err(|e| format!("Failed to get existing database: {}", e))?
+                .ok_or_else(|| format!("Database not found: {}", db_id))?;
 
-        let master_password_manager = database_service.get_master_password_manager_arc();
-        let encryptor = ExternalDbEncryptor::new(master_password_manager);
+            let master_password_manager = database_service.get_master_password_manager_arc();
+            let encryptor = ExternalDbEncryptor::new(master_password_manager);
 
-        encryptor
-            .decrypt_connection_details(&config.connection_details_encrypted)
-            .await
-            .map_err(|e| format!("Failed to decrypt existing connection details: {}", e))?
-    } else {
-        request.connection_details
-    };
+            encryptor
+                .decrypt_connection_details(&config.connection_details_encrypted)
+                .await
+                .map_err(|e| format!("Failed to decrypt existing connection details: {}", e))?
+        } else {
+            request.connection_details
+        };
 
     let connection_string = connection_details.to_connection_string(&request.db_type);
 

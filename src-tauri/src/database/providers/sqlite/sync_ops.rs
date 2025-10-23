@@ -1,4 +1,3 @@
-
 use chrono::{DateTime, Utc};
 use sqlx::Row;
 
@@ -418,7 +417,6 @@ impl SQLiteProvider {
     pub async fn get_global_sync_settings(
         &self,
     ) -> DatabaseResult<Option<crate::models::sync::SyncSettings>> {
-
         let pool = self.get_pool()?;
         let pool = pool.read().await;
 
@@ -433,10 +431,7 @@ impl SQLiteProvider {
         )
         .fetch_optional(&*pool)
         .await
-        .map_err(|e| {
-            
-            crate::database::error::DatabaseError::QueryFailed(e.to_string())
-        })?;
+        .map_err(|e| crate::database::error::DatabaseError::QueryFailed(e.to_string()))?;
 
         if let Some(row) = row {
             let settings = self.map_sync_settings_row(&row)?;
@@ -571,8 +566,9 @@ impl SQLiteProvider {
         let conflict_strategy = ConflictResolutionStrategy::from_str(&conflict_strategy_str)
             .map_err(crate::database::error::DatabaseError::QueryFailed)?;
 
-        let sync_direction = crate::models::sync::settings::SyncDirection::from_str(&sync_direction_str)
-            .map_err(crate::database::error::DatabaseError::QueryFailed)?;
+        let sync_direction =
+            crate::models::sync::settings::SyncDirection::from_str(&sync_direction_str)
+                .map_err(crate::database::error::DatabaseError::QueryFailed)?;
 
         let last_sync_at_parsed = if let Some(dt_str) = last_sync_at {
             Some(
@@ -623,7 +619,12 @@ impl SQLiteProvider {
         .bind(&resolution.entity_id)
         .bind(resolution.local_data.to_string())
         .bind(resolution.remote_data.to_string())
-        .bind(resolution.resolution_strategy.as_ref().map(|s| s.to_string()))
+        .bind(
+            resolution
+                .resolution_strategy
+                .as_ref()
+                .map(|s| s.to_string()),
+        )
         .bind(resolution.resolved_at.map(|dt| dt.to_rfc3339()))
         .bind(resolution.created_at.to_rfc3339())
         .execute(&*pool)

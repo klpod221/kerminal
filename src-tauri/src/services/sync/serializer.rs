@@ -1,8 +1,8 @@
 use serde_json::Value;
 
 use crate::database::error::{DatabaseError, DatabaseResult};
-use crate::models::ssh::{SSHProfile, SSHGroup, SSHKey, SSHTunnel};
 use crate::models::saved_command::{SavedCommand, SavedCommandGroup};
+use crate::models::ssh::{SSHGroup, SSHKey, SSHProfile, SSHTunnel};
 
 /// Helper trait for converting models to/from sync records
 pub trait SyncSerializable {

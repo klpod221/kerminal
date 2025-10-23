@@ -1,4 +1,3 @@
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
@@ -27,24 +26,20 @@ impl SyncManager {
 
     /// Connect to an external database
     pub async fn connect(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<()> {
-
         let connection_string = self.get_decrypted_connection_string(config).await?;
 
         let provider: Box<dyn SyncTarget> = match config.db_type {
             DatabaseType::MySQL => {
-
                 let mut provider = MySQLProvider::new(connection_string);
                 provider.connect().await?;
                 Box::new(provider)
             }
             DatabaseType::PostgreSQL => {
-
                 let mut provider = PostgreSQLProvider::new(connection_string);
                 provider.connect().await?;
                 Box::new(provider)
             }
             DatabaseType::MongoDB => {
-
                 let connection_details = self.decrypt_connection_details(config).await?;
                 let database_name = connection_details.database_name.clone();
                 let mut provider = MongoDBProvider::new(connection_string, database_name);
@@ -57,7 +52,6 @@ impl SyncManager {
 
         let mut connections = self.active_connections.write().await;
         connections.insert(config.base.id.clone(), Arc::from(provider));
-
 
         {
             let db_service = self.database_service.lock().await;
@@ -86,7 +80,6 @@ impl SyncManager {
         let mut connections = self.active_connections.write().await;
         connections.remove(database_id);
         drop(connections); // Release lock early
-
 
         {
             let db_service = self.database_service.lock().await;
@@ -194,13 +187,11 @@ pub struct ConnectionStats {
 }
 
 impl Drop for SyncManager {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 #[cfg(test)]
 mod tests {
     #[tokio::test]
-    async fn test_sync_manager_creation() {
-    }
+    async fn test_sync_manager_creation() {}
 }

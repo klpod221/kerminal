@@ -60,9 +60,7 @@ impl ConflictResolver {
         match conflict.local_updated_at.cmp(&conflict.remote_updated_at) {
             Ordering::Greater => ConflictResolution::UseLocal(conflict.local_data),
             Ordering::Less => ConflictResolution::UseRemote(conflict.remote_data),
-            Ordering::Equal => {
-                ConflictResolution::UseLocal(conflict.local_data)
-            }
+            Ordering::Equal => ConflictResolution::UseLocal(conflict.local_data),
         }
     }
 
@@ -74,9 +72,7 @@ impl ConflictResolver {
         match conflict.local_updated_at.cmp(&conflict.remote_updated_at) {
             Ordering::Less => ConflictResolution::UseLocal(conflict.local_data),
             Ordering::Greater => ConflictResolution::UseRemote(conflict.remote_data),
-            Ordering::Equal => {
-                ConflictResolution::UseLocal(conflict.local_data)
-            }
+            Ordering::Equal => ConflictResolution::UseLocal(conflict.local_data),
         }
     }
 

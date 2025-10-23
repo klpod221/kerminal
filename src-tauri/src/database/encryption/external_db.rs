@@ -46,9 +46,7 @@ impl ExternalDbEncryptor {
 
         let decrypted = match manager.decrypt_string(encrypted, Some("__shared__")).await {
             Ok(data) => data,
-            Err(_) => {
-                manager.decrypt_string(encrypted, None).await?
-            }
+            Err(_) => manager.decrypt_string(encrypted, None).await?,
         };
 
         let details: ConnectionDetails = serde_json::from_str(&decrypted).map_err(|e| {

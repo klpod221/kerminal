@@ -276,10 +276,8 @@ impl DatabaseService {
 
         let _old_mp_manager = self.master_password_manager.read().await;
 
-
         for mut profile in profiles {
             if profile.has_encrypted_data() {
-
                 profile.base.updated_at = chrono::Utc::now();
 
                 match local_db.update_ssh_profile(&profile).await {
@@ -470,7 +468,6 @@ impl DatabaseService {
         local_db.get_all_devices().await
     }
 
-
     /// Create SSH group
     pub async fn create_ssh_group(
         &self,
@@ -542,7 +539,6 @@ impl DatabaseService {
 
         Ok(())
     }
-
 
     /// Create SSH profile
     pub async fn create_ssh_profile(
@@ -673,7 +669,6 @@ impl DatabaseService {
         Ok(duplicate)
     }
 
-
     /// Create SSH key
     pub async fn create_ssh_key(&self, request: CreateSSHKeyRequest) -> DatabaseResult<SSHKey> {
         let mut key = request.to_key(self.current_device.device_id.clone());
@@ -760,7 +755,6 @@ impl DatabaseService {
         local_db.save_ssh_key(&key).await
     }
 
-
     /// Create SSH tunnel
     pub async fn create_ssh_tunnel(
         &self,
@@ -783,9 +777,7 @@ impl DatabaseService {
         tunnel.description = request.description;
         tunnel.auto_start = request.auto_start.unwrap_or(false);
 
-        tunnel
-            .validate()
-            .map_err(DatabaseError::ValidationError)?;
+        tunnel.validate().map_err(DatabaseError::ValidationError)?;
 
         let local_db = self.local_db.read().await;
         local_db.save_ssh_tunnel(&tunnel).await?;
@@ -857,9 +849,7 @@ impl DatabaseService {
             tunnel.auto_start = auto_start;
         }
 
-        tunnel
-            .validate()
-            .map_err(DatabaseError::ValidationError)?;
+        tunnel.validate().map_err(DatabaseError::ValidationError)?;
 
         tunnel.base.touch();
 
@@ -873,7 +863,6 @@ impl DatabaseService {
         let local_db = self.local_db.read().await;
         local_db.delete_ssh_tunnel(id).await
     }
-
 
     /// Move all profiles from one group to another
     async fn move_profiles_to_group(
@@ -903,7 +892,6 @@ impl DatabaseService {
 
         Ok(())
     }
-
 
     /// Create saved command
     pub async fn create_saved_command(
@@ -1020,7 +1008,6 @@ impl DatabaseService {
         Ok(command)
     }
 
-
     /// Create saved command group
     pub async fn create_saved_command_group(
         &self,
@@ -1126,7 +1113,6 @@ impl DatabaseService {
         })
     }
 }
-
 
 impl Default for DatabaseServiceConfig {
     fn default() -> Self {

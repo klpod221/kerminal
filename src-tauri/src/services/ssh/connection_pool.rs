@@ -28,9 +28,7 @@ impl SSHConnectionPool {
 
     pub async fn cleanup_idle(&self) {
         let mut pool = self.connections.write().await;
-        pool.retain(|_, conn| {
-            conn.active && conn.last_used.elapsed() < self.max_idle_time
-        });
+        pool.retain(|_, conn| conn.active && conn.last_used.elapsed() < self.max_idle_time);
     }
 
     pub async fn pool_size(&self) -> usize {

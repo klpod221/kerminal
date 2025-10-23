@@ -1,6 +1,6 @@
 [package]
 name = "Kerminal"
-version = "2.1.0"
+version = "2.1.1"
 description = "Modern Terminal with SSH, Tunneling & Cross-Device Sync"
 license = "MIT"
 repository = "https://github.com/klpod221/kerminal"
@@ -60,3 +60,4 @@ keyring = "2.3"
 # Additional utilities
 futures = "0.3"
 dashmap = "5.5"
+tauri-plugin-clipboard-manager = "2"

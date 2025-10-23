@@ -1,4 +1,3 @@
-
 use crate::models::ssh::profile::{ProxyConfig, ProxyType};
 use russh_config::Stream;
 
@@ -16,16 +15,22 @@ pub enum ProxyError {
 /// Validate proxy configuration
 pub fn validate_proxy_config(proxy_config: &ProxyConfig) -> Result<(), ProxyError> {
     if proxy_config.host.is_empty() {
-        return Err(ProxyError::InvalidConfig("Proxy host cannot be empty".to_string()));
+        return Err(ProxyError::InvalidConfig(
+            "Proxy host cannot be empty".to_string(),
+        ));
     }
 
     if proxy_config.port == 0 {
-        return Err(ProxyError::InvalidConfig("Proxy port must be greater than 0".to_string()));
+        return Err(ProxyError::InvalidConfig(
+            "Proxy port must be greater than 0".to_string(),
+        ));
     }
 
     if let Some(username) = &proxy_config.username {
         if username.is_empty() {
-            return Err(ProxyError::InvalidConfig("Proxy username cannot be empty if provided".to_string()));
+            return Err(ProxyError::InvalidConfig(
+                "Proxy username cannot be empty if provided".to_string(),
+            ));
         }
     }
 

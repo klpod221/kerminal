@@ -48,9 +48,11 @@
 
         <!-- Message text -->
         <div class="text-center">
-          <p class="text-lg font-medium text-white mb-2">Connection Lost</p>
+          <p class="text-lg font-medium text-white mb-2">
+            {{ disconnectMessage.title }}
+          </p>
           <p class="text-sm text-gray-400">
-            The terminal connection was unexpectedly closed
+            {{ disconnectMessage.message }}
           </p>
         </div>
 
@@ -144,6 +146,7 @@ import type { SimpleTerminal } from "../../core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { XCircle, RefreshCw, X } from "lucide-vue-next";
+import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
 
 import { Terminal } from "@xterm/xterm";
@@ -186,9 +189,32 @@ const currentTerminal = computed(() =>
 
 const showDisconnectedOverlay = computed(
   () =>
-    currentTerminal.value?.disconnectReason === "connection-lost" &&
+    (currentTerminal.value?.disconnectReason === "connection-lost" ||
+      currentTerminal.value?.disconnectReason === "server-disconnect" ||
+      currentTerminal.value?.disconnectReason === "connection-error") &&
     !currentTerminal.value?.hasError,
 );
+
+const disconnectMessage = computed(() => {
+  switch (currentTerminal.value?.disconnectReason) {
+    case "server-disconnect":
+      return {
+        title: "Server Disconnected",
+        message: "The server has closed the connection",
+      };
+    case "connection-error":
+      return {
+        title: "Connection Error",
+        message: "Connection timeout - No response from server",
+      };
+    case "connection-lost":
+    default:
+      return {
+        title: "Connection Lost",
+        message: "The terminal connection was unexpectedly closed",
+      };
+  }
+});
 
 const showErrorOverlay = computed(
   () =>
@@ -271,28 +297,6 @@ const handleTerminalResize = async (): Promise<void> => {
     }
   } catch (error) {
     console.error("Failed to resize terminal:", error);
-  }
-};
-
-const handleCopy = async (): Promise<void> => {
-  if (term && term.hasSelection()) {
-    const selection = term.getSelection();
-    try {
-      await navigator.clipboard.writeText(selection);
-    } catch (err) {
-      console.warn("Failed to copy to clipboard:", err);
-    }
-  }
-};
-
-const handlePaste = async (): Promise<void> => {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (term) {
-      term.paste(text);
-    }
-  } catch (err) {
-    console.warn("Failed to read clipboard:", err);
   }
 };
 
@@ -423,45 +427,32 @@ onMounted(async () => {
   term.loadAddon(unicode11Addon);
   term.unicode.activeVersion = "11";
 
-  term.attachCustomKeyEventHandler((event: KeyboardEvent): boolean => {
-    if (
-      event.ctrlKey &&
-      event.shiftKey &&
-      event.key === "C" &&
-      event.type === "keydown"
-    ) {
-      event.preventDefault();
-      handleCopy();
-      return false;
-    }
+  term.open(terminalRef.value);
 
-    if (event.metaKey && event.key === "c" && event.type === "keydown") {
-      event.preventDefault();
-      handleCopy();
-      return false;
+  term.onSelectionChange(async () => {
+    if (term.hasSelection()) {
+      const selectedText = term.getSelection();
+      await writeText(selectedText);
     }
-
-    if (
-      event.ctrlKey &&
-      event.shiftKey &&
-      event.key === "V" &&
-      event.type === "keydown"
-    ) {
-      event.preventDefault();
-      handlePaste();
-      return false;
-    }
-
-    if (event.metaKey && event.key === "v" && event.type === "keydown") {
-      event.preventDefault();
-      handlePaste();
-      return false;
-    }
-
-    return true;
   });
 
-  term.open(terminalRef.value);
+  term.attachCustomKeyEventHandler((arg: KeyboardEvent): boolean => {
+    if (
+      (arg.ctrlKey || arg.metaKey) &&
+      arg.shiftKey &&
+      arg.key === "v" &&
+      arg.type === "keydown"
+    ) {
+      (async () => {
+        const clipboardText = await readText();
+        if (clipboardText) {
+          term.write(clipboardText);
+        }
+      })();
+      return false;
+    }
+    return true;
+  });
 
   term.onData((data) => {
     handleTerminalInput(data);

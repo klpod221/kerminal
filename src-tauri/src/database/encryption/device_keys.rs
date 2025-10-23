@@ -234,7 +234,8 @@ impl DeviceKeyManager {
         let device_key = DeviceEncryptionKey {
             device_id: device_id.clone(),
             device_name,
-            encryption_key: self.derive_key_from_password(password, &password_entry.password_salt)?,
+            encryption_key: self
+                .derive_key_from_password(password, &password_entry.password_salt)?,
             key_salt: password_entry.password_salt,
             key_version: 1,
             created_at: Utc::now(),
@@ -298,7 +299,7 @@ impl DeviceKeyManager {
             }
         }
 
-                Err(EncryptionError::DecryptionFailed(
+        Err(EncryptionError::DecryptionFailed(
             "No device key could decrypt this data".to_string(),
         ))
     }

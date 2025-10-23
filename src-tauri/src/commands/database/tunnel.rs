@@ -13,7 +13,6 @@ macro_rules! tunnel_result {
     };
 }
 
-
 /// Create new SSH tunnel
 #[tauri::command]
 pub async fn create_tunnel(

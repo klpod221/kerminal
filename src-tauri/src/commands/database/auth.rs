@@ -1,7 +1,7 @@
 use crate::database::encryption::master_password::SetupMasterPasswordRequest;
 use crate::models::auth::{ChangeMasterPasswordRequest, VerifyMasterPasswordRequest};
-use crate::state::AppState;
 use crate::services::sync::SyncService;
+use crate::state::AppState;
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
@@ -9,8 +9,9 @@ use super::common::app_result;
 
 /// Helper function to auto-connect databases with auto-sync enabled
 async fn auto_connect_sync_databases(sync_service: Arc<SyncService>) -> Result<(), String> {
-
-    sync_service.initialize().await
+    sync_service
+        .initialize()
+        .await
         .map_err(|e| format!("Failed to auto-connect databases: {}", e))
 }
 
@@ -54,16 +55,18 @@ pub async fn verify_master_password(
         .await
     {
         Ok(()) => {
-
             let sync_service = state.sync_service.clone();
             tokio::spawn(async move {
                 if let Err(e) = auto_connect_sync_databases(sync_service).await {
-                    eprintln!("verify_master_password: Failed to auto-connect databases: {}", e);
+                    eprintln!(
+                        "verify_master_password: Failed to auto-connect databases: {}",
+                        e
+                    );
                 }
             });
 
             Ok(true)
-        },
+        }
         Err(e) => Err(e.to_string()),
     }
 }

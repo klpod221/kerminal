@@ -18,7 +18,6 @@ impl SavedCommandService {
         Self { database_service }
     }
 
-
     /// Create new saved command
     pub async fn create_command(
         &self,
@@ -67,7 +66,6 @@ impl SavedCommandService {
         let db_service = self.database_service.lock().await;
         db_service.toggle_command_favorite(id).await
     }
-
 
     /// Create new saved command group
     pub async fn create_group(

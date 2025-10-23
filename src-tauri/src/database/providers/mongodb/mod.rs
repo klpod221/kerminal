@@ -32,7 +32,8 @@ impl MongoDBProvider {
     }
 
     pub(crate) fn get_database(&self) -> DatabaseResult<&Arc<RwLock<MongoDatabase>>> {
-        self.database.as_ref()
+        self.database
+            .as_ref()
             .ok_or_else(|| DatabaseError::ConnectionFailed("Database not connected".to_string()))
     }
 
@@ -47,16 +48,23 @@ impl MongoDBProvider {
         let db = db_arc.read().await;
 
         let collections = vec![
-            "ssh_profiles", "ssh_groups", "ssh_keys",
-            "ssh_tunnels", "saved_commands", "saved_command_groups",
+            "ssh_profiles",
+            "ssh_groups",
+            "ssh_keys",
+            "ssh_tunnels",
+            "saved_commands",
+            "saved_command_groups",
         ];
 
         for collection_name in collections {
-            let existing = db.list_collection_names(None).await
+            let existing = db
+                .list_collection_names(None)
+                .await
                 .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
             if !existing.contains(&collection_name.to_string()) {
-                db.create_collection(collection_name, None).await
+                db.create_collection(collection_name, None)
+                    .await
                     .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
             }
         }
@@ -67,7 +75,8 @@ impl MongoDBProvider {
 #[async_trait]
 impl SyncTarget for MongoDBProvider {
     async fn connect(&mut self) -> DatabaseResult<()> {
-        let mut client_options = ClientOptions::parse(&self.connection_string).await
+        let mut client_options = ClientOptions::parse(&self.connection_string)
+            .await
             .map_err(|e| DatabaseError::ConnectionFailed(e.to_string()))?;
 
         client_options.app_name = Some("Kerminal".to_string());
@@ -88,7 +97,8 @@ impl SyncTarget for MongoDBProvider {
         let db_arc = self.get_database()?;
         let db = db_arc.read().await;
 
-        db.list_collection_names(None).await
+        db.list_collection_names(None)
+            .await
             .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
         Ok(())
     }
@@ -97,11 +107,19 @@ impl SyncTarget for MongoDBProvider {
         sync::push_records(self, table, records).await
     }
 
-    async fn pull_records(&self, table: &str, since: Option<DateTime<Utc>>) -> DatabaseResult<Vec<Value>> {
+    async fn pull_records(
+        &self,
+        table: &str,
+        since: Option<DateTime<Utc>>,
+    ) -> DatabaseResult<Vec<Value>> {
         sync::pull_records(self, table, since).await
     }
 
-    async fn get_record_versions(&self, table: &str, ids: Vec<String>) -> DatabaseResult<HashMap<String, u64>> {
+    async fn get_record_versions(
+        &self,
+        table: &str,
+        ids: Vec<String>,
+    ) -> DatabaseResult<HashMap<String, u64>> {
         sync::get_record_versions(self, table, ids).await
     }
 }

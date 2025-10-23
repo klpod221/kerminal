@@ -160,8 +160,7 @@ fn json_to_bson_document(value: &Value) -> DatabaseResult<Document> {
 
 /// Helper function to convert BSON Document to JSON Value
 fn bson_document_to_json(doc: &Document) -> DatabaseResult<Value> {
-    let json = serde_json::to_value(doc)
-        .map_err(|e| DatabaseError::SerializationError(e))?;
+    let json = serde_json::to_value(doc).map_err(|e| DatabaseError::SerializationError(e))?;
 
     Ok(json)
 }

@@ -1,4 +1,3 @@
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -85,21 +84,19 @@ impl Device {
     /// Get OS version (simplified)
     fn get_os_version() -> String {
         match std::env::consts::OS {
-            "linux" => {
-                std::fs::read_to_string("/etc/os-release")
-                    .ok()
-                    .and_then(|content| {
-                        content
-                            .lines()
-                            .find(|line| line.starts_with("VERSION="))
-                            .map(|line| {
-                                line.trim_start_matches("VERSION=")
-                                    .trim_matches('"')
-                                    .to_string()
-                            })
-                    })
-                    .unwrap_or_else(|| "Unknown".to_string())
-            }
+            "linux" => std::fs::read_to_string("/etc/os-release")
+                .ok()
+                .and_then(|content| {
+                    content
+                        .lines()
+                        .find(|line| line.starts_with("VERSION="))
+                        .map(|line| {
+                            line.trim_start_matches("VERSION=")
+                                .trim_matches('"')
+                                .to_string()
+                        })
+                })
+                .unwrap_or_else(|| "Unknown".to_string()),
             _ => "Unknown".to_string(),
         }
     }

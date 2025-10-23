@@ -18,6 +18,7 @@ async fn main() {
         .expect("Failed to initialize application state");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_process::init())
         .manage(app_state)

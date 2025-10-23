@@ -1,5 +1,3 @@
-
-
 mod engine;
 mod manager;
 mod resolver;
@@ -47,7 +45,6 @@ impl SyncService {
 
     /// Initialize sync service (start scheduler, load enabled databases)
     pub async fn initialize(&self) -> DatabaseResult<()> {
-
         let is_unlocked = {
             let db_service = self.database_service.lock().await;
             let manager = db_service.get_master_password_manager_arc();
@@ -67,7 +64,6 @@ impl SyncService {
             local_guard.get_all_external_databases().await?
         }; // Drop locks
 
-
         let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
         let sync_settings = {
@@ -85,7 +81,9 @@ impl SyncService {
                 if let Err(e) = self.sync_manager.connect(&config).await {
                     eprintln!("Failed to auto-connect to {}: {}", config.name, e);
                 } else {
-                    self.sync_scheduler.enable_database(config.base.id.clone()).await?;
+                    self.sync_scheduler
+                        .enable_database(config.base.id.clone())
+                        .await?;
                 }
             }
         }
@@ -93,7 +91,8 @@ impl SyncService {
         self.sync_scheduler.start().await?;
 
         Ok(())
-    }    /// Shutdown sync service
+    }
+    /// Shutdown sync service
     #[allow(dead_code)]
     pub async fn shutdown(&self) -> DatabaseResult<()> {
         self.sync_scheduler.stop().await?;
@@ -160,19 +159,16 @@ impl SyncService {
         }; // Drop locks here
 
         let result = match direction {
-            SyncDirection::Push => {
-                self.sync_engine.push(&config).await
-            },
-            SyncDirection::Pull => {
-                self.sync_engine.pull(&config).await
-            },
-            SyncDirection::Bidirectional => {
-                self.sync_engine.sync(&config).await
-            },
+            SyncDirection::Push => self.sync_engine.push(&config).await,
+            SyncDirection::Pull => self.sync_engine.pull(&config).await,
+            SyncDirection::Bidirectional => self.sync_engine.sync(&config).await,
         };
 
         match &result {
-            Ok(log) => println!("SyncService::sync: Sync completed successfully. Records synced: {}", log.records_synced),
+            Ok(log) => println!(
+                "SyncService::sync: Sync completed successfully. Records synced: {}",
+                log.records_synced
+            ),
             Err(e) => eprintln!("SyncService::sync: Sync failed: {}", e),
         }
 
@@ -212,7 +208,8 @@ impl SyncService {
         let master_password_manager = db_service.get_master_password_manager_arc();
         drop(db_service);
 
-        let _encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
+        let _encryptor =
+            crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
 
         let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
@@ -254,7 +251,8 @@ impl SyncService {
         let master_password_manager = db_service.get_master_password_manager_arc();
         drop(db_service);
 
-        let _encryptor = crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
+        let _encryptor =
+            crate::database::encryption::ExternalDbEncryptor::new(master_password_manager);
 
         let db_service = self.database_service.lock().await;
         let local_db = db_service.get_local_database();
@@ -324,6 +322,5 @@ pub struct SyncServiceStatistics {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_sync_service_creation() {
-    }
+    fn test_sync_service_creation() {}
 }
