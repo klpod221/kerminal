@@ -1,0 +1,68 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+
+@font-face {
+    font-family: "FiraCodeNerdFont";
+    src: url("fonts/FiraCodeNerdFont.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+
+* {
+    font-family: "Inter", sans-serif;
+}
+
+.gradient-text {
+    background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.gradient-bg {
+    background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+}
+
+.gradient-border {
+    position: relative;
+    background: #111827;
+    border-radius: 1rem;
+}
+
+.gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 1rem;
+    padding: 2px;
+    background: linear-gradient(135deg, #06b6d4 0%, #a855f7 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box,
+        linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+}
+
+.scroll-smooth {
+    scroll-behavior: smooth;
+}
+
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+.float-animation {
+    animation: float 6s ease-in-out infinite;
+}
+
+.font-mono {
+    font-family: "FiraCodeNerdFont", monospace;
+}
