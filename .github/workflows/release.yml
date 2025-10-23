@@ -9,6 +9,8 @@ jobs:
   build-tauri:
     permissions:
       contents: write
+
+    name: Build
     strategy:
       fail-fast: false
       matrix:
