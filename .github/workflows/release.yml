@@ -17,16 +17,12 @@ jobs:
         include:
           - platform: 'macos-latest' # for Arm-based Macs (M1 and above).
             args: '--target aarch64-apple-darwin'
-            yaak_arch: 'arm64'
           - platform: 'macos-latest' # for Intel-based Macs.
             args: '--target x86_64-apple-darwin'
-            yaak_arch: 'x64'
           - platform: 'ubuntu-22.04'
             args: ''
-            yaak_arch: 'x64'
           - platform: 'windows-latest'
             args: ''
-            yaak_arch: 'x64'
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
