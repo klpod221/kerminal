@@ -24,3 +24,6 @@ target
 *.njsproj
 *.sln
 *.sw?
+
+# Android keystore
+.android/*.keystore

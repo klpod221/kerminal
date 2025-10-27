@@ -71,6 +71,142 @@ jobs:
           releaseDraft: false
           prerelease: false
 
+  build-android:
+    permissions:
+      contents: write
+
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: |
+          sdkmanager "ndk;26.1.10909125"
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Install Rust Android targets
+        run: |
+          rustup target add aarch64-linux-android
+          rustup target add armv7-linux-androideabi
+          rustup target add x86_64-linux-android
+          rustup target add i686-linux-android
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          shared-key: 'android'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Decode and setup keystore
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > $HOME/kerminal-release.keystore
+          echo "KEYSTORE_PATH=$HOME/kerminal-release.keystore" >> $GITHUB_ENV
+
+      - name: Create signing config
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          cat > src-tauri/gen/android/key.properties << EOF
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storeFile=$HOME/kerminal-release.keystore
+          EOF
+
+      - name: Update build.gradle for signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          cat > src-tauri/gen/android/app/signing.gradle.kts << 'EOF'
+          import java.util.Properties
+          
+          val keystorePropertiesFile = rootProject.file("key.properties")
+          val keystoreProperties = Properties()
+          
+          if (keystorePropertiesFile.exists()) {
+              keystoreProperties.load(keystorePropertiesFile.inputStream())
+              
+              android {
+                  signingConfigs {
+                      create("release") {
+                          keyAlias = keystoreProperties["keyAlias"] as String
+                          keyPassword = keystoreProperties["keyPassword"] as String
+                          storeFile = file(keystoreProperties["storeFile"] as String)
+                          storePassword = keystoreProperties["storePassword"] as String
+                      }
+                  }
+                  buildTypes {
+                      getByName("release") {
+                          signingConfig = signingConfigs.getByName("release")
+                      }
+                  }
+              }
+          }
+          EOF
+          
+          echo "" >> src-tauri/gen/android/app/build.gradle.kts
+          echo "apply(from = \"signing.gradle.kts\")" >> src-tauri/gen/android/app/build.gradle.kts
+
+      - name: Build APK (Debug)
+        run: npm run tauri android build -- --apk
+
+      - name: Build APK (Release)
+        run: npm run tauri android build -- --release --apk
+
+      - name: Rename APK files
+        run: |
+          VERSION=${{ github.ref_name }}
+          CLEAN_VERSION=${VERSION#v}
+          
+          mkdir -p release-apks
+          
+          # Copy and rename debug APK
+          if [ -f src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk ]; then
+            cp src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk \
+               release-apks/kerminal-${CLEAN_VERSION}-debug.apk
+          fi
+          
+          # Copy and rename release APK
+          if [ -f src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk ]; then
+            cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk \
+               release-apks/kerminal-${CLEAN_VERSION}-release.apk
+          elif [ -f src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk ]; then
+            cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk \
+               release-apks/kerminal-${CLEAN_VERSION}-release-unsigned.apk
+          fi
+
+      - name: Upload APK to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-apks/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   publish-aur:
     name: Publish to AUR (${{ matrix.repo }})
     needs: build-tauri
