@@ -1,6 +1,7 @@
 <template>
   <div
-    class="flex items-center h-[30px] min-h-[30px] max-h-[30px] border-b border-gray-800 relative bg-[#0D0D0D]"
+    class="flex items-center border-b border-gray-800 relative bg-[#0D0D0D] sm:h-[30px] sm:min-h-[30px] sm:max-h-[30px]"
+    :class="isMobile ? 'h-[36px] min-h-[36px] max-h-[36px]' : 'h-[30px] min-h-[30px] max-h-[30px]'"
     @dragover="onPanelDragOver"
     @drop="onPanelDrop"
     @dragenter="onPanelDragEnter"
@@ -28,11 +29,12 @@
 
     <!-- Tabs Container -->
     <div
-      class="flex items-center flex-1 h-full max-h-[30px] min-w-0 relative z-10"
+      class="flex items-center flex-1 h-full min-w-0 relative z-10 sm:max-h-[30px]"
+      :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
     >
       <!-- Left scroll button -->
       <Button
-        v-show="showScrollButtons && canScrollLeft"
+        v-show="showScrollButtons && canScrollLeft && !isMobile"
         title="Scroll left"
         variant="ghost"
         size="sm"
@@ -44,18 +46,21 @@
       <!-- Scrollable tabs container -->
       <div
         ref="tabsContainer"
-        class="flex items-center h-full max-h-[30px] overflow-hidden flex-1 scrollable-tabs"
+        class="flex items-center h-full overflow-hidden flex-1 scrollable-tabs sm:max-h-[30px]"
+        :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
         @wheel.prevent="onWheel"
       >
         <div
           ref="tabsContent"
-          class="flex items-center h-full max-h-[30px] transition-transform duration-200 ease-out"
+          class="flex items-center h-full transition-transform duration-200 ease-out sm:max-h-[30px]"
+          :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
           :style="{ transform: `translateX(${scrollOffset}px)` }"
         >
           <transition-group
             name="tab"
             tag="div"
-            class="flex items-center h-full max-h-[30px]"
+            class="flex items-center h-full sm:max-h-[30px]"
+            :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
             appear
           >
             <Tab
@@ -96,7 +101,7 @@
 
       <!-- Right scroll button -->
       <Button
-        v-show="showScrollButtons && canScrollRight"
+        v-show="showScrollButtons && canScrollRight && !isMobile"
         title="Scroll right"
         variant="ghost"
         size="sm"
@@ -108,7 +113,7 @@
       <!-- Add Tab Button - Outside when scrolling is needed -->
       <Transition name="fade">
         <Button
-          v-show="showScrollButtons"
+          v-show="showScrollButtons && !isMobile"
           title="Add new tab"
           variant="ghost"
           size="sm"
@@ -121,10 +126,12 @@
 
     <!-- Panel Controls -->
     <div
-      class="flex items-center h-full max-h-[30px] flex-shrink-0 relative z-10"
+      class="flex items-center h-full flex-shrink-0 relative z-10 sm:max-h-[30px]"
+      :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
     >
-      <!-- Split Horizontal Button -->
+      <!-- Split Horizontal Button - Hide on mobile -->
       <Button
+        v-if="!isMobile"
         title="Split horizontal"
         variant="ghost"
         size="sm"
@@ -132,13 +139,25 @@
         @click="splitHorizontal"
       />
 
-      <!-- Split Vertical Button -->
+      <!-- Split Vertical Button - Hide on mobile -->
       <Button
+        v-if="!isMobile"
         title="Split vertical"
         variant="ghost"
         size="sm"
         :icon="SplitSquareVertical"
         @click="splitVertical"
+      />
+
+      <!-- Add Tab Button on mobile -->
+      <Button
+        v-if="isMobile"
+        title="Add new tab"
+        variant="ghost"
+        size="sm"
+        :icon="Plus"
+        class="add-tab-btn"
+        @click="addTab"
       />
 
       <!-- Close Panel Button -->
@@ -209,7 +228,7 @@ const props = withDefaults(defineProps<TabBarProps>(), {
 });
 
 const emit = defineEmits<TabBarEmits>();
-const { width: windowWidth } = useWindowSize();
+const { width: windowWidth, isMobile } = useWindowSize();
 
 const tabsContainer = ref<HTMLElement | null>(null);
 const tabsContent = ref<HTMLElement | null>(null);

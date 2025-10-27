@@ -29,7 +29,8 @@
 
     <!-- Action buttons (hover) -->
     <div
-      class="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
+      class="flex flex-col items-center gap-1 transition-opacity duration-200 flex-shrink-0"
+      :class="isTouch ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
       @click.stop
     >
       <Button
@@ -55,6 +56,9 @@
 import type { SSHProfile } from "../../types/ssh";
 import Button from "../ui/Button.vue";
 import { Edit3, Trash2 } from "lucide-vue-next";
+import { useWindowSize } from "../../composables/useWindowSize";
+
+const { isTouch } = useWindowSize();
 
 interface Props {
   profile: SSHProfile;

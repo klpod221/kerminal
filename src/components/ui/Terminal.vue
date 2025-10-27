@@ -384,7 +384,7 @@ onMounted(async () => {
   term = new Terminal({
     cursorBlink: true,
     fontFamily: "'Fira Code', monospace",
-    fontSize: 14,
+    fontSize: 13,
     lineHeight: 1,
     cols: 110,
     rows: 30,
@@ -396,6 +396,7 @@ onMounted(async () => {
     allowProposedApi: true,
     rightClickSelectsWord: true,
     allowTransparency: false,
+    scrollback: 10000,
   });
 
   const webglAddon = new WebglAddon();

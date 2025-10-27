@@ -3,7 +3,8 @@
     <div
       v-if="visible"
       ref="contextMenuRef"
-      class="fixed z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 min-w-[180px]"
+      class="fixed z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1"
+      :class="isMobile ? 'min-w-[200px]' : 'min-w-[180px]'"
       :style="{ left: position.x + 'px', top: position.y + 'px' }"
       @click.stop
     >
@@ -11,21 +12,27 @@
         <div v-if="item.type === 'divider'" class="h-px bg-gray-700 my-1"></div>
         <div
           v-else
-          class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer transition-colors duration-150"
-          :class="{
-            'text-red-400 hover:text-red-300': item.danger,
-            'opacity-50 cursor-not-allowed': item.disabled,
-          }"
+          class="flex items-center text-gray-300 hover:bg-gray-800 hover:text-white cursor-pointer transition-colors duration-150 touch-manipulation"
+          :class="[
+            {
+              'text-red-400 hover:text-red-300': item.danger,
+              'opacity-50 cursor-not-allowed': item.disabled,
+            },
+            isMobile ? 'px-4 py-3 text-base' : 'px-3 py-2 text-sm',
+          ]"
           @click="handleItemClick(item)"
         >
           <component
             :is="item.icon"
             v-if="item.icon"
-            :size="16"
+            :size="isMobile ? 18 : 16"
             class="mr-2 flex-shrink-0"
           />
           <span class="flex-1">{{ item.label || "" }}</span>
-          <span v-if="item.shortcut" class="text-xs text-gray-500 ml-2">
+          <span
+            v-if="item.shortcut && !isMobile"
+            class="text-xs text-gray-500 ml-2"
+          >
             {{ item.shortcut }}
           </span>
         </div>
@@ -37,6 +44,9 @@
 <script setup lang="ts">
 import { ref, nextTick, onMounted, onUnmounted } from "vue";
 import type { Component } from "vue";
+import { useWindowSize } from "../../composables/useWindowSize";
+
+const { isMobile } = useWindowSize();
 
 export interface ContextMenuItem {
   id: string;

@@ -17,9 +17,10 @@ body {
   -webkit-backdrop-filter: blur(4px);
 }
 
-/* css for scroll bar */
+/* Scrollbar styles */
 ::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -31,6 +32,19 @@ body {
   background-color: #555;
 }
 
+/* Touch-friendly scrollbar for mobile */
+@media (max-width: 640px) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: #666;
+    border-radius: 6px;
+  }
+}
+
 .draggable {
   -webkit-app-region: drag;
 }
@@ -38,3 +52,13 @@ body {
 .no-drag {
   -webkit-app-region: no-drag;
 }
+
+/* Mobile touch optimizations */
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+

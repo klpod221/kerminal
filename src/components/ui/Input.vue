@@ -36,7 +36,7 @@
         :autocomplete="autocomplete"
         :autofocus="autofocus"
         :class="[
-          'block w-full rounded-lg border transition-all duration-200',
+          'block w-full rounded-lg border transition-all duration-200 touch-manipulation',
           'focus:outline-none',
           'disabled:opacity-50 disabled:cursor-not-allowed',
           'readonly:bg-gray-700 readonly:cursor-default',
@@ -187,11 +187,11 @@ const iconSize = computed(() => {
 const sizeClasses = computed(() => {
   switch (props.size) {
     case "sm":
-      return "text-sm py-1.5";
+      return "text-sm py-2 sm:py-1.5";
     case "lg":
-      return "text-lg py-3";
+      return "text-lg py-3.5 sm:py-3";
     default:
-      return "text-base py-2";
+      return "text-base py-2.5 sm:py-2";
   }
 });
 

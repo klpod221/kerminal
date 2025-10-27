@@ -1,6 +1,7 @@
 <template>
   <div
-    class="grid grid-cols-3 items-center h-[30px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-50 topbar-container"
+    class="grid items-center h-[30px] sm:h-[36px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-50 topbar-container"
+    :class="isMobile ? 'grid-cols-[auto_1fr_auto]' : 'grid-cols-3'"
   >
     <!-- Overlay when top bar is not active -->
     <div
@@ -12,34 +13,37 @@
     <div class="flex items-center justify-start">
       <!-- Dashboard button -->
       <div
-        class="flex items-center px-3 h-[30px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer"
-        :class="{
-          'bg-gray-800': viewState.activeView === 'dashboard',
-        }"
+        class="flex items-center h-[30px] sm:h-[36px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        :class="[
+          viewState.activeView === 'dashboard' ? 'bg-gray-800' : '',
+          isMobile ? 'px-2' : 'px-3',
+        ]"
         @click="setActiveView('dashboard')"
       >
         <img
           src="../assets/images/logo_500.png"
           alt="Dashboard"
-          class="w-4 h-4 transition-opacity duration-200"
-          :class="
+          class="transition-opacity duration-200"
+          :class="[
             viewState.activeView === 'dashboard'
               ? 'opacity-100'
-              : 'opacity-60 hover:opacity-100'
-          "
+              : 'opacity-60 hover:opacity-100',
+            isMobile ? 'w-5 h-5' : 'w-4 h-4',
+          ]"
         />
       </div>
 
       <!-- Workspace button -->
       <div
-        class="flex items-center px-3 h-[30px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer"
-        :class="{
-          'bg-gray-800': viewState.activeView === 'workspace',
-        }"
+        class="flex items-center h-[30px] sm:h-[36px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        :class="[
+          viewState.activeView === 'workspace' ? 'bg-gray-800' : '',
+          isMobile ? 'px-2' : 'px-3',
+        ]"
         @click="setActiveView('workspace')"
       >
         <LayoutGrid
-          :size="16"
+          :size="isMobile ? 18 : 16"
           class="transition-opacity duration-200"
           :class="
             viewState.activeView === 'workspace'
@@ -51,14 +55,15 @@
 
       <!-- SSH Profiles button -->
       <div
-        class="flex items-center px-3 h-[30px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer"
-        :class="{
-          'bg-gray-800': isOverlayVisible('ssh-profile-drawer'),
-        }"
+        class="flex items-center h-[30px] sm:h-[36px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        :class="[
+          isOverlayVisible('ssh-profile-drawer') ? 'bg-gray-800' : '',
+          isMobile ? 'px-2' : 'px-3',
+        ]"
         @click="toggleOverlay('ssh-profile-drawer')"
       >
         <Server
-          :size="16"
+          :size="isMobile ? 18 : 16"
           class="transition-opacity duration-200"
           :class="
             isOverlayVisible('ssh-profile-drawer')
@@ -76,81 +81,176 @@
 
     <!-- Right side buttons -->
     <div class="flex items-center justify-end">
-      <!-- Saved Commands -->
+      <!-- More menu for mobile -->
       <Button
-        title="Saved Commands"
+        v-if="isMobile"
+        title="More options"
         variant="ghost"
         size="sm"
-        :icon="Terminal"
-        :class="
-          isOverlayVisible('saved-command-drawer')
-            ? 'bg-gray-800 text-gray-400 hover:text-white'
-            : ''
-        "
-        @click="toggleOverlay('saved-command-drawer')"
+        :icon="Menu"
+        @click="toggleMobileMenu"
       />
 
-      <!-- Tunnel Manager -->
-      <Button
-        title="SSH Tunnel Manager"
-        variant="ghost"
-        size="sm"
-        :icon="Route"
-        :class="
-          isOverlayVisible('tunnel-manager-modal')
-            ? 'bg-gray-800 text-gray-400 hover:text-white'
-            : ''
-        "
-        @click="toggleOverlay('tunnel-manager-modal')"
-      />
+      <!-- Desktop buttons -->
+      <template v-else>
+        <!-- Saved Commands -->
+        <Button
+          title="Saved Commands"
+          variant="ghost"
+          size="sm"
+          :icon="Terminal"
+          :class="
+            isOverlayVisible('saved-command-drawer')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('saved-command-drawer')"
+        />
 
-      <!-- SSH Key Manager -->
-      <Button
-        title="SSH Key Manager"
-        variant="ghost"
-        size="sm"
-        :icon="Key"
-        :class="
-          isOverlayVisible('ssh-key-manager-modal')
-            ? 'bg-gray-800 text-gray-400 hover:text-white'
-            : ''
-        "
-        @click="toggleOverlay('ssh-key-manager-modal')"
-      />
+        <!-- Tunnel Manager -->
+        <Button
+          title="SSH Tunnel Manager"
+          variant="ghost"
+          size="sm"
+          :icon="Route"
+          :class="
+            isOverlayVisible('tunnel-manager-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('tunnel-manager-modal')"
+        />
 
-      <!-- Sync Manager -->
-      <Button
-        title="Sync Manager"
-        variant="ghost"
-        size="sm"
-        :icon="Cloud"
-        :class="
-          isOverlayVisible('sync-manager-modal')
-            ? 'bg-gray-800 text-gray-400 hover:text-white'
-            : ''
-        "
-        @click="toggleOverlay('sync-manager-modal')"
-      />
+        <!-- SSH Key Manager -->
+        <Button
+          title="SSH Key Manager"
+          variant="ghost"
+          size="sm"
+          :icon="Key"
+          :class="
+            isOverlayVisible('ssh-key-manager-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('ssh-key-manager-modal')"
+        />
 
-      <!-- Master Password  -->
-      <Button
-        title="Top"
-        variant="ghost"
-        size="sm"
-        Top
-        :icon="Shield"
-        :class="
-          isOverlayVisible('master-password-settinTopgs')
-            ? 'bg-gray-800 text-gray-400 hover:text-white'
-            : ''
-        "
-        @click="toggleOverlay('master-password-settings')"
-      />
+        <!-- Sync Manager -->
+        <Button
+          title="Sync Manager"
+          variant="ghost"
+          size="sm"
+          :icon="Cloud"
+          :class="
+            isOverlayVisible('sync-manager-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('sync-manager-modal')"
+        />
+
+        <!-- Master Password  -->
+        <Button
+          title="Master Password Settings"
+          variant="ghost"
+          size="sm"
+          :icon="Shield"
+          :class="
+            isOverlayVisible('master-password-settings')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('master-password-settings')"
+        />
+      </template>
     </div>
+
+    <!-- Mobile menu overlay -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-200"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showMobileMenu"
+          class="fixed inset-0 bg-black/50 z-[60] top-[30px]"
+          @click="showMobileMenu = false"
+        >
+          <div
+            class="absolute right-0 top-0 bg-[#1a1a1a] border-l border-gray-700 w-64 shadow-xl"
+            @click.stop
+          >
+            <div class="p-2 space-y-1">
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
+                :class="
+                  isOverlayVisible('saved-command-drawer') ? 'bg-gray-800' : ''
+                "
+                @click="handleMobileMenuClick('saved-command-drawer')"
+              >
+                <Terminal :size="18" />
+                <span>Saved Commands</span>
+              </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
+                :class="
+                  isOverlayVisible('tunnel-manager-modal') ? 'bg-gray-800' : ''
+                "
+                @click="handleMobileMenuClick('tunnel-manager-modal')"
+              >
+                <Route :size="18" />
+                <span>SSH Tunnel Manager</span>
+              </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
+                :class="
+                  isOverlayVisible('ssh-key-manager-modal') ? 'bg-gray-800' : ''
+                "
+                @click="handleMobileMenuClick('ssh-key-manager-modal')"
+              >
+                <Key :size="18" />
+                <span>SSH Key Manager</span>
+              </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
+                :class="
+                  isOverlayVisible('sync-manager-modal') ? 'bg-gray-800' : ''
+                "
+                @click="handleMobileMenuClick('sync-manager-modal')"
+              >
+                <Cloud :size="18" />
+                <span>Sync Manager</span>
+              </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
+                :class="
+                  isOverlayVisible('master-password-settings')
+                    ? 'bg-gray-800'
+                    : ''
+                "
+                @click="handleMobileMenuClick('master-password-settings')"
+              >
+                <Shield :size="18" />
+                <span>Master Password</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import {
   LayoutGrid,
   Server,
@@ -159,16 +259,21 @@ import {
   Route,
   Terminal,
   Cloud,
+  Menu,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";
 
 import { useViewStateStore } from "../stores/viewState";
 import { useOverlay } from "../composables/useOverlay";
+import { useWindowSize } from "../composables/useWindowSize";
 
 const viewState = useViewStateStore();
 const { openOverlay, closeOverlay, closeAllOverlays, isOverlayVisible } =
   useOverlay();
+const { isMobile } = useWindowSize();
+
+const showMobileMenu = ref(false);
 
 const setActiveView = (view: "dashboard" | "workspace" | "fileManager") => {
   if (!viewState.isTopBarActive || viewState.activeView === view) return;
@@ -186,5 +291,14 @@ const toggleOverlay = (overlayName: string) => {
     closeAllOverlays();
     openOverlay(overlayName);
   }
+};
+
+const toggleMobileMenu = () => {
+  showMobileMenu.value = !showMobileMenu.value;
+};
+
+const handleMobileMenuClick = (overlayName: string) => {
+  showMobileMenu.value = false;
+  toggleOverlay(overlayName);
 };
 </script>

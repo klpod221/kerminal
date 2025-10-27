@@ -89,7 +89,8 @@
 
     <!-- Action buttons (hover) -->
     <div
-      class="flex flex-col items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex-shrink-0"
+      class="flex flex-col items-center gap-1 transition-opacity duration-200 flex-shrink-0"
+      :class="isTouch ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
       @click.stop
     >
       <Button
@@ -128,6 +129,9 @@ import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import { safeJsonParse } from "../../utils/helpers";
 import { formatRelativeTime as formatTime } from "../../utils/formatter";
+import { useWindowSize } from "../../composables/useWindowSize";
+
+const { isTouch } = useWindowSize();
 
 interface Props {
   command: SavedCommand;

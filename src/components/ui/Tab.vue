@@ -1,11 +1,14 @@
 <template>
   <div
-    class="no-drag flex items-center px-2 h-full max-h-[30px] border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden"
-    :class="{
-      'active-tab bg-[#171717] border-b-2 border-b-blue-500': isActive,
-      'hover:bg-gray-800': !isActive,
-      'opacity-50': isDragging,
-    }"
+    class="no-drag flex items-center h-full border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden touch-manipulation sm:max-h-[30px]"
+    :class="[
+      {
+        'active-tab bg-[#171717] border-b-2 border-b-blue-500': isActive,
+        'hover:bg-gray-800': !isActive,
+        'opacity-50': isDragging,
+      },
+      isMobile ? 'px-1.5 max-h-[36px]' : 'px-2 max-h-[30px]',
+    ]"
     :style="{ minWidth: minWidth + 'px', maxWidth: maxWidth + 'px' }"
     draggable="true"
     @click="$emit('select')"
@@ -16,34 +19,46 @@
     @drop="onDrop"
   >
     <div
-      v-if="isConnecting && minWidth >= 80"
-      class="mr-2 transition-colors duration-200 flex-shrink-0"
+      v-if="isConnecting && (minWidth >= 80 || isMobile)"
+      class="transition-colors duration-200 flex-shrink-0"
+      :class="isMobile ? 'mr-1.5' : 'mr-2'"
     >
       <div
-        class="animate-spin rounded-full h-3 w-3 border border-blue-400 border-t-transparent"
+        class="animate-spin rounded-full border border-blue-400 border-t-transparent"
+        :class="isMobile ? 'h-3.5 w-3.5' : 'h-3 w-3'"
       ></div>
     </div>
     <Terminal
-      v-else-if="minWidth >= 80"
-      :size="14"
-      class="mr-2 transition-colors duration-200 flex-shrink-0"
-      :class="isActive ? 'text-blue-400' : 'text-gray-400'"
+      v-else-if="minWidth >= 80 || isMobile"
+      :size="isMobile ? 16 : 14"
+      class="transition-colors duration-200 flex-shrink-0"
+      :class="[
+        isActive ? 'text-blue-400' : 'text-gray-400',
+        isMobile ? 'mr-1.5' : 'mr-2',
+      ]"
     />
     <div
-      v-if="tab.color && minWidth >= 60"
-      class="w-2 h-2 rounded-full mr-2 flex-shrink-0"
+      v-if="tab.color && (minWidth >= 60 || isMobile)"
+      class="rounded-full flex-shrink-0"
+      :class="isMobile ? 'w-2.5 h-2.5 mr-1.5' : 'w-2 h-2 mr-2'"
       :style="{ backgroundColor: tab.color }"
     ></div>
     <span
-      class="text-sm truncate flex-1 transition-colors duration-200"
-      :class="isActive ? 'text-white' : 'text-gray-300'"
+      class="truncate flex-1 transition-colors duration-200"
+      :class="[
+        isActive ? 'text-white' : 'text-gray-300',
+        isMobile ? 'text-xs' : 'text-sm',
+      ]"
     >
       {{ isConnecting ? "Connecting..." : tab.title }}
     </span>
     <X
-      v-if="minWidth >= 100"
-      :size="14"
-      class="text-gray-500 hover:text-red-400 ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out flex-shrink-0 transform hover:scale-110 cursor-pointer"
+      v-if="minWidth >= 100 || isTouch"
+      :size="isMobile ? 16 : 14"
+      class="text-gray-500 hover:text-red-400 transition-all duration-300 ease-out flex-shrink-0 transform hover:scale-110 cursor-pointer touch-manipulation"
+      :class="[
+        isTouch ? 'ml-1 opacity-100' : 'ml-2 opacity-0 group-hover:opacity-100',
+      ]"
       @click.stop="$emit('close')"
     />
 
@@ -71,6 +86,9 @@ import ContextMenu from "./ContextMenu.vue";
 import type { ContextMenuItem } from "./ContextMenu.vue";
 import type { Tab } from "../../types/panel";
 import { safeJsonParse, safeJsonStringify } from "../../utils/helpers";
+import { useWindowSize } from "../../composables/useWindowSize";
+
+const { isMobile, isTouch } = useWindowSize();
 
 interface TabProps {
   tab: Tab;

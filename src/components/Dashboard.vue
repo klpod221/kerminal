@@ -1,30 +1,44 @@
 <template>
   <div
-    class="h-full bg-[#171717] text-white p-4 overflow-y-auto dashboard-container"
+    class="h-full bg-[#171717] text-white overflow-y-auto dashboard-container"
+    :class="isMobile ? 'p-3' : 'p-4'"
   >
     <div class="container mx-auto animate-fade-in">
-      <div class="mt-4 mb-12">
+      <div :class="isMobile ? 'mt-2 mb-8' : 'mt-4 mb-12'">
         <img
           src="../assets/images/logo_500.png"
           alt="Kerminal Logo"
-          class="w-32 h-32 mx-auto mb-4"
+          :class="isMobile ? 'w-20 h-20' : 'w-32 h-32'"
+          class="mx-auto mb-4"
         />
         <h1
-          class="text-center text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent"
+          class="text-center font-extrabold bg-gradient-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent"
+          :class="isMobile ? 'text-3xl' : 'text-5xl md:text-6xl'"
         >
           Kerminal
         </h1>
-        <p class="text-center text-sm text-gray-400 mb-2">v{{ appVersion }}</p>
-        <p class="text-center text-xl mt-1">
+        <p
+          class="text-center text-gray-400"
+          :class="isMobile ? 'text-xs mb-1' : 'text-sm mb-2'"
+        >
+          v{{ appVersion }}
+        </p>
+        <p
+          class="text-center mt-1"
+          :class="isMobile ? 'text-base' : 'text-xl'"
+        >
           Modern Terminal Emulator & SSH Manager
         </p>
-        <p class="text-center text-gray-400 mt-1">
+        <p
+          class="text-center text-gray-400 mt-1"
+          :class="isMobile ? 'text-xs' : ''"
+        >
           Made with ❤️ by
           <a
             href="https://klpod221.com"
             target="_blank"
             rel="noopener noreferrer"
-            class="underline hover:text-white text-sm transition-colors duration-200"
+            class="underline hover:text-white text-sm transition-colors duration-200 touch-manipulation"
           >
             klpod221
           </a>
@@ -32,11 +46,24 @@
       </div>
 
       <div
-        class="flex flex-col justify-between items-center border-t border-b border-gray-800 py-4"
+        class="flex flex-col justify-between items-center border-t border-b border-gray-800"
+        :class="isMobile ? 'py-3' : 'py-4'"
       >
-        <h2 class="text-2xl font-semibold mb-6">System Information</h2>
+        <h2
+          class="font-semibold"
+          :class="isMobile ? 'text-xl mb-4' : 'text-2xl mb-6'"
+        >
+          System Information
+        </h2>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          class="grid gap-4 w-full"
+          :class="
+            isMobile
+              ? 'grid-cols-1'
+              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          "
+        >
           <Card
             title="Computer"
             :icon="Computer"
@@ -334,6 +361,9 @@ import {
 } from "lucide-vue-next";
 
 import { getSystemInfo } from "../services/dashboard";
+import { useWindowSize } from "../composables/useWindowSize";
+
+const { isMobile } = useWindowSize();
 
 declare const __APP_VERSION__: string;
 const appVersion = __APP_VERSION__;

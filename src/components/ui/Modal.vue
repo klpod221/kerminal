@@ -27,32 +27,45 @@
     >
       <div
         v-if="isVisible"
-        class="fixed top-[30px] left-0 right-0 bottom-0 z-50 flex items-center justify-center pointer-events-none"
+        class="fixed left-0 right-0 bottom-0 z-50 flex items-center justify-center pointer-events-none sm:top-[36px]"
+        :class="isMobile ? 'top-[30px]' : 'top-[30px]'"
       >
         <div
-          class="relative bg-[#1a1a1a] border border-gray-700 rounded-lg shadow-2xl w-full mx-4 max-h-[90vh] overflow-hidden pointer-events-auto"
-          :class="sizeClass"
+          class="relative bg-[#1a1a1a] border border-gray-700 shadow-2xl overflow-hidden pointer-events-auto"
+          :class="[
+            sizeClass,
+            isMobile
+              ? 'w-full h-full rounded-none'
+              : 'w-full mx-4 max-h-[90vh] rounded-lg',
+          ]"
           @click.stop
         >
           <!-- Header -->
           <div
             v-if="title || $slots.header || showCloseButton"
-            class="flex items-center justify-between p-4 border-b border-gray-700"
+            class="flex items-center justify-between border-b border-gray-700"
+            :class="isMobile ? 'p-3' : 'p-4'"
           >
             <div class="flex items-center space-x-3">
               <div
                 v-if="icon"
-                class="rounded-lg p-2"
-                :class="iconBackground || 'bg-blue-500/20'"
+                class="rounded-lg"
+                :class="[
+                  iconBackground || 'bg-blue-500/20',
+                  isMobile ? 'p-1.5' : 'p-2',
+                ]"
               >
                 <component
                   :is="icon"
-                  class="w-6 h-6"
-                  :class="iconColor || 'text-blue-400'"
+                  :class="[iconColor || 'text-blue-400', isMobile ? 'w-5 h-5' : 'w-6 h-6']"
                 />
               </div>
               <div>
-                <h3 v-if="title" class="text-lg font-semibold text-white">
+                <h3
+                  v-if="title"
+                  class="font-semibold text-white"
+                  :class="isMobile ? 'text-base' : 'text-lg'"
+                >
                   {{ title }}
                 </h3>
                 <slot name="header" />
@@ -62,21 +75,27 @@
               v-if="showCloseButton"
               title="Close modal"
               variant="ghost"
-              size="sm"
+              :size="isMobile ? 'sm' : 'sm'"
               :icon="X"
               @click="handleClose"
             />
           </div>
 
           <!-- Content -->
-          <div class="p-4 overflow-y-auto max-h-[60vh]">
+          <div
+            class="overflow-y-auto"
+            :class="[
+              isMobile ? 'p-3 max-h-[calc(100vh-9rem)]' : 'p-4 max-h-[60vh]',
+            ]"
+          >
             <slot />
           </div>
 
           <!-- Footer -->
           <div
             v-if="$slots.footer"
-            class="flex justify-end space-x-3 p-4 border-t border-gray-700 bg-[#171717]"
+            class="flex justify-end space-x-3 border-t border-gray-700 bg-[#171717]"
+            :class="isMobile ? 'p-3' : 'p-4'"
           >
             <slot name="footer" />
           </div>
@@ -92,6 +111,9 @@ import { X } from "lucide-vue-next";
 import Button from "./Button.vue";
 import type { Component } from "vue";
 import { useOverlay } from "../../composables/useOverlay";
+import { useWindowSize } from "../../composables/useWindowSize";
+
+const { isMobile } = useWindowSize();
 
 interface ModalProps {
   id: string;
@@ -134,6 +156,10 @@ const {
  * Compute size class based on size prop
  */
 const sizeClass = computed(() => {
+  if (isMobile.value) {
+    return "";
+  }
+
   const sizeClasses = {
     sm: "max-w-sm",
     md: "max-w-md",

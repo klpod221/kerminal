@@ -1,7 +1,7 @@
 <template>
   <button
     :class="[
-      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none cursor-pointer',
+      'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none cursor-pointer touch-manipulation',
       'disabled:opacity-50 disabled:cursor-not-allowed',
       'active:scale-95 active:transform',
       sizeClasses,
@@ -84,11 +84,11 @@ const sizeClasses = computed(() => {
   const hasOnlyIcon = props.icon && !props.text;
   switch (props.size) {
     case "sm":
-      return hasOnlyIcon ? "p-1.5 text-sm" : "px-1.5 py-0.75 text-sm";
+      return hasOnlyIcon ? "p-2 text-sm sm:p-1.5" : "px-3 py-2 text-sm sm:px-1.5 sm:py-0.75";
     case "lg":
-      return hasOnlyIcon ? "p-3 text-lg" : "px-3 py-1.5 text-lg";
+      return hasOnlyIcon ? "p-3 text-lg" : "px-4 py-2.5 text-lg sm:px-3 sm:py-1.5";
     default:
-      return hasOnlyIcon ? "p-2 text-base" : "px-2 py-1 text-base";
+      return hasOnlyIcon ? "p-2.5 text-base sm:p-2" : "px-3 py-2 text-base sm:px-2 sm:py-1";
   }
 });
 
