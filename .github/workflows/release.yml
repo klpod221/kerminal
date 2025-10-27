@@ -101,9 +101,6 @@ jobs:
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager --install "ndk;26.1.10909125"
-          
-      - name: Setup NDK environment variables
-        run: |
           NDK_PATH="${ANDROID_SDK_ROOT}/ndk/26.1.10909125"
           echo "NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
           echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
@@ -128,72 +125,8 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
 
-      - name: Decode and setup keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "Setting up keystore for signing..."
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > $HOME/kerminal-release.keystore
-            echo "KEYSTORE_PATH=$HOME/kerminal-release.keystore" >> $GITHUB_ENV
-            echo "HAS_KEYSTORE=true" >> $GITHUB_ENV
-          else
-            echo "No keystore found, APK will be unsigned"
-            echo "HAS_KEYSTORE=false" >> $GITHUB_ENV
-          fi
-
-      - name: Create signing config
-        if: env.HAS_KEYSTORE == 'true'
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-        run: |
-          cat > src-tauri/gen/android/key.properties << EOF
-          storePassword=$ANDROID_KEYSTORE_PASSWORD
-          keyPassword=$ANDROID_KEY_PASSWORD
-          keyAlias=$ANDROID_KEY_ALIAS
-          storeFile=$HOME/kerminal-release.keystore
-          EOF
-
-      - name: Update build.gradle for signing
-        if: env.HAS_KEYSTORE == 'true'
-        run: |
-          cat > src-tauri/gen/android/app/signing.gradle.kts << 'EOF'
-          import java.util.Properties
-          
-          val keystorePropertiesFile = rootProject.file("key.properties")
-          val keystoreProperties = Properties()
-          
-          if (keystorePropertiesFile.exists()) {
-              keystoreProperties.load(keystorePropertiesFile.inputStream())
-              
-              android {
-                  signingConfigs {
-                      create("release") {
-                          keyAlias = keystoreProperties["keyAlias"] as String
-                          keyPassword = keystoreProperties["keyPassword"] as String
-                          storeFile = file(keystoreProperties["storeFile"] as String)
-                          storePassword = keystoreProperties["storePassword"] as String
-                      }
-                  }
-                  buildTypes {
-                      getByName("release") {
-                          signingConfig = signingConfigs.getByName("release")
-                      }
-                  }
-              }
-          }
-          EOF
-          
-          echo "" >> src-tauri/gen/android/app/build.gradle.kts
-          echo "apply(from = \"signing.gradle.kts\")" >> src-tauri/gen/android/app/build.gradle.kts
-
-      - name: Build APK (Debug)
+      - name: Build APK
         run: npm run tauri android build -- --apk
-
-      - name: Build APK (Release)
-        run: npm run tauri android build -- --release --apk
 
       - name: Rename APK files
         run: |
@@ -202,20 +135,16 @@ jobs:
           
           mkdir -p release-apks
           
-          # Copy and rename debug APK
-          if [ -f src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk ]; then
-            cp src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk \
-               release-apks/kerminal-${CLEAN_VERSION}-debug.apk
-          fi
+          # Find and copy APK files
+          find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f | while read apk; do
+            filename=$(basename "$apk")
+            cp "$apk" "release-apks/kerminal-${CLEAN_VERSION}-${filename}"
+            echo "Copied: $apk -> release-apks/kerminal-${CLEAN_VERSION}-${filename}"
+          done
           
-          # Copy and rename release APK
-          if [ -f src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk ]; then
-            cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk \
-               release-apks/kerminal-${CLEAN_VERSION}-release.apk
-          elif [ -f src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk ]; then
-            cp src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk \
-               release-apks/kerminal-${CLEAN_VERSION}-release-unsigned.apk
-          fi
+          # List all APKs
+          echo "APK files ready for release:"
+          ls -lh release-apks/
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
