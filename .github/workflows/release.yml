@@ -125,6 +125,22 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
 
+      - name: Decode and Setup Keystore
+        run: |
+          # Create directory for keystore and properties
+          mkdir -p src-tauri/gen/android/app
+          
+          # Decode the base64 keystore and save it
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > src-tauri/gen/android/app/release.jks
+          
+          # Tạo tệp keystore.properties từ các secrets
+          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > src-tauri/gen/android/app/keystore.properties
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> src-tauri/gen/android/app/keystore.properties
+          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> src-tauri/gen/android/app/keystore.properties
+          echo "storeFile=release.jks" >> src-tauri/gen/android/app/keystore.properties
+          
+          echo "Keystore and properties files created successfully."
+
       - name: Build APK
         run: npm run tauri android build -- --apk
 
