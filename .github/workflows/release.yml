@@ -99,8 +99,15 @@ jobs:
 
       - name: Install Android NDK
         run: |
-          sdkmanager "ndk;26.1.10909125"
-          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/26.1.10909125" >> $GITHUB_ENV
+          yes | sdkmanager --licenses || true
+          sdkmanager --install "ndk;26.1.10909125"
+          
+      - name: Setup NDK environment variables
+        run: |
+          NDK_PATH="${ANDROID_SDK_ROOT}/ndk/26.1.10909125"
+          echo "NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
+          echo "ANDROID_NDK_ROOT=$NDK_PATH" >> $GITHUB_ENV
 
       - name: Install Rust Android targets
         run: |
