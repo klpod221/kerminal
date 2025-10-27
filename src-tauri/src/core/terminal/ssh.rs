@@ -57,8 +57,7 @@ impl Handler for ClientHandler {
         data: &[u8],
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
-        let sender = self.output_sender.lock().await;
-        if let Some(ref sender) = *sender {
+        if let Some(sender) = self.output_sender.lock().await.as_ref() {
             let _ = sender.send(data.to_vec());
         }
         Ok(())
@@ -71,8 +70,7 @@ impl Handler for ClientHandler {
         data: &[u8],
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
-        let sender = self.output_sender.lock().await;
-        if let Some(sender) = sender.as_ref() {
+        if let Some(sender) = self.output_sender.lock().await.as_ref() {
             let _ = sender.send(data.to_vec());
         }
         Ok(())
@@ -83,18 +81,16 @@ impl Handler for ClientHandler {
         _channel: ChannelId,
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
-        let sender = self.output_sender.lock().await;
-        if let Some(sender) = sender.as_ref() {
+        if let Some(sender) = self.output_sender.lock().await.as_ref() {
             let eof_msg = b"[SSH: Connection closed by remote host]\r\n";
             let _ = sender.send(eof_msg.to_vec());
         }
 
-        let exit_sender = self.exit_sender.lock().await;
-        if let Some(ref sender) = *exit_sender {
+        if let Some(sender) = self.exit_sender.lock().await.as_ref() {
             let terminal_id = self.terminal_id.lock().await;
             let exit_event = crate::models::terminal::TerminalExited {
                 terminal_id: terminal_id.clone(),
-                exit_code: Some(0), // Graceful exit
+                exit_code: Some(0),
                 reason: Some("user-closed".to_string()),
             };
             let _ = sender.send(exit_event);
@@ -218,12 +214,17 @@ impl SSHTerminal {
             .timeout
             .map(|t| std::time::Duration::from_secs(t as u64));
 
-        let config = Arc::new(russh::client::Config {
+        let mut config = russh::client::Config {
             inactivity_timeout,
             keepalive_interval,
             keepalive_max: 10,
             ..<russh::client::Config as Default>::default()
-        });
+        };
+
+        config.window_size = 2097152;
+        config.maximum_packet_size = 32768;
+
+        let config = Arc::new(config);
 
         let handler = (*self.handler).clone();
         let mut session = if let Some(proxy_config) = &self.ssh_profile.proxy {
