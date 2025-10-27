@@ -44,7 +44,15 @@ rm package.json.bak src-tauri/Cargo.toml.bak src-tauri/tauri.conf.json.bak
 
 # Update lock files
 npm install --package-lock-only
-cd src-tauri && cargo update && cd ..
+cd src-tauri && cargo check && cd ..
+
+echo "=========================================="
+echo "  Committing Version Update"
+echo "=========================================="
+echo ""
+
+git add .
+git commit -m "chore: update version to $VERSION"
 
 echo "=========================================="
 echo "  Recreating Git Tag: $TAG"

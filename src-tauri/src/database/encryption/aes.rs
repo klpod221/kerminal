@@ -16,7 +16,7 @@ impl AESEncryption {
 
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
-        let nonce = Nonce::from_slice(&nonce_bytes);
+        let nonce = &Nonce::from(nonce_bytes);
 
         let ciphertext = cipher
             .encrypt(nonce, data)
@@ -39,7 +39,7 @@ impl AESEncryption {
             .map_err(|e| EncryptionError::InvalidKey(e.to_string()))?;
 
         let (nonce_bytes, ciphertext) = encrypted_data.split_at(12);
-        let nonce = Nonce::from_slice(nonce_bytes);
+        let nonce = &Nonce::from(*<&[u8; 12]>::try_from(nonce_bytes).unwrap());
 
         let plaintext = cipher
             .decrypt(nonce, ciphertext)
