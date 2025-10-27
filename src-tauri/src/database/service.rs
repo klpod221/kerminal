@@ -1118,7 +1118,7 @@ impl Default for DatabaseServiceConfig {
     fn default() -> Self {
         let data_dir = dirs::data_dir()
             .unwrap_or_else(|| std::env::current_dir().unwrap())
-            .join("kerminal");
+            .join("com.klpod221.kerminal");
 
         if std::fs::create_dir_all(&data_dir).is_err() {
             eprintln!("Warning: Could not create data directory: {:?}", data_dir);

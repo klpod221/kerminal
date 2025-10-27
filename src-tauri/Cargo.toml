@@ -7,12 +7,16 @@ repository = "https://github.com/klpod221/kerminal"
 authors = ["klpod221 <klpod221@gmail.com>"]
 edition = "2021"
 
+[lib]
+name = "kerminal"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["unstable"] }
 tauri-plugin-opener = "2"
 tauri-plugin-process = "2"
 serde = { version = "1", features = ["derive"] }
