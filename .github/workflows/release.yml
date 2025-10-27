@@ -100,11 +100,7 @@ jobs:
       - name: Install Android NDK
         run: |
           yes | sdkmanager --licenses || true
-          sdkmanager --install "ndk;26.1.10909125"
-          NDK_PATH="${ANDROID_SDK_ROOT}/ndk/26.1.10909125"
-          echo "NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$NDK_PATH" >> $GITHUB_ENV
-          echo "ANDROID_NDK_ROOT=$NDK_PATH" >> $GITHUB_ENV
+          sdkmanager --install
 
       - name: Install Rust Android targets
         run: |
@@ -142,7 +138,7 @@ jobs:
           echo "Keystore and properties files created successfully."
 
       - name: Build APK
-        run: npm run tauri android build -- --apk true
+        run: npm run tauri android build -- --apk true -- --release
 
       - name: Rename APK files
         run: |
