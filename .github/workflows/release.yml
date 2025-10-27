@@ -122,15 +122,21 @@ jobs:
         run: npm install -g @tauri-apps/cli
 
       - name: Decode and setup keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > $HOME/kerminal-release.keystore
-          echo "KEYSTORE_PATH=$HOME/kerminal-release.keystore" >> $GITHUB_ENV
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "Setting up keystore for signing..."
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > $HOME/kerminal-release.keystore
+            echo "KEYSTORE_PATH=$HOME/kerminal-release.keystore" >> $GITHUB_ENV
+            echo "HAS_KEYSTORE=true" >> $GITHUB_ENV
+          else
+            echo "No keystore found, APK will be unsigned"
+            echo "HAS_KEYSTORE=false" >> $GITHUB_ENV
+          fi
 
       - name: Create signing config
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        if: env.HAS_KEYSTORE == 'true'
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -144,7 +150,7 @@ jobs:
           EOF
 
       - name: Update build.gradle for signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        if: env.HAS_KEYSTORE == 'true'
         run: |
           cat > src-tauri/gen/android/app/signing.gradle.kts << 'EOF'
           import java.util.Properties
