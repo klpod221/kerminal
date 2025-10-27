@@ -150,7 +150,7 @@ fn json_to_bson_document(value: &Value) -> DatabaseResult<Document> {
             let snake_key = to_snake_case(key);
             let bson_val: Bson = serde_json::to_string(val)
                 .and_then(|s| serde_json::from_str(&s))
-                .map_err(|e| DatabaseError::SerializationError(e))?;
+                .map_err(DatabaseError::SerializationError)?;
             doc.insert(snake_key, bson_val);
         }
     }
@@ -160,7 +160,7 @@ fn json_to_bson_document(value: &Value) -> DatabaseResult<Document> {
 
 /// Helper function to convert BSON Document to JSON Value
 fn bson_document_to_json(doc: &Document) -> DatabaseResult<Value> {
-    let json = serde_json::to_value(doc).map_err(|e| DatabaseError::SerializationError(e))?;
+    let json = serde_json::to_value(doc).map_err(DatabaseError::SerializationError)?;
 
     // Convert snake_case keys back to camelCase
     if let Some(obj) = json.as_object() {

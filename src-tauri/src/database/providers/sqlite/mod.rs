@@ -638,12 +638,28 @@ impl SQLiteProvider {
         database_id: &str,
         limit: Option<i32>,
     ) -> DatabaseResult<Vec<crate::models::sync::log::SyncLog>> {
-        let pool = self.pool.as_ref()
-            .ok_or_else(|| DatabaseError::ConnectionFailed("Database not initialized".to_string()))?;
+        let pool = self.pool.as_ref().ok_or_else(|| {
+            DatabaseError::ConnectionFailed("Database not initialized".to_string())
+        })?;
         let pool_guard = pool.read().await;
 
         let query = if let Some(limit_value) = limit {
-            sqlx::query_as::<_, (String, String, String, String, String, String, Option<String>, i32, i32, i32, Option<String>)>(
+            sqlx::query_as::<
+                _,
+                (
+                    String,
+                    String,
+                    String,
+                    String,
+                    String,
+                    String,
+                    Option<String>,
+                    i32,
+                    i32,
+                    i32,
+                    Option<String>,
+                ),
+            >(
                 r#"
                 SELECT id, database_id, device_id, direction, status, started_at, completed_at,
                        records_synced, conflicts_resolved, manual_conflicts, error_message
@@ -658,7 +674,22 @@ impl SQLiteProvider {
             .fetch_all(&*pool_guard)
             .await
         } else {
-            sqlx::query_as::<_, (String, String, String, String, String, String, Option<String>, i32, i32, i32, Option<String>)>(
+            sqlx::query_as::<
+                _,
+                (
+                    String,
+                    String,
+                    String,
+                    String,
+                    String,
+                    String,
+                    Option<String>,
+                    i32,
+                    i32,
+                    i32,
+                    Option<String>,
+                ),
+            >(
                 r#"
                 SELECT id, database_id, device_id, direction, status, started_at, completed_at,
                        records_synced, conflicts_resolved, manual_conflicts, error_message
@@ -679,7 +710,7 @@ impl SQLiteProvider {
             use std::str::FromStr;
 
             let direction = crate::models::sync::log::SyncDirection::from_str(&row.3)
-                .map_err(|e| DatabaseError::ParseError(e))?;
+                .map_err(DatabaseError::ParseError)?;
             let status = match row.4.as_str() {
                 "InProgress" => crate::models::sync::log::SyncStatus::InProgress,
                 "Completed" => crate::models::sync::log::SyncStatus::Completed,
@@ -724,8 +755,9 @@ impl SQLiteProvider {
         &self,
         log: &crate::models::sync::log::SyncLog,
     ) -> DatabaseResult<()> {
-        let pool = self.pool.as_ref()
-            .ok_or_else(|| DatabaseError::ConnectionFailed("Database not initialized".to_string()))?;
+        let pool = self.pool.as_ref().ok_or_else(|| {
+            DatabaseError::ConnectionFailed("Database not initialized".to_string())
+        })?;
         let pool_guard = pool.read().await;
 
         sqlx::query(

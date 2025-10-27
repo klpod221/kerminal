@@ -106,7 +106,8 @@
         placeholder="retryWrites=true&w=majority&appName=Cluster0"
       />
       <div class="text-xs text-gray-400 -mt-2">
-        Query parameters for the connection string (e.g., sslmode=require, retryWrites=true)
+        Query parameters for the connection string (e.g., sslmode=require,
+        retryWrites=true)
       </div>
     </Form>
 

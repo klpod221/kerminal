@@ -47,7 +47,7 @@ pub async fn push_records(
 
     let mut count = 0;
 
-    for (_idx, record) in records.iter().enumerate() {
+    for record in records.iter() {
         let obj = record
             .as_object()
             .ok_or_else(|| DatabaseError::QueryFailed("Expected JSON object".to_string()))?;

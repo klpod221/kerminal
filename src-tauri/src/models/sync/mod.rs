@@ -4,7 +4,7 @@ pub mod log;
 pub mod settings;
 pub mod stats;
 
-pub use conflict::{ConflictResolutionStrategy};
+pub use conflict::ConflictResolutionStrategy;
 pub use external_db::{DatabaseType, ExternalDatabaseConfig};
 pub use log::{SyncDirection, SyncLog};
 pub use settings::{SyncSettings, UpdateSyncSettingsRequest};

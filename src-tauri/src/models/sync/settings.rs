@@ -4,12 +4,14 @@ use serde::{Deserialize, Serialize};
 /// Sync direction configuration
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub enum SyncDirection {
     /// Only push local changes to remote
     Push,
     /// Only pull remote changes to local
     Pull,
     /// Bidirectional sync (push and pull)
+    #[default]
     Both,
 }
 
@@ -36,12 +38,6 @@ impl std::str::FromStr for SyncDirection {
             "both" => Ok(SyncDirection::Both),
             _ => Err(format!("Unknown sync direction: {}", s)),
         }
-    }
-}
-
-impl Default for SyncDirection {
-    fn default() -> Self {
-        SyncDirection::Both
     }
 }
 

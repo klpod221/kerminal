@@ -228,9 +228,11 @@ impl Encryptable for SSHProfile {
                             .await
                         {
                             Ok(data) => Ok(data),
-                            Err(_) => encryption_service
-                                .decrypt_string(password, Some(&device_id))
-                                .await,
+                            Err(_) => {
+                                encryption_service
+                                    .decrypt_string(password, Some(&device_id))
+                                    .await
+                            }
                         }
                     })
                 })?;
@@ -250,9 +252,11 @@ impl Encryptable for SSHProfile {
                             .await
                         {
                             Ok(data) => Ok(data),
-                            Err(_) => encryption_service
-                                .decrypt_string(certificate, Some(&device_id))
-                                .await,
+                            Err(_) => {
+                                encryption_service
+                                    .decrypt_string(certificate, Some(&device_id))
+                                    .await
+                            }
                         }
                     })
                 })?;
@@ -263,9 +267,11 @@ impl Encryptable for SSHProfile {
                             .await
                         {
                             Ok(data) => Ok(data),
-                            Err(_) => encryption_service
-                                .decrypt_string(private_key, Some(&device_id))
-                                .await,
+                            Err(_) => {
+                                encryption_service
+                                    .decrypt_string(private_key, Some(&device_id))
+                                    .await
+                            }
                         }
                     })
                 })?;

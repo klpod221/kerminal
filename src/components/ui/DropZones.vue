@@ -16,9 +16,13 @@
       }"
       @dragenter="setActiveZone('top')"
     >
-      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+      <div
+        class="flex flex-col items-center justify-center text-white/90 font-medium"
+      >
         <div class="text-2xl mb-1">⬆</div>
-        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded">
+        <div
+          class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded"
+        >
           Split Top
         </div>
       </div>
@@ -33,9 +37,13 @@
       }"
       @dragenter="setActiveZone('bottom')"
     >
-      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+      <div
+        class="flex flex-col items-center justify-center text-white/90 font-medium"
+      >
         <div class="text-2xl mb-1">⬇</div>
-        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded">
+        <div
+          class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded"
+        >
           Split Bottom
         </div>
       </div>
@@ -50,9 +58,13 @@
       }"
       @dragenter="setActiveZone('left')"
     >
-      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+      <div
+        class="flex flex-col items-center justify-center text-white/90 font-medium"
+      >
         <div class="text-2xl mb-1">⬅</div>
-        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded text-center">
+        <div
+          class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded text-center"
+        >
           Split Left
         </div>
       </div>
@@ -67,9 +79,13 @@
       }"
       @dragenter="setActiveZone('right')"
     >
-      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+      <div
+        class="flex flex-col items-center justify-center text-white/90 font-medium"
+      >
         <div class="text-2xl mb-1">➡</div>
-        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded text-center">
+        <div
+          class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded text-center"
+        >
           Split Right
         </div>
       </div>
@@ -84,9 +100,13 @@
       }"
       @dragenter="setActiveZone('center')"
     >
-      <div class="flex flex-col items-center justify-center text-white/90 font-medium">
+      <div
+        class="flex flex-col items-center justify-center text-white/90 font-medium"
+      >
         <div class="text-2xl mb-1">📁</div>
-        <div class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded">
+        <div
+          class="text-xs uppercase tracking-wider bg-black/50 px-1.5 py-0.5 rounded"
+        >
           Add to Panel
         </div>
       </div>

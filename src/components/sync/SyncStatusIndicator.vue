@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="flex items-center gap-2 text-xs"
-  >
+  <div v-if="syncStore.currentDatabase" class="flex items-center gap-2 text-xs">
     <Badge :variant="statusVariant" :size="'sm'" class="animate-pulse-subtle">
       <div class="flex items-center gap-1.5">
         <component :is="Database" :size="12" />

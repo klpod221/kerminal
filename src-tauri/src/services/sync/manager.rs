@@ -67,9 +67,7 @@ impl SyncManager {
                 selected_database_id: None,
             };
 
-            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {
-            } else {
-            }
+            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {}
         }
 
         Ok(())
@@ -95,9 +93,7 @@ impl SyncManager {
                 selected_database_id: None,
             };
 
-            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {
-            } else {
-            }
+            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {}
         }
 
         Ok(())

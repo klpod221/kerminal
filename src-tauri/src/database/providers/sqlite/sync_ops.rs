@@ -273,7 +273,7 @@ impl SQLiteProvider {
         let mut settings = self
             .get_global_sync_settings()
             .await?
-            .unwrap_or_else(|| crate::models::sync::SyncSettings::new());
+            .unwrap_or_else(crate::models::sync::SyncSettings::new);
 
         if let Some(is_active) = request.is_active {
             settings.is_active = is_active;
@@ -447,9 +447,9 @@ impl SQLiteProvider {
                 entity_type,
                 entity_id,
                 local_data: serde_json::from_str(&local_data)
-                    .map_err(|e| DatabaseError::SerializationError(e))?,
+                    .map_err(DatabaseError::SerializationError)?,
                 remote_data: serde_json::from_str(&remote_data)
-                    .map_err(|e| DatabaseError::SerializationError(e))?,
+                    .map_err(DatabaseError::SerializationError)?,
                 resolution_strategy: resolution_strategy
                     .and_then(|s| s.parse::<ConflictResolutionStrategy>().ok()),
                 resolved_at: resolved_at

@@ -149,9 +149,11 @@ impl Encryptable for SSHKey {
                     .await
                 {
                     Ok(data) => Ok(data),
-                    Err(_) => encryption_service
-                        .decrypt_string(&self.private_key, Some(&device_id))
-                        .await,
+                    Err(_) => {
+                        encryption_service
+                            .decrypt_string(&self.private_key, Some(&device_id))
+                            .await
+                    }
                 }
             })
         })?;
@@ -166,9 +168,11 @@ impl Encryptable for SSHKey {
                             .await
                         {
                             Ok(data) => Ok(data),
-                            Err(_) => encryption_service
-                                .decrypt_string(passphrase, Some(&device_id))
-                                .await,
+                            Err(_) => {
+                                encryption_service
+                                    .decrypt_string(passphrase, Some(&device_id))
+                                    .await
+                            }
                         }
                     })
                 })?;

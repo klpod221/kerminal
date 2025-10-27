@@ -112,17 +112,15 @@ impl TerminalManager {
             }
 
             return Err(e);
-        } else {
-            if matches!(
-                request.config.terminal_type,
-                crate::models::terminal::TerminalType::SSH
-            ) {
-                if let Some(handle) = &app_handle {
-                    let success_event = serde_json::json!({
-                        "terminalId": terminal_id
-                    });
-                    let _ = handle.emit("ssh-connected", &success_event);
-                }
+        } else if matches!(
+            request.config.terminal_type,
+            crate::models::terminal::TerminalType::SSH
+        ) {
+            if let Some(handle) = &app_handle {
+                let success_event = serde_json::json!({
+                    "terminalId": terminal_id
+                });
+                let _ = handle.emit("ssh-connected", &success_event);
             }
         }
         let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();

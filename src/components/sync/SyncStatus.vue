@@ -34,13 +34,13 @@
             :disabled="!currentDatabase.isActive || isSyncing"
             @click="handleSync('bidirectional')"
           >
-            Sync Both
+            Bidirectional
           </Button>
         </div>
         <ul class="text-xs text-gray-400 mt-3">
           <li>• Push: Upload local changes to the remote database.</li>
           <li>• Pull: Download remote changes to the local database.</li>
-          <li>• Sync Both: Perform a two-way synchronization.</li>
+          <li>• Bidirectional: Perform a two-way synchronization.</li>
         </ul>
       </div>
 
