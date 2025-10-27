@@ -103,10 +103,36 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - **Customizable**: Profile colors, group organization, and layout preferences
 - **Status Indicators**: Visual feedback for sync status, tunnel status, and connection health
 
-## 🚀 Getting Started
+## Installation Guide
+
+### Arch Linux (install from AUR)
+
+- Using an AUR helper (e.g., yay):
+
+```bash
+yay -S kerminal # or kerminal-bin
+```
+
+- Manually:
+
+```bash
+git clone https://aur.archlinux.org/kerminal.git # or kerminal-bin.git
+cd kerminal
+makepkg -si
+```
+
+### Other Platforms (Windows, macOS, Linux)
+
+1. **Download**
+  - Get the latest release from the [Releases](https://github.com/klpod221/kerminal/releases/latest) page.
+
+2. **Install**
+  - Follow the installation instructions for your operating system (see below).
+
+## 🚀 Development
 
 ### Prerequisites
-- **Node.js** (v10 or higher)
+- **Node.js** (v20 or higher)
 - **Rust** (latest stable)
 - **Tauri CLI**: `cargo install tauri-cli`
 
