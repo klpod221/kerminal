@@ -115,6 +115,7 @@ impl TerminalManager {
         } else if matches!(
             request.config.terminal_type,
             crate::models::terminal::TerminalType::SSH
+                | crate::models::terminal::TerminalType::SSHConfig
         ) {
             if let Some(handle) = &app_handle {
                 let success_event = serde_json::json!({

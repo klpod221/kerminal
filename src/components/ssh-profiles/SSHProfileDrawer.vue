@@ -33,6 +33,12 @@
     />
 
     <div v-else class="space-y-4 p-4">
+      <!-- Divider -->
+      <div
+        v-if="filteredConfigHosts.length > 0 && filteredGroupsData.length > 0"
+        class="border-t border-gray-700"
+      />
+
       <!-- Grouped Profiles -->
       <div
         v-for="groupData in filteredGroupsData"
@@ -112,12 +118,38 @@
         </div>
       </div>
 
+      <!-- SSH Config Hosts Section -->
+      <div v-if="filteredConfigHosts.length > 0" class="space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <component :is="FileCode" class="w-4 h-4 text-blue-400" />
+            <h3 class="text-sm font-medium text-blue-300">From .ssh/config</h3>
+            <span class="text-xs text-gray-400">
+              ({{ filteredConfigHosts.length }})
+            </span>
+          </div>
+        </div>
+
+        <div class="space-y-1">
+          <SSHConfigHostItem
+            v-for="host in filteredConfigHosts"
+            :key="host.name"
+            :host="host"
+            @connect="connectToConfigHost"
+          />
+        </div>
+      </div>
+
       <!-- No search results -->
       <div
-        v-if="searchQuery && filteredGroupsData.length === 0"
+        v-if="
+          searchQuery &&
+          filteredGroupsData.length === 0 &&
+          filteredConfigHosts.length === 0
+        "
         class="p-3 text-gray-500 text-sm italic text-center border border-dashed border-gray-600 rounded-lg wrap-anywhere"
       >
-        <p class="text-sm">No profiles found matching "{{ searchQuery }}"</p>
+        <p class="text-sm">No results found matching "{{ searchQuery }}"</p>
       </div>
     </div>
 
@@ -147,14 +179,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
-import type { SSHProfile, SSHGroup, DeleteGroupAction } from "../../types/ssh";
+import { ref, computed, onMounted } from "vue";
+import type {
+  SSHProfile,
+  SSHGroup,
+  SSHConfigHost,
+  DeleteGroupAction,
+} from "../../types/ssh";
+import { requiresPassword } from "../../types/ssh";
 import Drawer from "../ui/Drawer.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import EmptyState from "../ui/EmptyState.vue";
 import SSHProfileItem from "./SSHProfileItem.vue";
+import SSHConfigHostItem from "./SSHConfigHostItem.vue";
 import {
   Search,
   Server,
@@ -162,6 +201,7 @@ import {
   Plus,
   Edit3,
   Trash2,
+  FileCode
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
@@ -173,6 +213,10 @@ const searchQuery = ref("");
 const { openOverlay, closeOverlay } = useOverlay();
 const sshStore = useSSHStore();
 const workspaceStore = useWorkspaceStore();
+
+onMounted(async () => {
+  await sshStore.loadConfigHosts();
+});
 
 /**
  * Filter groups and profiles based on search query
@@ -187,7 +231,6 @@ const filteredGroupsData = computed(() => {
 
     groupsWithProfilesData.forEach((groupData, groupId) => {
       if (groupId !== null) {
-        // Skip ungrouped here, will add separately
         allData.push(groupData);
       }
     });
@@ -201,7 +244,7 @@ const filteredGroupsData = computed(() => {
   const filteredData = [];
 
   groupsWithProfilesData.forEach((groupData, groupId) => {
-    if (groupId === null) return; // Skip ungrouped here
+    if (groupId === null) return;
 
     const filteredProfiles = groupData.profiles.filter(
       (profile: SSHProfile) =>
@@ -237,6 +280,25 @@ const filteredGroupsData = computed(() => {
   }
 
   return filteredData;
+});
+
+/**
+ * Filter SSH config hosts based on search query
+ */
+const filteredConfigHosts = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return sshStore.configHosts;
+  }
+
+  const query = searchQuery.value.trim();
+  return sshStore.configHosts.filter(
+    (host: SSHConfigHost) =>
+      caseInsensitiveIncludes(host.name, query) ||
+      caseInsensitiveIncludes(host.hostname, query) ||
+      (host.user && caseInsensitiveIncludes(host.user, query)) ||
+      (host.user &&
+        caseInsensitiveIncludes(`${host.user}@${host.hostname}`, query)),
+  );
 });
 
 const createNewProfile = () => {
@@ -296,4 +358,39 @@ const deleteGroup = async (group: SSHGroup) => {
     console.error("Failed to delete group:", error);
   }
 };
+
+const connectToConfigHost = async (host: SSHConfigHost) => {
+  console.log("Connecting to SSH config host:", host.name);
+
+  try {
+    const activePanelId = workspaceStore.activePanelId || "panel-1";
+    const displayName = host.user
+      ? `${host.user}@${host.hostname}`
+      : host.hostname;
+
+    // Check if password is required
+    if (requiresPassword(host)) {
+      // Open password modal and close drawer
+      await openOverlay("ssh-config-password-modal", {
+        host,
+        onConnect: async (password: string) => {
+          workspaceStore.addSSHConfigTab(
+            activePanelId,
+            host.name,
+            displayName,
+            password,
+          );
+        },
+      });
+      // Note: Drawer will close when password modal opens (overlay system behavior)
+    } else {
+      // Connect directly (has key file)
+      workspaceStore.addSSHConfigTab(activePanelId, host.name, displayName);
+      closeOverlay("ssh-profile-drawer");
+    }
+  } catch (error) {
+    console.error("Failed to connect to SSH config host:", error);
+  }
+};
 </script>
+

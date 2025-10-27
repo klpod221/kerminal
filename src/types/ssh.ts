@@ -11,6 +11,31 @@ export interface BaseModel {
 }
 
 /**
+ * Represents a host entry from SSH config file (~/.ssh/config)
+ * This is read-only data that reflects the user's SSH configuration
+ */
+export interface SSHConfigHost {
+  name: string;
+  hostname: string;
+  port: number;
+  user: string | null;
+  identityFile: string | null;
+  proxyJump: string | null;
+  proxyCommand: string | null;
+  forwardAgent: boolean | null;
+  otherOptions: string | null;
+}
+
+/**
+ * Check if SSH config host requires password
+ * @param host - SSH config host
+ * @returns true if password is required (no identity file)
+ */
+export function requiresPassword(host: SSHConfigHost): boolean {
+  return !host.identityFile;
+}
+
+/**
  * SSH Proxy configuration - matches backend ProxyConfig
  */
 export interface ProxyConfig {

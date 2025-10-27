@@ -5,6 +5,7 @@ import { useViewStateStore } from "./viewState";
 import {
   createLocalTerminal,
   createSSHTerminal,
+  createSSHConfigTerminal,
   closeTerminal,
   getUserHostname,
   listenToTerminalTitleChanged,
@@ -220,16 +221,60 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const newTab: Tab = {
       id: newTabId,
       title: profileName,
-      profileId: profileId, // Store SSH profile ID in the tab
+      profileId: profileId,
     };
 
     const newTerminal: TerminalInstance = {
       id: newTabId,
       ready: false,
       shouldFocusOnReady: true,
-      isSSHConnecting: true, // Mark as SSH connecting
-      sshProfileId: profileId, // Store SSH profile ID for reconnection
-      canReconnect: true, // SSH terminals can reconnect
+      isSSHConnecting: true,
+      sshProfileId: profileId,
+      canReconnect: true,
+    };
+
+    panel.tabs.push(newTab);
+    panel.activeTabId = newTabId;
+
+    terminals.value.push(newTerminal);
+
+    viewState.setActiveView("workspace");
+
+    tabCounter++;
+  };
+
+  /**
+   * Add a new SSH Config tab from ~/.ssh/config host
+   * @param panelId - The panel ID to add the tab to
+   * @param hostName - The SSH config host name
+   * @param displayName - The display name for the tab
+   * @param password - Optional password for authentication
+   */
+  const addSSHConfigTab = async (
+    panelId: string,
+    hostName: string,
+    displayName: string,
+    password?: string,
+  ): Promise<void> => {
+    const panel = findPanelInLayout(panelLayout.value, panelId);
+    if (!panel) return;
+
+    const newTabId = tabCounter.toString();
+
+    const newTab: Tab = {
+      id: newTabId,
+      title: displayName,
+      sshConfigHost: hostName,
+    };
+
+    const newTerminal: TerminalInstance = {
+      id: newTabId,
+      ready: false,
+      shouldFocusOnReady: true,
+      isSSHConnecting: true,
+      sshConfigHost: hostName,
+      sshConfigPassword: password,
+      canReconnect: true,
     };
 
     panel.tabs.push(newTab);
@@ -256,7 +301,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       terminal.isSSHConnecting = false;
       terminal.hasError = true;
       terminal.errorMessage = error;
-      terminal.canReconnect = true; // Enable reconnect for error cases
+      terminal.canReconnect = true;
     }
 
     const findTabByTerminalId = (
@@ -1054,7 +1099,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
         try {
           let response;
-          if (profileId) {
+          if (tab?.sshConfigHost) {
+            response = await createSSHConfigTerminal(
+              tab.sshConfigHost,
+              title,
+              terminal.sshConfigPassword,
+            );
+          } else if (profileId) {
             response = await createSSHTerminal(profileId);
           } else {
             response = await createLocalTerminal(undefined, undefined, title);
@@ -1296,6 +1347,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     selectTab,
     addTab,
     addSSHTab,
+    addSSHConfigTab,
     closeTab,
     splitVertical,
     splitHorizontal,

@@ -167,6 +167,8 @@ impl SSHService {
             terminal_type: TerminalType::SSH,
             local_config: None,
             ssh_profile_id: Some(profile.base.id.clone()),
+            ssh_config_host: None,
+            ssh_config_password: None,
         };
 
         let mut ssh_terminal = SSHTerminal::new(

@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import type {
   SSHProfile,
   SSHGroup,
+  SSHConfigHost,
   CreateSSHProfileRequest,
   UpdateSSHProfileRequest,
   DeleteGroupAction,
@@ -18,6 +19,8 @@ import * as sshService from "../services/sshProfile";
 export const useSSHStore = defineStore("ssh", () => {
   const profiles = ref<SSHProfile[]>([]);
   const groups = ref<SSHGroup[]>([]);
+  const configHosts = ref<SSHConfigHost[]>([]);
+  const configHostsLoaded = ref(false);
 
   /**
    * Optimized data structure containing group info with profiles and fast lookup indices
@@ -240,11 +243,35 @@ export const useSSHStore = defineStore("ssh", () => {
   const clearAll = (): void => {
     profiles.value = [];
     groups.value = [];
+    configHosts.value = [];
+    configHostsLoaded.value = false;
+  };
+
+  /**
+   * Load SSH config hosts from ~/.ssh/config
+   * Uses cache to avoid re-parsing on every call
+   */
+  const loadConfigHosts = async (force = false): Promise<void> => {
+    if (!force && configHostsLoaded.value) {
+      return;
+    }
+
+    try {
+      const hosts = await sshService.getSSHConfigHosts();
+      configHosts.value = hosts;
+      configHostsLoaded.value = true;
+    } catch (error) {
+      console.error("Failed to load SSH config hosts:", error);
+      configHosts.value = [];
+      configHostsLoaded.value = false;
+    }
   };
 
   return {
     profiles,
     groups,
+    configHosts,
+    configHostsLoaded,
 
     groupsWithProfiles,
     ungroupedProfiles,
@@ -264,6 +291,8 @@ export const useSSHStore = defineStore("ssh", () => {
     createGroup,
     updateGroup,
     deleteGroup,
+
+    loadConfigHosts,
 
     loadAll,
     refresh,

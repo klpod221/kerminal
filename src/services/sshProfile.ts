@@ -2,6 +2,7 @@ import { api } from "./api";
 import type {
   SSHProfile,
   SSHGroup,
+  SSHConfigHost,
   CreateSSHProfileRequest,
   UpdateSSHProfileRequest,
   DeleteGroupAction,
@@ -157,4 +158,12 @@ export async function clearConnectionPool(): Promise<void> {
  */
 export async function getConnectionPoolSize(): Promise<number> {
   return await api.call("get_connection_pool_size");
+}
+
+/**
+ * Get SSH config hosts from ~/.ssh/config
+ * @returns Array of SSH config hosts
+ */
+export async function getSSHConfigHosts(): Promise<SSHConfigHost[]> {
+  return await api.call("get_ssh_config_hosts");
 }

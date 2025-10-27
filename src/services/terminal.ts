@@ -54,6 +54,28 @@ export async function createSSHTerminal(
 }
 
 /**
+ * Create a new SSH terminal from SSH config host
+ */
+export async function createSSHConfigTerminal(
+  hostName: string,
+  title?: string,
+  password?: string,
+): Promise<CreateTerminalResponse> {
+  try {
+    return await api.call<CreateTerminalResponse>(
+      "create_ssh_config_terminal",
+      {
+        hostName,
+        title,
+        password,
+      },
+    );
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
  * Write data to a terminal
  */
 export async function writeToTerminal(

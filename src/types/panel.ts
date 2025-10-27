@@ -5,6 +5,7 @@ export interface Tab {
   lastConnected?: Date;
   profileId?: string;
   groupId?: string;
+  sshConfigHost?: string;
 }
 
 export interface Panel {
@@ -26,18 +27,21 @@ export interface TerminalInstance {
   id: string;
   ready: boolean;
   isSSHConnecting?: boolean;
-  backendTerminalId?: string; // ID of the terminal in the backend
-  shouldFocusOnReady?: boolean; // Flag to focus terminal when it becomes ready
-  isClosing?: boolean; // Flag to prevent double close operations
+  backendTerminalId?: string;
+  shouldFocusOnReady?: boolean;
+  isClosing?: boolean;
   disconnectReason?:
     | "user-closed"
     | "connection-lost"
     | "server-disconnect"
-    | "connection-error"; // Reason for disconnect
-  canReconnect?: boolean; // Whether reconnect is available (for SSH)
-  sshProfileId?: string; // SSH profile ID for reconnection
-  errorMessage?: string; // Error message to display to user
-  hasError?: boolean; // Whether terminal has an error state
+    | "connection-error";
+  canReconnect?: boolean;
+  sshProfileId?: string;
+  sshConfigHost?: string;
+  sshConfigPassword?: string;
+  pendingPasswordAuth?: boolean;
+  errorMessage?: string;
+  hasError?: boolean;
 }
 
 export type TerminalType = "Local" | "SSH";

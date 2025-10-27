@@ -144,6 +144,26 @@ impl TerminalFactory {
                     Some(database_service),
                 )?)))
             }
+            TerminalType::SSHConfig => {
+                let ssh_config_host = config.ssh_config_host.clone().ok_or_else(|| {
+                    AppError::invalid_config(
+                        "SSH config host is required for SSH config terminal".to_string(),
+                    )
+                })?;
+
+                let password = config.ssh_config_password.clone();
+
+                let ssh_profile = ssh_config_host
+                    .to_temporary_profile(password)
+                    .map_err(|e| AppError::Config(format!("Failed to create profile: {}", e)))?;
+
+                Ok(TerminalWrapper::Ssh(Box::new(ssh::SSHTerminal::new(
+                    id,
+                    config,
+                    ssh_profile,
+                    database_service,
+                )?)))
+            }
         }
     }
 }

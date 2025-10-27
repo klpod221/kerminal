@@ -1,9 +1,9 @@
 use crate::error::AppError;
 use crate::models::terminal::{
-    CloseTerminalRequest, CreateLocalTerminalRequest, CreateSshTerminalRequest,
-    CreateTerminalRequest, CreateTerminalResponse, GetTerminalInfoRequest, LocalConfig,
-    ResizeTerminalRequest, TerminalConfig, TerminalInfo, TerminalType, WriteBatchTerminalRequest,
-    WriteTerminalRequest,
+    CloseTerminalRequest, CreateLocalTerminalRequest, CreateSshConfigTerminalRequest,
+    CreateSshTerminalRequest, CreateTerminalRequest, CreateTerminalResponse,
+    GetTerminalInfoRequest, LocalConfig, ResizeTerminalRequest, TerminalConfig, TerminalInfo,
+    TerminalType, WriteBatchTerminalRequest, WriteTerminalRequest,
 };
 use crate::state::AppState;
 use tauri::{AppHandle, State};
@@ -23,6 +23,8 @@ pub async fn create_terminal(
             env_vars: None,
         }),
         ssh_profile_id: None,
+        ssh_config_host: None,
+        ssh_config_password: None,
     };
 
     let create_request = CreateTerminalRequest {
@@ -52,6 +54,8 @@ pub async fn create_ssh_terminal(
         terminal_type: TerminalType::SSH,
         local_config: None,
         ssh_profile_id: Some(request.profile_id),
+        ssh_config_host: None,
+        ssh_config_password: None,
     };
 
     let terminal_request = CreateTerminalRequest {
@@ -64,6 +68,61 @@ pub async fn create_ssh_terminal(
         .create_terminal(terminal_request, Some(app_handle))
         .await
 }
+
+/// Create a new SSH terminal from SSH config host
+#[tauri::command]
+pub async fn create_ssh_config_terminal(
+    request: CreateSshConfigTerminalRequest,
+    app_state: State<'_, AppState>,
+    app_handle: AppHandle,
+) -> Result<CreateTerminalResponse, AppError> {
+    use crate::services::ssh_config_parser::parse_ssh_config;
+
+    let hosts = parse_ssh_config(None)
+        .await
+        .map_err(|e| AppError::Config(format!("Failed to parse SSH config: {}", e)))?;
+
+    let host = hosts
+        .iter()
+        .find(|h| h.name == request.host_name)
+        .ok_or_else(|| {
+            AppError::Config(format!("Host '{}' not found in SSH config", request.host_name))
+        })?;
+
+    // Check if password is required but not provided
+    if host.requires_password() && request.password.is_none() {
+        return Err(AppError::authentication_failed(
+            "Password is required for this host",
+        ));
+    }
+
+    let config = TerminalConfig {
+        terminal_type: TerminalType::SSHConfig,
+        local_config: None,
+        ssh_profile_id: None,
+        ssh_config_host: Some(host.clone()),
+        ssh_config_password: request.password,
+    };
+
+    let title = request.title.unwrap_or_else(|| {
+        format!(
+            "{}@{}",
+            host.user.as_deref().unwrap_or("user"),
+            host.hostname
+        )
+    });
+
+    let terminal_request = CreateTerminalRequest {
+        config,
+        title: Some(title),
+    };
+
+    app_state
+        .terminal_manager
+        .create_terminal(terminal_request, Some(app_handle))
+        .await
+}
+
 /// Write data to a terminal
 #[tauri::command]
 pub async fn write_to_terminal(

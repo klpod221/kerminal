@@ -7,6 +7,15 @@ pub struct CreateSshTerminalRequest {
     pub profile_id: String,
 }
 
+/// Request for creating a new SSH terminal from SSH config host
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSshConfigTerminalRequest {
+    pub host_name: String,
+    pub title: Option<String>,
+    pub password: Option<String>,
+}
+
 /// Request for creating a local terminal
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

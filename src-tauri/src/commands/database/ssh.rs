@@ -1,8 +1,9 @@
 use crate::models::ssh::{
     CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
-    SSHGroup, SSHKey, SSHProfile, TestSSHConnectionRequest, UpdateSSHGroupRequest,
-    UpdateSSHKeyRequest, UpdateSSHProfileRequest,
+    SSHConfigHost, SSHGroup, SSHKey, SSHProfile, TestSSHConnectionRequest,
+    UpdateSSHGroupRequest, UpdateSSHKeyRequest, UpdateSSHProfileRequest,
 };
+use crate::services::ssh_config_parser;
 use crate::state::AppState;
 use serde::Deserialize;
 use tauri::State;
@@ -224,4 +225,13 @@ pub async fn clear_connection_pool(state: State<'_, AppState>) -> Result<(), Str
 #[tauri::command]
 pub async fn get_connection_pool_size(state: State<'_, AppState>) -> Result<usize, String> {
     Ok(state.ssh_connection_pool.pool_size().await)
+}
+
+/// Get SSH config hosts from ~/.ssh/config
+#[tauri::command]
+pub async fn get_ssh_config_hosts(_state: State<'_, AppState>) -> Result<Vec<SSHConfigHost>, String> {
+    match ssh_config_parser::parse_ssh_config(None).await {
+        Ok(hosts) => Ok(hosts),
+        Err(e) => Err(e.to_string()),
+    }
 }

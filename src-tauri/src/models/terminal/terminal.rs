@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::models::ssh::config_host::SSHConfigHost;
+
 /// Represents the type of terminal connection
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TerminalType {
     Local,
     SSH,
+    SSHConfig,
 }
 
 /// Configuration for local terminal
@@ -24,7 +27,9 @@ pub struct LocalConfig {
 pub struct TerminalConfig {
     pub terminal_type: TerminalType,
     pub local_config: Option<LocalConfig>,
-    pub ssh_profile_id: Option<String>, // ID of SSH profile instead of direct config
+    pub ssh_profile_id: Option<String>,
+    pub ssh_config_host: Option<SSHConfigHost>,
+    pub ssh_config_password: Option<String>,
 }
 
 /// Represents the current state of a terminal
