@@ -53,7 +53,7 @@ echo ""
 
 git add .
 git commit -m "chore: update version to $VERSION"
-git push origin main
+git push origin main > /dev/null
 
 echo "=========================================="
 echo "  Recreating Git Tag: $TAG"
