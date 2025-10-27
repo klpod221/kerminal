@@ -46,8 +46,6 @@ rm package.json.bak src-tauri/Cargo.toml.bak src-tauri/tauri.conf.json.bak
 npm install --package-lock-only
 cd src-tauri && cargo update && cd ..
 
-exit 0
-
 echo "=========================================="
 echo "  Recreating Git Tag: $TAG"
 echo "=========================================="
