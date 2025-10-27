@@ -162,5 +162,34 @@ fn json_to_bson_document(value: &Value) -> DatabaseResult<Document> {
 fn bson_document_to_json(doc: &Document) -> DatabaseResult<Value> {
     let json = serde_json::to_value(doc).map_err(|e| DatabaseError::SerializationError(e))?;
 
-    Ok(json)
+    // Convert snake_case keys back to camelCase
+    if let Some(obj) = json.as_object() {
+        let mut camel_obj = serde_json::Map::new();
+        for (key, val) in obj {
+            let camel_key = to_camel_case(key);
+            camel_obj.insert(camel_key, val.clone());
+        }
+        Ok(Value::Object(camel_obj))
+    } else {
+        Ok(json)
+    }
+}
+
+/// Convert snake_case to camelCase
+fn to_camel_case(s: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize_next = false;
+
+    for ch in s.chars() {
+        if ch == '_' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            result.push(ch.to_uppercase().next().unwrap());
+            capitalize_next = false;
+        } else {
+            result.push(ch);
+        }
+    }
+
+    result
 }
