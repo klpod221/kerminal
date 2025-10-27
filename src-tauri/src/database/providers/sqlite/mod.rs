@@ -218,24 +218,6 @@ impl Database for SQLiteProvider {
 
         sqlx::query(
             r#"
-            CREATE TABLE IF NOT EXISTS sync_metadata (
-                id TEXT PRIMARY KEY,
-                table_name TEXT NOT NULL,
-                record_id TEXT NOT NULL,
-                last_sync_at TEXT NOT NULL,
-                sync_hash TEXT NOT NULL,
-                conflict_resolution TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-        "#,
-        )
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        sqlx::query(
-            r#"
             CREATE TABLE IF NOT EXISTS saved_commands (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
@@ -320,17 +302,18 @@ impl Database for SQLiteProvider {
 
         sqlx::query(
             r#"
-            CREATE TABLE IF NOT EXISTS sync_operations (
+            CREATE TABLE IF NOT EXISTS sync_logs (
                 id TEXT PRIMARY KEY,
-                operation_type TEXT NOT NULL,
-                entity_type TEXT NOT NULL,
-                entity_id TEXT NOT NULL,
-                source_db TEXT NOT NULL,
-                target_db TEXT NOT NULL,
+                database_id TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                direction TEXT NOT NULL,
                 status TEXT NOT NULL,
-                error_message TEXT,
                 started_at TEXT NOT NULL,
-                completed_at TEXT
+                completed_at TEXT,
+                records_synced INTEGER NOT NULL DEFAULT 0,
+                conflicts_resolved INTEGER NOT NULL DEFAULT 0,
+                manual_conflicts INTEGER NOT NULL DEFAULT 0,
+                error_message TEXT
             )
         "#,
         )
@@ -340,59 +323,8 @@ impl Database for SQLiteProvider {
 
         sqlx::query(
             r#"
-            CREATE INDEX IF NOT EXISTS idx_sync_operations_entity
-            ON sync_operations(entity_type, entity_id)
-        "#,
-        )
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        sqlx::query(
-            r#"
-            CREATE INDEX IF NOT EXISTS idx_sync_operations_started_at
-            ON sync_operations(started_at DESC)
-        "#,
-        )
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS sync_conflicts (
-                id TEXT PRIMARY KEY,
-                entity_type TEXT NOT NULL,
-                entity_id TEXT NOT NULL,
-                local_version INTEGER NOT NULL,
-                remote_version INTEGER NOT NULL,
-                local_data TEXT NOT NULL,
-                remote_data TEXT NOT NULL,
-                resolution_strategy TEXT,
-                resolved BOOLEAN NOT NULL DEFAULT false,
-                created_at TEXT NOT NULL,
-                resolved_at TEXT
-            )
-        "#,
-        )
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        sqlx::query(
-            r#"
-            CREATE INDEX IF NOT EXISTS idx_sync_conflicts_entity
-            ON sync_conflicts(entity_type, entity_id)
-        "#,
-        )
-        .execute(&*pool)
-        .await
-        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
-
-        sqlx::query(
-            r#"
-            CREATE INDEX IF NOT EXISTS idx_sync_conflicts_resolved
-            ON sync_conflicts(resolved)
+            CREATE INDEX IF NOT EXISTS idx_sync_logs_database_id
+            ON sync_logs(database_id, started_at DESC)
         "#,
         )
         .execute(&*pool)
@@ -459,10 +391,6 @@ impl Database for SQLiteProvider {
             .await
             .ok();
         sqlx::query("DROP TABLE IF EXISTS master_passwords")
-            .execute(&*pool)
-            .await
-            .ok();
-        sqlx::query("DROP TABLE IF EXISTS sync_metadata")
             .execute(&*pool)
             .await
             .ok();
@@ -671,7 +599,7 @@ impl Database for SQLiteProvider {
         let device = auth::get_current_device(self).await?;
         match device {
             Some(d) => auth::get_master_password_entry(self, &d.device_id).await,
-            None => Ok(None),
+            None => Ok(std::option::Option::None),
         }
     }
 
@@ -707,16 +635,127 @@ impl SQLiteProvider {
 
     pub async fn get_sync_logs(
         &self,
-        _database_id: &str,
-        _limit: Option<i32>,
+        database_id: &str,
+        limit: Option<i32>,
     ) -> DatabaseResult<Vec<crate::models::sync::log::SyncLog>> {
-        Ok(Vec::new())
+        let pool = self.pool.as_ref()
+            .ok_or_else(|| DatabaseError::ConnectionFailed("Database not initialized".to_string()))?;
+        let pool_guard = pool.read().await;
+
+        let query = if let Some(limit_value) = limit {
+            sqlx::query_as::<_, (String, String, String, String, String, String, Option<String>, i32, i32, i32, Option<String>)>(
+                r#"
+                SELECT id, database_id, device_id, direction, status, started_at, completed_at,
+                       records_synced, conflicts_resolved, manual_conflicts, error_message
+                FROM sync_logs
+                WHERE database_id = ?
+                ORDER BY started_at DESC
+                LIMIT ?
+                "#,
+            )
+            .bind(database_id)
+            .bind(limit_value)
+            .fetch_all(&*pool_guard)
+            .await
+        } else {
+            sqlx::query_as::<_, (String, String, String, String, String, String, Option<String>, i32, i32, i32, Option<String>)>(
+                r#"
+                SELECT id, database_id, device_id, direction, status, started_at, completed_at,
+                       records_synced, conflicts_resolved, manual_conflicts, error_message
+                FROM sync_logs
+                WHERE database_id = ?
+                ORDER BY started_at DESC
+                "#,
+            )
+            .bind(database_id)
+            .fetch_all(&*pool_guard)
+            .await
+        };
+
+        let rows = query.map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        let mut logs = Vec::new();
+        for row in rows {
+            use std::str::FromStr;
+
+            let direction = crate::models::sync::log::SyncDirection::from_str(&row.3)
+                .map_err(|e| DatabaseError::ParseError(e))?;
+            let status = match row.4.as_str() {
+                "InProgress" => crate::models::sync::log::SyncStatus::InProgress,
+                "Completed" => crate::models::sync::log::SyncStatus::Completed,
+                "Failed" => crate::models::sync::log::SyncStatus::Failed,
+                "Cancelled" => crate::models::sync::log::SyncStatus::Cancelled,
+                _ => crate::models::sync::log::SyncStatus::Failed,
+            };
+
+            let started_at = chrono::DateTime::parse_from_rfc3339(&row.5)
+                .map_err(|e| DatabaseError::ParseError(e.to_string()))?
+                .with_timezone(&chrono::Utc);
+
+            let completed_at = if let Some(completed_str) = &row.6 {
+                Some(
+                    chrono::DateTime::parse_from_rfc3339(completed_str)
+                        .map_err(|e| DatabaseError::ParseError(e.to_string()))?
+                        .with_timezone(&chrono::Utc),
+                )
+            } else {
+                None
+            };
+
+            logs.push(crate::models::sync::log::SyncLog {
+                id: row.0,
+                database_id: row.1,
+                device_id: row.2,
+                direction,
+                status,
+                started_at,
+                completed_at,
+                records_synced: row.7,
+                conflicts_resolved: row.8,
+                manual_conflicts: row.9,
+                error_message: row.10,
+            });
+        }
+
+        Ok(logs)
     }
 
     pub async fn save_sync_log(
         &self,
-        _log: &crate::models::sync::log::SyncLog,
+        log: &crate::models::sync::log::SyncLog,
     ) -> DatabaseResult<()> {
+        let pool = self.pool.as_ref()
+            .ok_or_else(|| DatabaseError::ConnectionFailed("Database not initialized".to_string()))?;
+        let pool_guard = pool.read().await;
+
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO sync_logs (
+                id, database_id, device_id, direction, status, started_at, completed_at,
+                records_synced, conflicts_resolved, manual_conflicts, error_message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&log.id)
+        .bind(&log.database_id)
+        .bind(&log.device_id)
+        .bind(log.direction.to_string())
+        .bind(match log.status {
+            crate::models::sync::log::SyncStatus::InProgress => "InProgress",
+            crate::models::sync::log::SyncStatus::Completed => "Completed",
+            crate::models::sync::log::SyncStatus::Failed => "Failed",
+            crate::models::sync::log::SyncStatus::Cancelled => "Cancelled",
+        })
+        .bind(log.started_at.to_rfc3339())
+        .bind(log.completed_at.map(|dt| dt.to_rfc3339()))
+        .bind(log.records_synced)
+        .bind(log.conflicts_resolved)
+        .bind(log.manual_conflicts)
+        .bind(&log.error_message)
+        .execute(&*pool_guard)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
         Ok(())
     }
 }

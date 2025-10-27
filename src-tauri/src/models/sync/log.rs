@@ -14,6 +14,7 @@ pub struct SyncLog {
     pub completed_at: Option<DateTime<Utc>>,
     pub records_synced: i32,
     pub conflicts_resolved: i32,
+    pub manual_conflicts: i32,
     pub error_message: Option<String>,
 }
 

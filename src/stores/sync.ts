@@ -211,7 +211,7 @@ export const useSyncStore = defineStore("sync", () => {
   async function loadSyncLogs(id: string, limit?: number): Promise<void> {
     isLoading.value = true;
     try {
-      syncLogs.value = await syncService.getSyncLogs(id, limit);
+      syncLogs.value = await syncService.loadSyncLogs(id, limit);
     } finally {
       isLoading.value = false;
     }
@@ -223,11 +223,7 @@ export const useSyncStore = defineStore("sync", () => {
   async function loadConflicts(): Promise<void> {
     isLoading.value = true;
     try {
-      if (typeof syncService.getUnresolvedConflictResolutions === "function") {
-        conflicts.value = await syncService.getUnresolvedConflictResolutions();
-      } else {
-        conflicts.value = await syncService.getConflicts();
-      }
+      conflicts.value = await syncService.getUnresolvedConflictResolutions();
     } finally {
       isLoading.value = false;
     }
@@ -243,11 +239,7 @@ export const useSyncStore = defineStore("sync", () => {
     isLoading.value = true;
     try {
       const strategy: any = resolution === "local" ? "LocalWins" : "RemoteWins";
-      if (typeof syncService.resolveConflictResolution === "function") {
-        await syncService.resolveConflictResolution(id, strategy);
-      } else {
-        await syncService.resolveConflict(id, resolution);
-      }
+      await syncService.resolveConflictResolution(id, strategy);
       conflicts.value = conflicts.value.filter(
         (c: ConflictResolutionData) => c.id !== id,
       );

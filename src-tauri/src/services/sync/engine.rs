@@ -46,6 +46,7 @@ impl SyncEngine {
                 sync_log.status = SyncStatus::Completed;
                 sync_log.records_synced = stats.total_synced as i32;
                 sync_log.conflicts_resolved = stats.conflicts_resolved as i32;
+                sync_log.manual_conflicts = stats.manual_conflicts as i32;
                 sync_log.completed_at = Some(Utc::now());
             }
             Err(e) => {
@@ -68,6 +69,7 @@ impl SyncEngine {
                 sync_log.status = SyncStatus::Completed;
                 sync_log.records_synced = stats.total_synced as i32;
                 sync_log.conflicts_resolved = stats.conflicts_resolved as i32;
+                sync_log.manual_conflicts = stats.manual_conflicts as i32;
                 sync_log.completed_at = Some(Utc::now());
             }
             Err(e) => {
@@ -92,6 +94,7 @@ impl SyncEngine {
                 sync_log.status = SyncStatus::Completed;
                 sync_log.records_synced = stats.total_synced as i32;
                 sync_log.conflicts_resolved = stats.conflicts_resolved as i32;
+                sync_log.manual_conflicts = stats.manual_conflicts as i32;
                 sync_log.completed_at = Some(Utc::now());
             }
             Err(e) => {
@@ -475,6 +478,7 @@ impl SyncEngine {
             completed_at: None,
             records_synced: 0,
             conflicts_resolved: 0,
+            manual_conflicts: 0,
             error_message: None,
         })
     }

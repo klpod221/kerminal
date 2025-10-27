@@ -118,7 +118,7 @@ impl Encryptable for SSHKey {
         let encrypted_key = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
                 encryption_service
-                    .encrypt_string(&self.private_key, Some(&self.base.device_id))
+                    .encrypt_string(&self.private_key, Some("__shared__"))
                     .await
             })
         })?;
@@ -129,7 +129,7 @@ impl Encryptable for SSHKey {
                 let encrypted_passphrase = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service
-                            .encrypt_string(passphrase, Some(&self.base.device_id))
+                            .encrypt_string(passphrase, Some("__shared__"))
                             .await
                     })
                 })?;
@@ -141,11 +141,18 @@ impl Encryptable for SSHKey {
     }
 
     fn decrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
+        let device_id = self.base.device_id.clone();
         let decrypted_key = tokio::task::block_in_place(|| {
             tokio::runtime::Handle::current().block_on(async {
-                encryption_service
-                    .decrypt_string(&self.private_key, Some(&self.base.device_id))
+                match encryption_service
+                    .decrypt_string(&self.private_key, Some("__shared__"))
                     .await
+                {
+                    Ok(data) => Ok(data),
+                    Err(_) => encryption_service
+                        .decrypt_string(&self.private_key, Some(&device_id))
+                        .await,
+                }
             })
         })?;
         self.private_key = decrypted_key;
@@ -154,9 +161,15 @@ impl Encryptable for SSHKey {
             if !passphrase.is_empty() {
                 let decrypted_passphrase = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
-                        encryption_service
-                            .decrypt_string(passphrase, Some(&self.base.device_id))
+                        match encryption_service
+                            .decrypt_string(passphrase, Some("__shared__"))
                             .await
+                        {
+                            Ok(data) => Ok(data),
+                            Err(_) => encryption_service
+                                .decrypt_string(passphrase, Some(&device_id))
+                                .await,
+                        }
                     })
                 })?;
                 self.passphrase = Some(decrypted_passphrase);

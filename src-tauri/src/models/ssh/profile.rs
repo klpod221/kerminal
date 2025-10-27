@@ -184,7 +184,7 @@ impl Encryptable for SSHProfile {
                 let encrypted = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service
-                            .encrypt_string(password, Some(&self.base.device_id))
+                            .encrypt_string(password, Some("__shared__"))
                             .await
                     })
                 })?;
@@ -199,14 +199,14 @@ impl Encryptable for SSHProfile {
                 let encrypted_cert = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service
-                            .encrypt_string(certificate, Some(&self.base.device_id))
+                            .encrypt_string(certificate, Some("__shared__"))
                             .await
                     })
                 })?;
                 let encrypted_key = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
                         encryption_service
-                            .encrypt_string(private_key, Some(&self.base.device_id))
+                            .encrypt_string(private_key, Some("__shared__"))
                             .await
                     })
                 })?;
@@ -220,11 +220,18 @@ impl Encryptable for SSHProfile {
     fn decrypt_fields(&mut self, encryption_service: &dyn EncryptionService) -> DatabaseResult<()> {
         match &mut self.auth_data {
             AuthData::Password { password } => {
+                let device_id = self.base.device_id.clone();
                 let decrypted = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
-                        encryption_service
-                            .decrypt_string(password, Some(&self.base.device_id))
+                        match encryption_service
+                            .decrypt_string(password, Some("__shared__"))
                             .await
+                        {
+                            Ok(data) => Ok(data),
+                            Err(_) => encryption_service
+                                .decrypt_string(password, Some(&device_id))
+                                .await,
+                        }
                     })
                 })?;
                 *password = decrypted;
@@ -235,18 +242,31 @@ impl Encryptable for SSHProfile {
                 private_key,
                 ..
             } => {
+                let device_id = self.base.device_id.clone();
                 let decrypted_cert = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
-                        encryption_service
-                            .decrypt_string(certificate, Some(&self.base.device_id))
+                        match encryption_service
+                            .decrypt_string(certificate, Some("__shared__"))
                             .await
+                        {
+                            Ok(data) => Ok(data),
+                            Err(_) => encryption_service
+                                .decrypt_string(certificate, Some(&device_id))
+                                .await,
+                        }
                     })
                 })?;
                 let decrypted_key = tokio::task::block_in_place(|| {
                     tokio::runtime::Handle::current().block_on(async {
-                        encryption_service
-                            .decrypt_string(private_key, Some(&self.base.device_id))
+                        match encryption_service
+                            .decrypt_string(private_key, Some("__shared__"))
                             .await
+                        {
+                            Ok(data) => Ok(data),
+                            Err(_) => encryption_service
+                                .decrypt_string(private_key, Some(&device_id))
+                                .await,
+                        }
                     })
                 })?;
                 *certificate = decrypted_cert;

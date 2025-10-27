@@ -90,22 +90,8 @@ class SyncService {
     return api.callRaw("get_sync_status", { databaseId: id });
   }
 
-  async getSyncLogs(id: string, limit?: number): Promise<SyncLog[]> {
+  async loadSyncLogs(id: string, limit?: number): Promise<SyncLog[]> {
     return api.callRaw("get_sync_logs", { databaseId: id, limit });
-  }
-
-  async getConflicts(): Promise<ConflictResolutionData[]> {
-    return api.callRaw("get_unresolved_conflicts");
-  }
-
-  async resolveConflict(
-    id: string,
-    resolution: "local" | "remote",
-  ): Promise<void> {
-    return api.callRaw("resolve_conflict", {
-      conflictId: id,
-      resolution: resolution === "local" ? "UseLocal" : "UseRemote",
-    });
   }
 
   async enableAutoSync(id: string): Promise<void> {

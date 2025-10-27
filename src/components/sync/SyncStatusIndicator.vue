@@ -1,30 +1,19 @@
 <template>
   <div
-    v-if="syncStore.databases.length > 0"
     class="flex items-center gap-2 text-xs"
   >
     <Badge :variant="statusVariant" :size="'sm'" class="animate-pulse-subtle">
       <div class="flex items-center gap-1.5">
-        <component :is="statusIcon" :size="12" :class="statusIconClass" />
-        <span>{{ statusText }}</span>
+        <component :is="Database" :size="12" />
+        <span>{{ syncStore.currentDatabase.name }}</span>
       </div>
     </Badge>
-
-    <div
-      v-if="syncStore.currentDatabase"
-      class="text-gray-400 flex items-center gap-1"
-    >
-      <Database :size="12" />
-      <span class="max-w-[100px] truncate">
-        {{ syncStore.currentDatabase.name }}
-      </span>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Database, CloudOff, Cloud } from "lucide-vue-next";
+import { Database } from "lucide-vue-next";
 import Badge from "../ui/Badge.vue";
 import { useSyncStore } from "../../stores/sync";
 
@@ -38,30 +27,6 @@ const statusVariant = computed(() => {
   }
 
   return "gray";
-});
-
-const statusIcon = computed(() => {
-  if (!syncStore.currentDatabase) return CloudOff;
-
-  if (syncStore.currentDatabase.isActive) {
-    return Cloud;
-  }
-
-  return CloudOff;
-});
-
-const statusIconClass = computed(() => {
-  return "";
-});
-
-const statusText = computed(() => {
-  if (!syncStore.currentDatabase) return "No Database";
-
-  if (syncStore.currentDatabase.isActive) {
-    return "Connected";
-  }
-
-  return "Disconnected";
 });
 </script>
 

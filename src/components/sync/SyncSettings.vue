@@ -1,8 +1,5 @@
 <template>
-  <Card
-    title="Global Sync Settings"
-    subtitle="Configure sync behavior for all external databases"
-  >
+  <Card title="Sync Settings">
     <div
       v-if="isLoading"
       class="flex items-center justify-center py-16 text-gray-400"

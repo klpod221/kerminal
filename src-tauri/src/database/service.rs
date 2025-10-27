@@ -183,7 +183,7 @@ impl DatabaseService {
             .await?
         {
             Some(entry) => entry,
-            None => return Ok(false),
+            std::option::Option::None => return Ok(false),
         };
 
         if !entry.auto_unlock {
@@ -1161,29 +1161,5 @@ impl DatabaseService {
     pub async fn delete_external_database(&self, id: &str) -> DatabaseResult<()> {
         let db = self.local_db.read().await;
         db.delete_external_database(id).await
-    }
-
-    pub async fn find_unresolved_conflicts(
-        &self,
-    ) -> DatabaseResult<Vec<crate::models::sync::conflict::SyncConflict>> {
-        let db = self.local_db.read().await;
-        db.find_unresolved_conflicts().await
-    }
-
-    pub async fn resolve_conflict(
-        &self,
-        conflict_id: &str,
-        strategy: crate::models::sync::external_db::ConflictResolutionStrategy,
-    ) -> DatabaseResult<()> {
-        let db = self.local_db.read().await;
-        db.resolve_conflict(conflict_id, strategy).await
-    }
-
-    pub async fn find_recent_sync_operations(
-        &self,
-        limit: i32,
-    ) -> DatabaseResult<Vec<crate::models::sync::operation::SyncOperation>> {
-        let db = self.local_db.read().await;
-        db.find_recent_sync_operations(limit).await
     }
 }

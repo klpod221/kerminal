@@ -99,7 +99,7 @@ export interface ExternalDatabaseWithDetails {
   connectionDetails: ConnectionDetails;
 }
 
-export type SyncDirection = "Push" | "Pull" | "Both";
+export type SyncDirection = "Push" | "Pull" | "Both" | "Bidirectional";
 
 export type SyncLogStatus = "InProgress" | "Completed" | "Failed" | "Cancelled";
 

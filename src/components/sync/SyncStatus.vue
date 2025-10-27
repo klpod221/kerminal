@@ -1,23 +1,10 @@
 <template>
-  <Card title="Sync Status" subtitle="Monitor synchronization activity">
+  <Card>
     <div v-if="!currentDatabase" class="text-gray-400 text-sm">
       No database selected. Please add or select a database first.
     </div>
 
     <div v-else class="space-y-4">
-      <!-- Connection Status -->
-      <div class="bg-gray-800 rounded-lg p-4 border border-gray-700">
-        <div class="flex items-center justify-between mb-3">
-          <h4 class="text-sm font-medium text-gray-100">Connection Status</h4>
-          <Badge :variant="currentDatabase.isActive ? 'success' : 'default'">
-            {{ currentDatabase.isActive ? "Connected" : "Disconnected" }}
-          </Badge>
-        </div>
-        <div class="text-xs text-gray-400">
-          Database: {{ currentDatabase.name }} ({{ currentDatabase.dbType }})
-        </div>
-      </div>
-
       <!-- Sync Actions -->
       <div class="border border-gray-700 rounded-lg p-4">
         <h4 class="text-sm font-medium text-gray-100 mb-3">Manual Sync</h4>
@@ -50,45 +37,56 @@
             Sync Both
           </Button>
         </div>
-        <p class="text-xs text-gray-400 mt-3">
-          Push: Upload local changes • Pull: Download remote changes • Sync
-          Both: Two-way sync
-        </p>
+        <ul class="text-xs text-gray-400 mt-3">
+          <li>• Push: Upload local changes to the remote database.</li>
+          <li>• Pull: Download remote changes to the local database.</li>
+          <li>• Sync Both: Perform a two-way synchronization.</li>
+        </ul>
       </div>
 
       <!-- Last Sync Info -->
-      <div v-if="syncStatus" class="border border-gray-700 rounded-lg p-4">
-        <h4 class="text-sm font-medium text-gray-100 mb-3">Last Sync</h4>
-        <div class="space-y-2 text-xs">
+      <div class="border border-gray-700 rounded-lg p-4">
+        <div class="flex items-center mb-3">
+          <h4 class="text-sm font-medium text-gray-100">Last Sync</h4>
+        </div>
+
+        <div
+          v-if="isLoadingStatus"
+          class="text-center py-4 text-gray-400 text-sm"
+        >
+          Loading sync status...
+        </div>
+
+        <div v-else-if="syncStatus?.lastSync" class="space-y-2 text-xs">
           <div class="flex justify-between">
             <span class="text-gray-400">Time:</span>
             <span class="text-gray-200">{{
               formatDateOrNever(
-                syncStatus.lastSync?.completedAt ||
-                  syncStatus.lastSync?.startedAt,
+                syncStatus.lastSync.completedAt ||
+                  syncStatus.lastSync.startedAt,
               )
             }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Direction:</span>
             <span class="text-gray-200">{{
-              syncStatus.lastSync?.direction
+              syncStatus.lastSync.direction
             }}</span>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Status:</span>
-            <Badge :variant="getStatusVariant(syncStatus.lastSync?.status)">
-              {{ syncStatus.lastSync?.status }}
+            <Badge :variant="getStatusVariant(syncStatus.lastSync.status)">
+              {{ syncStatus.lastSync.status }}
             </Badge>
           </div>
           <div class="flex justify-between">
             <span class="text-gray-400">Records Synced:</span>
             <span class="text-gray-200">{{
-              syncStatus.lastSync?.recordsSynced || 0
+              syncStatus.lastSync.recordsSynced || 0
             }}</span>
           </div>
           <div
-            v-if="syncStatus.lastSync?.conflictsResolved"
+            v-if="syncStatus.lastSync.conflictsResolved"
             class="flex justify-between"
           >
             <span class="text-gray-400">Conflicts Resolved:</span>
@@ -97,7 +95,7 @@
             }}</span>
           </div>
           <div
-            v-if="syncStatus.lastSync?.manualConflicts"
+            v-if="syncStatus.lastSync.manualConflicts"
             class="flex justify-between"
           >
             <span class="text-gray-400">Manual Conflicts:</span>
@@ -106,7 +104,7 @@
             }}</span>
           </div>
           <div
-            v-if="syncStatus.lastSync?.errorMessage"
+            v-if="syncStatus.lastSync.errorMessage"
             class="mt-2 pt-2 border-t border-gray-700"
           >
             <span class="text-red-400 text-xs">{{
@@ -114,20 +112,15 @@
             }}</span>
           </div>
         </div>
+        <div v-else class="text-center py-4 text-gray-400 text-sm">
+          No sync history yet
+        </div>
       </div>
 
       <!-- Sync Logs -->
       <div class="border border-gray-700 rounded-lg p-4">
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center mb-3">
           <h4 class="text-sm font-medium text-gray-100">Recent Sync History</h4>
-          <Button
-            variant="ghost"
-            size="sm"
-            :loading="isLoadingLogs"
-            @click="loadLogs"
-          >
-            Refresh
-          </Button>
         </div>
 
         <div
@@ -179,12 +172,6 @@
             </div>
           </div>
         </div>
-
-        <div v-if="syncLogs.length > 5" class="mt-3 text-center">
-          <Button variant="ghost" size="sm" @click="loadMoreLogs">
-            View All History
-          </Button>
-        </div>
       </div>
 
       <!-- Statistics -->
@@ -215,11 +202,20 @@ import { message } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { formatDateOrNever } from "../../utils/formatter";
 import { useSyncStore } from "../../stores/sync";
+import { useSSHStore } from "../../stores/ssh";
+import { useSshKeyStore } from "../../stores/sshKey";
+import { useSavedCommandStore } from "../../stores/savedCommand";
+import { useTunnelStore } from "../../stores/tunnel";
 import type { SyncLogStatus } from "../../types/sync";
 
 const syncStore = useSyncStore();
+const sshStore = useSSHStore();
+const sshKeyStore = useSshKeyStore();
+const savedCommandStore = useSavedCommandStore();
+const tunnelStore = useTunnelStore();
 const isSyncing = ref(false);
 const isLoadingLogs = ref(false);
+const isLoadingStatus = ref(false);
 const syncDirection = ref<"push" | "pull" | "bidirectional" | null>(null);
 
 let refreshInterval: ReturnType<typeof setInterval> | null = null;
@@ -256,9 +252,11 @@ const handleSync = async (direction: "push" | "pull" | "bidirectional") => {
     const log = await syncStore.sync(currentDatabase.value.id, direction);
     message.success(`Sync completed: ${log.recordsSynced} records synced`);
 
-    await loadStatus();
-    await loadLogs();
-    await loadStatistics();
+    // Reload sync status and statistics
+    await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
+
+    // Reload all application data in background
+    reloadAllData();
   } catch (error) {
     console.error("Sync failed:", error);
     message.error(getErrorMessage(error, "Sync failed"));
@@ -271,10 +269,13 @@ const handleSync = async (direction: "push" | "pull" | "bidirectional") => {
 const loadStatus = async () => {
   if (!currentDatabase.value) return;
 
+  isLoadingStatus.value = true;
   try {
     await syncStore.loadSyncStatus(currentDatabase.value.id);
   } catch (error) {
     console.error("Failed to load sync status:", error);
+  } finally {
+    isLoadingStatus.value = false;
   }
 };
 
@@ -292,23 +293,34 @@ const loadLogs = async () => {
   }
 };
 
-const loadMoreLogs = async () => {
-  if (!currentDatabase.value) return;
-
-  try {
-    await syncStore.loadSyncLogs(currentDatabase.value.id);
-    message.info("Showing all sync history");
-  } catch (error) {
-    console.error("Failed to load more logs:", error);
-    message.error(getErrorMessage(error, "Failed to load sync logs"));
-  }
-};
-
 const loadStatistics = async () => {
   try {
     await syncStore.loadStatistics();
   } catch (error) {
     console.error("Failed to load statistics:", error);
+  }
+};
+
+const reloadAllData = async () => {
+  try {
+    // Reload SSH profiles and groups
+    await sshStore.loadProfiles();
+    await sshStore.loadGroups();
+
+    // Reload SSH keys
+    await sshKeyStore.loadKeys();
+
+    // Reload saved commands and groups
+    await savedCommandStore.loadCommands();
+    await savedCommandStore.loadGroups();
+
+    // Reload tunnels
+    await tunnelStore.loadTunnels();
+
+    console.log("All data reloaded successfully after sync");
+  } catch (error) {
+    console.error("Failed to reload data:", error);
+    // Don't show error message to user since this is background refresh
   }
 };
 
@@ -330,11 +342,9 @@ const stopAutoRefresh = () => {
 
 watch(
   () => currentDatabase.value,
-  async (newDb) => {
+  async (newDb: any) => {
     if (newDb) {
-      await loadStatus();
-      await loadLogs();
-      await loadStatistics();
+      await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
       startAutoRefresh();
     } else {
       stopAutoRefresh();
@@ -343,10 +353,26 @@ watch(
   { immediate: true },
 );
 
-onMounted(() => {
+// Watch for database connection changes
+watch(
+  () => currentDatabase.value?.isActive,
+  async (isActive: boolean | undefined) => {
+    if (isActive && currentDatabase.value) {
+      await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
+    }
+  },
+);
+
+onMounted(async () => {
   if (!syncStore.databases.length) {
-    syncStore.loadDatabases();
+    await syncStore.loadDatabases();
   }
+
+  // Load initial data if database is already selected
+  if (currentDatabase.value) {
+    await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
+  }
+
   startAutoRefresh();
 });
 

@@ -299,7 +299,8 @@ If you encounter any issues or have questions:
 - [ ] Plugin system for extensions
 - [ ] Snippet manager with syntax highlighting
 - [ ] Cloud backup integration
-- [ ] Mobile companion app
+- [ ] Web-based version
+- [ ] Mobile app companion
 
 ---
 
