@@ -1,6 +1,6 @@
 #!/bin/bash
 # ------------------------------------------
-# Script to recreate and push git tag
+# Script to update version and recrete tag to trigger GitHub Actions
 # Written by klpod221 - github.com/klpod221
 # ------------------------------------------
 
@@ -22,6 +22,31 @@ if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         exit 0
     fi
 fi
+
+echo "=========================================="
+echo "  Update Version to match Tag: $TAG"
+echo "=========================================="
+echo ""
+
+VERSION="${TAG:1}"  # Remove the 'v' prefix
+echo "🔄 Updating version to $VERSION in relevant files..."
+# Update version in package.json
+sed -i.bak -E "s/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"version\": \"$VERSION\"/" package.json
+
+# Update version in src-tauri/Cargo.toml
+sed -i.bak -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
+
+# update version in src-tauri/tauri.conf.json
+sed -i.bak -E "s/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"version\": \"$VERSION\"/" src-tauri/tauri.conf.json
+
+# Clean up backup files
+rm package.json.bak src-tauri/Cargo.toml.bak src-tauri/tauri.conf.json.bak
+
+# Update lock files
+npm install --package-lock-only
+cd src-tauri && cargo update && cd ..
+
+exit 0
 
 echo "=========================================="
 echo "  Recreating Git Tag: $TAG"
