@@ -142,7 +142,7 @@ jobs:
           echo "Keystore and properties files created successfully."
 
       - name: Build APK
-        run: npm run tauri android build -- --apk
+        run: npm run tauri android build -- --apk true
 
       - name: Rename APK files
         run: |
