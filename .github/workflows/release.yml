@@ -9,7 +9,6 @@ jobs:
   build-tauri:
     permissions:
       contents: write
-
     name: Build
     strategy:
       fail-fast: false
@@ -74,7 +73,6 @@ jobs:
   build-android:
     permissions:
       contents: write
-
     name: Build Android APK
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -124,23 +122,29 @@ jobs:
         run: npm install -g @tauri-apps/cli
 
       - name: Decode and setup keystore
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > $HOME/kerminal-release.keystore
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > $HOME/kerminal-release.keystore
           echo "KEYSTORE_PATH=$HOME/kerminal-release.keystore" >> $GITHUB_ENV
 
       - name: Create signing config
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           cat > src-tauri/gen/android/key.properties << EOF
-          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
-          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
           storeFile=$HOME/kerminal-release.keystore
           EOF
 
       - name: Update build.gradle for signing
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           cat > src-tauri/gen/android/app/signing.gradle.kts << 'EOF'
           import java.util.Properties
