@@ -15,6 +15,52 @@ Whether you need a powerful local terminal with multiple tabs and split panes, o
 
 Perfect for developers, DevOps engineers, system administrators, and anyone who lives in the terminal and values security, organization, and productivity.
 
+## 🚀 Table Of Content
+
+- [📝 Description](#-description)
+- [🚀 Table Of Content](#-table-of-content)
+- [📸 Screenshots](#-screenshots)
+  - [Dashboard](#dashboard)
+  - [Main Interface](#main-interface)
+- [✨ Features](#-features)
+  - [💻 Terminal Emulator](#-terminal-emulator)
+  - [📡 SSH Management](#-ssh-management)
+  - [🔐 Security \& Sync](#-security--sync)
+  - [💾 Saved Commands](#-saved-commands)
+  - [🎨 User Interface](#-user-interface)
+  - [📡 SSH Features](#-ssh-features)
+  - [🔀 SSH Tunneling](#-ssh-tunneling)
+  - [💾 Saved Commands](#-saved-commands-1)
+  - [🔄 Multi-Device Sync](#-multi-device-sync)
+  - [🎨 User Interface](#-user-interface-1)
+- [Installation Guide](#installation-guide)
+  - [Arch Linux (install from AUR)](#arch-linux-install-from-aur)
+  - [Other Platforms (Windows, macOS, Linux)](#other-platforms-windows-macos-linux)
+- [🚀 Development](#-development)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+- [📖 Usage](#-usage)
+  - [Initial Setup](#initial-setup)
+  - [Using as Terminal Emulator](#using-as-terminal-emulator)
+  - [Creating SSH Connections](#creating-ssh-connections)
+  - [SSH Tunneling](#ssh-tunneling)
+  - [Multi-Device Sync](#multi-device-sync)
+- [🛠️ Development](#️-development)
+  - [Project Structure](#project-structure)
+  - [Key Technologies](#key-technologies)
+  - [Code Quality](#code-quality)
+  - [Design Patterns](#design-patterns)
+- [📊 Performance](#-performance)
+- [🔒 Security Considerations](#-security-considerations)
+- [🤝 Contributing](#-contributing)
+  - [Development Guidelines](#development-guidelines)
+- [❗ Known Issues](#-known-issues)
+- [📝 License](#-license)
+- [👤 Author](#-author)
+- [🙏 Acknowledgments](#-acknowledgments)
+- [📮 Support](#-support)
+- [🗺️ Roadmap](#️-roadmap)
+
 ## 📸 Screenshots
 
 ### Dashboard
@@ -287,6 +333,12 @@ Contributions are welcome! Please follow these guidelines:
 - Test SSH connections and sync functionality
 - Follow SOLID principles
 - Keep components focused and reusable
+
+## ❗ Known Issues
+
+- Limited support for some SSH authentication methods
+- MacOS version is **not signed/notarized yet** due to Apple Developer Program restrictions (it takes **99 USD/year!**) So please build from source if you want to use on MacOS or run unsigned app with `xattr -rd com.apple.quarantine /path/to/Kerminal.app` after first launch.
+- Android version is currently not working.
 
 ## 📝 License
 
