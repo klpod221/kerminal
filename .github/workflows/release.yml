@@ -137,6 +137,14 @@ jobs:
 
           echo "Keystore and properties files created successfully."
 
+      - name: Verify Keystore Files
+        run: |
+          echo "--- Verifying created files in src-tauri/gen/android/app/ ---"
+          ls -l src-tauri/gen/android/app/
+          echo "--- Checking content of keystore.properties ---"
+          cat src-tauri/gen/android/app/keystore.properties || echo "!!! keystore.properties file NOT FOUND !!!"
+          echo "---------------------------------------------------------"
+
       - name: Build APK
         run: npm run tauri android build -- --apk true
 
@@ -147,18 +155,26 @@ jobs:
 
           mkdir -p release-apks
 
-          # Find and copy APK files
-          find src-tauri/gen/android/app/build/outputs/apk -path '*/release/*.apk' -not -name '*-unsigned.apk' | while read apk; do
-            # Get architecture from the path
+          echo "Searching for signed APKs..."
+          # Find all signed APK files (not containing 'unsigned') located in subdirectories of 'apk'
+          find src-tauri/gen/android/app/build/outputs/apk -type f -name "*-release.apk" -not -name "*-unsigned.apk" | while read apk; do
+            # Get architecture from the name of the directory containing the APK file, e.g., 'arm64-v8a'
             ARCH=$(basename $(dirname $(dirname "$apk")))
-            # Create a new, clearer filename
+
+            # Create a new filename based on the version and architecture
             NEW_FILENAME="kerminal-${CLEAN_VERSION}-${ARCH}.apk"
             cp "$apk" "release-apks/${NEW_FILENAME}"
-            echo "Copied Signed APK: $apk -> release-apks/${NEW_FILENAME}"
+            echo "Found and copied signed APK: $apk -> release-apks/${NEW_FILENAME}"
           done
 
           echo "Signed APK files ready for release:"
           ls -lh release-apks/
+
+          # Add a check step to fail the workflow if no APKs are found
+          if [ -z "$(ls -A release-apks)" ]; then
+            echo "::error::No signed APK files were found after the build. Aborting."
+            exit 1
+          fi
 
       - name: Upload APK to Release
         uses: softprops/action-gh-release@v2
