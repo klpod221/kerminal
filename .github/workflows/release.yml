@@ -125,35 +125,35 @@ jobs:
         run: |
           # Create directory for keystore and properties
           mkdir -p src-tauri/gen/android/app
-          
+
           # Decode the base64 keystore and save it
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > src-tauri/gen/android/app/release.jks
-          
-          # Tạo tệp keystore.properties từ các secrets
+
+          # Create the keystore.properties file
           echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > src-tauri/gen/android/app/keystore.properties
           echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> src-tauri/gen/android/app/keystore.properties
           echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> src-tauri/gen/android/app/keystore.properties
           echo "storeFile=release.jks" >> src-tauri/gen/android/app/keystore.properties
-          
+
           echo "Keystore and properties files created successfully."
 
       - name: Build APK
-        run: npm run tauri android build -- --apk true -- --release
+        run: npm run tauri android build -- --apk true
 
       - name: Rename APK files
         run: |
           VERSION=${{ github.ref_name }}
           CLEAN_VERSION=${VERSION#v}
-          
+
           mkdir -p release-apks
-          
+
           # Find and copy APK files
           find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f | while read apk; do
             filename=$(basename "$apk")
             cp "$apk" "release-apks/kerminal-${CLEAN_VERSION}-${filename}"
             echo "Copied: $apk -> release-apks/kerminal-${CLEAN_VERSION}-${filename}"
           done
-          
+
           # List all APKs
           echo "APK files ready for release:"
           ls -lh release-apks/
