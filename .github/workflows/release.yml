@@ -148,14 +148,16 @@ jobs:
           mkdir -p release-apks
 
           # Find and copy APK files
-          find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f | while read apk; do
-            filename=$(basename "$apk")
-            cp "$apk" "release-apks/kerminal-${CLEAN_VERSION}-${filename}"
-            echo "Copied: $apk -> release-apks/kerminal-${CLEAN_VERSION}-${filename}"
+          find src-tauri/gen/android/app/build/outputs/apk -path '*/release/*.apk' -not -name '*-unsigned.apk' | while read apk; do
+            # Get architecture from the path
+            ARCH=$(basename $(dirname $(dirname "$apk")))
+            # Create a new, clearer filename
+            NEW_FILENAME="kerminal-${CLEAN_VERSION}-${ARCH}.apk"
+            cp "$apk" "release-apks/${NEW_FILENAME}"
+            echo "Copied Signed APK: $apk -> release-apks/${NEW_FILENAME}"
           done
 
-          # List all APKs
-          echo "APK files ready for release:"
+          echo "Signed APK files ready for release:"
           ls -lh release-apks/
 
       - name: Upload APK to Release
