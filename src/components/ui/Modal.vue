@@ -27,7 +27,7 @@
     >
       <div
         v-if="isVisible"
-        class="fixed left-0 right-0 bottom-0 z-50 flex items-center justify-center pointer-events-none sm:top-[36px]"
+        class="fixed left-0 right-0 bottom-0 z-50 flex items-center justify-center pointer-events-none sm:top-9"
         :class="isMobile ? 'top-[30px]' : 'top-[30px]'"
       >
         <div
