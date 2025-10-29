@@ -57,7 +57,10 @@
               >
                 <component
                   :is="icon"
-                  :class="[iconColor || 'text-blue-400', isMobile ? 'w-5 h-5' : 'w-6 h-6']"
+                  :class="[
+                    iconColor || 'text-blue-400',
+                    isMobile ? 'w-5 h-5' : 'w-6 h-6',
+                  ]"
                 />
               </div>
               <div>

@@ -2,7 +2,7 @@
   <div class="h-screen w-screen flex flex-col bg-[#0D0D0D] overflow-hidden">
     <TopBar />
 
-    <div class="flex-grow overflow-hidden">
+    <div class="grow overflow-hidden">
       <MasterPasswordManager />
 
       <template v-if="authStore.isAuthenticated">

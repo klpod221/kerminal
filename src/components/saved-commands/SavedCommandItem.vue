@@ -4,7 +4,7 @@
     @click="$emit('execute', command)"
   >
     <!-- Left indicator & favorite -->
-    <div class="flex flex-col items-center gap-2 flex-shrink-0 pt-0.5">
+    <div class="flex flex-col items-center gap-2 shrink-0 pt-0.5">
       <!-- Color indicator -->
       <div
         class="w-1 h-8 rounded-full transition-all duration-200"
@@ -89,7 +89,7 @@
 
     <!-- Action buttons (hover) -->
     <div
-      class="flex flex-col items-center gap-1 transition-opacity duration-200 flex-shrink-0"
+      class="flex flex-col items-center gap-1 transition-opacity duration-200 shrink-0"
       :class="isTouch ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
       @click.stop
     >

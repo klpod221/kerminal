@@ -40,11 +40,7 @@
     </div>
 
     <template #footer>
-      <Button
-        variant="ghost"
-        :disabled="isConnecting"
-        @click="handleCancel"
-      >
+      <Button variant="ghost" :disabled="isConnecting" @click="handleCancel">
         Cancel
       </Button>
       <Button
@@ -93,12 +89,7 @@ const host = getOverlayProp<SSHConfigHost | undefined>(
 
 const onConnect = getOverlayProp<
   ((password: string) => Promise<void>) | undefined
->(
-  "ssh-config-password-modal",
-  "onConnect",
-  props.onConnect,
-  undefined,
-);
+>("ssh-config-password-modal", "onConnect", props.onConnect, undefined);
 
 const connectionString = computed(() => {
   if (!host.value) return "";

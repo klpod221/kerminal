@@ -4,7 +4,7 @@
     @click="$emit('connect', profile)"
   >
     <!-- Color indicator -->
-    <div class="flex-shrink-0">
+    <div class="shrink-0">
       <div
         class="w-1 h-10 rounded-full transition-all duration-200"
         :style="{
@@ -29,7 +29,7 @@
 
     <!-- Action buttons (hover) -->
     <div
-      class="flex flex-col items-center gap-1 transition-opacity duration-200 flex-shrink-0"
+      class="flex flex-col items-center gap-1 transition-opacity duration-200 shrink-0"
       :class="isTouch ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
       @click.stop
     >

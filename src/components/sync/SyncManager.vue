@@ -4,7 +4,7 @@
       <!-- Header with Database Selector and Actions -->
       <Card>
         <div class="flex items-center gap-3 mb-3">
-          <Database class="w-5 h-5 text-gray-400 flex-shrink-0" />
+          <Database class="w-5 h-5 text-gray-400 shrink-0" />
           <div class="flex-1">
             <Select
               id="database-selector"

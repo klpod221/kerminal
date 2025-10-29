@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'bg-gradient-to-br from-[#2a2a2a] to-[#1f1f1f] rounded-xl border border-gray-600',
+      'bg-linear-to-br from-[#2a2a2a] to-[#1f1f1f] rounded-xl border border-gray-600',
       'transition-all duration-300 relative overflow-hidden',
       {
         'hover:border-gray-500 hover:shadow-lg cursor-pointer hover:-translate-y-0.5 hover:scale-[1.02]':
@@ -19,7 +19,7 @@
     <div
       v-if="$slots.header || title || icon"
       :class="[
-        'mb-6 relative z-[2]',
+        'mb-6 relative z-2',
         center ? 'flex flex-col items-center text-center' : 'flex items-center',
       ]"
     >
@@ -68,12 +68,12 @@
     </div>
 
     <!-- Content Section -->
-    <div :class="[{ 'space-y-3': spacing }, 'relative z-[2]']">
+    <div :class="[{ 'space-y-3': spacing }, 'relative z-2']">
       <slot />
     </div>
 
     <!-- Footer Section -->
-    <div v-if="$slots.footer" class="mt-6 relative z-[2]">
+    <div v-if="$slots.footer" class="mt-6 relative z-2">
       <slot name="footer" />
     </div>
   </div>

@@ -7,7 +7,7 @@
         'hover:bg-gray-800': !isActive,
         'opacity-50': isDragging,
       },
-      isMobile ? 'px-1.5 max-h-[36px]' : 'px-2 max-h-[30px]',
+      isMobile ? 'px-1.5 max-h-9' : 'px-2 max-h-[30px]',
     ]"
     :style="{ minWidth: minWidth + 'px', maxWidth: maxWidth + 'px' }"
     draggable="true"
@@ -20,7 +20,7 @@
   >
     <div
       v-if="isConnecting && (minWidth >= 80 || isMobile)"
-      class="transition-colors duration-200 flex-shrink-0"
+      class="transition-colors duration-200 shrink-0"
       :class="isMobile ? 'mr-1.5' : 'mr-2'"
     >
       <div
@@ -31,7 +31,7 @@
     <Terminal
       v-else-if="minWidth >= 80 || isMobile"
       :size="isMobile ? 16 : 14"
-      class="transition-colors duration-200 flex-shrink-0"
+      class="transition-colors duration-200 shrink-0"
       :class="[
         isActive ? 'text-blue-400' : 'text-gray-400',
         isMobile ? 'mr-1.5' : 'mr-2',
@@ -39,7 +39,7 @@
     />
     <div
       v-if="tab.color && (minWidth >= 60 || isMobile)"
-      class="rounded-full flex-shrink-0"
+      class="rounded-full shrink-0"
       :class="isMobile ? 'w-2.5 h-2.5 mr-1.5' : 'w-2 h-2 mr-2'"
       :style="{ backgroundColor: tab.color }"
     ></div>
@@ -55,7 +55,7 @@
     <X
       v-if="minWidth >= 100 || isTouch"
       :size="isMobile ? 16 : 14"
-      class="text-gray-500 hover:text-red-400 transition-all duration-300 ease-out flex-shrink-0 transform hover:scale-110 cursor-pointer touch-manipulation"
+      class="text-gray-500 hover:text-red-400 transition-all duration-300 ease-out shrink-0 transform hover:scale-110 cursor-pointer touch-manipulation"
       :class="[
         isTouch ? 'ml-1 opacity-100' : 'ml-2 opacity-0 group-hover:opacity-100',
       ]"

@@ -595,7 +595,7 @@ const THEMES = {
 } as const;
 
 export function getTerminalTheme(
-  themeName: keyof typeof THEMES = "Default"
+  themeName: keyof typeof THEMES = "Default",
 ): TerminalTheme {
   return THEMES[themeName] || THEMES["Default"];
 }

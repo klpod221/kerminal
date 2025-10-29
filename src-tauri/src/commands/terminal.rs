@@ -86,7 +86,10 @@ pub async fn create_ssh_config_terminal(
         .iter()
         .find(|h| h.name == request.host_name)
         .ok_or_else(|| {
-            AppError::Config(format!("Host '{}' not found in SSH config", request.host_name))
+            AppError::Config(format!(
+                "Host '{}' not found in SSH config",
+                request.host_name
+            ))
         })?;
 
     // Check if password is required but not provided

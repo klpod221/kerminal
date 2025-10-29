@@ -21,7 +21,7 @@
           ]"
         >
           <!-- Icon -->
-          <div class="flex-shrink-0">
+          <div class="shrink-0">
             <div class="rounded-lg p-2" :class="iconBackgroundClass">
               <component :is="iconComponent" :size="16" :class="iconClass" />
             </div>
@@ -41,7 +41,7 @@
             variant="ghost"
             size="sm"
             :icon="X"
-            class="flex-shrink-0 !p-1.5"
+            class="shrink-0 p-1.5!"
             @click="close"
           />
         </div>

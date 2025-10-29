@@ -1,7 +1,11 @@
 <template>
   <div
     class="flex items-center border-b border-gray-800 relative bg-[#0D0D0D] sm:h-[30px] sm:min-h-[30px] sm:max-h-[30px]"
-    :class="isMobile ? 'h-[36px] min-h-[36px] max-h-[36px]' : 'h-[30px] min-h-[30px] max-h-[30px]'"
+    :class="
+      isMobile
+        ? 'h-9 min-h-9 max-h-9'
+        : 'h-[30px] min-h-[30px] max-h-[30px]'
+    "
     @dragover="onPanelDragOver"
     @drop="onPanelDrop"
     @dragenter="onPanelDragEnter"
@@ -11,7 +15,7 @@
     <div
       class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
       :class="{
-        'opacity-100 bg-gradient-to-r from-blue-900/20 to-transparent':
+        'opacity-100 bg-linear-to-r from-blue-900/20 to-transparent':
           isActive,
         'opacity-0': !isActive,
       }"
@@ -30,7 +34,7 @@
     <!-- Tabs Container -->
     <div
       class="flex items-center flex-1 h-full min-w-0 relative z-10 sm:max-h-[30px]"
-      :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
+      :class="isMobile ? 'max-h-9' : 'max-h-[30px]'"
     >
       <!-- Left scroll button -->
       <Button
@@ -39,7 +43,7 @@
         variant="ghost"
         size="sm"
         :icon="ChevronLeft"
-        class="scroll-btn flex-shrink-0 z-20"
+        class="scroll-btn shrink-0 z-20"
         @click="scrollLeft"
       />
 
@@ -47,20 +51,20 @@
       <div
         ref="tabsContainer"
         class="flex items-center h-full overflow-hidden flex-1 scrollable-tabs sm:max-h-[30px]"
-        :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
+        :class="isMobile ? 'max-h-9' : 'max-h-[30px]'"
         @wheel.prevent="onWheel"
       >
         <div
           ref="tabsContent"
           class="flex items-center h-full transition-transform duration-200 ease-out sm:max-h-[30px]"
-          :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
+          :class="isMobile ? 'max-h-9' : 'max-h-[30px]'"
           :style="{ transform: `translateX(${scrollOffset}px)` }"
         >
           <transition-group
             name="tab"
             tag="div"
             class="flex items-center h-full sm:max-h-[30px]"
-            :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
+            :class="isMobile ? 'max-h-9' : 'max-h-[30px]'"
             appear
           >
             <Tab
@@ -92,7 +96,7 @@
               variant="ghost"
               size="sm"
               :icon="Plus"
-              class="add-tab-btn flex-shrink-0 ml-1"
+              class="add-tab-btn shrink-0 ml-1"
               @click="addTab"
             />
           </Transition>
@@ -106,7 +110,7 @@
         variant="ghost"
         size="sm"
         :icon="ChevronRight"
-        class="scroll-btn flex-shrink-0 z-20"
+        class="scroll-btn shrink-0 z-20"
         @click="scrollRight"
       />
 
@@ -118,7 +122,7 @@
           variant="ghost"
           size="sm"
           :icon="Plus"
-          class="add-tab-btn flex-shrink-0"
+          class="add-tab-btn shrink-0"
           @click="addTab"
         />
       </Transition>
@@ -126,8 +130,8 @@
 
     <!-- Panel Controls -->
     <div
-      class="flex items-center h-full flex-shrink-0 relative z-10 sm:max-h-[30px]"
-      :class="isMobile ? 'max-h-[36px]' : 'max-h-[30px]'"
+      class="flex items-center h-full shrink-0 relative z-10 sm:max-h-[30px]"
+      :class="isMobile ? 'max-h-9' : 'max-h-[30px]'"
     >
       <!-- Split Horizontal Button - Hide on mobile -->
       <Button

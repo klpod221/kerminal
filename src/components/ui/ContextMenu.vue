@@ -26,7 +26,7 @@
             :is="item.icon"
             v-if="item.icon"
             :size="isMobile ? 18 : 16"
-            class="mr-2 flex-shrink-0"
+            class="mr-2 shrink-0"
           />
           <span class="flex-1">{{ item.label || "" }}</span>
           <span

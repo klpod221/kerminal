@@ -37,6 +37,7 @@ dependencies = [
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-opener",
  "tauri-plugin-process",
+ "tauri-plugin-store",
  "thiserror 1.0.69",
  "tokio",
  "tokio-util",
@@ -6158,6 +6159,22 @@ checksum = "d55511a7bf6cd70c8767b02c97bf8134fa434daf3926cfc1be0a0f94132d165a"
 dependencies = [
  "tauri",
  "tauri-plugin",
+]
+
+[[package]]
+name = "tauri-plugin-store"
+version = "2.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59a77036340a97eb5bbe1b3209c31e5f27f75e6f92a52fd9dd4b211ef08bf310"
+dependencies = [
+ "dunce",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

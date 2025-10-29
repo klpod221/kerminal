@@ -13,7 +13,7 @@
       <div
         class="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg"
       >
-        <AlertTriangle class="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+        <AlertTriangle class="w-5 h-5 text-yellow-400 shrink-0 mt-0.5" />
         <div class="flex-1">
           <h4 class="text-sm font-medium text-yellow-400 mb-2">
             Master Password Cannot Be Recovered
@@ -55,7 +55,7 @@
       <!-- Tips Section -->
       <div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
         <div class="flex items-start gap-3">
-          <Info class="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+          <Info class="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
           <div class="flex-1">
             <h4 class="text-sm font-medium text-blue-400 mb-2">
               Tips to remember:

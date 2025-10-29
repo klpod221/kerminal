@@ -8,13 +8,14 @@ use std::path::PathBuf;
  * @param config_path - Path to SSH config file (defaults to ~/.ssh/config)
  * @returns Vector of SSHConfigHost entries
  */
-pub async fn parse_ssh_config(config_path: Option<PathBuf>) -> Result<Vec<SSHConfigHost>, AppError> {
+pub async fn parse_ssh_config(
+    config_path: Option<PathBuf>,
+) -> Result<Vec<SSHConfigHost>, AppError> {
     let path = match config_path {
         Some(p) => p,
         None => {
-            let home = dirs::home_dir().ok_or_else(|| {
-                AppError::config_error("Could not determine home directory")
-            })?;
+            let home = dirs::home_dir()
+                .ok_or_else(|| AppError::config_error("Could not determine home directory"))?;
             home.join(".ssh").join("config")
         }
     };

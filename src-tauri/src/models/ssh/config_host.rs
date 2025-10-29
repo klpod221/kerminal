@@ -39,7 +39,6 @@ pub struct SSHConfigHost {
 }
 
 impl SSHConfigHost {
-
     /**
      * Convert SSHConfigHost to a temporary SSHProfile for connection
      * This creates a profile that's not stored in the database
@@ -66,9 +65,8 @@ impl SSHConfigHost {
                 identity_file.clone()
             };
 
-            let private_key = std::fs::read_to_string(&expanded_path).map_err(|e| {
-                format!("Failed to read identity file '{}': {}", expanded_path, e)
-            })?;
+            let private_key = std::fs::read_to_string(&expanded_path)
+                .map_err(|e| format!("Failed to read identity file '{}': {}", expanded_path, e))?;
 
             let key_type = if private_key.contains("BEGIN OPENSSH PRIVATE KEY")
                 || private_key.contains("ssh-ed25519")
@@ -91,14 +89,10 @@ impl SSHConfigHost {
             )
         } else {
             // No key file - use password auth
-            let pwd = password.ok_or_else(|| "Password is required for authentication".to_string())?;
+            let pwd =
+                password.ok_or_else(|| "Password is required for authentication".to_string())?;
 
-            (
-                AuthMethod::Password,
-                AuthData::Password {
-                    password: pwd,
-                },
-            )
+            (AuthMethod::Password, AuthData::Password { password: pwd })
         };
 
         Ok(SSHProfile {
@@ -134,4 +128,3 @@ impl SSHConfigHost {
         self.identity_file.is_none()
     }
 }
-

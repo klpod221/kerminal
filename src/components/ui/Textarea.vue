@@ -39,7 +39,7 @@
       />
     </div>
 
-    <div v-if="helper" class="min-h-[1.25rem]">
+    <div v-if="helper" class="min-h-5">
       <!-- Helper text (only show if no error) -->
       <p v-if="helperText && !errorMessage" class="text-xs text-gray-400">
         {{ helperText }}

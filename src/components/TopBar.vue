@@ -1,6 +1,6 @@
 <template>
   <div
-    class="grid items-center h-[30px] sm:h-[36px] text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 flex-shrink-0 relative z-50 topbar-container"
+    class="grid items-center h-[30px] sm:h-9 text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 shrink-0 relative z-50 topbar-container"
     :class="isMobile ? 'grid-cols-[auto_1fr_auto]' : 'grid-cols-3'"
   >
     <!-- Overlay when top bar is not active -->
@@ -13,7 +13,7 @@
     <div class="flex items-center justify-start">
       <!-- Dashboard button -->
       <div
-        class="flex items-center h-[30px] sm:h-[36px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 flex-shrink-0r:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'dashboard' ? 'bg-gray-800' : '',
           isMobile ? 'px-2' : 'px-3',
@@ -35,7 +35,7 @@
 
       <!-- Workspace button -->
       <div
-        class="flex items-center h-[30px] sm:h-[36px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'workspace' ? 'bg-gray-800' : '',
           isMobile ? 'px-2' : 'px-3',
@@ -55,7 +55,7 @@
 
       <!-- SSH Profiles button -->
       <div
-        class="flex items-center h-[30px] sm:h-[36px] transition-colors duration-200 flex-shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           isOverlayVisible('ssh-profile-drawer') ? 'bg-gray-800' : '',
           isMobile ? 'px-2' : 'px-3',
@@ -177,7 +177,7 @@
       >
         <div
           v-if="showMobileMenu"
-          class="fixed inset-0 bg-black/50 z-[60] top-[30px]"
+          class="fixed inset-0 bg-black/50 z-60 top-[30px]"
           @click="showMobileMenu = false"
         >
           <div

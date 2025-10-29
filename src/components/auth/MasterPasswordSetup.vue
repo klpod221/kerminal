@@ -12,7 +12,7 @@
         <div class="flex items-start gap-2">
           <AlertCircle
             :size="20"
-            class="text-yellow-500 mt-0.5 flex-shrink-0"
+            class="text-yellow-500 mt-0.5 shrink-0"
           />
           <div class="flex-1">
             <h4 class="text-sm font-medium text-yellow-200 mb-1">

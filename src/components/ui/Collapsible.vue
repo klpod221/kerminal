@@ -9,7 +9,7 @@
     >
       <div class="flex items-center space-x-3 min-w-0 flex-1">
         <div
-          class="flex items-center justify-center text-gray-400 collapsible-icon flex-shrink-0"
+          class="flex items-center justify-center text-gray-400 collapsible-icon shrink-0"
           :class="{ rotated: isExpanded }"
         >
           <ChevronRight :size="16" />
@@ -23,7 +23,7 @@
       </div>
       <div
         v-if="badge"
-        class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-full flex-shrink-0 ml-2"
+        class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-full shrink-0 ml-2"
       >
         {{ badge }}
       </div>

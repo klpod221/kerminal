@@ -395,7 +395,7 @@ onMounted(async () => {
     // Styling options
     fontFamily: "'Fira Code', monospace",
     fontSize: 13,
-    theme: getTerminalTheme()
+    theme: getTerminalTheme(),
   });
 
   const webglAddon = new WebglAddon();

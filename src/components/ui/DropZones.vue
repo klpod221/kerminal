@@ -1,7 +1,7 @@
 <template>
   <div
     v-show="showDropZones"
-    class="absolute top-[32px] left-0 right-0 bottom-0 z-[500] pointer-events-auto"
+    class="absolute top-8 left-0 right-0 bottom-0 z-500 pointer-events-auto"
     @drop="onDrop"
     @dragover="onDragOver"
     @dragenter="onDragEnter"

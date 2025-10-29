@@ -56,7 +56,7 @@
           <div class="flex items-start gap-3">
             <AlertTriangle
               :size="20"
-              class="text-yellow-500 mt-0.5 flex-shrink-0"
+              class="text-yellow-500 mt-0.5 shrink-0"
             />
             <div>
               <h5 class="text-sm font-semibold text-yellow-400 mb-1">

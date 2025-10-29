@@ -31,7 +31,7 @@
     >
       <div
         v-if="isVisible"
-        class="no-drag fixed z-50 bg-[#1a1a1a] border-gray-700 flex flex-col sm:top-[36px] h-[calc(100vh-30px)] shadow-2xl"
+        class="no-drag fixed z-50 bg-[#1a1a1a] border-gray-700 flex flex-col sm:top-9 h-[calc(100vh-30px)] shadow-2xl"
         :class="[
           position === 'left' ? 'left-0 border-r' : 'right-0 border-l',
           widthClass,
@@ -40,7 +40,7 @@
       >
         <!-- Header -->
         <div
-          class="flex items-center justify-between border-b border-gray-700 flex-shrink-0"
+          class="flex items-center justify-between border-b border-gray-700 shrink-0"
           :class="isMobile ? 'px-3 py-2' : 'px-4 py-2'"
         >
           <div class="flex items-center space-x-3">
@@ -49,7 +49,11 @@
               class="flex items-center justify-center rounded-lg"
               :class="[iconBackground, isMobile ? 'w-7 h-7' : 'w-8 h-8']"
             >
-              <component :is="icon" :size="isMobile ? 18 : 20" :class="iconColor" />
+              <component
+                :is="icon"
+                :size="isMobile ? 18 : 20"
+                :class="iconColor"
+              />
             </div>
             <h2
               class="font-semibold text-white"
@@ -58,13 +62,18 @@
               {{ title }}
             </h2>
           </div>
-          <Button variant="ghost" :icon="X" :size="isMobile ? 'sm' : 'md'" @click="close" />
+          <Button
+            variant="ghost"
+            :icon="X"
+            :size="isMobile ? 'sm' : 'md'"
+            @click="close"
+          />
         </div>
 
         <!-- Header Action -->
         <div
           v-if="$slots.headerAction"
-          class="border-b border-gray-700 flex-shrink-0"
+          class="border-b border-gray-700 shrink-0"
           :class="isMobile ? 'p-3' : 'p-4'"
         >
           <slot name="headerAction" />
@@ -78,7 +87,7 @@
         <!-- Footer -->
         <div
           v-if="$slots.footer"
-          class="border-t border-gray-700 flex-shrink-0"
+          class="border-t border-gray-700 shrink-0"
           :class="isMobile ? 'p-3' : 'p-4'"
         >
           <slot name="footer" />

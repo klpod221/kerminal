@@ -12,7 +12,7 @@
       <div
         class="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 rounded-lg"
       >
-        <AlertTriangle class="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+        <AlertTriangle class="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
         <div class="flex-1">
           <h4 class="text-sm font-medium text-red-400 mb-2">
             ⚠️ This action cannot be undone!

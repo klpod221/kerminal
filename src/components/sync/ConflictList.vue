@@ -45,7 +45,7 @@
           <div class="flex items-start justify-between gap-4">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-2">
-                <FileWarning class="w-4 h-4 text-yellow-500 flex-shrink-0" />
+                <FileWarning class="w-4 h-4 text-yellow-500 shrink-0" />
                 <h4 class="text-sm font-medium text-gray-100 truncate">
                   {{ formatEntityType(conflict.entityType) }}
                 </h4>
