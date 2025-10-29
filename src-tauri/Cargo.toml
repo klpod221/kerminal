@@ -1,6 +1,6 @@
 [package]
 name = "Kerminal"
-version = "2.2.3"
+version = "2.2.4"
 description = "Modern Terminal with SSH, Tunneling & Cross-Device Sync"
 license = "MIT"
 repository = "https://github.com/klpod221/kerminal"
