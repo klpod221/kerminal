@@ -1,470 +1,846 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
+  <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kerminal | Modern Terminal Emulator & SSH Manager</title>
-    <meta name="description"
-        content="A powerful, feature-rich terminal emulator with advanced SSH management, multi-device sync, and enterprise-grade encryption built with Tauri + Vue 3." />
+    <meta
+      name="description"
+      content="A powerful, feature-rich terminal emulator with advanced SSH management, multi-device sync, and enterprise-grade encryption built with Tauri + Vue 3."
+    />
 
     <!-- favicon -->
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
 
     <!-- Meta Tags -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Kerminal | Modern Terminal Emulator & SSH Manager" />
-    <meta property="og:description"
-        content="A powerful, feature-rich terminal emulator with advanced SSH management, multi-device sync, and enterprise-grade encryption built with Tauri + Vue 3." />
-    <meta property="og:image" content="https://raw.githubusercontent.com/klpod221/kerminal/main/public/screenshots/MainInterface.png" />
+    <meta
+      property="og:title"
+      content="Kerminal | Modern Terminal Emulator & SSH Manager"
+    />
+    <meta
+      property="og:description"
+      content="A powerful, feature-rich terminal emulator with advanced SSH management, multi-device sync, and enterprise-grade encryption built with Tauri + Vue 3."
+    />
+    <meta
+      property="og:image"
+      content="https://raw.githubusercontent.com/klpod221/kerminal/main/public/screenshots/MainInterface.png"
+    />
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="styles.css" />
-</head>
+    <!-- Prism.js for code highlighting -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css"
+    />
+  </head>
 
-<body class="bg-gray-950 text-white scroll-smooth">
+  <body class="bg-gray-950 text-white scroll-smooth">
     <!-- Navigation -->
-    <nav class="fixed top-0 w-full bg-gray-950/80 backdrop-blur-md z-50 border-b border-gray-800">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <div class="flex items-center space-x-3">
-                    <img src="images/logo.png" alt="Kerminal Logo" class="w-10 h-10 rounded-xl" />
-                    <span class="text-xl font-bold">Kerminal</span>
-                </div>
-                <div class="hidden md:flex items-center space-x-8">
-                    <a href="#features" class="text-gray-300 hover:text-white transition">Features</a>
-                    <a href="#screenshots" class="text-gray-300 hover:text-white transition">Screenshots</a>
-                    <a href="#download" class="text-gray-300 hover:text-white transition">Download</a>
-                    <a href="https://github.com/klpod221/kerminal" target="_blank"
-                        class="flex items-center space-x-2 px-4 py-2 rounded-lg gradient-bg hover:opacity-90 transition">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-github-icon lucide-github">
-                            <path
-                                d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4" />
-                            <path d="M9 18c-4.51 2-5-2-7-2" />
-                        </svg>
-                        <span>GitHub</span>
-                    </a>
-                </div>
-            </div>
+    <nav
+      class="fixed top-0 w-full bg-gray-950/80 backdrop-blur-md z-50 border-b border-gray-800"
+    >
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <div class="flex items-center space-x-3">
+            <img
+              src="images/logo.png"
+              alt="Kerminal Logo"
+              class="w-10 h-10 rounded-xl"
+            />
+            <span class="text-xl font-bold">Kerminal</span>
+          </div>
+          <div class="hidden md:flex items-center space-x-8">
+            <a
+              href="#features"
+              class="text-gray-300 hover:text-white transition"
+              >Features</a
+            >
+            <a
+              href="#screenshots"
+              class="text-gray-300 hover:text-white transition"
+              >Screenshots</a
+            >
+            <a
+              href="#download"
+              class="text-gray-300 hover:text-white transition"
+              >Download</a
+            >
+            <a
+              href="https://github.com/klpod221/kerminal"
+              target="_blank"
+              class="flex items-center space-x-2 px-4 py-2 rounded-lg gradient-bg hover:opacity-90 transition"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-github-icon lucide-github"
+              >
+                <path
+                  d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"
+                />
+                <path d="M9 18c-4.51 2-5-2-7-2" />
+              </svg>
+              <span>GitHub</span>
+            </a>
+          </div>
+          <div class="md:hidden flex items-center">
+            <button id="navToggle" aria-label="Open menu" class="p-2 rounded-md bg-gray-800/50 hover:bg-gray-800 transition">
+              <svg id="navOpenIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              <svg id="navCloseIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
+      </div>
     </nav>
+
+    <!-- Mobile dropdown (hidden by default) -->
+    <div id="mobileMenu" class="hidden md:hidden fixed top-16 left-0 right-0 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 z-40">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="flex flex-col space-y-3">
+          <a href="#features" class="text-gray-300 hover:text-white transition">Features</a>
+          <a href="#screenshots" class="text-gray-300 hover:text-white transition">Screenshots</a>
+          <a href="#download" class="text-gray-300 hover:text-white transition">Download</a>
+          <a href="https://github.com/klpod221/kerminal" target="_blank" class="text-gray-300 hover:text-white transition">GitHub</a>
+        </div>
+      </div>
+    </div>
 
     <!-- Hero Section -->
     <section class="pt-32 pb-20 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-        <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10"></div>
-        <div class="max-w-7xl mx-auto relative">
-            <div class="text-center mb-16">
-                <div class="inline-flex items-center space-x-2 bg-gray-800/50 px-4 py-2 rounded-full mb-8">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-sm text-gray-300"><span id="version">Loading...</span> - Built with Tauri + Vue
-                        3</span>
-                </div>
-                <h1 class="text-5xl md:text-7xl font-bold mb-6">
-                    Modern Terminal<br />
-                    <span class="gradient-text">Emulator & SSH Manager</span>
-                </h1>
-                <p class="text-xl text-gray-400 max-w-3xl mx-auto mb-12">
-                    A powerful, feature-rich terminal emulator with advanced SSH
-                    management, multi-device sync, and enterprise-grade encryption.
-                </p>
-                <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-                    <a href="#download"
-                        class="px-8 py-4 rounded-lg gradient-bg hover:opacity-90 transition font-semibold flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" x2="12" y1="15" y2="3" />
-                        </svg>
-                        <span>Download Now</span>
-                    </a>
-                    <a href="https://github.com/klpod221/kerminal" target="_blank"
-                        class="px-8 py-4 rounded-lg border border-gray-700 hover:border-gray-600 transition font-semibold flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10" />
-                            <polygon points="10 8 16 12 10 16 10 8" />
-                        </svg>
-                        <span>View Demo</span>
-                    </a>
-                </div>
-            </div>
+      <div
+        class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 via-transparent to-purple-500/10"
+      ></div>
+      <div class="max-w-7xl mx-auto relative">
+        <div class="text-center mb-16">
+          <div
+            class="inline-flex items-center space-x-2 bg-gray-800/50 px-4 py-2 rounded-full mb-8"
+          >
+            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span class="text-sm text-gray-300"
+              ><span id="version">Loading...</span> - Built with Tauri + Vue
+              3</span
+            >
+          </div>
+          <h1 class="text-5xl md:text-7xl font-bold mb-6">
+            Modern Terminal<br />
+            <span class="gradient-text">Emulator & SSH Manager</span>
+          </h1>
+          <p class="text-xl text-gray-400 max-w-3xl mx-auto mb-12">
+            A powerful, feature-rich terminal emulator with advanced SSH
+            management, multi-device sync, and enterprise-grade encryption.
+          </p>
+          <div
+            class="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <a
+              href="#download"
+              class="px-8 py-4 rounded-lg gradient-bg hover:opacity-90 transition font-semibold flex items-center space-x-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" x2="12" y1="15" y2="3" />
+              </svg>
+              <span>Download Now</span>
+            </a>
+            <a
+              href="https://github.com/klpod221/kerminal"
+              target="_blank"
+              class="px-8 py-4 rounded-lg border border-gray-700 hover:border-gray-600 transition font-semibold flex items-center space-x-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <polygon points="10 8 16 12 10 16 10 8" />
+              </svg>
+              <span>View Demo</span>
+            </a>
+          </div>
         </div>
+      </div>
     </section>
 
     <!-- Features Section -->
     <section id="features" class="py-20 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">
-                    <span class="gradient-text">Powerful Features</span>
-                </h2>
-                <p class="text-xl text-gray-400">
-                    Everything you need in a modern terminal
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Feature 1 -->
-                <div class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <div class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="4 17 10 11 4 5" />
-                            <line x1="12" x2="20" y1="19" y2="19" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-2">Terminal Emulator</h3>
-                    <p class="text-gray-400">
-                        Multiple tabs and split panes with WebGL-accelerated rendering and
-                        Unicode 11 support
-                    </p>
-                </div>
-
-                <!-- Feature 2 -->
-                <div class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <div class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
-                            <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
-                            <line x1="6" x2="6.01" y1="6" y2="6" />
-                            <line x1="6" x2="6.01" y1="18" y2="18" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-2">SSH Management</h3>
-                    <p class="text-gray-400">
-                        Organize connections with groups, multiple authentication methods,
-                        and proxy support
-                    </p>
-                </div>
-
-                <!-- Feature 3 -->
-                <div class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <div class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-2">Security First</h3>
-                    <p class="text-gray-400">
-                        AES-256-GCM encryption with master password protection and
-                        keychain integration
-                    </p>
-                </div>
-
-                <!-- Feature 4 -->
-                <div class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <div class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                            <circle cx="12" cy="12" r="3" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-2">SSH Tunneling</h3>
-                    <p class="text-gray-400">
-                        Local, remote, and dynamic port forwarding with auto-start and
-                        real-time monitoring
-                    </p>
-                </div>
-
-                <!-- Feature 5 -->
-                <div class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <div class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                            <polyline points="3.29 7 12 12 20.71 7" />
-                            <line x1="12" x2="12" y1="22" y2="12" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-2">Multi-Device Sync</h3>
-                    <p class="text-gray-400">
-                        Sync via MySQL/PostgreSQL/MongoDB with conflict resolution and
-                        device management
-                    </p>
-                </div>
-
-                <!-- Feature 6 -->
-                <div class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <div class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 20h9" />
-                            <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold mb-2">Saved Commands</h3>
-                    <p class="text-gray-400">
-                        Command library with groups, usage tracking, and variable
-                        substitution
-                    </p>
-                </div>
-            </div>
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl md:text-5xl font-bold mb-4">
+            <span class="gradient-text">Powerful Features</span>
+          </h2>
+          <p class="text-xl text-gray-400">
+            Everything you need in a modern terminal
+          </p>
         </div>
+
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Feature 1 -->
+          <div class="gradient-border p-6 hover:scale-105 transition-transform">
+            <div
+              class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="4 17 10 11 4 5" />
+                <line x1="12" x2="20" y1="19" y2="19" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Terminal Emulator</h3>
+            <p class="text-gray-400">
+              Multiple tabs and split panes with WebGL-accelerated rendering and
+              Unicode 11 support
+            </p>
+          </div>
+
+          <!-- Feature 2 -->
+          <div class="gradient-border p-6 hover:scale-105 transition-transform">
+            <div
+              class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect width="20" height="8" x="2" y="2" rx="2" ry="2" />
+                <rect width="20" height="8" x="2" y="14" rx="2" ry="2" />
+                <line x1="6" x2="6.01" y1="6" y2="6" />
+                <line x1="6" x2="6.01" y1="18" y2="18" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">SSH Management</h3>
+            <p class="text-gray-400">
+              Organize connections with groups, multiple authentication methods,
+              and proxy support
+            </p>
+          </div>
+
+          <!-- Feature 3 -->
+          <div class="gradient-border p-6 hover:scale-105 transition-transform">
+            <div
+              class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Security First</h3>
+            <p class="text-gray-400">
+              AES-256-GCM encryption with master password protection and
+              keychain integration
+            </p>
+          </div>
+
+          <!-- Feature 4 -->
+          <div class="gradient-border p-6 hover:scale-105 transition-transform">
+            <div
+              class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">SSH Tunneling</h3>
+            <p class="text-gray-400">
+              Local, remote, and dynamic port forwarding with auto-start and
+              real-time monitoring
+            </p>
+          </div>
+
+          <!-- Feature 5 -->
+          <div class="gradient-border p-6 hover:scale-105 transition-transform">
+            <div
+              class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"
+                />
+                <polyline points="3.29 7 12 12 20.71 7" />
+                <line x1="12" x2="12" y1="22" y2="12" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Multi-Device Sync</h3>
+            <p class="text-gray-400">
+              Sync via MySQL/PostgreSQL/MongoDB with conflict resolution and
+              device management
+            </p>
+          </div>
+
+          <!-- Feature 6 -->
+          <div class="gradient-border p-6 hover:scale-105 transition-transform">
+            <div
+              class="w-12 h-12 rounded-lg gradient-bg flex items-center justify-center mb-4"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">Saved Commands</h3>
+            <p class="text-gray-400">
+              Command library with groups, usage tracking, and variable
+              substitution
+            </p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Screenshots Section -->
     <section id="screenshots" class="py-20 px-4 sm:px-6 lg:px-8 bg-gray-900/50">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">
-                    <span class="gradient-text">Beautiful Interface</span>
-                </h2>
-                <p class="text-xl text-gray-400">
-                    Modern dark theme designed for productivity
-                </p>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-8">
-                <div class="gradient-border p-2 hover:scale-105 transition-transform">
-                    <img src="https://raw.githubusercontent.com/klpod221/kerminal/main/public/screenshots/Dashboard.png"
-                        alt="Dashboard" class="w-full rounded-lg" />
-                    <div class="p-4">
-                        <h3 class="text-xl font-semibold mb-2">Dashboard</h3>
-                        <p class="text-gray-400">System information at a glance</p>
-                    </div>
-                </div>
-                <div class="gradient-border p-2 hover:scale-105 transition-transform">
-                    <img src="https://raw.githubusercontent.com/klpod221/kerminal/main/public/screenshots/MainInterface.png"
-                        alt="Main Interface" class="w-full rounded-lg" />
-                    <div class="p-4">
-                        <h3 class="text-xl font-semibold mb-2">Main Interface</h3>
-                        <p class="text-gray-400">
-                            Clean and intuitive terminal interface
-                        </p>
-                    </div>
-                </div>
-            </div>
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl md:text-5xl font-bold mb-4">
+            <span class="gradient-text">Beautiful Interface</span>
+          </h2>
+          <p class="text-xl text-gray-400">
+            Modern dark theme designed for productivity
+          </p>
         </div>
+
+        <div class="grid md:grid-cols-2 gap-8">
+          <div class="gradient-border p-2 hover:scale-105 transition-transform">
+            <img
+              src="https://raw.githubusercontent.com/klpod221/kerminal/main/public/screenshots/Dashboard.png"
+              alt="Dashboard"
+              class="w-full rounded-lg"
+            />
+            <div class="p-4">
+              <h3 class="text-xl font-semibold mb-2">Dashboard</h3>
+              <p class="text-gray-400">System information at a glance</p>
+            </div>
+          </div>
+          <div class="gradient-border p-2 hover:scale-105 transition-transform">
+            <img
+              src="https://raw.githubusercontent.com/klpod221/kerminal/main/public/screenshots/MainInterface.png"
+              alt="Main Interface"
+              class="w-full rounded-lg"
+            />
+            <div class="p-4">
+              <h3 class="text-xl font-semibold mb-2">Main Interface</h3>
+              <p class="text-gray-400">
+                Clean and intuitive terminal interface
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Tech Stack Section -->
     <section class="py-20 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-7xl mx-auto">
-            <div class="text-center mb-16">
-                <h2 class="text-4xl md:text-5xl font-bold mb-4">
-                    <span class="gradient-text">Built With Modern Technologies</span>
-                </h2>
-                <p class="text-xl text-gray-400">
-                    Powered by cutting-edge tools and frameworks
-                </p>
-            </div>
-
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
-                <div class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition">
-                    <img src="images/tauri.png" alt="Rust + Tauri" class="mx-auto mb-3" style="width:48px;height:48px;" />
-                    <h4 class="font-semibold mb-1">Rust + Tauri v2</h4>
-                    <p class="text-sm text-gray-400">Native performance</p>
-                </div>
-                <div class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition">
-                    <img src="images/vue.png" alt="Vue 3 + TypeScript" class="mx-auto mb-3" style="width:48px;height:48px;" />
-                    <h4 class="font-semibold mb-1">Vue 3 + TypeScript</h4>
-                    <p class="text-sm text-gray-400">Reactive UI</p>
-                </div>
-                <div class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition">
-                    <img src="images/xterm.png" alt="xterm.js" class="mx-auto mb-3" style="width:48px;height:48px;" />
-                    <h4 class="font-semibold mb-1">xterm.js</h4>
-                    <p class="text-sm text-gray-400">Terminal emulation</p>
-                </div>
-                <div class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition">
-                    <div class="mx-auto mb-3 flex items-center justify-center" style="width:48px;height:48px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-lock-icon lucide-lock">
-                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                        </svg>
-                    </div>
-                    <h4 class="font-semibold mb-1">AES-256-GCM</h4>
-                    <p class="text-sm text-gray-400">Enterprise encryption</p>
-                </div>
-            </div>
+      <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-16">
+          <h2 class="text-4xl md:text-5xl font-bold mb-4">
+            <span class="gradient-text">Built With Modern Technologies</span>
+          </h2>
+          <p class="text-xl text-gray-400">
+            Powered by cutting-edge tools and frameworks
+          </p>
         </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div
+            class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition"
+          >
+            <img
+              src="images/tauri.png"
+              alt="Rust + Tauri"
+              class="mx-auto mb-3"
+              style="width: 48px; height: 48px"
+            />
+            <h4 class="font-semibold mb-1">Rust + Tauri v2</h4>
+            <p class="text-sm text-gray-400">Native performance</p>
+          </div>
+          <div
+            class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition"
+          >
+            <img
+              src="images/vue.png"
+              alt="Vue 3 + TypeScript"
+              class="mx-auto mb-3"
+              style="width: 48px; height: 48px"
+            />
+            <h4 class="font-semibold mb-1">Vue 3 + TypeScript</h4>
+            <p class="text-sm text-gray-400">Reactive UI</p>
+          </div>
+          <div
+            class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition"
+          >
+            <img
+              src="images/xterm.png"
+              alt="xterm.js"
+              class="mx-auto mb-3"
+              style="width: 48px; height: 48px"
+            />
+            <h4 class="font-semibold mb-1">xterm.js</h4>
+            <p class="text-sm text-gray-400">Terminal emulation</p>
+          </div>
+          <div
+            class="bg-gray-900 p-6 rounded-xl text-center hover:bg-gray-800 transition"
+          >
+            <div
+              class="mx-auto mb-3 flex items-center justify-center"
+              style="width: 48px; height: 48px"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="48"
+                height="48"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class="lucide lucide-lock-icon lucide-lock"
+              >
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <h4 class="font-semibold mb-1">AES-256-GCM</h4>
+            <p class="text-sm text-gray-400">Enterprise encryption</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Download Section -->
     <section id="download" class="py-20 px-4 sm:px-6 lg:px-8 bg-gray-900/50">
-        <div class="max-w-4xl mx-auto text-center">
-            <h2 class="text-4xl md:text-5xl font-bold mb-6">
-                Ready to Get Started?
-            </h2>
-            <p class="text-xl text-gray-400 mb-12">
-                Download Kerminal and experience the future of terminal emulation
-            </p>
+      <div class="max-w-4xl mx-auto text-center">
+        <h2 class="text-4xl md:text-5xl font-bold mb-6">
+          Ready to Get Started?
+        </h2>
+        <p class="text-xl text-gray-400 mb-12">
+          Download Kerminal and experience the future of terminal emulation
+        </p>
 
-            <div class="grid md:grid-cols-3 gap-6 mb-12">
-                <a href="https://github.com/klpod221/kerminal/releases/latest" target="_blank"
-                    class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <img src="images/linux.png" alt="Linux" class="mx-auto mb-4" style="width:48px;height:48px;" />
-                    <h3 class="text-xl font-semibold mb-2">Linux</h3>
-                    <p class="text-gray-400 text-sm">Download for Linux</p>
-                </a>
-                <a href="https://github.com/klpod221/kerminal/releases/latest" target="_blank"
-                    class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <img src="images/windows.png" alt="Windows" class="mx-auto mb-4" style="width:48px;height:48px;" />
-                    <h3 class="text-xl font-semibold mb-2">Windows</h3>
-                    <p class="text-gray-400 text-sm">Download for Windows</p>
-                </a>
-                <a href="https://github.com/klpod221/kerminal/releases/latest" target="_blank"
-                    class="gradient-border p-6 hover:scale-105 transition-transform">
-                    <img src="images/apple.png" alt="macOS" class="mx-auto mb-4" style="width:48px;height:48px;" />
-                    <h3 class="text-xl font-semibold mb-2">macOS</h3>
-                    <p class="text-gray-400 text-sm">Download for macOS</p>
-                </a>
-            </div>
-
-            <div class="bg-gray-900 p-6 rounded-xl">
-                <h3 class="text-lg font-semibold mb-3">Or build from source:</h3>
-                <div class="bg-gray-950 p-4 rounded-lg text-left overflow-x-auto">
-                    <code class="text-cyan-400 text-sm font-monospace">
-              git clone https://github.com/klpod221/kerminal.git<br />
-              cd kerminal<br />
-              npm install<br />
-              npm run tauri build
-            </code>
-                </div>
-            </div>
+        <div class="grid md:grid-cols-3 gap-6 mb-12">
+          <a
+            href="https://github.com/klpod221/kerminal/releases/latest"
+            target="_blank"
+            class="gradient-border p-6 hover:scale-105 transition-transform"
+          >
+            <img
+              src="images/linux.png"
+              alt="Linux"
+              class="mx-auto mb-4"
+              style="width: 48px; height: 48px"
+            />
+            <h3 class="text-xl font-semibold mb-2">Linux</h3>
+            <p class="text-gray-400 text-sm">Download for Linux</p>
+          </a>
+          <a
+            href="https://github.com/klpod221/kerminal/releases/latest"
+            target="_blank"
+            class="gradient-border p-6 hover:scale-105 transition-transform"
+          >
+            <img
+              src="images/windows.png"
+              alt="Windows"
+              class="mx-auto mb-4"
+              style="width: 48px; height: 48px"
+            />
+            <h3 class="text-xl font-semibold mb-2">Windows</h3>
+            <p class="text-gray-400 text-sm">Download for Windows</p>
+          </a>
+          <a
+            href="https://github.com/klpod221/kerminal/releases/latest"
+            target="_blank"
+            class="gradient-border p-6 hover:scale-105 transition-transform"
+          >
+            <img
+              src="images/apple.png"
+              alt="macOS"
+              class="mx-auto mb-4"
+              style="width: 48px; height: 48px"
+            />
+            <h3 class="text-xl font-semibold mb-2">macOS</h3>
+            <p class="text-gray-400 text-sm">Download for macOS</p>
+          </a>
         </div>
+
+        <div class="bg-gray-900 p-6 rounded-xl">
+          <h3 class="text-lg font-semibold mb-3">
+            Arch Linux AUR Installation (you can use kerminal-bin for binary):
+          </h3>
+          <div class="rounded-lg text-left overflow-x-auto mb-6">
+            <div class="relative">
+              <button
+                class="copy-btn absolute top-2 right-2 text-xs py-1 px-2 rounded bg-gray-800/60 hover:bg-gray-800 transition"
+                data-target="aur-code"
+              >
+                Copy
+              </button>
+              <pre
+                class="language-bash rounded"
+              ><code id="aur-code" class="language-bash text-cyan-300 font-fira">
+git clone https://aur.archlinux.org/kerminal.git
+cd kerminal
+makepkg -si
+
+# Or use an AUR helper like yay:
+yay -S kerminal</code></pre>
+            </div>
+          </div>
+
+          <h3 class="text-lg font-semibold mb-3">Or build from source:</h3>
+          <div class="rounded-lg text-left overflow-x-auto">
+            <div class="relative">
+              <button
+                class="copy-btn absolute top-2 right-2 text-xs py-1 px-2 rounded bg-gray-800/60 hover:bg-gray-800 transition"
+                data-target="src-code"
+              >
+                Copy
+              </button>
+              <pre
+                class="language-bash rounded"
+              ><code id="src-code" class="language-bash text-cyan-300 font-fira">git clone https://github.com/klpod221/kerminal.git
+cd kerminal
+npm install
+npm run tauri build</code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Footer -->
     <footer class="py-12 px-4 sm:px-6 lg:px-8 border-t border-gray-800">
-        <div class="max-w-7xl mx-auto">
-            <div class="grid md:grid-cols-4 gap-8 mb-8">
-                <div>
-                    <div class="flex items-center space-x-3 mb-4">
-                        <img src="images/logo.png" alt="Kerminal Logo" class="w-10 h-10 rounded-xl" />
-                        <span class="text-xl font-bold">Kerminal</span>
-                    </div>
-                    <p class="text-gray-400 text-sm">
-                        Modern Terminal Emulator & SSH Manager
-                    </p>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Product</h4>
-                    <ul class="space-y-2 text-gray-400 text-sm">
-                        <li>
-                            <a href="#features" class="hover:text-white transition">Features</a>
-                        </li>
-                        <li>
-                            <a href="#screenshots" class="hover:text-white transition">Screenshots</a>
-                        </li>
-                        <li>
-                            <a href="#download" class="hover:text-white transition">Download</a>
-                        </li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Resources</h4>
-                    <ul class="space-y-2 text-gray-400 text-sm">
-                        <li>
-                            <a href="https://github.com/klpod221/kerminal?tab=readme-ov-file#-usage" target="_blank"
-                                class="hover:text-white transition">Documentation</a>
-                        </li>
-                        <li>
-                            <a href="https://github.com/klpod221/kerminal/issues" target="_blank"
-                                class="hover:text-white transition">Support</a>
-                        </li>
-                        <li>
-                            <a href="https://github.com/klpod221/kerminal/blob/main/LICENSE" target="_blank"
-                                class="hover:text-white transition">License</a>
-                        </li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="font-semibold mb-4">Connect</h4>
-                    <ul class="space-y-2 text-gray-400 text-sm">
-                        <li>
-                            <a href="https://github.com/klpod221" target="_blank"
-                                class="hover:text-white transition">GitHub</a>
-                        </li>
-                        <li>
-                            <a href="https://klpod221.com" target="_blank"
-                                class="hover:text-white transition">Website</a>
-                        </li>
-                        <li>
-                            <a href="mailto:klpod221@gmail.com" class="hover:text-white transition">Email</a>
-                        </li>
-                        <li>
-                            <a href="https://www.facebook.com/klpod221" target="_blank"
-                                class="hover:text-white transition">Facebook</a>
-                        </li>
-                    </ul>
-                </div>
+      <div class="max-w-7xl mx-auto">
+        <div class="grid md:grid-cols-4 gap-8 mb-8">
+          <div>
+            <div class="flex items-center space-x-3 mb-4">
+              <img
+                src="images/logo.png"
+                alt="Kerminal Logo"
+                class="w-10 h-10 rounded-xl"
+              />
+              <span class="text-xl font-bold">Kerminal</span>
             </div>
-            <div class="pt-8 border-t border-gray-800 text-center text-gray-400 text-sm">
-                <p>
-                    Made with ❤️ by
-                    <a href="https://github.com/klpod221" target="_blank"
-                        class="gradient-text font-semibold">klpod221</a>
-                </p>
-                <p class="mt-2">© 2025 Kerminal. Licensed under MIT License.</p>
-            </div>
+            <p class="text-gray-400 text-sm">
+              Modern Terminal Emulator & SSH Manager
+            </p>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-4">Product</h4>
+            <ul class="space-y-2 text-gray-400 text-sm">
+              <li>
+                <a href="#features" class="hover:text-white transition"
+                  >Features</a
+                >
+              </li>
+              <li>
+                <a href="#screenshots" class="hover:text-white transition"
+                  >Screenshots</a
+                >
+              </li>
+              <li>
+                <a href="#download" class="hover:text-white transition"
+                  >Download</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-4">Resources</h4>
+            <ul class="space-y-2 text-gray-400 text-sm">
+              <li>
+                <a
+                  href="https://github.com/klpod221/kerminal?tab=readme-ov-file#-usage"
+                  target="_blank"
+                  class="hover:text-white transition"
+                  >Documentation</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://github.com/klpod221/kerminal/issues"
+                  target="_blank"
+                  class="hover:text-white transition"
+                  >Support</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://github.com/klpod221/kerminal/blob/main/LICENSE"
+                  target="_blank"
+                  class="hover:text-white transition"
+                  >License</a
+                >
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold mb-4">Connect</h4>
+            <ul class="space-y-2 text-gray-400 text-sm">
+              <li>
+                <a
+                  href="https://github.com/klpod221"
+                  target="_blank"
+                  class="hover:text-white transition"
+                  >GitHub</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://klpod221.com"
+                  target="_blank"
+                  class="hover:text-white transition"
+                  >Website</a
+                >
+              </li>
+              <li>
+                <a
+                  href="mailto:klpod221@gmail.com"
+                  class="hover:text-white transition"
+                  >Email</a
+                >
+              </li>
+              <li>
+                <a
+                  href="https://www.facebook.com/klpod221"
+                  target="_blank"
+                  class="hover:text-white transition"
+                  >Facebook</a
+                >
+              </li>
+            </ul>
+          </div>
         </div>
+        <div
+          class="pt-8 border-t border-gray-800 text-center text-gray-400 text-sm"
+        >
+          <p>
+            Made with ❤️ by
+            <a
+              href="https://github.com/klpod221"
+              target="_blank"
+              class="gradient-text font-semibold"
+              >klpod221</a
+            >
+          </p>
+          <p class="mt-2">© 2025 Kerminal. Licensed under MIT License.</p>
+        </div>
+      </div>
     </footer>
 
     <!-- Scroll to top button -->
-    <button id="scrollToTop"
-        class="fixed bottom-8 right-8 w-12 h-12 rounded-full gradient-bg hidden items-center justify-center hover:opacity-90 transition shadow-lg"
-        onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m18 15-6-6-6 6" />
-        </svg>
+    <button
+      id="scrollToTop"
+      class="fixed bottom-8 right-8 w-12 h-12 rounded-full gradient-bg hidden items-center justify-center hover:opacity-90 transition shadow-lg"
+      onclick="window.scrollTo({ top: 0, behavior: 'smooth' })"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="m18 15-6-6-6 6" />
+      </svg>
     </button>
 
+    <!-- Prism.js -->
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/plugins/normalize-whitespace/prism-normalize-whitespace.min.js"></script>
     <script>
-        // Fetch latest release version from GitHub
-        async function fetchLatestVersion() {
-            try {
-                const response = await fetch(
-                    "https://api.github.com/repos/klpod221/kerminal/releases/latest"
-                );
-                const data = await response.json();
-                const version = data.tag_name || "v2.0.0";
-                document.getElementById("version").textContent = version;
-            } catch (error) {
-                console.error("Failed to fetch version:", error);
-                document.getElementById("version").textContent = "v2.0.0";
-            }
-        }
-
-        fetchLatestVersion();
-
-        // Show/hide scroll to top button
-        const scrollToTopBtn = document.getElementById("scrollToTop");
-        window.addEventListener("scroll", () => {
-            if (window.scrollY > 300) {
-                scrollToTopBtn.classList.remove("hidden");
-                scrollToTopBtn.classList.add("flex");
-            } else {
-                scrollToTopBtn.classList.add("hidden");
-                scrollToTopBtn.classList.remove("flex");
-            }
-        });
-
-        // Smooth scroll for anchor links
-        document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
-            anchor.addEventListener("click", function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute("href"));
-                if (target) {
-                    target.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-            });
-        });
+      Prism.plugins.autoloader.languages_path =
+        "https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/";
     </script>
-</body>
 
+    <script>
+      // Copy button handler
+      document.addEventListener("click", (e) => {
+        const btn = e.target.closest(".copy-btn");
+        if (!btn) return;
+        const targetId = btn.getAttribute("data-target");
+        const codeEl = document.getElementById(targetId);
+        if (!codeEl) return;
+        const text = codeEl.textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          const original = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = original), 1500);
+        });
+      });
+    </script>
+
+    <script>
+      // Mobile menu toggle
+      (function () {
+        const toggle = document.getElementById('navToggle');
+        const menu = document.getElementById('mobileMenu');
+        const openIcon = document.getElementById('navOpenIcon');
+        const closeIcon = document.getElementById('navCloseIcon');
+        if (!toggle || !menu) return;
+        toggle.addEventListener('click', () => {
+          const isHidden = menu.classList.contains('hidden');
+          if (isHidden) {
+            menu.classList.remove('hidden');
+            openIcon.classList.add('hidden');
+            closeIcon.classList.remove('hidden');
+            toggle.setAttribute('aria-label', 'Close menu');
+          } else {
+            menu.classList.add('hidden');
+            openIcon.classList.remove('hidden');
+            closeIcon.classList.add('hidden');
+            toggle.setAttribute('aria-label', 'Open menu');
+          }
+        });
+
+        // Close mobile menu when clicking a link (nice UX)
+        menu.querySelectorAll('a[href^="#"]').forEach(a => {
+          a.addEventListener('click', () => {
+            menu.classList.add('hidden');
+            openIcon.classList.remove('hidden');
+            closeIcon.classList.add('hidden');
+            toggle.setAttribute('aria-label', 'Open menu');
+          });
+        });
+      })();
+    </script>
+    <script>
+      // Fetch latest release version from GitHub
+      async function fetchLatestVersion() {
+        try {
+          const response = await fetch(
+            "https://api.github.com/repos/klpod221/kerminal/releases/latest"
+          );
+          const data = await response.json();
+          const version = data.tag_name || "v2.0.0";
+          document.getElementById("version").textContent = version;
+        } catch (error) {
+          console.error("Failed to fetch version:", error);
+          document.getElementById("version").textContent = "v2.0.0";
+        }
+      }
+
+      fetchLatestVersion();
+
+      // Show/hide scroll to top button
+      const scrollToTopBtn = document.getElementById("scrollToTop");
+      window.addEventListener("scroll", () => {
+        if (window.scrollY > 300) {
+          scrollToTopBtn.classList.remove("hidden");
+          scrollToTopBtn.classList.add("flex");
+        } else {
+          scrollToTopBtn.classList.add("hidden");
+          scrollToTopBtn.classList.remove("flex");
+        }
+      });
+
+      // Smooth scroll for anchor links
+      document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute("href"));
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        });
+      });
+    </script>
+  </body>
 </html>

@@ -63,6 +63,27 @@
     animation: float 6s ease-in-out infinite;
 }
 
-.font-mono {
-    font-family: "FiraCodeNerdFont", monospace;
+.font-fira * {
+    font-family: "FiraCodeNerdFont", monospace !important
+}
+
+/* Code block improvements */
+pre[class*="language-"] {
+    background: #0b1220 !important;
+    padding: 1rem;
+    overflow: auto;
+    border-radius: 0.75rem;
+    box-shadow: 0 6px 18px rgba(2,6,23,0.6);
+    margin: 0 !important;
+}
+
+pre code {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #e6edf3;
+}
+
+.copy-btn {
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
