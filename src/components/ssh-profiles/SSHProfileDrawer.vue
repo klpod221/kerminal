@@ -118,28 +118,6 @@
         </div>
       </div>
 
-      <!-- SSH Config Hosts Section -->
-      <div v-if="filteredConfigHosts.length > 0" class="space-y-2">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <component :is="FileCode" class="w-4 h-4 text-blue-400" />
-            <h3 class="text-sm font-medium text-blue-300">From .ssh/config</h3>
-            <span class="text-xs text-gray-400">
-              ({{ filteredConfigHosts.length }})
-            </span>
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <SSHConfigHostItem
-            v-for="host in filteredConfigHosts"
-            :key="host.name"
-            :host="host"
-            @connect="connectToConfigHost"
-          />
-        </div>
-      </div>
-
       <!-- No search results -->
       <div
         v-if="
@@ -150,6 +128,36 @@
         class="p-3 text-gray-500 text-sm italic text-center border border-dashed border-gray-600 rounded-lg wrap-anywhere"
       >
         <p class="text-sm">No results found matching "{{ searchQuery }}"</p>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div
+      v-if="filteredConfigHosts.length > 0"
+      class="border-t border-gray-700 mt-4"
+    />
+
+    <!-- SSH Config Hosts Section -->
+    <div class="space-y-4 p-4">
+      <div v-if="filteredConfigHosts.length > 0" class="space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <component :is="FileCode" class="w-4 h-4 text-blue-400" />
+            <h3 class="text-sm font-medium text-blue-300">From .ssh/config</h3>
+            <span class="text-xs text-gray-400">
+              ({{ filteredConfigHosts.length }})
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <SSHConfigHostItem
+          v-for="host in filteredConfigHosts"
+          :key="host.name"
+          :host="host"
+          @connect="connectToConfigHost"
+        />
       </div>
     </div>
 
@@ -201,7 +209,7 @@ import {
   Plus,
   Edit3,
   Trash2,
-  FileCode
+  FileCode,
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
@@ -393,4 +401,3 @@ const connectToConfigHost = async (host: SSHConfigHost) => {
   }
 };
 </script>
-

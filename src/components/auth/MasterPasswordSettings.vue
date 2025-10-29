@@ -75,7 +75,7 @@
             :options="timeoutOptions"
             @change="handleTimeoutChange"
             :disabled="isLoading"
-            helper-text="Automatically lock the session after period of inactivity"
+            helper-text="Automatically lock the session after period"
           />
 
           <Button

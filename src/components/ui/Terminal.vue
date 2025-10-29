@@ -382,21 +382,22 @@ onMounted(async () => {
   if (!terminalRef.value) return;
 
   term = new Terminal({
+    allowProposedApi: true,
+    allowTransparency: false,
+    rightClickSelectsWord: true,
+    altClickMovesCursor: true,
+    scrollback: 10000,
+    customGlyphs: true,
     cursorBlink: true,
-    fontFamily: "'Fira Code', monospace",
-    fontSize: 13,
-    lineHeight: 1,
     cols: 110,
     rows: 30,
+    // Styling options
+    fontFamily: "'Fira Code', monospace",
+    fontSize: 13,
     theme: {
       background: "#171717",
-      foreground: "#d4d4d4",
-      cursor: "#ffffff",
+      foreground: "#d4d4d4"
     },
-    allowProposedApi: true,
-    rightClickSelectsWord: true,
-    allowTransparency: false,
-    scrollback: 10000,
   });
 
   const webglAddon = new WebglAddon();

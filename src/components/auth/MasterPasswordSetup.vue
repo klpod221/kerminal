@@ -89,15 +89,6 @@
             label="Auto-unlock on startup"
             helper-text="Automatically unlock when application starts (requires keychain)"
           />
-
-          <Select
-            id="auto-lock-timeout-setup"
-            v-model="setupForm.autoLockTimeout"
-            label="Auto-lock Timeout"
-            :options="timeoutOptions"
-            :disabled="isLoading"
-            helper-text="Automatically lock the session after period of inactivity"
-          />
         </div>
       </Form>
     </div>
@@ -128,7 +119,6 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
-import Select from "../ui/Select.vue";
 
 const { closeOverlay } = useOverlay();
 const { setupMasterPassword } = useAuthStore();
@@ -143,16 +133,6 @@ const setupForm = ref({
   autoLockTimeout: 0,
 });
 const isLoading = ref(false);
-
-const timeoutOptions = [
-  { value: 0, label: "Never" },
-  { value: 5, label: "5 minutes" },
-  { value: 15, label: "15 minutes" },
-  { value: 30, label: "30 minutes" },
-  { value: 60, label: "1 hour" },
-  { value: 120, label: "2 hours" },
-  { value: 240, label: "4 hours" },
-];
 
 const handleSubmit = async () => {
   const isValid = await masterPasswordSetupForm.value?.validate();
