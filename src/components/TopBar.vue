@@ -53,7 +53,6 @@
         />
       </div>
 
-
       <!-- SFTP button -->
       <!-- <div
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
@@ -281,7 +280,6 @@ import {
   Terminal,
   Cloud,
   Menu,
-  FolderOpen,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";
