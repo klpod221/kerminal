@@ -8,11 +8,7 @@
     icon-background="bg-blue-500/20"
     icon-color="text-blue-400"
   >
-    <Form @submit.prevent="handleConfirm" class="flex flex-col gap-4">
-      <p class="text-sm text-gray-300">
-        {{ message || "Please enter your master password to continue:" }}
-      </p>
-
+    <Form ref="passwordConfirmForm" @submit="handleConfirm" class="flex flex-col gap-4">
       <Input
         id="confirm-password"
         ref="passwordInput"
@@ -20,10 +16,8 @@
         type="password"
         label="Master Password"
         placeholder="Enter your master password"
-        :error="errorMessage"
-        required
+        rules="required|password"
         autocomplete="current-password"
-        @keyup.enter="handleConfirm"
       />
     </Form>
 
@@ -47,24 +41,19 @@ import { Key } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 import { getErrorMessage } from "../../utils/helpers";
+import { message } from "../../utils/message";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
-
-interface PasswordConfirmModalProps {
-  message?: string;
-}
-
-defineProps<PasswordConfirmModalProps>();
 
 const emit = defineEmits<{
   confirm: [password: string];
   cancel: [];
 }>();
 
+const passwordConfirmForm = ref<InstanceType<typeof Form>>();
 const password = ref("");
-const errorMessage = ref("");
 const isVerifying = ref(false);
 const passwordInput = ref<InstanceType<typeof Input>>();
 
@@ -72,13 +61,10 @@ const { overlayStore, closeOverlay } = useOverlay();
 const authStore = useAuthStore();
 
 const handleConfirm = async () => {
-  if (!password.value) {
-    errorMessage.value = "Password is required";
-    return;
-  }
+  const isValid = await passwordConfirmForm.value?.validate();
+  if (!isValid) return;
 
   isVerifying.value = true;
-  errorMessage.value = "";
 
   try {
     const isValid = await authStore.unlock({ password: password.value });
@@ -87,12 +73,11 @@ const handleConfirm = async () => {
       emit("confirm", password.value);
       closeOverlay("password-confirm-modal");
       password.value = "";
-      errorMessage.value = "";
     } else {
-      errorMessage.value = "Invalid master password";
+      message.error("Invalid master password");
     }
   } catch (error) {
-    errorMessage.value = getErrorMessage(error, "Failed to verify password");
+    message.error(getErrorMessage(error, "Failed to verify password"));
   } finally {
     isVerifying.value = false;
   }
@@ -102,7 +87,6 @@ const handleCancel = () => {
   emit("cancel");
   closeOverlay("password-confirm-modal");
   password.value = "";
-  errorMessage.value = "";
 };
 
 watch(

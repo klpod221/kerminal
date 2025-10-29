@@ -89,17 +89,18 @@
         <!-- Group Header -->
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
-            <div
-              v-if="groupData.group"
-              class="w-3 h-3 rounded-full"
-              :style="{ backgroundColor: groupData.group.color || '#6b7280' }"
-            ></div>
             <component
               v-if="groupData.group?.icon"
               :is="getIconComponent(groupData.group.icon)"
               :size="14"
               class="text-gray-400"
+              :style="{ color: groupData.group.color || '#6b7280' }"
             />
+            <div
+              v-else
+              class="w-3 h-3 rounded-full"
+              :style="{ backgroundColor: groupData.group?.color || '#6b7280' }"
+            ></div>
             <h3
               class="text-sm font-medium"
               :class="groupData.group ? 'text-white' : 'text-gray-400'"

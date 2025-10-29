@@ -349,13 +349,26 @@ const handleSubmit = async () => {
       message.success("Tunnel created successfully");
     }
 
-    closeOverlay("tunnel-modal");
+    closeModal();
   } catch (error) {
     console.error("Failed to save tunnel:", error);
     message.error("Failed to save tunnel. Please try again.");
   } finally {
     submitting.value = false;
   }
+};
+
+const closeModal = () => {
+  form.name = "";
+  form.description = "";
+  form.profileId = "";
+  form.tunnelType = "Local";
+  form.localHost = "localhost";
+  form.localPort = 8080;
+  form.remoteHost = "localhost";
+  form.remotePort = 80;
+  form.autoStart = false;
+  closeOverlay("tunnel-modal");
 };
 
 watch(

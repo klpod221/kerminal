@@ -52,24 +52,6 @@
         </div>
       </div>
 
-      <!-- Tips Section -->
-      <div class="p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-        <div class="flex items-start gap-3">
-          <Info class="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
-          <div class="flex-1">
-            <h4 class="text-sm font-medium text-blue-400 mb-2">
-              Tips to remember:
-            </h4>
-            <ul class="text-sm text-gray-300 space-y-1 list-disc list-inside">
-              <li>Try common passwords you might have used</li>
-              <li>Check if you have written it down somewhere secure</li>
-              <li>Try variations with uppercase/lowercase</li>
-              <li>Consider using a password manager in the future</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
       <!-- Confirmation Section -->
       <div class="p-4 bg-gray-800/50 border border-gray-600 rounded-lg">
         <p class="text-sm text-gray-300 mb-3">
@@ -87,7 +69,6 @@
           v-model="confirmationText"
           type="text"
           placeholder="Type RESET to confirm"
-          :error="errorMessage"
           autocomplete="off"
           @keyup.enter="handleReset"
         />
@@ -110,7 +91,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch } from "vue";
-import { HelpCircle, AlertTriangle, Info } from "lucide-vue-next";
+import { HelpCircle, AlertTriangle } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 import { message } from "../../utils/message";
@@ -120,7 +101,6 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 
 const confirmationText = ref("");
-const errorMessage = ref("");
 const isLoading = ref(false);
 const confirmationInput = ref<InstanceType<typeof Input>>();
 
@@ -132,7 +112,7 @@ const { resetMasterPassword } = useAuthStore();
  */
 const handleReset = async () => {
   if (confirmationText.value !== "RESET") {
-    errorMessage.value = "Please type RESET to confirm";
+    message.error("Please type RESET to confirm.");
     return;
   }
 
@@ -145,7 +125,6 @@ const handleReset = async () => {
     closeOverlay("master-password-unlock");
 
     confirmationText.value = "";
-    errorMessage.value = "";
   } catch (error) {
     console.error("Error resetting master password:", error);
     message.error(
@@ -165,7 +144,6 @@ const handleReset = async () => {
 const handleCancel = () => {
   closeOverlay("forgot-password-modal");
   confirmationText.value = "";
-  errorMessage.value = "";
 };
 
 /**
@@ -181,13 +159,4 @@ watch(
     }
   },
 );
-
-/**
- * Clear error when user types
- */
-watch(confirmationText, () => {
-  if (errorMessage.value) {
-    errorMessage.value = "";
-  }
-});
 </script>

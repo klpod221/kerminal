@@ -10,6 +10,10 @@
 
         <Workspace v-if="viewState.activeView === 'workspace'" />
 
+        <div v-if="viewState.activeView === 'sftp'" class="h-full w-full flex items-center justify-center text-white">
+          SFTP feature coming soon!
+        </div>
+
         <SSHProfileManager />
 
         <SavedCommandManager />

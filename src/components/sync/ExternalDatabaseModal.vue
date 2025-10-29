@@ -361,13 +361,35 @@ const handleSubmit = async () => {
       message.success("Database added successfully");
     }
 
-    closeOverlay("external-database-modal");
+    closeModal();
   } catch (error) {
     console.error("Error saving database:", error);
     message.error(getErrorMessage(error, "Failed to save database"));
   } finally {
     isLoading.value = false;
   }
+};
+
+const closeModal = () => {
+  database.value = {
+    name: "",
+    dbType: "mysql",
+  };
+  connectionDetails.value = {
+    host: "",
+    port: 3306,
+    username: "",
+    password: "",
+    databaseName: "",
+    protocol: "",
+    options: "",
+  };
+  syncSettings.value = {
+    autoSync: false,
+    syncIntervalMinutes: 15,
+    conflictResolutionStrategy: "LastWriteWins",
+  };
+  closeOverlay("external-database-modal");
 };
 
 watch(

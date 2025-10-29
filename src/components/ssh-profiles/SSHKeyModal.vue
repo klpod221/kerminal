@@ -1,6 +1,6 @@
 <template>
   <Modal id="ssh-key-modal" :title="modalTitle" size="lg">
-    <Form ref="keyForm">
+    <Form ref="keyForm" @submit="handleSubmit">
       <!-- Edit mode info -->
       <div
         v-if="keyId"
@@ -189,7 +189,6 @@ const handleSubmit = async () => {
 
       await sshKeyStore.updateKey(keyId.value, updateRequest);
       message.success("SSH key updated successfully");
-      closeOverlay("ssh-key-modal");
     } else {
       await sshKeyStore.createKey({
         name: formData.value.name,
@@ -199,8 +198,9 @@ const handleSubmit = async () => {
         description: formData.value.description || undefined,
       });
       message.success("SSH key created successfully");
-      closeOverlay("ssh-key-modal");
     }
+
+    closeModal();
   } catch (error) {
     console.error("Error saving SSH key:", error);
   } finally {
@@ -231,6 +231,17 @@ const loadKey = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+const closeModal = () => {
+  formData.value = {
+    name: "",
+    privateKey: "",
+    publicKey: "",
+    passphrase: "",
+    description: "",
+  };
+  closeOverlay("ssh-key-modal");
 };
 
 watch(

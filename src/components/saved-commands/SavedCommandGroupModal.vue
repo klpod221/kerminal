@@ -66,19 +66,21 @@
         <div class="p-3 bg-[#1a1a1a] rounded-lg border border-gray-600">
           <h4 class="text-sm font-medium text-gray-300 mb-2">Preview</h4>
           <div class="flex items-center space-x-2">
+            <component
+              v-if="selectedIconComponent"
+              :is="selectedIconComponent"
+              :size="14"
+              class="text-gray-400"
+              :style="{ color: formData.color || '#6b7280' }"
+            />
             <div
+              v-else
               class="w-3 h-3 rounded-full"
               :style="{ backgroundColor: formData.color || '#6b7280' }"
             />
             <span class="text-white font-medium">
               {{ formData.name || "Group Name" }}
             </span>
-            <component
-              v-if="selectedIconComponent"
-              :is="selectedIconComponent"
-              :size="14"
-              class="text-gray-400"
-            />
           </div>
           <p v-if="formData.description" class="text-xs text-gray-400 mt-1">
             {{ formData.description }}
@@ -247,6 +249,12 @@ const handleSubmit = async () => {
 };
 
 const closeModal = () => {
+  formData.value = {
+    name: "",
+    description: "",
+    color: "#6b7280",
+    icon: "",
+  };
   closeOverlay(props.modalId);
 };
 

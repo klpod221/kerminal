@@ -198,6 +198,13 @@ const handleSubmit = async () => {
 };
 
 const closeModal = () => {
+  formData.value = {
+    name: "",
+    command: "",
+    description: "",
+    groupId: "",
+    isFavorite: false,
+  };
   closeOverlay(props.modalId);
 };
 

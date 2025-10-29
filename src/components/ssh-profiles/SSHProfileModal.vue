@@ -551,13 +551,42 @@ const handleSubmit = async () => {
       message.success("SSH profile created successfully.");
     }
 
-    closeOverlay("ssh-profile-modal");
+    closeModal();
   } catch (error) {
     console.error("Error saving SSH profile:", error);
     message.error(getErrorMessage(error, "Failed to save SSH profile."));
   } finally {
     isLoading.value = false;
   }
+};
+
+const closeModal = () => {
+  sshProfile.value = {
+    name: "",
+    host: "",
+    port: 22,
+    username: "",
+    groupId: "",
+    authMethod: "Password" as AuthMethod,
+    timeout: 30,
+    keepAlive: true,
+    compression: false,
+    color: "#3b82f6",
+    description: "",
+  } as Partial<SSHProfile>;
+  authPassword.value = "";
+  authKeyId.value = "";
+
+  enableProxy.value = false;
+  proxyConfig.value = {
+    proxyType: "Http",
+    host: "",
+    port: 8080,
+    username: "",
+    password: "",
+  };
+
+  closeOverlay("ssh-profile-modal");
 };
 
 watch(

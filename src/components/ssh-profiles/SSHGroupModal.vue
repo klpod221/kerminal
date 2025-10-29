@@ -104,7 +104,6 @@ const loadGroup = () => {
 };
 
 const handleSubmit = async () => {
-  console.log("Submitting form...");
   const isValid = await sshGroupForm.value?.validate();
   if (!isValid || !sshGroup.value) return;
 
@@ -123,13 +122,22 @@ const handleSubmit = async () => {
       await sshStore.createGroup(groupData);
       message.success("SSH group created successfully.");
     }
-    closeOverlay("ssh-group-modal");
+    closeModal();
   } catch (error) {
     console.error("Error saving SSH group:", error);
     message.error(getErrorMessage(error, "Failed to save SSH group."));
   } finally {
     isLoading.value = false;
   }
+};
+
+const closeModal = () => {
+  sshGroup.value = {
+    name: "",
+    description: "",
+    color: "#000000",
+  } as Partial<SSHGroup>;
+  closeOverlay("ssh-group-modal");
 };
 
 watch(

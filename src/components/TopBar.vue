@@ -53,6 +53,27 @@
         />
       </div>
 
+
+      <!-- SFTP button -->
+      <!-- <div
+        class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        :class="[
+          viewState.activeView === 'sftp' ? 'bg-gray-800' : '',
+          isMobile ? 'px-2' : 'px-3',
+        ]"
+        @click="setActiveView('sftp')"
+      >
+        <FolderOpen
+          :size="isMobile ? 18 : 16"
+          class="transition-opacity duration-200"
+          :class="
+            viewState.activeView === 'sftp'
+              ? 'opacity-100'
+              : 'opacity-60 hover:opacity-100'
+          "
+        />
+      </div> -->
+
       <!-- SSH Profiles button -->
       <div
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
@@ -260,6 +281,7 @@ import {
   Terminal,
   Cloud,
   Menu,
+  FolderOpen,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";
@@ -275,7 +297,7 @@ const { isMobile } = useWindowSize();
 
 const showMobileMenu = ref(false);
 
-const setActiveView = (view: "dashboard" | "workspace" | "fileManager") => {
+const setActiveView = (view: "dashboard" | "workspace" | "sftp") => {
   if (!viewState.isTopBarActive || viewState.activeView === view) return;
 
   closeAllOverlays();
