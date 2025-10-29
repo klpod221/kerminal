@@ -62,3 +62,7 @@ body {
   }
 }
 
+/* Xterm */
+.xterm {
+  height: 100%;
+}

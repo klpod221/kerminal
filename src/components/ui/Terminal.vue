@@ -142,12 +142,13 @@ import {
 import { debounce, getErrorMessage } from "../../utils/helpers";
 import { resizeTerminal } from "../../services/terminal";
 import { TerminalBufferManager, InputBatcher } from "../../core";
-import type { SimpleTerminal } from "../../core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { XCircle, RefreshCw, X } from "lucide-vue-next";
 import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
+import { getTerminalTheme } from "../../utils/terminalTheme";
+import type { SimpleTerminal } from "../../core";
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -394,10 +395,7 @@ onMounted(async () => {
     // Styling options
     fontFamily: "'Fira Code', monospace",
     fontSize: 13,
-    theme: {
-      background: "#171717",
-      foreground: "#d4d4d4"
-    },
+    theme: getTerminalTheme()
   });
 
   const webglAddon = new WebglAddon();
