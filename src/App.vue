@@ -21,6 +21,10 @@
         <TunnelManager />
 
         <SyncManager />
+
+        <ThemeSelectorModal />
+        <CustomThemeModal />
+        <FontSettingsModal />
       </template>
     </div>
   </div>
@@ -37,6 +41,9 @@ import SavedCommandManager from "./components/saved-commands/SavedCommandManager
 import TunnelManager from "./components/tunnels/TunnelManager.vue";
 import SyncManager from "./components/sync/SyncManager.vue";
 import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
+import ThemeSelectorModal from "./components/settings/ThemeSelectorModal.vue";
+import CustomThemeModal from "./components/settings/CustomThemeModal.vue";
+import FontSettingsModal from "./components/settings/FontSettingsModal.vue";
 
 import { useOverlay } from "./composables/useOverlay";
 

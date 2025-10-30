@@ -149,6 +149,7 @@ import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
 import { getTerminalTheme } from "../../utils/terminalTheme";
 import type { SimpleTerminal } from "../../core";
+import { useSettingsStore } from "../../stores/settings";
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -183,6 +184,7 @@ let term: Terminal;
 let fitAddon: FitAddon;
 
 const workspaceStore = useWorkspaceStore();
+const settingsStore = useSettingsStore();
 
 const currentTerminal = computed(() =>
   workspaceStore.terminals.find((t) => t.id === props.terminalId),
@@ -371,6 +373,42 @@ watch(
   },
 );
 
+// Watch for theme changes and update terminal
+watch(
+  () => settingsStore.terminalTheme,
+  (newTheme) => {
+    if (term) {
+      const customTheme = settingsStore.getCustomTheme(newTheme);
+      const theme = customTheme 
+        ? customTheme.colors 
+        : getTerminalTheme(newTheme as any);
+      term.options.theme = theme;
+    }
+  },
+);
+
+// Watch for font family changes and update terminal
+watch(
+  () => settingsStore.fontFamily,
+  (newFont) => {
+    if (term) {
+      term.options.fontFamily = `'${newFont}', monospace`;
+      fitAddon.fit();
+    }
+  },
+);
+
+// Watch for font size changes and update terminal
+watch(
+  () => settingsStore.fontSize,
+  (newSize) => {
+    if (term) {
+      term.options.fontSize = newSize;
+      fitAddon.fit();
+    }
+  },
+);
+
 defineExpose({
   focus,
   fitAndFocus,
@@ -381,6 +419,11 @@ defineExpose({
 
 onMounted(async () => {
   if (!terminalRef.value) return;
+
+  const customTheme = settingsStore.getCustomTheme(settingsStore.terminalTheme);
+  const theme = customTheme 
+    ? customTheme.colors 
+    : getTerminalTheme(settingsStore.terminalTheme as any);
 
   term = new Terminal({
     allowProposedApi: true,
@@ -393,9 +436,9 @@ onMounted(async () => {
     cols: 110,
     rows: 30,
     // Styling options
-    fontFamily: "'Fira Code', monospace",
-    fontSize: 13,
-    theme: getTerminalTheme(),
+    fontFamily: `'${settingsStore.fontFamily}', monospace`,
+    fontSize: settingsStore.fontSize,
+    theme: theme,
   });
 
   const webglAddon = new WebglAddon();

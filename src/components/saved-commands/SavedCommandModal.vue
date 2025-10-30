@@ -15,14 +15,14 @@
       />
 
       <!-- Command -->
-      <Textarea
-        id="command-textarea"
+      <CodeEditor
+        id="command-editor"
         v-model="formData.command"
         label="Command"
-        placeholder="e.g., sudo apt update && sudo apt upgrade -y"
-        :rows="3"
-        rules="required|min:1"
-        size="md"
+        language="shell"
+        height="150px"
+        :error="commandError"
+        helper-text="Enter your shell command or script"
       />
 
       <!-- Description -->
@@ -79,9 +79,9 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
-import Textarea from "../ui/Textarea.vue";
 import Select from "../ui/Select.vue";
 import TagInput from "../ui/TagInput.vue";
+import CodeEditor from "../ui/CodeEditor.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
 import { safeJsonParse, safeJsonStringify } from "../../utils/helpers";
@@ -119,6 +119,7 @@ const defaultGroupId = getOverlayProp(
 
 const commandForm = ref<InstanceType<typeof Form> | null>(null);
 const loading = ref(false);
+const commandError = ref<string>("");
 
 const formData = ref({
   name: "",
@@ -131,6 +132,16 @@ const formData = ref({
 const parsedTags = ref<string[]>([]);
 
 const isEditing = computed(() => !!commandId.value);
+
+// Clear command error when user starts typing
+watch(
+  () => formData.value.command,
+  () => {
+    if (commandError.value) {
+      commandError.value = "";
+    }
+  }
+);
 
 const loadCommand = async () => {
   if (!commandId.value) return;
@@ -158,6 +169,13 @@ const loadCommand = async () => {
 };
 
 const handleSubmit = async () => {
+  // Validate command field
+  commandError.value = "";
+  if (!formData.value.command || formData.value.command.trim().length === 0) {
+    commandError.value = "Command is required";
+    return;
+  }
+
   const isValid = await commandForm.value?.validate();
   if (!isValid) return;
 
@@ -205,6 +223,7 @@ const closeModal = () => {
     groupId: "",
     isFavorite: false,
   };
+  commandError.value = "";
   closeOverlay(props.modalId);
 };
 
@@ -227,6 +246,7 @@ watch(
         isFavorite: false,
       };
       parsedTags.value = [];
+      commandError.value = "";
     }
   },
   { immediate: true },

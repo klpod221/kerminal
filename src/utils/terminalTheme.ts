@@ -595,11 +595,22 @@ const THEMES = {
 } as const;
 
 export function getTerminalTheme(
-  themeName: keyof typeof THEMES = "Default",
+  themeName: keyof typeof THEMES | string = "Default",
+  customTheme?: TerminalTheme,
 ): TerminalTheme {
-  return THEMES[themeName] || THEMES["Default"];
+  // If custom theme is provided, use it
+  if (customTheme) {
+    return customTheme;
+  }
+  
+  // Otherwise, look up in built-in themes
+  return THEMES[themeName as keyof typeof THEMES] || THEMES["Default"];
 }
 
 export function getAvailableThemes(): (keyof typeof THEMES)[] {
   return Object.keys(THEMES) as (keyof typeof THEMES)[];
+}
+
+export function isBuiltInTheme(themeName: string): boolean {
+  return themeName in THEMES;
 }

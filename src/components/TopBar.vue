@@ -169,6 +169,20 @@
           @click="toggleOverlay('sync-manager-modal')"
         />
 
+        <!-- Theme Selector -->
+        <Button
+          title="Terminal Theme"
+          variant="ghost"
+          size="sm"
+          :icon="Palette"
+          :class="
+            isOverlayVisible('theme-selector-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('theme-selector-modal')"
+        />
+
         <!-- Master Password  -->
         <Button
           title="Master Password Settings"
@@ -261,11 +275,23 @@
                 <Shield :size="18" />
                 <span>Master Password</span>
               </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
+                :class="
+                  isOverlayVisible('theme-selector-modal') ? 'bg-gray-800' : ''
+                "
+                @click="handleMobileMenuClick('theme-selector-modal')"
+              >
+                <Palette :size="18" />
+                <span>Terminal Theme</span>
+              </button>
             </div>
           </div>
         </div>
       </Transition>
     </Teleport>
+
   </div>
 </template>
 
@@ -280,6 +306,7 @@ import {
   Terminal,
   Cloud,
   Menu,
+  Palette,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

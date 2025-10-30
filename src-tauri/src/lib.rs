@@ -33,6 +33,7 @@ pub fn main() {
             commands::buffer::get_buffer_stats,
             commands::buffer::cleanup_terminal_buffers,
             commands::system::get_user_hostname,
+            commands::system::get_system_fonts,
             commands::auth_events::notify_session_unlocked,
             commands::auth_events::notify_session_locked,
             commands::auth_events::get_auth_session_status,

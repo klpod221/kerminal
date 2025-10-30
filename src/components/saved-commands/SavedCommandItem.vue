@@ -62,12 +62,12 @@
       </div>
 
       <!-- Command preview -->
-      <div class="flex items-center gap-2">
-        <code
-          class="flex-1 text-xs text-gray-300 font-mono bg-black/30 px-2 py-1 rounded border border-gray-700/50 truncate"
-        >
-          {{ command.command }}
-        </code>
+      <div class="command-preview-container" @click.stop>
+        <SyntaxHighlight
+          :code="command.command"
+          language="shell"
+          class="command-preview-code"
+        />
       </div>
 
       <!-- Description -->
@@ -127,6 +127,7 @@ import type { SavedCommand } from "../../types/savedCommand";
 import { Copy, Star, Edit3, Trash2, Clock } from "lucide-vue-next";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
+import SyntaxHighlight from "../ui/SyntaxHighlight.vue";
 import { safeJsonParse } from "../../utils/helpers";
 import { formatRelativeTime as formatTime } from "../../utils/formatter";
 import { useWindowSize } from "../../composables/useWindowSize";
@@ -160,3 +161,40 @@ const parsedTags = computed(() => {
   return safeJsonParse<string[]>(props.command.tags, []);
 });
 </script>
+
+<style scoped>
+.command-preview-container {
+  position: relative;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  background-color: rgba(0, 0, 0, 0.3);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.command-preview-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.command-preview-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.command-preview-container::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+}
+
+.command-preview-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.5);
+}
+
+.command-preview-code {
+  margin: 0;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+</style>

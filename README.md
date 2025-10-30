@@ -371,11 +371,12 @@ If you encounter any issues or have questions:
 
 ## 🗺️ Roadmap
 
+- [x] Custom terminal themes and color schemes
+- [x] Custom terminal font settings
+- [x] Syntax highlighting for saved commands
 - [ ] SFTP file transfer integration
 - [ ] Session recording and playback
-- [ ] Custom themes and color schemes
 - [ ] Plugin system for extensions
-- [ ] Snippet manager with syntax highlighting
 - [ ] Cloud backup integration
 - [ ] Web-based version
 - [ ] Mobile app companion
