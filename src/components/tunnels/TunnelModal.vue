@@ -222,20 +222,22 @@
       <div class="flex justify-between w-full">
         <Button
           type="button"
-          variant="ghost"
+          variant="secondary"
           @click="closeOverlay('tunnel-modal')"
         >
           Cancel
         </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          :icon="isEditing ? Edit3 : Plus"
-          :loading="submitting"
-          @click="handleSubmit"
-        >
-          {{ isEditing ? "Update Tunnel" : "Create Tunnel" }}
-        </Button>
+        <div class="flex gap-2">
+          <Button
+            type="submit"
+            variant="primary"
+            :icon="isEditing ? Edit3 : Plus"
+            :loading="submitting"
+            @click="handleSubmit"
+          >
+            {{ isEditing ? "Update Tunnel" : "Create Tunnel" }}
+          </Button>
+        </div>
       </div>
     </template>
   </Modal>
@@ -286,7 +288,7 @@ const form = reactive({
   name: "",
   description: "",
   profileId: "",
-  tunnelType: "Remote" as TunnelType,
+  tunnelType: "Local" as TunnelType,
   localHost: "localhost",
   localPort: 8080,
   remoteHost: "localhost",
@@ -371,9 +373,17 @@ const closeModal = () => {
   closeOverlay("tunnel-modal");
 };
 
+// Track if we're initializing to prevent auto-reset
+let isInitializing = false;
+
 watch(
   () => form.tunnelType,
-  (newType) => {
+  (newType, oldType) => {
+    // Don't auto-adjust ports if we're initializing or type didn't actually change
+    if (isInitializing || newType === oldType) {
+      return;
+    }
+
     if (newType === "Dynamic") {
       form.localPort = 1080;
       form.remoteHost = "";
@@ -389,6 +399,8 @@ watch(
 );
 
 const initializeForm = () => {
+  isInitializing = true;
+
   if (tunnel.value) {
     form.name = tunnel.value.name;
     form.description = tunnel.value.description || "";
@@ -410,6 +422,11 @@ const initializeForm = () => {
     form.remotePort = 80;
     form.autoStart = false;
   }
+
+  // Reset flag after a tick to allow watchers to settle
+  setTimeout(() => {
+    isInitializing = false;
+  }, 0);
 };
 
 watch(

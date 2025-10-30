@@ -131,6 +131,7 @@ import SyntaxHighlight from "../ui/SyntaxHighlight.vue";
 import { safeJsonParse } from "../../utils/helpers";
 import { formatRelativeTime as formatTime } from "../../utils/formatter";
 import { useWindowSize } from "../../composables/useWindowSize";
+import { showConfirm } from "../../utils/message";
 
 const { isTouch } = useWindowSize();
 
@@ -149,10 +150,12 @@ const emit = defineEmits<{
   delete: [command: SavedCommand];
 }>();
 
-const handleDelete = () => {
-  if (
-    confirm(`Delete '${props.command.name}'? This action cannot be undone.`)
-  ) {
+const handleDelete = async () => {
+  const confirmed = await showConfirm(
+    "Delete Command",
+    `Delete '${props.command.name}'? This action cannot be undone.`,
+  );
+  if (confirmed) {
     emit("delete", props.command);
   }
 };

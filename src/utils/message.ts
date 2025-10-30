@@ -1,5 +1,6 @@
 import { createApp, App as VueApp } from "vue";
 import Message from "../components/ui/Message.vue";
+import { ask } from "@tauri-apps/plugin-dialog";
 
 export interface MessageOptions {
   type?: "success" | "error" | "warning" | "info" | "loading";
@@ -102,9 +103,9 @@ export function showInfo(content: string, title?: string): Promise<void> {
   return message.info(content, title);
 }
 
-export function showConfirm(title: string, content: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const confirmed = window.confirm(`${title}\n\n${content}`);
-    resolve(confirmed);
-  });
+export async function showConfirm(
+  title: string,
+  content: string,
+): Promise<boolean> {
+  return await ask(content, { title, kind: "warning" });
 }

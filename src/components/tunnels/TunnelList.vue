@@ -18,9 +18,6 @@
       <!-- Header -->
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-4">
-          <div class="text-sm text-gray-400">
-            {{ tunnelStore.tunnels.length }} tunnel(s) configured
-          </div>
           <div class="flex items-center gap-2">
             <Badge variant="success" size="sm" :dot="true">
               {{ activeTunnels.length }} active
@@ -77,15 +74,15 @@
               </div>
               <div class="flex items-center gap-1">
                 <Button
-                  v-if="tunnel.status === 'stopped'"
+                  v-if="tunnel.status === 'stopped' || tunnel.status === 'error'"
                   variant="ghost"
                   size="sm"
                   :icon="Play"
-                  title="Start tunnel"
+                  :title="tunnel.status === 'error' ? 'Retry tunnel' : 'Start tunnel'"
                   @click="startTunnel(tunnel)"
                 />
                 <Button
-                  v-else-if="tunnel.status === 'running'"
+                  v-else-if="tunnel.status === 'running' || tunnel.status === 'starting'"
                   variant="ghost"
                   size="sm"
                   :icon="Square"
@@ -96,7 +93,8 @@
                   variant="ghost"
                   size="sm"
                   :icon="Edit3"
-                  title="Edit tunnel"
+                  :disabled="tunnel.status === 'starting' || tunnel.status === 'running'"
+                  :title="tunnel.status === 'starting' || tunnel.status === 'running' ? 'Cannot edit while tunnel is active' : 'Edit tunnel'"
                   @click="openTunnelModal(tunnel)"
                 />
                 <Button
@@ -110,7 +108,8 @@
                   variant="ghost"
                   size="sm"
                   :icon="Trash2"
-                  title="Delete tunnel"
+                  :disabled="tunnel.status === 'starting' || tunnel.status === 'running'"
+                  :title="tunnel.status === 'starting' || tunnel.status === 'running' ? 'Cannot delete while tunnel is active' : 'Delete tunnel'"
                   @click="confirmDelete(tunnel)"
                 />
               </div>
@@ -159,11 +158,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import { useTunnelStore } from "../../stores/tunnel";
 import { useSSHStore } from "../../stores/ssh";
 import { useOverlay } from "../../composables/useOverlay";
 import type { TunnelWithStatus } from "../../types/tunnel";
+import { showConfirm } from "../../utils/message";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import Badge from "../ui/Badge.vue";
@@ -249,7 +249,8 @@ const duplicateTunnel = async (tunnel: TunnelWithStatus) => {
 };
 
 const confirmDelete = async (tunnel: TunnelWithStatus) => {
-  const confirmed = confirm(
+  const confirmed = await showConfirm(
+    "Delete Tunnel",
     `Are you sure you want to delete "${tunnel.name}"?\n\nThis action cannot be undone. The tunnel will be permanently removed.`,
   );
 
@@ -284,7 +285,32 @@ const getProfileName = (profileId: string) => {
   return profile?.name || "Unknown Profile";
 };
 
+let refreshInterval: ReturnType<typeof setInterval> | null = null;
+
 onMounted(async () => {
   await Promise.all([tunnelStore.loadTunnels(), sshStore.loadProfiles()]);
+
+  // Initial refresh after 500ms to catch auto-start tunnels status
+  setTimeout(async () => {
+    await tunnelStore.refreshAllTunnelStatus();
+  }, 500);
+
+  // Auto-refresh tunnel status every 2 seconds
+  refreshInterval = setInterval(async () => {
+    // Only refresh if there are tunnels with non-final status
+    const needsRefresh = tunnelStore.tunnels.some(
+      (t) => t.status === 'starting' || t.status === 'running'
+    );
+
+    if (needsRefresh) {
+      await tunnelStore.refreshAllTunnelStatus();
+    }
+  }, 2000);
+});
+
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
+  }
 });
 </script>

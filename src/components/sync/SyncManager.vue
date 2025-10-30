@@ -119,7 +119,7 @@ import DeviceManager from "./DeviceManager.vue";
 import ExternalDatabaseModal from "./ExternalDatabaseModal.vue";
 import ConflictResolutionModal from "./ConflictResolutionModal.vue";
 import { syncService } from "../../services/sync";
-import { message } from "../../utils/message";
+import { message, showConfirm } from "../../utils/message";
 import { getErrorMessage } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
 import { useOverlay } from "../../composables/useOverlay";
@@ -204,7 +204,8 @@ const confirmDeleteDatabase = async () => {
   const db = syncStore.databases.find((d) => d.id === selectedDatabaseId.value);
   if (!db) return;
 
-  const confirmed = await window.confirm(
+  const confirmed = await showConfirm(
+    "Delete Database",
     `Are you sure you want to delete "${db.name}"?\n\nThis will remove all sync configuration for this database. This action cannot be undone.`,
   );
 

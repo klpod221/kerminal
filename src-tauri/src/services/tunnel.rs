@@ -130,15 +130,11 @@ impl TunnelService {
             }
         };
 
-        let mut tunnel_with_status = TunnelWithStatus {
+        Ok(TunnelWithStatus {
             tunnel,
             status,
-            error_message: error_message.clone(),
-        };
-
-        tunnel_with_status.error_message = error_message;
-
-        Ok(tunnel_with_status)
+            error_message,
+        })
     }
 
     /// Update SSH tunnel
@@ -163,11 +159,27 @@ impl TunnelService {
 
     /// Start SSH tunnel
     pub async fn start_tunnel(&self, tunnel_id: String) -> Result<(), String> {
+        // Check if tunnel is already running (not in error state)
         {
             let active_tunnels = self.active_tunnels.read().await;
-            if active_tunnels.contains_key(&tunnel_id) {
-                return Err("Tunnel is already running".to_string());
+            if let Some(handle) = active_tunnels.get(&tunnel_id) {
+                let status = handle.status.read().await;
+                match *status {
+                    TunnelStatus::Running | TunnelStatus::Starting => {
+                        return Err("Tunnel is already running".to_string());
+                    }
+                    TunnelStatus::Error | TunnelStatus::Stopped => {
+                        // Allow restart from error or stopped state
+                        drop(status);
+                    }
+                }
             }
+        }
+
+        // Remove existing handle if in error/stopped state
+        {
+            let mut active_tunnels = self.active_tunnels.write().await;
+            active_tunnels.remove(&tunnel_id);
         }
 
         let tunnel = {
@@ -205,19 +217,45 @@ impl TunnelService {
         let profile_clone = profile.clone();
         let sessions_arc = self.ssh_sessions.clone();
         let tunnel_id_clone = tunnel_id.clone();
+        let active_tunnels_arc = self.active_tunnels.clone();
 
         tokio::spawn(async move {
-            if let Err(e) = Self::run_tunnel(
+            match Self::run_tunnel(
                 tunnel_clone,
                 profile_clone,
                 cancel_token,
-                status,
-                error_message,
+                status.clone(),
+                error_message.clone(),
                 sessions_arc,
             )
             .await
             {
-                eprintln!("Tunnel {} failed: {}", tunnel_id_clone, e);
+                Err(e) => {
+                    eprintln!("Tunnel {} failed: {}", tunnel_id_clone, e);
+
+                    // Ensure error status is set
+                    {
+                        let mut error_msg = error_message.write().await;
+                        if error_msg.is_none() {
+                            *error_msg = Some(e.to_string());
+                        }
+                    }
+
+                    {
+                        let mut status_guard = status.write().await;
+                        *status_guard = TunnelStatus::Error;
+                    }
+
+                    // Keep in active tunnels with error status so UI can show the error
+                    // User needs to manually stop/restart the tunnel
+                }
+                Ok(_) => {
+                    // Tunnel stopped normally (e.g., cancelled by user)
+                    // Remove from active tunnels
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    let mut active_tunnels = active_tunnels_arc.write().await;
+                    active_tunnels.remove(&tunnel_id_clone);
+                }
             }
         });
 
@@ -450,17 +488,25 @@ impl TunnelService {
 
     /// Start remote port forwarding
     async fn start_remote_forward(
-        _local_host: String,
-        _local_port: u16,
+        local_host: String,
+        local_port: u16,
         remote_host: String,
         remote_port: u16,
         session: Arc<Mutex<Handle<SSHClientHandler>>>,
         cancel_token: CancellationToken,
     ) -> Result<()> {
+        // For remote forwarding, bind address should be empty string or "0.0.0.0"
+        // to allow SSH server to bind on appropriate interface
+        let bind_address = if remote_host == "localhost" || remote_host == "127.0.0.1" {
+            "127.0.0.1"
+        } else {
+            ""  // Empty string lets SSH server decide
+        };
+
         let forwarded_port = {
             let mut session_guard = session.lock().await;
             match session_guard
-                .tcpip_forward(&remote_host, remote_port as u32)
+                .tcpip_forward(bind_address, remote_port as u32)
                 .await
             {
                 Ok(port) => port,
@@ -479,7 +525,11 @@ impl TunnelService {
             remote_port
         };
 
-        let _connection_count = 0u32;
+        eprintln!("✅ Remote port forwarding established: {}:{} -> {}:{}",
+                  bind_address, actual_port, local_host, local_port);
+
+        let bind_address_clone = bind_address.to_string();
+
         let mut heartbeat_counter = 0u32;
         let heartbeat_interval = 120; // 60 seconds (500ms * 120)
 
@@ -488,11 +538,13 @@ impl TunnelService {
                 _ = cancel_token.cancelled() => {
                     let cancel_result = {
                         let session_guard = session.lock().await;
-                        session_guard.cancel_tcpip_forward(&remote_host, actual_port as u32).await
+                        session_guard.cancel_tcpip_forward(&bind_address_clone, actual_port as u32).await
                     };
 
                     match cancel_result {
-                        Ok(_) => {},
+                        Ok(_) => {
+                            eprintln!("✅ Remote port forwarding cancelled: {}:{}", bind_address_clone, actual_port);
+                        },
                         Err(e) => {
                             eprintln!("❌ Failed to cancel remote port forwarding: {}", e);
                         }
@@ -502,6 +554,7 @@ impl TunnelService {
                 _ = tokio::time::sleep(tokio::time::Duration::from_millis(500)) => {
                     heartbeat_counter += 1;
 
+                    // Health check every 5 minutes
                     if heartbeat_counter.is_multiple_of(heartbeat_interval * 5) {
                         let health_check_result = {
                             let session_guard = session.lock().await;

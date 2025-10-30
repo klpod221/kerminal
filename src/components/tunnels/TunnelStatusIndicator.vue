@@ -21,6 +21,8 @@ const statusColor = computed(() => {
   switch (props.status) {
     case "running":
       return "bg-green-500";
+    case "starting":
+      return "bg-yellow-500 animate-pulse";
     case "stopped":
       return "bg-gray-500";
     case "error":
@@ -34,6 +36,8 @@ const textColor = computed(() => {
   switch (props.status) {
     case "running":
       return "text-green-400";
+    case "starting":
+      return "text-yellow-400";
     case "stopped":
       return "text-gray-400";
     case "error":

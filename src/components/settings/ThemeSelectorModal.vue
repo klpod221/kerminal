@@ -210,7 +210,7 @@ import Card from "../ui/Card.vue";
 import { useSettingsStore } from "../../stores/settings";
 import { getTerminalTheme } from "../../utils/terminalTheme";
 import { useOverlay } from "../../composables/useOverlay";
-import { message } from "../../utils/message";
+import { message, showConfirm } from "../../utils/message";
 
 const settingsStore = useSettingsStore();
 const { openOverlay } = useOverlay();
@@ -248,7 +248,10 @@ const handleDeleteTheme = async (themeName: string) => {
   if (!customTheme) return;
 
   // Confirm before delete
-  const confirmed = confirm(`Are you sure you want to delete "${themeName}" theme?`);
+  const confirmed = await showConfirm(
+    "Delete Theme",
+    `Are you sure you want to delete "${themeName}" theme?`,
+  );
   if (!confirmed) return;
 
   try {

@@ -77,6 +77,16 @@ export const useTunnelStore = defineStore("tunnel", () => {
 
     try {
       const tunnel = await tunnelService.updateTunnel(id, request);
+      // Optimistically mark as stopped to avoid stale "starting" state after edits
+      const idx = tunnels.value.findIndex((t) => t?.id === id);
+      if (idx !== -1) {
+        tunnels.value[idx] = {
+          ...(tunnels.value[idx] as any),
+          ...tunnel,
+          status: "stopped",
+          errorMessage: undefined,
+        } as any;
+      }
       await loadTunnels(); // Reload to get updated data
       return tunnel;
     } catch (err) {

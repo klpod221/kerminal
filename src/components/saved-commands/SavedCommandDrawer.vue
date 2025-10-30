@@ -241,7 +241,7 @@ import SavedCommandGroupModal from "./SavedCommandGroupModal.vue";
 
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
-import { message } from "../../utils/message";
+import { message, showConfirm } from "../../utils/message";
 import type {
   SavedCommand,
   SavedCommandGroup,
@@ -415,12 +415,12 @@ const deleteCommand = async (command: SavedCommand) => {
   }
 };
 
-const confirmDeleteGroup = (group: SavedCommandGroup) => {
-  if (
-    confirm(
-      `Delete group '${group.name}'? Commands in this group will be moved to ungrouped.`,
-    )
-  ) {
+const confirmDeleteGroup = async (group: SavedCommandGroup) => {
+  const confirmed = await showConfirm(
+    "Delete Group",
+    `Delete group '${group.name}'? Commands in this group will be moved to ungrouped.`,
+  );
+  if (confirmed) {
     deleteGroup(group);
   }
 };

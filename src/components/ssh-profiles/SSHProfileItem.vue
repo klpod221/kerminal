@@ -57,6 +57,7 @@ import type { SSHProfile } from "../../types/ssh";
 import Button from "../ui/Button.vue";
 import { Edit3, Trash2 } from "lucide-vue-next";
 import { useWindowSize } from "../../composables/useWindowSize";
+import { showConfirm } from "../../utils/message";
 
 const { isTouch } = useWindowSize();
 
@@ -74,10 +75,12 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const handleDelete = () => {
-  if (
-    confirm(`Delete '${props.profile.name}'? This action cannot be undone.`)
-  ) {
+const handleDelete = async () => {
+  const confirmed = await showConfirm(
+    "Delete Profile",
+    `Delete '${props.profile.name}'? This action cannot be undone.`,
+  );
+  if (confirmed) {
     emit("delete", props.profile);
   }
 };

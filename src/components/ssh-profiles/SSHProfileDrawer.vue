@@ -215,6 +215,7 @@ import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { caseInsensitiveIncludes } from "../../utils/helpers";
+import { showConfirm } from "../../utils/message";
 
 const searchQuery = ref("");
 
@@ -348,12 +349,12 @@ const editGroup = (group: SSHGroup) => {
   openOverlay("ssh-group-modal", { sshGroupId: group.id });
 };
 
-const confirmDeleteGroup = (group: SSHGroup) => {
-  if (
-    confirm(
-      `Delete group '${group.name}'? Profiles in this group will be moved to ungrouped.`,
-    )
-  ) {
+const confirmDeleteGroup = async (group: SSHGroup) => {
+  const confirmed = await showConfirm(
+    "Delete Group",
+    `Delete group '${group.name}'? Profiles in this group will be moved to ungrouped.`,
+  );
+  if (confirmed) {
     deleteGroup(group);
   }
 };

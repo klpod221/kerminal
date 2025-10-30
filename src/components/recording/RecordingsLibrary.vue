@@ -128,7 +128,7 @@ import Input from '../ui/Input.vue';
 import EmptyState from '../ui/EmptyState.vue';
 import { useRecordingStore } from '../../stores/recording';
 import { useOverlay } from '../../composables/useOverlay';
-import { message } from '../../utils/message';
+import { message, showConfirm } from '../../utils/message';
 import type { SessionRecording } from '../../types/recording';
 
 const recordingStore = useRecordingStore();
@@ -226,15 +226,14 @@ async function handleExport(recording: SessionRecording) {
   }
 }
 
-function confirmDelete(recording: SessionRecording) {
-  const confirmMessage = `Are you sure you want to delete "${recording.sessionName}"?\n\nThis action cannot be undone.`;
-  if (confirm(confirmMessage)) {
+async function handleDelete(recording: SessionRecording) {
+  const confirmed = await showConfirm(
+    "Delete Recording",
+    `Are you sure you want to delete "${recording.sessionName}"?\n\nThis action cannot be undone.`,
+  );
+  if (confirmed) {
     deleteRecording(recording);
   }
-}
-
-async function handleDelete(recording: SessionRecording) {
-  confirmDelete(recording);
 }
 
 async function deleteRecording(recording: SessionRecording) {

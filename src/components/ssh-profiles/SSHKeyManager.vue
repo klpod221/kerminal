@@ -126,6 +126,7 @@ import { Key, Plus, Edit3, Trash2 } from "lucide-vue-next";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import type { SSHKey } from "../../types/ssh";
+import { showConfirm } from "../../utils/message";
 
 const sshKeyStore = useSshKeyStore();
 const { openOverlay, isOverlayVisible } = useOverlay();
@@ -142,7 +143,7 @@ const confirmDelete = async (key: SSHKey) => {
     confirmMessage += `\n\nWarning: This key is currently used by ${count} profile(s). Deleting it may affect SSH connections.`;
   }
 
-  const confirmed = confirm(confirmMessage);
+  const confirmed = await showConfirm("Delete SSH Key", confirmMessage);
 
   if (confirmed) {
     try {

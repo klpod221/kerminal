@@ -51,11 +51,14 @@ class ApiClient {
           params[paramName] = arg;
         });
 
+      // Debug logging (disabled in production)
+      if (import.meta.env.DEV) {
         console.log(`🔍 API Debug - Command: ${command}`, {
           args,
           paramNames,
           params,
         });
+      }
 
         return await invoke<T>(command, params);
       }
