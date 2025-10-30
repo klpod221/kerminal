@@ -11,7 +11,7 @@ import type {
   CurrentDevice,
 } from "../types/auth";
 import * as masterPasswordService from "../services/auth";
-import { realtimeService } from "../services/realtime";
+import { api } from "../services/api";
 
 /**
  * Authentication Store
@@ -249,12 +249,19 @@ export const useAuthStore = defineStore("auth", () => {
   const startAuthRealtime = async (): Promise<void> => {
     if (unsubscribeAuthRealtime) return;
     try {
-      unsubscribeAuthRealtime = await realtimeService.subscribeAuth(
-        async () => {
-          await checkStatus();
-          startSessionCountdown();
-        },
-      );
+      const u1 = await api.listen<any>("auth_session_unlocked", async () => {
+        await checkStatus();
+        startSessionCountdown();
+      });
+      const u2 = await api.listen<any>("auth_session_locked", async () => {
+        await checkStatus();
+        startSessionCountdown();
+      });
+      const u3 = await api.listen<any>("auth_session_updated", async () => {
+        await checkStatus();
+        startSessionCountdown();
+      });
+      unsubscribeAuthRealtime = () => { u1(); u2(); u3(); };
     } catch (e) {
       console.error("Failed to subscribe to auth realtime events:", e);
     }

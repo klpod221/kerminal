@@ -7,6 +7,7 @@ import type {
   UpdateSSHTunnelRequest,
 } from "../types/tunnel";
 import { tunnelService } from "../services/tunnel";
+import { api } from "../services/api";
 
 export const useTunnelStore = defineStore("tunnel", () => {
   const tunnels = ref<TunnelWithStatus[]>([]);
@@ -239,6 +240,26 @@ export const useTunnelStore = defineStore("tunnel", () => {
     tunnels.value = tunnels.value.filter((t) => t?.id !== id);
   };
 
+  // Realtime: status updates from backend
+  let unsubscribeStatusRealtime: (() => void) | null = null;
+  const startRealtimeStatus = async (): Promise<void> => {
+    if (unsubscribeStatusRealtime) return;
+    try {
+      const u1 = await api.listen<TunnelWithStatus>("tunnel_started", (t) => upsertTunnel(t));
+      const u2 = await api.listen<TunnelWithStatus>("tunnel_stopped", (t) => upsertTunnel(t));
+      const u3 = await api.listen<TunnelWithStatus>("tunnel_status_changed", (t) => upsertTunnel(t));
+      unsubscribeStatusRealtime = () => { u1(); u2(); u3(); };
+    } catch (e) {
+      console.error("Failed to subscribe tunnel status realtime:", e);
+    }
+  };
+  const stopRealtimeStatus = (): void => {
+    if (unsubscribeStatusRealtime) {
+      unsubscribeStatusRealtime();
+      unsubscribeStatusRealtime = null;
+    }
+  };
+
   return {
     tunnels,
     loading,
@@ -262,5 +283,7 @@ export const useTunnelStore = defineStore("tunnel", () => {
     upsertTunnel,
     setTunnelStatus,
     removeTunnel,
+    startRealtimeStatus,
+    stopRealtimeStatus,
   };
 });

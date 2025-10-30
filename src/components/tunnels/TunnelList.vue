@@ -179,7 +179,7 @@ import {
   Play,
   Square,
 } from "lucide-vue-next";
-import { realtimeService } from "../../services/realtime";
+// Realtime handled by tunnel store
 
 const tunnelStore = useTunnelStore();
 const sshStore = useSSHStore();
@@ -286,31 +286,14 @@ const getProfileName = (profileId: string) => {
   return profile?.name || "Unknown Profile";
 };
 
-let unsubscribeRealtime: (() => void) | null = null;
+// no local realtime unsubscribe needed; handled by store
 
 onMounted(async () => {
   await Promise.all([tunnelStore.loadTunnels(), sshStore.loadProfiles()]);
 
-  // Realtime subscribe via Tauri events
-  try {
-    unsubscribeRealtime = await realtimeService.subscribeTunnels((evt) => {
-      if (
-        evt.type === "tunnel_started" ||
-        evt.type === "tunnel_stopped" ||
-        evt.type === "tunnel_status_changed"
-      ) {
-        tunnelStore.upsertTunnel(evt.tunnel);
-      }
-    });
-  } catch (e) {
-    console.error("Failed to subscribe to tunnel realtime events:", e);
-  }
+  // Ensure store realtime is active
+  await tunnelStore.startRealtimeStatus();
 });
 
-onUnmounted(() => {
-  if (unsubscribeRealtime) {
-    unsubscribeRealtime();
-    unsubscribeRealtime = null;
-  }
-});
+onUnmounted(() => {});
 </script>
