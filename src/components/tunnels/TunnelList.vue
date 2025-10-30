@@ -179,6 +179,7 @@ import {
   Play,
   Square,
 } from "lucide-vue-next";
+import { realtimeService } from "../../services/realtime";
 
 const tunnelStore = useTunnelStore();
 const sshStore = useSSHStore();
@@ -285,32 +286,31 @@ const getProfileName = (profileId: string) => {
   return profile?.name || "Unknown Profile";
 };
 
-let refreshInterval: ReturnType<typeof setInterval> | null = null;
+let unsubscribeRealtime: (() => void) | null = null;
 
 onMounted(async () => {
   await Promise.all([tunnelStore.loadTunnels(), sshStore.loadProfiles()]);
 
-  // Initial refresh after 500ms to catch auto-start tunnels status
-  setTimeout(async () => {
-    await tunnelStore.refreshAllTunnelStatus();
-  }, 500);
-
-  // Auto-refresh tunnel status every 2 seconds
-  refreshInterval = setInterval(async () => {
-    // Only refresh if there are tunnels with non-final status
-    const needsRefresh = tunnelStore.tunnels.some(
-      (t) => t.status === 'starting' || t.status === 'running'
-    );
-
-    if (needsRefresh) {
-      await tunnelStore.refreshAllTunnelStatus();
-    }
-  }, 2000);
+  // Realtime subscribe via Tauri events
+  try {
+    unsubscribeRealtime = await realtimeService.subscribeTunnels((evt) => {
+      if (
+        evt.type === "tunnel_started" ||
+        evt.type === "tunnel_stopped" ||
+        evt.type === "tunnel_status_changed"
+      ) {
+        tunnelStore.upsertTunnel(evt.tunnel);
+      }
+    });
+  } catch (e) {
+    console.error("Failed to subscribe to tunnel realtime events:", e);
+  }
 });
 
 onUnmounted(() => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
+  if (unsubscribeRealtime) {
+    unsubscribeRealtime();
+    unsubscribeRealtime = null;
   }
 });
 </script>

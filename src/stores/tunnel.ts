@@ -209,6 +209,36 @@ export const useTunnelStore = defineStore("tunnel", () => {
     error.value = null;
   };
 
+  // Realtime helpers
+  const upsertTunnel = (updated: TunnelWithStatus) => {
+    if (!updated?.id) return;
+    const index = tunnels.value.findIndex((t) => t?.id === updated.id);
+    if (index === -1) {
+      tunnels.value = [...tunnels.value, updated];
+    } else {
+      tunnels.value[index] = { ...tunnels.value[index], ...updated } as any;
+    }
+  };
+
+  const setTunnelStatus = (
+    id: string,
+    status: TunnelWithStatus["status"],
+    errorMessage?: string,
+  ) => {
+    const index = tunnels.value.findIndex((t) => t?.id === id);
+    if (index !== -1) {
+      tunnels.value[index] = {
+        ...tunnels.value[index]!,
+        status,
+        errorMessage,
+      } as any;
+    }
+  };
+
+  const removeTunnel = (id: string) => {
+    tunnels.value = tunnels.value.filter((t) => t?.id !== id);
+  };
+
   return {
     tunnels,
     loading,
@@ -229,5 +259,8 @@ export const useTunnelStore = defineStore("tunnel", () => {
     refreshTunnelStatus,
     refreshAllTunnelStatus,
     clearError,
+    upsertTunnel,
+    setTunnelStatus,
+    removeTunnel,
   };
 });

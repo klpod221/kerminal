@@ -11,6 +11,7 @@ import type {
   CurrentDevice,
 } from "../types/auth";
 import * as masterPasswordService from "../services/auth";
+import { realtimeService } from "../services/realtime";
 
 /**
  * Authentication Store
@@ -41,8 +42,11 @@ export const useAuthStore = defineStore("auth", () => {
   });
 
   let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
+  // Removed backend polling; realtime only
+  let sessionCountdownInterval: ReturnType<typeof setInterval> | null = null;
+  let unsubscribeAuthRealtime: (() => void) | null = null;
 
-  let sessionCheckInterval: ReturnType<typeof setInterval> | null = null;
+  const sessionRemainingMs = ref<number>(0);
 
   const isAuthenticated = computed(() => status.value.isUnlocked);
   const requiresSetup = computed(() => !status.value.isSetup);
@@ -72,13 +76,7 @@ export const useAuthStore = defineStore("auth", () => {
   /**
    * Check if current session is valid (not expired)
    */
-  const checkSessionValidity = async (): Promise<boolean> => {
-    const isValid = await masterPasswordService.isSessionValid();
-    if (!isValid && status.value.isUnlocked) {
-      await checkStatus();
-    }
-    return isValid;
-  };
+  // Realtime-only: no periodic validity polling
 
   /**
    * Setup master password for the first time
@@ -98,7 +96,6 @@ export const useAuthStore = defineStore("auth", () => {
 
       if (status.value.isUnlocked) {
         setupAutoLockTimer();
-        startSessionValidityCheck();
       }
     } else {
       await lock();
@@ -122,8 +119,6 @@ export const useAuthStore = defineStore("auth", () => {
       if (isValid) {
         setupAutoLockTimer();
 
-        startSessionValidityCheck();
-
         return true;
       } else {
         return false;
@@ -139,7 +134,6 @@ export const useAuthStore = defineStore("auth", () => {
    */
   const lock = async (): Promise<void> => {
     clearAutoLockTimer();
-    stopSessionValidityCheck();
 
     await masterPasswordService.lock();
 
@@ -183,8 +177,6 @@ export const useAuthStore = defineStore("auth", () => {
 
     setupAutoLockTimer();
 
-    startSessionValidityCheck();
-
     return true;
   };
 
@@ -198,7 +190,6 @@ export const useAuthStore = defineStore("auth", () => {
 
     if (status.value.isUnlocked) {
       setupAutoLockTimer();
-      startSessionValidityCheck();
       return true; // Return true if we are actually unlocked
     }
 
@@ -227,25 +218,51 @@ export const useAuthStore = defineStore("auth", () => {
   /**
    * Start periodic session validity check
    */
-  const startSessionValidityCheck = (): void => {
-    stopSessionValidityCheck();
+  // Removed periodic session validity check
 
-    if (status.value.isUnlocked) {
-      sessionCheckInterval = setInterval(async () => {
-        if (status.value.isUnlocked) {
-          await checkSessionValidity();
-        }
-      }, 30000); // Check every 30 seconds
-    }
+  const startSessionCountdown = (): void => {
+    stopSessionCountdown();
+    if (!status.value.sessionExpiresAt) return;
+
+    const update = () => {
+      if (!status.value.sessionExpiresAt) {
+        sessionRemainingMs.value = 0;
+        return;
+      }
+      const expires = new Date(status.value.sessionExpiresAt).getTime();
+      const now = Date.now();
+      sessionRemainingMs.value = Math.max(0, expires - now);
+    };
+
+    update();
+    sessionCountdownInterval = setInterval(update, 1000);
   };
 
-  /**
-   * Stop periodic session validity check
-   */
-  const stopSessionValidityCheck = (): void => {
-    if (sessionCheckInterval) {
-      clearInterval(sessionCheckInterval);
-      sessionCheckInterval = null;
+  const stopSessionCountdown = (): void => {
+    if (sessionCountdownInterval) {
+      clearInterval(sessionCountdownInterval);
+      sessionCountdownInterval = null;
+    }
+    sessionRemainingMs.value = 0;
+  };
+
+  const startAuthRealtime = async (): Promise<void> => {
+    if (unsubscribeAuthRealtime) return;
+    try {
+      unsubscribeAuthRealtime = await realtimeService.subscribeAuth(
+        async () => {
+          await checkStatus();
+          startSessionCountdown();
+        },
+      );
+    } catch (e) {
+      console.error("Failed to subscribe to auth realtime events:", e);
+    }
+  };
+  const stopAuthRealtime = (): void => {
+    if (unsubscribeAuthRealtime) {
+      unsubscribeAuthRealtime();
+      unsubscribeAuthRealtime = null;
     }
   };
 
@@ -279,8 +296,10 @@ export const useAuthStore = defineStore("auth", () => {
 
     if (status.value.isUnlocked) {
       setupAutoLockTimer();
-      startSessionValidityCheck();
+      startSessionCountdown();
     }
+
+    await startAuthRealtime();
   };
 
   /**
@@ -314,20 +333,21 @@ export const useAuthStore = defineStore("auth", () => {
    */
   const cleanup = (): void => {
     clearAutoLockTimer();
-    stopSessionValidityCheck();
+    stopSessionCountdown();
+    stopAuthRealtime();
   };
 
   return {
     status,
     securitySettings,
     currentDevice,
+    sessionRemainingMs,
 
     isAuthenticated,
     requiresSetup,
     requiresUnlock,
 
     checkStatus,
-    checkSessionValidity,
     loadSecuritySettings,
     setupMasterPassword,
     unlock,
