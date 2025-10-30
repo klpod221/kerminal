@@ -359,6 +359,39 @@ impl Database for SQLiteProvider {
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS session_recordings (
+                id TEXT PRIMARY KEY,
+                terminal_id TEXT,
+                session_name TEXT NOT NULL,
+                terminal_type TEXT NOT NULL,
+                started_at TEXT NOT NULL,
+                ended_at TEXT,
+                duration_ms INTEGER,
+                file_path TEXT NOT NULL,
+                file_size INTEGER NOT NULL DEFAULT 0,
+                width INTEGER NOT NULL DEFAULT 80,
+                height INTEGER NOT NULL DEFAULT 24,
+                metadata TEXT,
+                created_at TEXT NOT NULL
+            )
+            "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        sqlx::query(
+            r#"
+            CREATE INDEX IF NOT EXISTS idx_recordings_started_at
+            ON session_recordings(started_at DESC)
+            "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
         Ok(())
     }
 
@@ -787,6 +820,182 @@ impl SQLiteProvider {
         .execute(&*pool_guard)
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    // Session recording operations
+    pub async fn save_session_recording(
+        &self,
+        recording: &crate::models::recording::SessionRecording,
+    ) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool_guard = pool.read().await;
+
+        sqlx::query(
+            r#"
+            INSERT OR REPLACE INTO session_recordings (
+                id, terminal_id, session_name, terminal_type, started_at, ended_at,
+                duration_ms, file_path, file_size, width, height, metadata, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            "#,
+        )
+        .bind(&recording.id)
+        .bind(&recording.terminal_id)
+        .bind(&recording.session_name)
+        .bind(&recording.terminal_type)
+        .bind(recording.started_at.to_rfc3339())
+        .bind(recording.ended_at.as_ref().map(|dt| dt.to_rfc3339()))
+        .bind(recording.duration_ms)
+        .bind(&recording.file_path)
+        .bind(recording.file_size)
+        .bind(recording.width as i32)
+        .bind(recording.height as i32)
+        .bind(&recording.metadata)
+        .bind(recording.created_at.to_rfc3339())
+        .execute(&*pool_guard)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn get_session_recording(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::recording::SessionRecording>> {
+        let pool = self.get_pool()?;
+        let pool_guard = pool.read().await;
+
+        let result = sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                String,
+                String,
+                Option<String>,
+                Option<i64>,
+                String,
+                i64,
+                i32,
+                i32,
+                Option<String>,
+                String,
+            ),
+        >(
+            r#"
+            SELECT id, terminal_id, session_name, terminal_type, started_at, ended_at,
+                   duration_ms, file_path, file_size, width, height, metadata, created_at
+            FROM session_recordings
+            WHERE id = ?
+            "#,
+        )
+        .bind(id)
+        .fetch_optional(&*pool_guard)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(
+            result.map(|row| crate::models::recording::SessionRecording {
+                id: row.0,
+                terminal_id: row.1,
+                session_name: row.2,
+                terminal_type: row.3,
+                started_at: chrono::DateTime::parse_from_rfc3339(&row.4)
+                    .unwrap()
+                    .with_timezone(&chrono::Utc),
+                ended_at: row.5.and_then(|s| {
+                    chrono::DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                }),
+                duration_ms: row.6,
+                file_path: row.7,
+                file_size: row.8,
+                width: row.9 as u16,
+                height: row.10 as u16,
+                metadata: row.11,
+                created_at: chrono::DateTime::parse_from_rfc3339(&row.12)
+                    .unwrap()
+                    .with_timezone(&chrono::Utc),
+            }),
+        )
+    }
+
+    pub async fn list_session_recordings(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::recording::SessionRecording>> {
+        let pool = self.get_pool()?;
+        let pool_guard = pool.read().await;
+
+        let results = sqlx::query_as::<
+            _,
+            (
+                String,
+                String,
+                String,
+                String,
+                String,
+                Option<String>,
+                Option<i64>,
+                String,
+                i64,
+                i32,
+                i32,
+                Option<String>,
+                String,
+            ),
+        >(
+            r#"
+            SELECT id, terminal_id, session_name, terminal_type, started_at, ended_at,
+                   duration_ms, file_path, file_size, width, height, metadata, created_at
+            FROM session_recordings
+            ORDER BY started_at DESC
+            "#,
+        )
+        .fetch_all(&*pool_guard)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(results
+            .into_iter()
+            .map(|row| crate::models::recording::SessionRecording {
+                id: row.0,
+                terminal_id: row.1,
+                session_name: row.2,
+                terminal_type: row.3,
+                started_at: chrono::DateTime::parse_from_rfc3339(&row.4)
+                    .unwrap()
+                    .with_timezone(&chrono::Utc),
+                ended_at: row.5.and_then(|s| {
+                    chrono::DateTime::parse_from_rfc3339(&s)
+                        .ok()
+                        .map(|dt| dt.with_timezone(&chrono::Utc))
+                }),
+                duration_ms: row.6,
+                file_path: row.7,
+                file_size: row.8,
+                width: row.9 as u16,
+                height: row.10 as u16,
+                metadata: row.11,
+                created_at: chrono::DateTime::parse_from_rfc3339(&row.12)
+                    .unwrap()
+                    .with_timezone(&chrono::Utc),
+            })
+            .collect())
+    }
+
+    pub async fn delete_session_recording(&self, id: &str) -> DatabaseResult<()> {
+        let pool = self.get_pool()?;
+        let pool_guard = pool.read().await;
+
+        sqlx::query("DELETE FROM session_recordings WHERE id = ?")
+            .bind(id)
+            .execute(&*pool_guard)
+            .await
+            .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
         Ok(())
     }

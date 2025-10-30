@@ -18,6 +18,8 @@
 
         <SavedCommandManager />
 
+        <RecordingsManager />
+
         <TunnelManager />
 
         <SyncManager />
@@ -38,6 +40,7 @@ import Dashboard from "./components/Dashboard.vue";
 import Workspace from "./components/Workspace.vue";
 import SSHProfileManager from "./components/ssh-profiles/SSHProfileManager.vue";
 import SavedCommandManager from "./components/saved-commands/SavedCommandManager.vue";
+import RecordingsManager from "./components/recording/RecordingsManager.vue";
 import TunnelManager from "./components/tunnels/TunnelManager.vue";
 import SyncManager from "./components/sync/SyncManager.vue";
 import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";

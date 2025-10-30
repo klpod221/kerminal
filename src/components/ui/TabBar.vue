@@ -75,6 +75,7 @@
               :panel-id="panel.id"
               :is-active="tab.id === panel.activeTabId"
               :is-connecting="getTerminalConnectingState(tab.id)"
+              :backend-terminal-id="getBackendTerminalId(tab.id)"
               :min-width="tabMinWidth"
               :max-width="tabMaxWidth"
               @select="selectTab(tab.id)"
@@ -101,6 +102,11 @@
             />
           </Transition>
         </div>
+      </div>
+
+      <!-- Recording Controls -->
+      <div v-if="activeBackendTerminalId" class="shrink-0 flex items-center px-1">
+        <RecordingControls :terminal-id="activeBackendTerminalId" />
       </div>
 
       <!-- Right scroll button -->
@@ -196,6 +202,7 @@ import {
 } from "lucide-vue-next";
 import Tab from "./Tab.vue";
 import Button from "./Button.vue";
+import RecordingControls from "../recording/RecordingControls.vue";
 import { useWindowSize } from "../../composables/useWindowSize";
 import { safeJsonParse } from "../../utils/helpers";
 import type {
@@ -248,6 +255,22 @@ const canScrollRight = computed(
   () => scrollOffset.value > -maxScrollOffset.value,
 );
 const showScrollButtons = computed(() => maxScrollOffset.value > 0);
+
+/**
+ * Get backend terminal ID for a tab
+ */
+const getBackendTerminalId = (tabId: string): string | undefined => {
+  const terminal = props.terminals.find((t) => t.id === tabId);
+  return terminal?.backendTerminalId;
+};
+
+/**
+ * Get backend terminal ID for the active tab
+ */
+const activeBackendTerminalId = computed(() => {
+  if (!props.panel.activeTabId) return null;
+  return getBackendTerminalId(props.panel.activeTabId);
+});
 
 /**
  * Set the ref for a tab element.

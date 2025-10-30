@@ -27,6 +27,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
   - [📡 SSH Management](#-ssh-management)
   - [🔐 Security \& Sync](#-security--sync)
   - [💾 Saved Commands](#-saved-commands)
+  - [📹 Session Recording \& Playback](#-session-recording--playback)
   - [🎨 User Interface](#-user-interface)
   - [📡 SSH Features](#-ssh-features)
   - [🔀 SSH Tunneling](#-ssh-tunneling)
@@ -42,6 +43,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [📖 Usage](#-usage)
   - [Initial Setup](#initial-setup)
   - [Using as Terminal Emulator](#using-as-terminal-emulator)
+  - [Recording Terminal Sessions](#recording-terminal-sessions)
   - [Creating SSH Connections](#creating-ssh-connections)
   - [SSH Tunneling](#ssh-tunneling)
   - [Multi-Device Sync](#multi-device-sync)
@@ -78,7 +80,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - Native shell integration (bash, zsh, fish, PowerShell, etc.)
 - WebGL-accelerated rendering with Unicode 11 support
 - Search, clickable links, clipboard integration
-- Session persistence and custom working directories
+- Record terminal sessions in asciicast format with full playback controls
 
 ### 📡 SSH Management
 - Profile organization with groups, colors, and descriptions
@@ -97,6 +99,14 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - Command library with groups and descriptions
 - Usage tracking, favorites, and quick access shortcuts
 - Variable substitution for dynamic execution
+
+### 📹 Session Recording & Playback
+- **Record Terminal Sessions**: Capture all terminal output in standard asciicast v2 format
+- **Playback with Controls**: Play, pause, seek, and adjust playback speed
+- **Session Management**: View, organize, and search recorded sessions
+- **Export Capabilities**: Export recordings for sharing or archiving
+- **Metadata Tracking**: Store session info (name, duration, terminal type, dimensions)
+- **Asciinema Compatible**: Recordings work with standard asciinema tools
 
 ### 🎨 User Interface
 - Modern dark theme with responsive layout
@@ -224,6 +234,19 @@ The application will be available in `src-tauri/target/release/bundle/`.
 4. **Custom Shell**: Configure your preferred shell in terminal settings
 5. **Working Directory**: Start terminals in project directories for quick access
 
+### Recording Terminal Sessions
+
+1. Click the **Record** button on any terminal tab
+2. Perform your terminal operations (commands will be captured)
+3. Click **Stop** to end recording
+4. Access recordings via **Recordings Manager**
+5. **Playback** recordings with full controls:
+   - Play/pause playback
+   - Seek to any point in the timeline
+   - Adjust playback speed (0.5x - 4x)
+   - View session metadata
+6. **Export** recordings in asciicast format for sharing
+
 ### Creating SSH Connections
 
 1. Navigate to **SSH Profiles** manager
@@ -261,6 +284,7 @@ The application will be available in `src-tauri/target/release/bundle/`.
 - **Frontend**: Vue 3 with Composition API, Pinia stores, TypeScript
 - **Backend**: Rust with Tauri v2, async/await with Tokio
 - **Terminal**: xterm.js with WebGL renderer and addons
+- **Recording**: asciicast v2 format with asciinema-player for playback
 - **SSH**: russh library for SSH protocol implementation
 - **Database**: SQLx for SQL databases, MongoDB driver for NoSQL
 - **Encryption**: AES-GCM with Argon2 key derivation
@@ -274,6 +298,7 @@ The application will be available in `src-tauri/target/release/bundle/`.
 | Backend | Rust + Tauri v2 | Native performance and security |
 | SSH | russh | SSH protocol implementation |
 | Terminal | xterm.js | Terminal emulation |
+| Recording | asciinema-player | Session playback |
 | Database | SQLite, MySQL, PostgreSQL, MongoDB | Local and sync storage |
 | Encryption | AES-256-GCM + Argon2 | Data encryption and key derivation |
 
@@ -358,6 +383,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Tauri** - For the amazing Rust-based desktop framework
 - **Vue 3** - For the reactive and performant frontend framework
 - **xterm.js** - For the excellent terminal emulator
+- **asciinema-player** - For the powerful terminal session player
 - **russh** - For the robust SSH implementation in Rust
 - **Lucide** - For the beautiful icon set
 
@@ -374,8 +400,8 @@ If you encounter any issues or have questions:
 - [x] Custom terminal themes and color schemes
 - [x] Custom terminal font settings
 - [x] Syntax highlighting for saved commands
+- [x] Session recording and playback (asciicast format)
 - [ ] SFTP file transfer integration
-- [ ] Session recording and playback
 - [ ] Plugin system for extensions
 - [ ] Cloud backup integration
 - [ ] Web-based version

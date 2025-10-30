@@ -6,6 +6,7 @@ use crate::models::terminal::{
     TerminalExited, TerminalInfo, TerminalTitleChanged, WriteTerminalRequest,
 };
 use crate::services::buffer_manager::TerminalBufferManager;
+use crate::services::recording::SessionRecorder;
 use crate::services::ssh::SSHKeyService;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -22,6 +23,7 @@ pub struct TerminalManager {
     buffer_manager: Arc<TerminalBufferManager>,
     database_service: Arc<Mutex<DatabaseService>>,
     ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
+    pub recorders: Arc<RwLock<HashMap<String, Arc<SessionRecorder>>>>,
 }
 
 impl TerminalManager {
@@ -39,6 +41,7 @@ impl TerminalManager {
             buffer_manager: Arc::new(TerminalBufferManager::default()),
             database_service,
             ssh_key_service: Some(ssh_key_service),
+            recorders: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -141,12 +144,18 @@ impl TerminalManager {
         let output_sender = self.output_sender.clone();
         let app_handle_clone = app_handle.clone();
         let buffer_manager_clone = self.buffer_manager.clone();
+        let recorders_clone = self.recorders.clone();
         tokio::spawn(async move {
             while let Some(data) = rx.recv().await {
                 let terminal_data = TerminalData {
                     terminal_id: terminal_id_clone.clone(),
                     data: data.clone(),
                 };
+
+                // Record output if recording is active
+                if let Some(recorder) = recorders_clone.read().await.get(&terminal_id_clone) {
+                    let _ = recorder.record_output(&data).await;
+                }
 
                 if let Ok(data_str) = String::from_utf8(data) {
                     buffer_manager_clone

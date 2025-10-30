@@ -12,6 +12,8 @@ mod state;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_opener::init())
@@ -112,7 +114,13 @@ pub fn main() {
             commands::database::sync::update_global_sync_settings,
             commands::database::sync::get_current_device,
             commands::database::sync::get_all_devices,
-            commands::database::sync::register_device
+            commands::database::sync::register_device,
+            commands::recording::start_recording,
+            commands::recording::stop_recording,
+            commands::recording::list_recordings,
+            commands::recording::delete_recording,
+            commands::recording::export_recording,
+            commands::recording::read_cast_file
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

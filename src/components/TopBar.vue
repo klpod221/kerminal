@@ -127,6 +127,20 @@
           @click="toggleOverlay('saved-command-drawer')"
         />
 
+        <!-- Recordings -->
+        <Button
+          title="Session Recordings"
+          variant="ghost"
+          size="sm"
+          :icon="Video"
+          :class="
+            isOverlayVisible('recordings-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('recordings-modal')"
+        />
+
         <!-- Tunnel Manager -->
         <Button
           title="SSH Tunnel Manager"
@@ -233,6 +247,17 @@
               <button
                 class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
                 :class="
+                  isOverlayVisible('recordings-modal') ? 'bg-gray-800' : ''
+                "
+                @click="handleMobileMenuClick('recordings-modal')"
+              >
+                <Video :size="18" />
+                <span>Session Recordings</span>
+              </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation"
+                :class="
                   isOverlayVisible('tunnel-manager-modal') ? 'bg-gray-800' : ''
                 "
                 @click="handleMobileMenuClick('tunnel-manager-modal')"
@@ -307,6 +332,7 @@ import {
   Cloud,
   Menu,
   Palette,
+  Video,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

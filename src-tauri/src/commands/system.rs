@@ -1,5 +1,5 @@
-use std::env;
 use std::collections::HashSet;
+use std::env;
 use std::process::Command;
 
 /// Get current user and hostname for terminal title
@@ -22,11 +22,7 @@ pub fn get_system_fonts() -> Vec<String> {
     // Try to get fonts using fc-list command (Linux/Unix)
     #[cfg(target_os = "linux")]
     {
-        if let Ok(output) = Command::new("fc-list")
-            .arg(":")
-            .arg("family")
-            .output()
-        {
+        if let Ok(output) = Command::new("fc-list").arg(":").arg("family").output() {
             if let Ok(result) = String::from_utf8(output.stdout) {
                 for line in result.lines() {
                     // fc-list returns fonts like "Font Name,Font Name Style"
@@ -43,11 +39,7 @@ pub fn get_system_fonts() -> Vec<String> {
     #[cfg(target_os = "macos")]
     {
         // Try fc-list first (if fontconfig is installed)
-        if let Ok(output) = Command::new("fc-list")
-            .arg(":")
-            .arg("family")
-            .output()
-        {
+        if let Ok(output) = Command::new("fc-list").arg(":").arg("family").output() {
             if let Ok(result) = String::from_utf8(output.stdout) {
                 for line in result.lines() {
                     let font_name = line.split(',').next().unwrap_or("").trim();

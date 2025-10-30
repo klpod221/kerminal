@@ -3,7 +3,9 @@
     class="no-drag flex items-center h-full border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden touch-manipulation sm:max-h-[30px]"
     :class="[
       {
-        'active-tab bg-[#171717] border-b-2 border-b-blue-500': isActive,
+        'active-tab bg-[#171717] border-b-2': isActive,
+        'border-b-red-500': isActive && isRecording,
+        'border-b-blue-500': isActive && !isRecording,
         'hover:bg-gray-800': !isActive,
         'opacity-50': isDragging,
       },
@@ -33,7 +35,7 @@
       :size="isMobile ? 16 : 14"
       class="transition-colors duration-200 shrink-0"
       :class="[
-        isActive ? 'text-blue-400' : 'text-gray-400',
+        isActive && !isRecording ? 'text-blue-400' : isRecording ? 'text-red-400' : 'text-gray-400',
         isMobile ? 'mr-1.5' : 'mr-2',
       ]"
     />
@@ -52,12 +54,13 @@
     >
       {{ isConnecting ? "Connecting..." : tab.title }}
     </span>
+
     <X
       v-if="minWidth >= 100 || isTouch"
       :size="isMobile ? 16 : 14"
       class="text-gray-500 hover:text-red-400 transition-all duration-300 ease-out shrink-0 transform hover:scale-110 cursor-pointer touch-manipulation"
       :class="[
-        isTouch ? 'ml-1 opacity-100' : 'ml-2 opacity-0 group-hover:opacity-100',
+        isTouch ? 'ml-1 opacity-100' : 'ml-1.5 opacity-0 group-hover:opacity-100',
       ]"
       @click.stop="$emit('close')"
     />
@@ -72,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import {
   Terminal,
   X,
@@ -83,12 +86,14 @@ import {
   Minus,
 } from "lucide-vue-next";
 import ContextMenu from "./ContextMenu.vue";
+import { useRecordingStore } from "../../stores/recording";
 import type { ContextMenuItem } from "./ContextMenu.vue";
 import type { Tab } from "../../types/panel";
 import { safeJsonParse, safeJsonStringify } from "../../utils/helpers";
 import { useWindowSize } from "../../composables/useWindowSize";
 
 const { isMobile, isTouch } = useWindowSize();
+const recordingStore = useRecordingStore();
 
 interface TabProps {
   tab: Tab;
@@ -97,6 +102,7 @@ interface TabProps {
   minWidth: number;
   maxWidth: number;
   panelId: string;
+  backendTerminalId?: string;
 }
 
 interface TabEmits {
@@ -241,6 +247,16 @@ const onDrop = (event: DragEvent): void => {
     }
   }
 };
+
+/**
+ * Recording functionality
+ */
+const backendTerminalId = computed(() => props.backendTerminalId);
+
+const isRecording = computed(() => {
+  if (!backendTerminalId.value) return false;
+  return recordingStore.isRecording(backendTerminalId.value);
+});
 </script>
 
 <style scoped>

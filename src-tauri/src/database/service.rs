@@ -1162,4 +1162,33 @@ impl DatabaseService {
         let db = self.local_db.read().await;
         db.delete_external_database(id).await
     }
+
+    // Session recording operations
+    pub async fn save_session_recording(
+        &self,
+        recording: &crate::models::recording::SessionRecording,
+    ) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.save_session_recording(recording).await
+    }
+
+    pub async fn get_session_recording(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::recording::SessionRecording>> {
+        let db = self.local_db.read().await;
+        db.get_session_recording(id).await
+    }
+
+    pub async fn list_session_recordings(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::recording::SessionRecording>> {
+        let db = self.local_db.read().await;
+        db.list_session_recordings().await
+    }
+
+    pub async fn delete_session_recording(&self, id: &str) -> DatabaseResult<()> {
+        let db = self.local_db.read().await;
+        db.delete_session_recording(id).await
+    }
 }
