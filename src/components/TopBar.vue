@@ -54,7 +54,7 @@
       </div>
 
       <!-- SFTP button -->
-      <!-- <div
+      <div
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'sftp' ? 'bg-gray-800' : '',
@@ -71,7 +71,7 @@
               : 'opacity-60 hover:opacity-100'
           "
         />
-      </div> -->
+      </div>
 
       <!-- SSH Profiles button -->
       <div
@@ -333,6 +333,7 @@ import {
   Menu,
   Palette,
   Video,
+  FolderOpen,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

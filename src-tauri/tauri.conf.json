@@ -25,6 +25,9 @@
   "plugins": {
     "process": {
       "all": true
+    },
+    "fs": {
+      "requireLiteralLeadingDot": false
     }
   },
   "bundle": {

@@ -7,28 +7,29 @@
         {{ formattedTime }}
       </span>
     </div>
-    <button
+    <Button
+      variant="ghost"
       @click="handleStop"
-      class="p-1 hover:bg-red-500/20 rounded transition-colors"
       title="Stop recording"
     >
       <Square :size="14" class="text-red-500" fill="currentColor" />
-    </button>
+    </Button>
   </div>
-  <button
+  <Button
     v-else
+    variant="ghost"
     @click="handleStart"
-    class="p-1 hover:bg-gray-700 rounded transition-colors"
     title="Start recording"
   >
     <Circle :size="14" class="text-gray-400 hover:text-red-500" />
-  </button>
+  </Button>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue';
 import { Circle, Square } from 'lucide-vue-next';
 import { useRecordingStore } from '../../stores/recording';
+import Button from '../ui/Button.vue';
 
 interface RecordingControlsProps {
   terminalId: string;

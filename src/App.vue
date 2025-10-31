@@ -10,9 +10,7 @@
 
         <Workspace v-if="viewState.activeView === 'workspace'" />
 
-        <div v-if="viewState.activeView === 'sftp'" class="h-full w-full flex items-center justify-center text-white">
-          SFTP feature coming soon!
-        </div>
+        <SFTPBrowser v-if="viewState.activeView === 'sftp'" />
 
         <SSHProfileManager />
 
@@ -38,6 +36,7 @@ import { onMounted, onUnmounted, watch } from "vue";
 import TopBar from "./components/TopBar.vue";
 import Dashboard from "./components/Dashboard.vue";
 import Workspace from "./components/Workspace.vue";
+import SFTPBrowser from "./components/sftp/SFTPBrowser.vue";
 import SSHProfileManager from "./components/ssh-profiles/SSHProfileManager.vue";
 import SavedCommandManager from "./components/saved-commands/SavedCommandManager.vue";
 import RecordingsManager from "./components/recording/RecordingsManager.vue";

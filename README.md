@@ -405,7 +405,8 @@ If you encounter any issues or have questions:
 - [x] Custom terminal font settings
 - [x] Syntax highlighting for saved commands
 - [x] Session recording and playback (asciicast format)
-- [ ] SFTP file transfer integration
+- [x] SFTP file transfer integration
+- [ ] More SSH Authentication Methods
 - [ ] Plugin system for extensions
 - [ ] Cloud backup integration
 - [ ] Web-based version

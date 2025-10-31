@@ -74,29 +74,6 @@ const contextMenuRef = ref<HTMLElement | null>(null);
 const visible = ref(false);
 const position = ref({ x: 0, y: 0 });
 
-/**
- * Shows the context menu at the specified position
- */
-const show = async (x: number, y: number): Promise<void> => {
-  position.value = { x, y };
-  visible.value = true;
-
-  await nextTick();
-
-  if (contextMenuRef.value) {
-    const rect = contextMenuRef.value.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    if (rect.right > viewportWidth) {
-      position.value.x = Math.max(0, x - rect.width);
-    }
-
-    if (rect.bottom > viewportHeight) {
-      position.value.y = Math.max(0, y - rect.height);
-    }
-  }
-};
 
 /**
  * Hides the context menu
@@ -128,6 +105,27 @@ const handleClickOutside = (event: MouseEvent): void => {
 };
 
 /**
+ * Handles contextmenu events - hide if menu is visible and event is not from opening
+ */
+let isOpeningMenu = false;
+const handleContextMenu = (event: MouseEvent): void => {
+  // Only hide if menu is already visible and we're not in the process of opening it
+  // Also check if the event target is not within the context menu itself
+  if (visible.value && !isOpeningMenu) {
+    if (
+      !contextMenuRef.value ||
+      !contextMenuRef.value.contains(event.target as Node)
+    ) {
+      hide();
+    }
+  }
+  // Reset flag after handling
+  setTimeout(() => {
+    isOpeningMenu = false;
+  }, 50);
+};
+
+/**
  * Handles escape key press
  */
 const handleKeyDown = (event: KeyboardEvent): void => {
@@ -136,15 +134,45 @@ const handleKeyDown = (event: KeyboardEvent): void => {
   }
 };
 
+/**
+ * Shows the context menu at the specified position
+ */
+const show = async (x: number, y: number): Promise<void> => {
+  isOpeningMenu = true;
+  position.value = { x, y };
+  visible.value = true;
+
+  await nextTick();
+
+  if (contextMenuRef.value) {
+    const rect = contextMenuRef.value.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    if (rect.right > viewportWidth) {
+      position.value.x = Math.max(0, x - rect.width);
+    }
+
+    if (rect.bottom > viewportHeight) {
+      position.value.y = Math.max(0, y - rect.height);
+    }
+  }
+  
+  // Reset flag after a short delay
+  setTimeout(() => {
+    isOpeningMenu = false;
+  }, 100);
+};
+
 onMounted(() => {
   document.addEventListener("click", handleClickOutside);
-  document.addEventListener("contextmenu", hide);
+  document.addEventListener("contextmenu", handleContextMenu);
   document.addEventListener("keydown", handleKeyDown);
 });
 
 onUnmounted(() => {
   document.removeEventListener("click", handleClickOutside);
-  document.removeEventListener("contextmenu", hide);
+  document.removeEventListener("contextmenu", handleContextMenu);
   document.removeEventListener("keydown", handleKeyDown);
 });
 

@@ -120,7 +120,24 @@ pub fn main() {
             commands::recording::list_recordings,
             commands::recording::delete_recording,
             commands::recording::export_recording,
-            commands::recording::read_cast_file
+            commands::recording::read_cast_file,
+            commands::sftp::sftp_connect,
+            commands::sftp::sftp_disconnect,
+            commands::sftp::sftp_list_directory,
+            commands::sftp::sftp_stat,
+            commands::sftp::sftp_create_directory,
+            commands::sftp::sftp_rename,
+            commands::sftp::sftp_delete,
+            commands::sftp::sftp_set_permissions,
+            commands::sftp::sftp_create_symlink,
+            commands::sftp::sftp_read_symlink,
+            commands::sftp::sftp_upload_file,
+            commands::sftp::sftp_download_file,
+            commands::sftp::sftp_get_transfer_progress,
+            commands::sftp::sftp_cancel_transfer,
+            commands::sftp::sftp_resume_transfer,
+            commands::sftp::sftp_compare_directories,
+            commands::sftp::sftp_sync_directory
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

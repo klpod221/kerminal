@@ -96,6 +96,23 @@ class ApiClient {
       get_saved_command_group: ["id"],
       update_saved_command_group: ["id", "request"],
       delete_saved_command_group: ["id"],
+      sftp_connect: ["profileId"],
+      sftp_disconnect: ["sessionId"],
+      sftp_list_directory: ["sessionId", "path"],
+      sftp_stat: ["sessionId", "path"],
+      sftp_create_directory: ["sessionId", "path"],
+      sftp_rename: ["sessionId", "oldPath", "newPath"],
+      sftp_delete: ["sessionId", "path", "recursive"],
+      sftp_set_permissions: ["sessionId", "path", "mode"],
+      sftp_create_symlink: ["sessionId", "target", "linkPath"],
+      sftp_read_symlink: ["sessionId", "path"],
+      sftp_upload_file: ["sessionId", "localPath", "remotePath"],
+      sftp_download_file: ["sessionId", "remotePath", "localPath"],
+      sftp_get_transfer_progress: ["transferId"],
+      sftp_cancel_transfer: ["transferId"],
+      sftp_resume_transfer: ["transferId"],
+      sftp_compare_directories: ["sessionId", "localPath", "remotePath"],
+      sftp_sync_directory: ["sessionId", "operation"],
     };
 
     return commandParams[command] || [];

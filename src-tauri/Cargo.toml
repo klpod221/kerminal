@@ -29,6 +29,7 @@ uuid = { version = "1", features = ["v4"] }
 russh = "0.45"
 russh-keys = "0.45"
 russh-config = "0.54"
+russh-sftp = "2"
 portable-pty = "0.9"
 chrono = { version = "0.4", features = ["serde"] }
 async-trait = "0.1"

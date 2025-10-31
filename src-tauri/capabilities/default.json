@@ -10,6 +10,22 @@
     "opener:default",
     "store:default",
     "dialog:default",
-    "fs:default"
+    "fs:default",
+    "fs:write-all",
+    "fs:read-all",
+    "fs:read-dirs",
+    "fs:allow-rename",
+    "fs:allow-mkdir",
+    "fs:allow-exists",
+    "fs:allow-watch",
+    "fs:allow-stat",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        {
+          "path": "**/*"
+        }
+      ]
+    }
   ]
 }

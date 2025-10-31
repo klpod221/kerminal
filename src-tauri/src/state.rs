@@ -3,6 +3,7 @@ use crate::database::{DatabaseService, DatabaseServiceConfig};
 use crate::services::{
     auth::AuthService,
     saved_command::SavedCommandService,
+    sftp::{SFTPService, transfer::TransferManager, sync::SyncService as SFTPSyncService},
     ssh::{SSHConnectionPool, SSHKeyService, SSHService},
     sync::SyncService,
     terminal::TerminalManager,
@@ -15,7 +16,7 @@ use tokio::sync::Mutex;
 pub struct AppState {
     pub database_service: Arc<Mutex<DatabaseService>>,
     pub auth_service: AuthService,
-    pub ssh_service: SSHService,
+    pub ssh_service: Arc<SSHService>,
     pub ssh_key_service: Arc<Mutex<SSHKeyService>>,
     pub ssh_connection_pool: Arc<SSHConnectionPool>,
     pub tunnel_service: TunnelService,
@@ -23,6 +24,9 @@ pub struct AppState {
     pub sync_service: Arc<SyncService>,
     pub terminal_manager: TerminalManager,
     pub auth_session_manager: Arc<Mutex<AuthSessionManager>>,
+    pub sftp_service: Arc<SFTPService>,
+    pub sftp_transfer_manager: Arc<TransferManager>,
+    pub sftp_sync_service: Arc<SFTPSyncService>,
 }
 
 impl AppState {
@@ -39,6 +43,7 @@ impl AppState {
         let ssh_key_service =
             Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
         let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
+        let ssh_service_arc = Arc::new(ssh_service);
         let tunnel_service = TunnelService::new_with_auto_start(database_service_arc.clone()).await;
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
 
@@ -58,11 +63,17 @@ impl AppState {
         )));
 
         let ssh_connection_pool = Arc::new(SSHConnectionPool::default());
+        let sftp_service = Arc::new(SFTPService::new(
+            ssh_service_arc.clone(),
+            ssh_key_service.clone(),
+        ));
+        let sftp_transfer_manager = Arc::new(TransferManager::new(sftp_service.clone()));
+        let sftp_sync_service = Arc::new(SFTPSyncService::new(sftp_service.clone()));
 
         Ok(Self {
             database_service: database_service_arc,
             auth_service,
-            ssh_service,
+            ssh_service: ssh_service_arc,
             ssh_key_service,
             ssh_connection_pool,
             tunnel_service,
@@ -70,6 +81,9 @@ impl AppState {
             sync_service,
             terminal_manager,
             auth_session_manager,
+            sftp_service,
+            sftp_transfer_manager,
+            sftp_sync_service,
         })
     }
 }
@@ -87,6 +101,7 @@ impl Default for AppState {
         let ssh_key_service =
             Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
         let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
+        let ssh_service_arc = Arc::new(ssh_service);
         let tunnel_service = TunnelService::new(database_service_arc.clone());
         let saved_command_service = SavedCommandService::new(database_service_arc.clone());
 
@@ -102,11 +117,17 @@ impl Default for AppState {
         )));
 
         let ssh_connection_pool = Arc::new(SSHConnectionPool::default());
+        let sftp_service = Arc::new(SFTPService::new(
+            ssh_service_arc.clone(),
+            ssh_key_service.clone(),
+        ));
+        let sftp_transfer_manager = Arc::new(TransferManager::new(sftp_service.clone()));
+        let sftp_sync_service = Arc::new(SFTPSyncService::new(sftp_service.clone()));
 
         Self {
             database_service: database_service_arc,
             auth_service,
-            ssh_service,
+            ssh_service: ssh_service_arc,
             ssh_key_service,
             ssh_connection_pool,
             tunnel_service,
@@ -114,6 +135,9 @@ impl Default for AppState {
             sync_service,
             terminal_manager,
             auth_session_manager,
+            sftp_service,
+            sftp_transfer_manager,
+            sftp_sync_service,
         }
     }
 }

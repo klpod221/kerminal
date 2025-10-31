@@ -3,6 +3,7 @@ pub mod base;
 pub mod buffer;
 pub mod recording;
 pub mod saved_command;
+pub mod sftp;
 pub mod ssh;
 pub mod sync;
 pub mod system;

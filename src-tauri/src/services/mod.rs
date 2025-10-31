@@ -2,6 +2,7 @@ pub mod auth;
 pub mod buffer_manager;
 pub mod recording;
 pub mod saved_command;
+pub mod sftp;
 pub mod ssh;
 pub mod ssh_config_parser;
 pub mod sync;

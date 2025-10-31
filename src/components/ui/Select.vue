@@ -146,7 +146,7 @@ const errorMessage = ref(props.errorMessage || "");
 const touched = ref(false);
 const inputRef = ref<HTMLInputElement>();
 
-const formContext = inject<FormContext>("form-context");
+const formContext = inject<FormContext | undefined>("form-context", undefined);
 
 const inputId = computed(
   () => props.id || `input-${Math.random().toString(36).substr(2, 9)}`,
