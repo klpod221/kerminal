@@ -16,12 +16,16 @@ jobs:
         include:
           - platform: 'macos-latest' # for Arm-based Macs (M1 and above).
             args: '--target aarch64-apple-darwin'
+            target: 'aarch64-apple-darwin'
           - platform: 'macos-latest' # for Intel-based Macs.
             args: '--target x86_64-apple-darwin'
+            target: 'x86_64-apple-darwin'
           - platform: 'ubuntu-latest'
             args: ''
+            target: ''
           - platform: 'windows-latest'
             args: ''
+            target: ''
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
@@ -37,7 +41,6 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Specify additional targets for macOS universal binaries
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust dependencies
@@ -46,13 +49,13 @@ jobs:
           workspaces: './src-tauri -> target'
           shared-key: ${{ matrix.platform }}-${{ matrix.args }}
 
-      - name: install dependencies (ubuntu only)
+      - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: install dependencies (windows only)
+      - name: Install dependencies (windows only)
         if: matrix.platform == 'windows-latest'
         run: cargo install --force trusted-signing-cli
 
@@ -69,6 +72,7 @@ jobs:
           releaseBody: 'New release of Kerminal App'
           releaseDraft: false
           prerelease: false
+          args: ${{ matrix.args }}
 
   build-android:
     permissions:
