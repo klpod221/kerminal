@@ -21,24 +21,38 @@
         </Button>
       </div>
 
-      <!-- Transfer button -->
-      <Button
-        variant="ghost"
-        size="sm"
-        :icon="Activity"
-        @click="toggleTransferManager"
-        title="Transfer Manager"
-      >
-        <span class="flex items-center gap-1.5">
-          <span>Transfers</span>
-          <span
-            v-if="sftpStore.activeTransfers.length > 0"
-            class="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs font-medium"
-          >
-            {{ sftpStore.activeTransfers.length }}
+      <div class="flex items-center gap-2">
+        <!-- Sync & Compare button -->
+        <Button
+          v-if="sftpStore.activeSessionId"
+          variant="ghost"
+          size="sm"
+          :icon="GitCompare"
+          @click="handleSyncCompare"
+          title="Sync & Compare Directories"
+        >
+          Sync
+        </Button>
+
+        <!-- Transfer button -->
+        <Button
+          variant="ghost"
+          size="sm"
+          :icon="Activity"
+          @click="toggleTransferManager"
+          title="Transfer Manager"
+        >
+          <span class="flex items-center gap-1.5">
+            <span>Transfers</span>
+            <span
+              v-if="sftpStore.activeTransfers.length > 0"
+              class="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs font-medium"
+            >
+              {{ sftpStore.activeTransfers.length }}
+            </span>
           </span>
-        </span>
-      </Button>
+        </Button>
+      </div>
     </div>
 
     <!-- Dual-pane layout -->
@@ -119,6 +133,7 @@
     <FilePermissionsModal />
     <CreateDirectoryModal />
     <CreateFileModal />
+    <SyncCompareModal />
   </div>
 </template>
 
@@ -126,7 +141,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
-import { FolderOpen, Activity } from "lucide-vue-next";
+import { FolderOpen, Activity, GitCompare } from "lucide-vue-next";
 import { useSFTPStore } from "../../stores/sftp";
 import { useSSHStore } from "../../stores/ssh";
 import { message } from "../../utils/message";
@@ -139,6 +154,7 @@ import FileDeleteModal from "./FileDeleteModal.vue";
 import FilePermissionsModal from "./FilePermissionsModal.vue";
 import CreateDirectoryModal from "./CreateDirectoryModal.vue";
 import CreateFileModal from "./CreateFileModal.vue";
+import SyncCompareModal from "./SyncCompareModal.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import EmptyState from "../ui/EmptyState.vue";
@@ -170,6 +186,15 @@ function toggleTransferManager() {
   } else {
     openOverlay("sftp-transfer-manager-modal");
   }
+}
+
+function handleSyncCompare() {
+  const localPath = sftpStore.browserState.localPath || "/";
+  const remotePath = sftpStore.browserState.remotePath || "/";
+  openOverlay("sftp-sync-compare-modal", {
+    localPath,
+    remotePath,
+  });
 }
 
 const sshProfiles = computed(() => {
