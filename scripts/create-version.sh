@@ -52,8 +52,17 @@ echo "=========================================="
 echo ""
 
 git add .
-git commit -m "chore: update version to $VERSION"
-git push origin main > /dev/null
+
+# Check if there are any changes to commit
+if git diff --cached --quiet && git diff --quiet; then
+    echo "ℹ️  No changes to commit. Skipping commit and push."
+else
+    echo "📝 Committing changes..."
+    git commit -m "chore: update version to $VERSION"
+    echo "📤 Pushing to origin main..."
+    git push origin main > /dev/null
+    echo "✅ Changes committed and pushed successfully."
+fi
 
 echo "=========================================="
 echo "  Recreating Git Tag: $TAG"
