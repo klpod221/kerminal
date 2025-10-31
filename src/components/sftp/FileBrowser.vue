@@ -61,9 +61,14 @@
     <!-- File list -->
     <div
       ref="fileListRef"
-      class="flex-1 flex flex-col overflow-hidden"
+      class="flex-1 flex flex-col overflow-hidden relative"
+      :class="{
+        'bg-blue-500/5': isDragOver && dragOverIndex === -1,
+      }"
       @dragover.prevent="onDragOver"
       @drop.prevent="onDrop"
+      @dragenter.prevent="onDragEnter"
+      @dragleave="onDragLeave"
       @contextmenu.prevent="showEmptyContextMenu"
       @keydown="handleKeyDown"
       tabindex="0"
@@ -135,11 +140,19 @@
               :key="file.path"
               :ref="(el) => setFileItemRef(index, el as HTMLElement)"
               data-file-item
+              draggable="true"
               class="flex items-center px-4 py-2 hover:bg-gray-800/50 cursor-pointer group transition-colors"
               :class="{
                 'bg-blue-500/10 border-l-2 border-blue-500': isSelected(file.path),
                 'bg-gray-800/30': focusedIndex === index,
+                'opacity-50': isDragging && draggedFiles.some(f => f.path === file.path),
+                'bg-blue-500/20 border-l-2 border-blue-400': dragOverIndex === index && isDragOver,
               }"
+              @dragstart="handleDragStart($event, file)"
+              @dragend="handleDragEnd"
+              @dragover.prevent="handleDragOver($event, file, index)"
+              @dragleave="handleDragLeave(index)"
+              @drop.prevent="handleFileDrop($event, file)"
               @click="handleFileClick($event, file, index)"
               @dblclick="handleFileDoubleClick(file)"
               @contextmenu.prevent="showContextMenu($event, file)"
@@ -285,6 +298,7 @@ const emit = defineEmits<{
   (e: "upload", files: FileList): void;
   (e: "createDirectory"): void;
   (e: "createFile"): void;
+  (e: "drag-files", files: FileEntry[], targetPath: string, isSourceRemote: boolean): void;
 }>();
 
 const fileListRef = ref<HTMLElement>();
@@ -306,6 +320,12 @@ const sortDirection = ref<"asc" | "desc">("asc");
 const focusedIndex = ref<number>(-1);
 const lastFocusedIndex = ref<number>(-1);
 const fileItemRefs = ref<(HTMLElement | null)[]>([]);
+
+// Drag & drop state
+const isDragging = ref(false);
+const draggedFiles = ref<FileEntry[]>([]);
+const dragOverIndex = ref<number>(-1);
+const isDragOver = ref(false);
 
 function setFileItemRef(index: number, el: HTMLElement | null) {
   fileItemRefs.value[index] = el;
@@ -774,15 +794,203 @@ function handleContextMenuClick(item: ContextMenuItem) {
   isEmptyContextMenu.value = false;
 }
 
+function handleDragStart(event: DragEvent, file: FileEntry) {
+  if (!event.dataTransfer) return;
+
+  // Get all selected files, or just this one if not selected
+  const filesToDrag = props.selectedFiles.size > 0 && isSelected(file.path)
+    ? sortedFiles.value.filter((f) => props.selectedFiles.has(f.path))
+    : [file];
+
+  draggedFiles.value = filesToDrag;
+  isDragging.value = true;
+
+  // Store file data in dataTransfer for cross-browser drag
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData(
+    "application/x-filebrowser-files",
+    JSON.stringify({
+      files: filesToDrag.map((f) => ({
+        path: f.path,
+        name: f.name,
+        fileType: f.fileType,
+        size: f.size,
+      })),
+      isRemote: props.isRemote,
+      sourcePath: props.currentPath,
+    }),
+  );
+
+  // Also set text data for fallback
+  event.dataTransfer.setData("text/plain", filesToDrag.map((f) => f.name).join(", "));
+
+  // Set drag image (optional: customize the drag preview)
+  if (event.dataTransfer.setDragImage && event.target) {
+    const dragImage = document.createElement("div");
+    dragImage.textContent = `${filesToDrag.length} item${filesToDrag.length > 1 ? "s" : ""}`;
+    dragImage.style.position = "absolute";
+    dragImage.style.top = "-1000px";
+    dragImage.style.color = "#e5e7eb"; // text-gray-200
+    dragImage.style.backgroundColor = "#1f2937"; // bg-gray-800
+    dragImage.style.padding = "8px 12px";
+    dragImage.style.borderRadius = "6px";
+    dragImage.style.fontSize = "14px";
+    dragImage.style.fontWeight = "500";
+    dragImage.style.border = "1px solid #374151"; // border-gray-700
+    document.body.appendChild(dragImage);
+    event.dataTransfer.setDragImage(dragImage, 0, 0);
+    setTimeout(() => document.body.removeChild(dragImage), 0);
+  }
+}
+
+function handleDragEnd() {
+  isDragging.value = false;
+  draggedFiles.value = [];
+  dragOverIndex.value = -1;
+  isDragOver.value = false;
+}
+
+function handleDragOver(event: DragEvent, file: FileEntry, index: number) {
+  event.preventDefault();
+  if (!event.dataTransfer) return;
+
+  // Check if this is an internal drag (from file browser) by checking types
+  const isInternalDrag = event.dataTransfer.types.includes("application/x-filebrowser-files");
+
+  if (isInternalDrag) {
+    // Cross-browser drag or different path
+    if (file.fileType === "directory") {
+      dragOverIndex.value = index;
+      event.dataTransfer.dropEffect = "copy";
+    } else {
+      // Allow dropping on empty area (will use current path)
+      event.dataTransfer.dropEffect = "copy";
+    }
+  } else {
+    // External drag (from desktop)
+    if (file.fileType === "directory") {
+      dragOverIndex.value = index;
+      event.dataTransfer.dropEffect = "copy";
+    } else {
+      dragOverIndex.value = -1;
+      event.dataTransfer.dropEffect = "copy";
+    }
+  }
+  isDragOver.value = true;
+}
+
+function handleDragLeave(index: number) {
+  if (dragOverIndex.value === index) {
+    dragOverIndex.value = -1;
+  }
+}
+
+function handleFileDrop(event: DragEvent, file: FileEntry) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (!event.dataTransfer) return;
+
+  isDragOver.value = false;
+  dragOverIndex.value = -1;
+
+  // Check if this is an internal drag from file browser
+  const dragData = event.dataTransfer.getData("application/x-filebrowser-files");
+  if (dragData) {
+    const data = JSON.parse(dragData);
+    const targetPath = file.fileType === "directory" ? file.path : props.currentPath;
+
+    // Convert stored data back to FileEntry format
+    const draggedFileEntries: FileEntry[] = data.files.map((f: any) => ({
+      ...f,
+      modified: null,
+      accessed: null,
+      permissions: 0o644,
+      symlinkTarget: null,
+      uid: null,
+      gid: null,
+    }));
+
+    // Emit with source information
+    emit("drag-files", draggedFileEntries, targetPath, data.isRemote);
+    return;
+  }
+
+  // Fallback: handle external file drop (upload)
+  handleExternalDrop(event);
+}
+
+function onDragEnter(event: DragEvent) {
+  event.preventDefault();
+  if (!event.dataTransfer) return;
+
+  // Check if this is an internal drag or external file drag
+  if (
+    event.dataTransfer.types.includes("application/x-filebrowser-files") ||
+    event.dataTransfer.types.includes("Files")
+  ) {
+    isDragOver.value = true;
+  }
+}
+
+function onDragLeave(event: DragEvent) {
+  // Only clear if we're actually leaving the container (not just moving to a child)
+  const rect = fileListRef.value?.getBoundingClientRect();
+  if (rect) {
+    const x = event.clientX;
+    const y = event.clientY;
+    if (
+      x < rect.left ||
+      x > rect.right ||
+      y < rect.top ||
+      y > rect.bottom
+    ) {
+      isDragOver.value = false;
+      dragOverIndex.value = -1;
+    }
+  }
+}
+
 function onDragOver(event: DragEvent) {
   event.preventDefault();
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = "copy";
-  }
+  if (!event.dataTransfer) return;
+
+  // Set drop effect for both internal and external drags
+  event.dataTransfer.dropEffect = "copy";
 }
 
 async function onDrop(event: DragEvent) {
   event.preventDefault();
+  if (!event.dataTransfer) return;
+
+  isDragOver.value = false;
+  dragOverIndex.value = -1;
+
+  // Check if this is an internal drag from file browser (already handled in handleFileDrop)
+  const dragData = event.dataTransfer.getData("application/x-filebrowser-files");
+  if (dragData) {
+    // This was handled by handleFileDrop, but handle empty area drop here
+    const data = JSON.parse(dragData);
+    const targetPath = props.currentPath;
+
+    const draggedFileEntries: FileEntry[] = data.files.map((f: any) => ({
+      ...f,
+      modified: null,
+      accessed: null,
+      permissions: 0o644,
+      symlinkTarget: null,
+      uid: null,
+      gid: null,
+    }));
+
+    emit("drag-files", draggedFileEntries, targetPath, data.isRemote);
+    return;
+  }
+
+  // Handle external file drop
+  handleExternalDrop(event);
+}
+
+async function handleExternalDrop(event: DragEvent) {
   if (!event.dataTransfer) return;
 
   const files: File[] = [];

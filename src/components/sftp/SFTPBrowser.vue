@@ -102,6 +102,7 @@
             @refresh="handleLocalRefresh"
             @select="handleLocalSelect"
             @upload="handleLocalUpload"
+            @drag-files="handleLocalDragFiles"
             @open="handleLocalOpen"
             @rename="handleLocalRename"
             @delete="handleLocalDelete"
@@ -122,6 +123,7 @@
             @refresh="handleRemoteRefresh"
             @select="handleRemoteSelect"
             @download="handleRemoteDownload"
+            @drag-files="handleRemoteDragFiles"
             @open="handleRemoteOpen"
             @rename="handleRemoteRename"
             @delete="handleRemoteDelete"
@@ -178,6 +180,10 @@ import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import EmptyState from "../ui/EmptyState.vue";
 import type { FileEntry } from "../../types/sftp";
+import { rename, remove, stat, writeFile, mkdir } from "@tauri-apps/plugin-fs";
+import { dirname, homeDir, tempDir, join } from "@tauri-apps/api/path";
+import { openPath } from "@tauri-apps/plugin-opener";
+import { save } from "@tauri-apps/plugin-dialog";
 
 const sftpStore = useSFTPStore();
 const sshStore = useSSHStore();
@@ -251,9 +257,6 @@ async function handleRenameSubmit(event: Event) {
   try {
     if (customEvent.detail.isLocal) {
       // Rename local file using Tauri fs API
-      const { rename } = await import("@tauri-apps/plugin-fs");
-      const { dirname } = await import("@tauri-apps/api/path");
-
       await rename(customEvent.detail.oldPath, customEvent.detail.newPath);
 
       // Refresh directory
@@ -289,9 +292,6 @@ async function handleDeleteSubmit(event: Event) {
   try {
     if (customEvent.detail.isLocal) {
       // Delete local file using Tauri fs API
-      const { remove, stat } = await import("@tauri-apps/plugin-fs");
-      const { dirname } = await import("@tauri-apps/api/path");
-
       // Check if it's a directory
       const fileStat = await stat(customEvent.detail.path);
       const isDirectory = fileStat.isDirectory;
@@ -388,7 +388,6 @@ async function handleDisconnect() {
 }
 
 async function getHomeDirectory(): Promise<string> {
-  const { homeDir } = await import("@tauri-apps/api/path");
   return await homeDir();
 }
 
@@ -428,10 +427,6 @@ async function handleLocalUpload(files: FileList | File[]) {
           filePath = (file as any).path;
         } else if (file instanceof File) {
           // For browser File API, save to temporary directory first
-          const { writeFile } = await import("@tauri-apps/plugin-fs");
-          const { tempDir } = await import("@tauri-apps/api/path");
-          const { join } = await import("@tauri-apps/api/path");
-
           // Get temp directory
           const tempDirPath = await tempDir();
           const tempFilePath = await join(
@@ -476,7 +471,6 @@ async function handleLocalUpload(files: FileList | File[]) {
     // We don't delete immediately because upload happens asynchronously
     if (tempFilesToCleanup.length > 0) {
       setTimeout(async () => {
-        const { remove } = await import("@tauri-apps/plugin-fs");
         for (const tempPath of tempFilesToCleanup) {
           try {
             await remove(tempPath);
@@ -496,7 +490,6 @@ async function handleLocalOpen(file: FileEntry) {
     handleLocalNavigate(file.path);
   } else {
     // Open local file with default application
-    const { openPath } = await import("@tauri-apps/plugin-opener");
     await openPath(file.path);
   }
 }
@@ -544,11 +537,95 @@ function handleRemoteSelect(path: string) {
   }
 }
 
+async function handleLocalDragFiles(
+  files: FileEntry[],
+  targetPath: string,
+  isSourceRemote: boolean,
+) {
+  // This handler is called by the local browser when files are dropped
+  // If source is local (isSourceRemote=false), it means drag within local browser (ignore or handle move)
+  // If source is remote (isSourceRemote=true), it means drag from remote to local (download)
+  if (!sftpStore.activeSessionId) return;
+
+  // If source is remote, download files to local
+  if (isSourceRemote) {
+    const localPath = targetPath || sftpStore.browserState.localPath || "/";
+
+    for (const file of files) {
+      try {
+        if (file.fileType === "directory") {
+          message.warning(`Skipping directory: ${file.name} (directory drag not supported yet)`);
+          continue;
+        }
+
+        const localFilePath = localPath === "/"
+          ? await join("/", file.name)
+          : await join(localPath, file.name);
+
+        await sftpStore.downloadFile(
+          sftpStore.activeSessionId,
+          file.path,
+          localFilePath,
+        );
+        message.success(`Downloading ${file.name}...`);
+      } catch (error) {
+        console.error("Failed to download file:", error);
+        message.error(
+          getErrorMessage(error, `Failed to download ${file.name}`),
+        );
+      }
+    }
+  }
+  // If source is local and dropped on local browser, ignore (same browser)
+}
+
+async function handleRemoteDragFiles(
+  files: FileEntry[],
+  targetPath: string,
+  isSourceRemote: boolean,
+) {
+  // This handler is called by the remote browser when files are dropped
+  // If source is remote (isSourceRemote=true), it means drag within remote browser (ignore or handle move)
+  // If source is local (isSourceRemote=false), it means drag from local to remote (upload)
+  if (!sftpStore.activeSessionId) return;
+
+  // If source is local, upload files to remote
+  if (!isSourceRemote) {
+    const remotePath = targetPath || sftpStore.browserState.remotePath || "/";
+
+    for (const file of files) {
+      try {
+        if (file.fileType === "directory") {
+          message.warning(`Skipping directory: ${file.name} (directory drag not supported yet)`);
+          continue;
+        }
+
+        const normalizedRemotePath = remotePath.endsWith("/")
+          ? remotePath.slice(0, -1)
+          : remotePath;
+        const remoteFilePath = `${normalizedRemotePath}/${file.name}`;
+
+        await sftpStore.uploadFile(
+          sftpStore.activeSessionId,
+          file.path,
+          remoteFilePath,
+        );
+        message.success(`Uploading ${file.name}...`);
+      } catch (error) {
+        console.error("Failed to upload file:", error);
+        message.error(
+          getErrorMessage(error, `Failed to upload ${file.name}`),
+        );
+      }
+    }
+  }
+  // If source is remote and dropped on remote browser, ignore (same browser)
+}
+
 async function handleRemoteDownload(file: FileEntry) {
   if (!sftpStore.activeSessionId) return;
 
   try {
-    const { save } = await import("@tauri-apps/plugin-dialog");
     const localPathResult = await save({
       defaultPath: file.name,
       filters: [
@@ -616,9 +693,6 @@ async function handleCreateDirectorySubmit(event: Event) {
   try {
     if (customEvent.detail.isLocal) {
       // Create local directory using Tauri fs API
-      const { mkdir } = await import("@tauri-apps/plugin-fs");
-      const { join } = await import("@tauri-apps/api/path");
-
       const directoryPath =
         customEvent.detail.path === "/"
           ? `/${customEvent.detail.name}`
@@ -671,9 +745,6 @@ async function handleCreateFileSubmit(event: Event) {
   try {
     if (customEvent.detail.isLocal) {
       // Create local file using Tauri fs API
-      const { writeFile } = await import("@tauri-apps/plugin-fs");
-      const { join } = await import("@tauri-apps/api/path");
-
       const filePath =
         customEvent.detail.path === "/"
           ? `/${customEvent.detail.name}`
@@ -694,13 +765,6 @@ async function handleCreateFileSubmit(event: Event) {
           ? `/${customEvent.detail.name}`
           : `${customEvent.detail.path}/${customEvent.detail.name}`;
 
-      // For remote, we need to create an empty file
-      // SFTP can create file by opening it for write and closing immediately
-      // But we don't have a direct API for this, so we might need to use upload with empty content
-      // For now, let's use a workaround: create a temp empty file and upload it
-      const { writeFile } = await import("@tauri-apps/plugin-fs");
-      const { tempDir, join } = await import("@tauri-apps/api/path");
-
       const tempDirPath = await tempDir();
       const tempFilePath = await join(
         tempDirPath,
@@ -717,7 +781,6 @@ async function handleCreateFileSubmit(event: Event) {
       );
 
       // Cleanup temp file
-      const { remove } = await import("@tauri-apps/plugin-fs");
       await remove(tempFilePath).catch(() => {
         // Ignore cleanup errors
       });

@@ -130,6 +130,7 @@ import { useRecordingStore } from '../../stores/recording';
 import { useOverlay } from '../../composables/useOverlay';
 import { message, showConfirm } from '../../utils/message';
 import type { SessionRecording } from '../../types/recording';
+import { save } from '@tauri-apps/plugin-dialog';
 
 const recordingStore = useRecordingStore();
 const { openOverlay } = useOverlay();
@@ -202,8 +203,6 @@ function handlePlay(recording: SessionRecording) {
 async function handleExport(recording: SessionRecording) {
   try {
     // Use Tauri dialog to select save location
-    const { save } = await import('@tauri-apps/plugin-dialog');
-    
     const filePath = await save({
       defaultPath: `${recording.sessionName.replace(/[^a-z0-9]/gi, '_')}.cast`,
       filters: [{
@@ -211,12 +210,12 @@ async function handleExport(recording: SessionRecording) {
         extensions: ['cast']
       }]
     });
-    
+
     if (!filePath) {
       // User cancelled
       return;
     }
-    
+
     // Use backend to copy file
     await recordingStore.exportRecording(recording.id, filePath);
     message.success('Recording exported successfully');

@@ -10,6 +10,7 @@ import type {
 import * as sftpService from "../services/sftp";
 import { api } from "../services/api";
 import { useSSHStore } from "./ssh";
+import { readDir, stat } from "@tauri-apps/plugin-fs";
 
 /**
  * SFTP Store
@@ -115,7 +116,6 @@ export const useSFTPStore = defineStore("sftp", () => {
     browserState.value.loading.local = true;
     try {
       // Use Tauri fs plugin to read local directory
-      const { readDir } = await import("@tauri-apps/plugin-fs");
       const entries = await readDir(path);
 
       // Use Promise.allSettled to handle individual file errors gracefully
@@ -130,8 +130,7 @@ export const useSFTPStore = defineStore("sftp", () => {
 
           try {
             // Use stat to get metadata
-            const fs = await import("@tauri-apps/plugin-fs");
-            const meta = await fs.stat(entryPath);
+            const meta = await stat(entryPath);
 
             let fileType: FileEntry["fileType"] = "file";
             if (meta.isDirectory) {
