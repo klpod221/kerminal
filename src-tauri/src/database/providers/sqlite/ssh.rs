@@ -13,11 +13,28 @@ pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> 
 
     sqlx::query(
         r#"
-        INSERT OR REPLACE INTO ssh_profiles (
+        INSERT INTO ssh_profiles (
             id, name, host, port, username, group_id, auth_method, auth_data,
             description, color, timeout, keep_alive, compression, created_at, updated_at,
             device_id, version, sync_status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            host = excluded.host,
+            port = excluded.port,
+            username = excluded.username,
+            group_id = excluded.group_id,
+            auth_method = excluded.auth_method,
+            auth_data = excluded.auth_data,
+            description = excluded.description,
+            color = excluded.color,
+            timeout = excluded.timeout,
+            keep_alive = excluded.keep_alive,
+            compression = excluded.compression,
+            updated_at = excluded.updated_at,
+            device_id = excluded.device_id,
+            version = excluded.version,
+            sync_status = excluded.sync_status
     "#,
     )
     .bind(&model.base.id)
