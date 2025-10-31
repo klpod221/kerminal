@@ -116,6 +116,13 @@ pub struct CancelTransferRequest {
     pub transfer_id: String,
 }
 
+/// Request for pausing transfer
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PauseTransferRequest {
+    pub transfer_id: String,
+}
+
 /// Request for resuming transfer
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

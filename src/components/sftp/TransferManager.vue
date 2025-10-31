@@ -1,5 +1,13 @@
 <template>
-  <div class="p-4 space-y-3">
+  <Modal
+    id="sftp-transfer-manager-modal"
+    title="Transfer Manager"
+    :icon="Activity"
+    icon-background="bg-blue-500/20"
+    icon-color="text-blue-400"
+    size="lg"
+  >
+    <div class="space-y-3">
     <div
       v-if="transfers.length === 0"
       class="text-center py-8 text-gray-500 text-sm"
@@ -60,15 +68,7 @@
         <!-- Actions -->
         <div class="flex items-center gap-2">
           <Button
-            v-if="transfer.status === 'paused' || transfer.status === 'failed'"
-            variant="ghost"
-            size="sm"
-            @click="handleResume(transfer.transferId)"
-          >
-            Resume
-          </Button>
-          <Button
-            v-if="transfer.status === 'inProgress'"
+            v-if="transfer.status === 'inprogress' || transfer.status === 'paused' || transfer.status === 'queued'"
             variant="ghost"
             size="sm"
             @click="handleCancel(transfer.transferId)"
@@ -86,19 +86,28 @@
         Error: {{ transfer.error }}
       </div>
     </div>
-  </div>
+    </div>
+  </Modal>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { Activity } from "lucide-vue-next";
 import { useSFTPStore } from "../../stores/sftp";
+import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
-import { showError } from "../../utils/message";
+import { message } from "../../utils/message";
+import { getErrorMessage } from "../../utils/helpers";
 import type { TransferProgress } from "../../types/sftp";
 
 const sftpStore = useSFTPStore();
 
-const transfers = computed(() => sftpStore.activeTransfers);
+const transfers = computed(() => {
+  // Filter out cancelled transfers
+  return Array.from(sftpStore.activeTransfers.values()).filter(
+    (t) => t.status !== "cancelled",
+  );
+});
 
 function getFileName(transfer: TransferProgress): string {
   if (transfer.direction === "upload") {
@@ -139,28 +148,23 @@ function getStatusClass(status: TransferProgress["status"]): string {
       return "bg-red-500/20 text-red-400";
     case "paused":
       return "bg-yellow-500/20 text-yellow-400";
-    case "inProgress":
+    case "inprogress":
       return "bg-blue-500/20 text-blue-400";
     default:
       return "bg-gray-500/20 text-gray-400";
   }
 }
 
-async function handleResume(transferId: string) {
-  try {
-    await sftpStore.resumeTransfer(transferId);
-  } catch (error) {
-    console.error("Failed to resume transfer:", error);
-    showError("Failed to resume transfer");
-  }
-}
-
 async function handleCancel(transferId: string) {
   try {
     await sftpStore.cancelTransfer(transferId);
+    // Transfer is already removed in store's cancelTransfer function
+    message.success("Transfer cancelled");
   } catch (error) {
     console.error("Failed to cancel transfer:", error);
-    showError("Failed to cancel transfer");
+    message.error(
+      getErrorMessage(error, "Failed to cancel transfer"),
+    );
   }
 }
 </script>

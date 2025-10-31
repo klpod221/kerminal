@@ -19,6 +19,7 @@ export const useSFTPStore = defineStore("sftp", () => {
   // State
   const sessions = ref<Map<string, SFTPSession>>(new Map());
   const activeSessionId = ref<string | null>(null);
+  const connecting = ref<boolean>(false);
   const browserState = ref<SFTPBrowserState>({
     activeSessionId: null,
     localPath: "",
@@ -41,7 +42,10 @@ export const useSFTPStore = defineStore("sftp", () => {
   });
 
   const activeTransfers = computed(() => {
-    return Array.from(browserState.value.activeTransfers.values());
+    // Filter out cancelled transfers
+    return Array.from(browserState.value.activeTransfers.values()).filter(
+      (t) => t.status !== "cancelled",
+    );
   });
 
   // Actions
@@ -49,6 +53,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * Connect to SFTP server
    */
   async function connect(profileId: string): Promise<string> {
+    connecting.value = true;
     try {
       const sessionId = await sftpService.connectSFTP(profileId);
       const sshStore = useSSHStore();
@@ -73,6 +78,8 @@ export const useSFTPStore = defineStore("sftp", () => {
     } catch (error) {
       console.error("Failed to connect SFTP:", error);
       throw error;
+    } finally {
+      connecting.value = false;
     }
   }
 
@@ -100,53 +107,76 @@ export const useSFTPStore = defineStore("sftp", () => {
    * List local directory
    */
   async function listLocalDirectory(path: string): Promise<void> {
+    // Clear selection when navigating to a different directory
+    if (browserState.value.localPath !== path) {
+      browserState.value.selectedLocalFiles.clear();
+    }
+
     browserState.value.loading.local = true;
     try {
       // Use Tauri fs plugin to read local directory
       const { readDir } = await import("@tauri-apps/plugin-fs");
       const entries = await readDir(path);
 
-      const files: FileEntry[] = await Promise.all(
+      // Use Promise.allSettled to handle individual file errors gracefully
+      const fileResults = await Promise.allSettled(
         entries.map(async (entry) => {
           // DirEntry doesn't have path property, construct it
           // Normalize path to avoid double slashes
           const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
-          const entryPath = normalizedPath === "/" 
+          const entryPath = normalizedPath === "/"
             ? `/${entry.name}`
             : `${normalizedPath}/${entry.name}`;
-          // Use stat to get metadata
-          const fs = await import("@tauri-apps/plugin-fs");
-          const meta = await fs.stat(entryPath);
 
-          let fileType: FileEntry["fileType"] = "file";
-          if (meta.isDirectory) {
-            fileType = "directory";
-          } else if (entry.isSymlink || meta.isSymlink) {
-            fileType = "symlink";
+          try {
+            // Use stat to get metadata
+            const fs = await import("@tauri-apps/plugin-fs");
+            const meta = await fs.stat(entryPath);
+
+            let fileType: FileEntry["fileType"] = "file";
+            if (meta.isDirectory) {
+              fileType = "directory";
+            } else if (entry.isSymlink || meta.isSymlink) {
+              fileType = "symlink";
+            }
+
+            // Get permissions (Unix only)
+            let permissions = 0o644;
+            if (meta.mode) {
+              permissions = meta.mode & 0o777;
+            }
+
+            return {
+              name: entry.name,
+              path: entryPath,
+              fileType,
+              size: fileType === "file" ? meta.size || null : null,
+              permissions,
+              modified: new Date(meta.mtime || Date.now()).toISOString(),
+              accessed: meta.atime
+                ? new Date(meta.atime).toISOString()
+                : null,
+              symlinkTarget: null, // Would need readlink to get this
+              uid: null,
+              gid: null,
+            };
+          } catch (error) {
+            // Skip files that can't be stat'd (broken symlinks, deleted files, etc.)
+            console.warn(`Failed to get metadata for ${entryPath}:`, error);
+            return null;
           }
-
-          // Get permissions (Unix only)
-          let permissions = 0o644;
-          if (meta.mode) {
-            permissions = meta.mode & 0o777;
-          }
-
-          return {
-            name: entry.name,
-            path: entryPath,
-            fileType,
-            size: fileType === "file" ? meta.size || null : null,
-            permissions,
-            modified: new Date(meta.mtime || Date.now()).toISOString(),
-            accessed: meta.atime
-              ? new Date(meta.atime).toISOString()
-              : null,
-            symlinkTarget: null, // Would need readlink to get this
-            uid: null,
-            gid: null,
-          };
         }),
       );
+
+      // Filter out null results (failed entries)
+      const files: FileEntry[] = [];
+      for (const result of fileResults) {
+        if (result.status === "fulfilled" && result.value !== null) {
+          files.push(result.value);
+        } else if (result.status === "rejected") {
+          console.warn("Failed to process directory entry:", result.reason);
+        }
+      }
 
       browserState.value.localFiles = files;
       browserState.value.localPath = path;
@@ -165,6 +195,11 @@ export const useSFTPStore = defineStore("sftp", () => {
     sessionId: string,
     path: string,
 ): Promise<void> {
+    // Clear selection when navigating to a different directory
+    if (browserState.value.remotePath !== path) {
+      browserState.value.selectedRemoteFiles.clear();
+    }
+
     browserState.value.loading.remote = true;
     try {
       const files = await sftpService.listSFTPDirectory(sessionId, path);
@@ -233,24 +268,14 @@ export const useSFTPStore = defineStore("sftp", () => {
   async function cancelTransfer(transferId: string): Promise<void> {
     try {
       await sftpService.cancelSFTPTransfer(transferId);
-      // Update will come via realtime
+      // Remove transfer from active transfers immediately
+      browserState.value.activeTransfers.delete(transferId);
     } catch (error) {
       console.error("Failed to cancel transfer:", error);
       throw error;
     }
   }
 
-  /**
-   * Resume transfer
-   */
-  async function resumeTransfer(transferId: string): Promise<void> {
-    try {
-      await sftpService.resumeSFTPTransfer(transferId);
-    } catch (error) {
-      console.error("Failed to resume transfer:", error);
-      throw error;
-    }
-  }
 
   /**
    * Compare directories
@@ -366,13 +391,16 @@ export const useSFTPStore = defineStore("sftp", () => {
     }
   }
 
+  let unsubscribeTransferRealtime: (() => void) | null = null;
+
   /**
    * Start listening to realtime events
    */
   async function startRealtime(): Promise<void> {
+    if (unsubscribeTransferRealtime) return;
     try {
       // Listen to transfer progress
-      await api.listen<{
+      const u1 = await api.listen<{
         transferId: string;
         transferredBytes: number;
         totalBytes: number;
@@ -408,7 +436,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       });
 
       // Listen to transfer complete
-      await api.listen<{ transferId: string }>(
+      const u2 = await api.listen<{ transferId: string }>(
         "sftp_transfer_complete",
         async (data) => {
           try {
@@ -423,7 +451,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       );
 
       // Listen to transfer errors
-      await api.listen<{ transferId: string; error: string }>(
+      const u3 = await api.listen<{ transferId: string; error: string }>(
         "sftp_transfer_error",
         async (data) => {
           try {
@@ -437,8 +465,24 @@ export const useSFTPStore = defineStore("sftp", () => {
           }
         },
       );
+
+      unsubscribeTransferRealtime = () => {
+        u1();
+        u2();
+        u3();
+      };
     } catch (error) {
       console.error("Failed to start SFTP realtime:", error);
+    }
+  }
+
+  /**
+   * Stop listening to realtime events
+   */
+  function stopRealtime(): void {
+    if (unsubscribeTransferRealtime) {
+      unsubscribeTransferRealtime();
+      unsubscribeTransferRealtime = null;
     }
   }
 
@@ -446,6 +490,7 @@ export const useSFTPStore = defineStore("sftp", () => {
     // State
     sessions,
     activeSessionId,
+    connecting,
     browserState,
     // Computed
     activeSession,
@@ -458,7 +503,6 @@ export const useSFTPStore = defineStore("sftp", () => {
     uploadFile,
     downloadFile,
     cancelTransfer,
-    resumeTransfer,
     compareDirectories,
     syncDirectories,
     renameFile,
@@ -466,6 +510,7 @@ export const useSFTPStore = defineStore("sftp", () => {
     setPermissions,
     createDirectory,
     startRealtime,
+    stopRealtime,
   };
 });
 

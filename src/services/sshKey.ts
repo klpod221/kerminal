@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { api } from "./api";
 import type {
   SSHKey,
   CreateSSHKeyRequest,
@@ -13,7 +13,7 @@ import type {
 export async function createSSHKey(
   request: CreateSSHKeyRequest,
 ): Promise<SSHKey> {
-  return invoke<SSHKey>("create_ssh_key", { request });
+  return await api.call<SSHKey>("create_ssh_key", request);
 }
 
 /**
@@ -21,7 +21,7 @@ export async function createSSHKey(
  * @returns List of all SSH keys
  */
 export async function getSSHKeys(): Promise<SSHKey[]> {
-  return invoke<SSHKey[]>("get_ssh_keys");
+  return await api.call<SSHKey[]>("get_ssh_keys");
 }
 
 /**
@@ -30,7 +30,7 @@ export async function getSSHKeys(): Promise<SSHKey[]> {
  * @returns SSH key details
  */
 export async function getSSHKey(id: string): Promise<SSHKey> {
-  return invoke<SSHKey>("get_ssh_key", { id });
+  return await api.callRaw<SSHKey>("get_ssh_key", id);
 }
 
 /**
@@ -43,7 +43,7 @@ export async function updateSSHKey(
   id: string,
   request: UpdateSSHKeyRequest,
 ): Promise<SSHKey> {
-  return invoke<SSHKey>("update_ssh_key", { id, request });
+  return await api.callRaw<SSHKey>("update_ssh_key", id, request);
 }
 
 /**
@@ -52,7 +52,7 @@ export async function updateSSHKey(
  * @param force - Force deletion even if profiles are using it
  */
 export async function deleteSSHKey(id: string, force = false): Promise<void> {
-  return invoke<void>("delete_ssh_key", { id, force });
+  return await api.callRaw<void>("delete_ssh_key", id, force);
 }
 
 /**
@@ -61,7 +61,7 @@ export async function deleteSSHKey(id: string, force = false): Promise<void> {
  * @returns Number of profiles using the key
  */
 export async function countProfilesUsingKey(keyId: string): Promise<number> {
-  return invoke<number>("count_profiles_using_key", { keyId });
+  return await api.callRaw<number>("count_profiles_using_key", keyId);
 }
 
 /**
@@ -78,10 +78,11 @@ export async function importSSHKeyFromFile(
   passphrase?: string,
   description?: string,
 ): Promise<SSHKey> {
-  return invoke<SSHKey>("import_ssh_key_from_file", {
+  return await api.callRaw<SSHKey>(
+    "import_ssh_key_from_file",
     name,
     filePath,
     passphrase,
     description,
-  });
+  );
 }

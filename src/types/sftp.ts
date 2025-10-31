@@ -28,7 +28,7 @@ export interface FileEntry {
  */
 export type TransferStatus =
   | "queued"
-  | "inProgress"
+  | "inprogress"
   | "paused"
   | "completed"
   | "failed"

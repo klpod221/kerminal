@@ -1,5 +1,33 @@
 <template>
-  <div class="h-full flex flex-col bg-[#0D0D0D]">
+  <div class="h-full flex flex-col bg-[#0D0D0D] relative">
+    <!-- Connecting Overlay -->
+    <div
+      v-if="sftpStore.connecting"
+      class="absolute inset-0 bg-[#0D0D0D]/95 flex items-center justify-center z-50"
+    >
+      <div class="flex flex-col items-center space-y-4">
+        <!-- Large spinning icon -->
+        <div class="relative">
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-2 border-gray-600 border-t-blue-400"
+          ></div>
+          <!-- Pulse effect -->
+          <div
+            class="absolute inset-0 animate-ping rounded-full h-12 w-12 border border-blue-400/20"
+          ></div>
+        </div>
+        <!-- Loading text -->
+        <div class="text-center">
+          <p class="text-lg font-medium text-white mb-1">
+            Connecting to SFTP...
+          </p>
+          <p class="text-sm text-gray-400">
+            Please wait while establishing connection
+          </p>
+        </div>
+      </div>
+    </div>
+
     <!-- Header with connection selector -->
     <div class="flex items-center justify-between px-4 py-2 border-b border-gray-800">
       <div class="flex items-center gap-3">
@@ -9,12 +37,14 @@
           :options="sshProfiles"
           placeholder="Select SSH Profile"
           :space="false"
+          :disabled="sftpStore.connecting"
           @update:modelValue="handleProfileSelect"
         />
         <Button
           v-if="sftpStore.activeSessionId"
           variant="ghost"
           size="sm"
+          :disabled="sftpStore.connecting"
           @click="handleDisconnect"
         >
           Disconnect
@@ -115,19 +145,8 @@
       />
     </div>
 
-    <!-- Transfer Manager Modal -->
-    <Modal
-      id="sftp-transfer-manager-modal"
-      title="Transfer Manager"
-      :icon="Activity"
-      icon-background="bg-blue-500/20"
-      icon-color="text-blue-400"
-      size="lg"
-    >
-      <TransferManager />
-    </Modal>
-
     <!-- Modals -->
+    <TransferManager />
     <FileRenameModal />
     <FileDeleteModal />
     <FilePermissionsModal />
@@ -158,7 +177,6 @@ import SyncCompareModal from "./SyncCompareModal.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import EmptyState from "../ui/EmptyState.vue";
-import Modal from "../ui/Modal.vue";
 import type { FileEntry } from "../../types/sftp";
 
 const sftpStore = useSFTPStore();

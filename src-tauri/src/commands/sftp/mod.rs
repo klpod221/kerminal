@@ -4,7 +4,7 @@ use crate::models::sftp::requests::{
     CancelTransferRequest, CompareDirectoriesRequest, ConnectSFTPRequest,
     CreateDirectoryRequest, CreateSymlinkRequest, DeleteRequest,
     DisconnectSFTPRequest, DownloadFileRequest, GetTransferProgressRequest,
-    ListDirectoryRequest, ReadSymlinkRequest, RenameRequest,
+    ListDirectoryRequest, PauseTransferRequest, ReadSymlinkRequest, RenameRequest,
     ResumeTransferRequest, SetPermissionsRequest, StatRequest,
     SyncDirectoriesRequest, UploadFileRequest,
 };
@@ -161,8 +161,19 @@ pub async fn sftp_get_transfer_progress(
 pub async fn sftp_cancel_transfer(
     state: State<'_, AppState>,
     request: CancelTransferRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    sftp_result!(state.sftp_transfer_manager.cancel_transfer(request.transfer_id).await)
+    sftp_result!(state.sftp_transfer_manager.cancel_transfer(request.transfer_id, app_handle).await)
+}
+
+/// Pause transfer
+#[tauri::command]
+pub async fn sftp_pause_transfer(
+    state: State<'_, AppState>,
+    request: PauseTransferRequest,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    sftp_result!(state.sftp_transfer_manager.pause_transfer(request.transfer_id, app_handle).await)
 }
 
 /// Resume interrupted transfer

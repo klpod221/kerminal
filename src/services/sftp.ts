@@ -166,6 +166,15 @@ export async function cancelSFTPTransfer(
 }
 
 /**
+ * Pause transfer
+ */
+export async function pauseSFTPTransfer(
+  transferId: string,
+): Promise<void> {
+  return await api.call("sftp_pause_transfer", { transferId });
+}
+
+/**
  * Resume interrupted transfer
  */
 export async function resumeSFTPTransfer(

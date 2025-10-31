@@ -135,6 +135,7 @@ pub fn main() {
             commands::sftp::sftp_download_file,
             commands::sftp::sftp_get_transfer_progress,
             commands::sftp::sftp_cancel_transfer,
+            commands::sftp::sftp_pause_transfer,
             commands::sftp::sftp_resume_transfer,
             commands::sftp::sftp_compare_directories,
             commands::sftp::sftp_sync_directory

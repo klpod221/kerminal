@@ -198,9 +198,6 @@ import { ref, computed } from "vue";
 import {
   GitCompare,
   File,
-  Folder,
-  ArrowLeftRight,
-  FileX,
   Check,
   AlertCircle,
 } from "lucide-vue-next";

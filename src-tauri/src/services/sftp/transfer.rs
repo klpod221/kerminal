@@ -4,6 +4,7 @@ use std::sync::Arc;
 use tokio::fs::File as TokioFile;
 use tokio::io::AsyncReadExt;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
 use crate::models::sftp::{
@@ -29,6 +30,7 @@ struct TransferMetadata {
 pub struct TransferManager {
     active_transfers: Arc<RwLock<HashMap<String, TransferProgress>>>,
     transfer_metadata: Arc<RwLock<HashMap<String, TransferMetadata>>>,
+    cancellation_tokens: Arc<RwLock<HashMap<String, CancellationToken>>>,
     sftp_service: std::sync::Weak<SFTPService>,
 }
 
@@ -38,6 +40,7 @@ impl TransferManager {
         Self {
             active_transfers: Arc::new(RwLock::new(HashMap::new())),
             transfer_metadata: Arc::new(RwLock::new(HashMap::new())),
+            cancellation_tokens: Arc::new(RwLock::new(HashMap::new())),
             sftp_service: Arc::downgrade(&sftp_service),
         }
     }
@@ -102,6 +105,13 @@ impl TransferManager {
             metadata_map.insert(transfer_id.clone(), metadata_entry);
         }
 
+        // Create cancellation token for this transfer
+        let cancel_token = CancellationToken::new();
+        {
+            let mut tokens = self.cancellation_tokens.write().await;
+            tokens.insert(transfer_id.clone(), cancel_token.clone());
+        }
+
         // Start transfer in background
         let transfer_manager = self.clone();
         let transfer_id_clone = transfer_id.clone();
@@ -114,23 +124,44 @@ impl TransferManager {
                     remote_path,
                     transfer_id_clone.clone(),
                     app_handle_clone.clone(),
+                    cancel_token,
                 )
                 .await
             {
                 let mut transfers = transfer_manager.active_transfers.write().await;
                 if let Some(progress) = transfers.get_mut(&transfer_id_clone) {
-                    progress.status = TransferStatus::Failed;
-                    progress.error = Some(e.to_string());
-                    progress.completed_at = Some(Utc::now());
-                }
+                    // Check current status - if already paused/cancelled, don't change
+                    match progress.status {
+                        TransferStatus::Paused | TransferStatus::Cancelled => {
+                            // Status already set, don't change
+                        }
+                        TransferStatus::InProgress => {
+                            // Check error message to see if it was paused or cancelled
+                            let error_msg = e.to_string();
+                            if error_msg.contains("paused") {
+                                progress.status = TransferStatus::Paused;
+                            } else if error_msg.contains("cancelled") {
+                                progress.status = TransferStatus::Cancelled;
+                                progress.completed_at = Some(Utc::now());
+                            } else {
+                                progress.status = TransferStatus::Failed;
+                                progress.error = Some(error_msg.clone());
+                                progress.completed_at = Some(Utc::now());
 
-                let _ = app_handle_clone.emit(
-                    "sftp_transfer_error",
-                    &serde_json::json!({
-                        "transferId": transfer_id_clone,
-                        "error": e.to_string(),
-                    }),
-                );
+                                let _ = app_handle_clone.emit(
+                                    "sftp_transfer_error",
+                                    &serde_json::json!({
+                                        "transferId": transfer_id_clone,
+                                        "error": error_msg,
+                                    }),
+                                );
+                            }
+                        }
+                        _ => {
+                            // Other status, don't change
+                        }
+                    }
+                }
             }
         });
 
@@ -145,14 +176,19 @@ impl TransferManager {
         remote_path: String,
         transfer_id: String,
         app_handle_clone: tauri::AppHandle,
+        cancel_token: CancellationToken,
     ) -> Result<(), SFTPError> {
         // Update status to in progress
-        {
+        let resume_from: u64 = {
             let mut transfers = self.active_transfers.write().await;
             if let Some(progress) = transfers.get_mut(&transfer_id) {
+                let resume_pos = progress.transferred_bytes;
                 progress.status = TransferStatus::InProgress;
+                resume_pos
+            } else {
+                return Err(SFTPError::TransferNotFound { transfer_id });
             }
-        }
+        };
 
         // Get SFTP session
         let sftp_service = self.sftp_service.upgrade()
@@ -177,56 +213,153 @@ impl TransferManager {
             })?;
         let total = metadata.len();
 
-        // Open remote file for writing
+        // Open remote file for writing and determine actual resume position
         use russh_sftp::protocol::OpenFlags;
-        let mut remote_file = data.sftp
-            .open_with_flags(&remote_path, OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to open remote file: {}", e),
-            })?;
+        let (mut remote_file, actual_resume_from, actual_local_seek) = if resume_from > 0 {
+            // Resume: check if remote file exists and has correct size
+            let remote_meta = data.sftp.metadata(&remote_path).await.ok();
+            if let Some(meta) = remote_meta {
+                let remote_size = meta.size.unwrap_or(0);
+                if remote_size == resume_from {
+                    // File size matches resume position, append from here
+                    let file = data.sftp
+                        .open_with_flags(&remote_path, OpenFlags::WRITE | OpenFlags::APPEND)
+                        .await
+                        .map_err(|e| SFTPError::Other {
+                            message: format!("Failed to open remote file for append: {}", e),
+                        })?;
+                    (file, resume_from, resume_from)
+                } else if remote_size < resume_from {
+                    // File is smaller than expected, append from current size
+                    // Adjust resume position to match actual remote file size
+                    let file = data.sftp
+                        .open_with_flags(&remote_path, OpenFlags::WRITE | OpenFlags::APPEND)
+                        .await
+                        .map_err(|e| SFTPError::Other {
+                            message: format!("Failed to open remote file for append: {}", e),
+                        })?;
+
+                    // Update progress to reflect actual position
+                    let mut transfers = self.active_transfers.write().await;
+                    if let Some(progress) = transfers.get_mut(&transfer_id) {
+                        progress.transferred_bytes = remote_size;
+                    }
+                    drop(transfers);
+
+                    (file, remote_size, remote_size)
+                } else {
+                    // File is larger than expected - truncate and restart from beginning
+                    let file = data.sftp
+                        .open_with_flags(&remote_path, OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE)
+                        .await
+                        .map_err(|e| SFTPError::Other {
+                            message: format!("Failed to open remote file: {}", e),
+                        })?;
+
+                    // Reset progress since we're starting over
+                    let mut transfers = self.active_transfers.write().await;
+                    if let Some(progress) = transfers.get_mut(&transfer_id) {
+                        progress.transferred_bytes = 0;
+                    }
+                    drop(transfers);
+
+                    (file, 0, 0)
+                }
+            } else {
+                // File doesn't exist, create new
+                let file = data.sftp
+                    .open_with_flags(&remote_path, OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE)
+                    .await
+                    .map_err(|e| SFTPError::Other {
+                        message: format!("Failed to open remote file: {}", e),
+                    })?;
+                (file, 0, 0)
+            }
+        } else {
+            // New transfer: create/truncate
+            let file = data.sftp
+                .open_with_flags(&remote_path, OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE)
+                .await
+                .map_err(|e| SFTPError::Other {
+                    message: format!("Failed to open remote file: {}", e),
+                })?;
+            (file, 0, 0)
+        };
+
+        // Seek local file to actual resume position
+        if actual_local_seek > 0 {
+            use tokio::io::AsyncSeekExt;
+            local_file.seek(std::io::SeekFrom::Start(actual_local_seek)).await
+                .map_err(|e| SFTPError::IoError {
+                    message: format!("Failed to seek local file: {}", e),
+                })?;
+        }
 
         // Upload file in chunks with progress updates
         let chunk_size = 64 * 1024; // 64KB chunks
-        let mut transferred = 0u64;
+        let mut transferred = actual_resume_from; // Start from actual resume position
         let mut buffer = vec![0u8; chunk_size];
 
         loop {
-            // Read chunk from local file
-            let bytes_read = local_file.read(&mut buffer).await
-                .map_err(|e| SFTPError::IoError {
-                    message: format!("Failed to read local file: {}", e),
-                })?;
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    // Transfer was paused or cancelled
+                    {
+                        let transfers = self.active_transfers.read().await;
+                        if let Some(progress) = transfers.get(&transfer_id) {
+                            if progress.status == TransferStatus::Paused {
+                                return Err(SFTPError::Other {
+                                    message: "Transfer paused".to_string(),
+                                });
+                            }
+                        }
+                    }
+                    return Err(SFTPError::Other {
+                        message: "Transfer cancelled".to_string(),
+                    });
+                }
+                result = local_file.read(&mut buffer) => {
+                    let bytes_read = result.map_err(|e| SFTPError::IoError {
+                        message: format!("Failed to read local file: {}", e),
+                    })?;
 
-            if bytes_read == 0 {
-                break; // EOF
-            }
+                    if bytes_read == 0 {
+                        break; // EOF
+                    }
 
-            // Write chunk to remote file
-            remote_file.write_all(&buffer[..bytes_read]).await
-                .map_err(|e| SFTPError::Other {
-                    message: format!("Failed to write to remote file: {}", e),
-                })?;
+                    // Write chunk to remote file
+                    remote_file.write_all(&buffer[..bytes_read]).await
+                        .map_err(|e| SFTPError::Other {
+                            message: format!("Failed to write to remote file: {}", e),
+                        })?;
 
-            transferred += bytes_read as u64;
+                    transferred += bytes_read as u64;
 
-            // Update progress
-            {
-                let mut transfers = self.active_transfers.write().await;
-                if let Some(progress) = transfers.get_mut(&transfer_id) {
-                    progress.transferred_bytes = transferred;
+                    // Update progress
+                    {
+                        let mut transfers = self.active_transfers.write().await;
+                        if let Some(progress) = transfers.get_mut(&transfer_id) {
+                            // Check if status was changed to paused/cancelled
+                            if progress.status == TransferStatus::Paused || progress.status == TransferStatus::Cancelled {
+                                return Err(SFTPError::Other {
+                                    message: format!("Transfer {:?}", progress.status),
+                                });
+                            }
+                            progress.transferred_bytes = transferred;
+                        }
+                    }
+
+                    // Emit progress update
+                    let _ = app_handle_clone.emit(
+                        "sftp_transfer_progress",
+                        &serde_json::json!({
+                            "transferId": transfer_id,
+                            "transferredBytes": transferred,
+                            "totalBytes": total,
+                        }),
+                    );
                 }
             }
-
-            // Emit progress update
-            let _ = app_handle_clone.emit(
-                "sftp_transfer_progress",
-                &serde_json::json!({
-                    "transferId": transfer_id,
-                    "transferredBytes": transferred,
-                    "totalBytes": total,
-                }),
-            );
         }
 
         // Flush and close remote file
@@ -309,6 +442,13 @@ impl TransferManager {
             metadata_map.insert(transfer_id.clone(), metadata_entry);
         }
 
+        // Create cancellation token for this transfer
+        let cancel_token = CancellationToken::new();
+        {
+            let mut tokens = self.cancellation_tokens.write().await;
+            tokens.insert(transfer_id.clone(), cancel_token.clone());
+        }
+
         // Start transfer in background
         let transfer_manager = self.clone();
         let transfer_id_clone = transfer_id.clone();
@@ -321,23 +461,44 @@ impl TransferManager {
                     local_path,
                     transfer_id_clone.clone(),
                     app_handle_clone.clone(),
+                    cancel_token,
                 )
                 .await
             {
                 let mut transfers = transfer_manager.active_transfers.write().await;
                 if let Some(progress) = transfers.get_mut(&transfer_id_clone) {
-                    progress.status = TransferStatus::Failed;
-                    progress.error = Some(e.to_string());
-                    progress.completed_at = Some(Utc::now());
-                }
+                    // Check current status - if already paused/cancelled, don't change
+                    match progress.status {
+                        TransferStatus::Paused | TransferStatus::Cancelled => {
+                            // Status already set, don't change
+                        }
+                        TransferStatus::InProgress => {
+                            // Check error message to see if it was paused or cancelled
+                            let error_msg = e.to_string();
+                            if error_msg.contains("paused") {
+                                progress.status = TransferStatus::Paused;
+                            } else if error_msg.contains("cancelled") {
+                                progress.status = TransferStatus::Cancelled;
+                                progress.completed_at = Some(Utc::now());
+                            } else {
+                                progress.status = TransferStatus::Failed;
+                                progress.error = Some(error_msg.clone());
+                                progress.completed_at = Some(Utc::now());
 
-                let _ = app_handle_clone.emit(
-                    "sftp_transfer_error",
-                    &serde_json::json!({
-                        "transferId": transfer_id_clone,
-                        "error": e.to_string(),
-                    }),
-                );
+                                let _ = app_handle_clone.emit(
+                                    "sftp_transfer_error",
+                                    &serde_json::json!({
+                                        "transferId": transfer_id_clone,
+                                        "error": error_msg,
+                                    }),
+                                );
+                            }
+                        }
+                        _ => {
+                            // Other status, don't change
+                        }
+                    }
+                }
             }
         });
 
@@ -352,14 +513,19 @@ impl TransferManager {
         local_path: String,
         transfer_id: String,
         app_handle_clone: tauri::AppHandle,
+        cancel_token: CancellationToken,
     ) -> Result<(), SFTPError> {
-        // Update status to in progress
-        {
+        // Update status to in progress and get resume position
+        let resume_from: u64 = {
             let mut transfers = self.active_transfers.write().await;
             if let Some(progress) = transfers.get_mut(&transfer_id) {
+                let resume_pos = progress.transferred_bytes;
                 progress.status = TransferStatus::InProgress;
+                resume_pos
+            } else {
+                return Err(SFTPError::TransferNotFound { transfer_id });
             }
-        }
+        };
 
         // Get SFTP session
         let sftp_service = self.sftp_service.upgrade()
@@ -378,58 +544,156 @@ impl TransferManager {
                 message: format!("Failed to open remote file: {}", e),
             })?;
 
-        // Create local file for writing
-        let mut local_file = TokioFile::create(&local_path)
-            .await
-            .map_err(|e| SFTPError::IoError {
-                message: format!("Failed to create local file: {}", e),
-            })?;
-
-        // Download file in chunks with progress updates
-        let chunk_size = 64 * 1024; // 64KB chunks
-        let mut transferred = 0u64;
-        let mut buffer = vec![0u8; chunk_size];
-
-        loop {
-            // Read chunk from remote file
+        // Skip bytes to resume position if resuming
+        // For SFTP, we need to read and discard bytes until we reach the position
+        let actual_resume_from = if resume_from > 0 {
             use tokio::io::AsyncReadExt;
-            let bytes_read = remote_file.read(&mut buffer).await
-                .map_err(|e| SFTPError::Other {
-                    message: format!("Failed to read from remote file: {}", e),
-                })?;
+            let mut skip_buffer = vec![0u8; 64 * 1024]; // 64KB buffer for skipping
+            let mut skipped = 0u64;
 
-            if bytes_read == 0 {
-                break; // EOF
+            while skipped < resume_from {
+                let remaining = resume_from - skipped;
+                let to_skip = std::cmp::min(skip_buffer.len() as u64, remaining) as usize;
+                let bytes_read = remote_file.read(&mut skip_buffer[..to_skip]).await
+                    .map_err(|e| SFTPError::Other {
+                        message: format!("Failed to read from remote file during seek: {}", e),
+                    })?;
+
+                if bytes_read == 0 {
+                    // EOF reached before resume position - file might be smaller than expected
+                    // In this case, we'll start from where we are
+                    break;
+                }
+
+                skipped += bytes_read as u64;
             }
 
-            // Write chunk to local file
-            local_file.write_all(&buffer[..bytes_read]).await
-                .map_err(|e| SFTPError::IoError {
-                    message: format!("Failed to write to local file: {}", e),
-                })?;
-
-            transferred += bytes_read as u64;
-
-            // Update progress
-            {
+            // Update resume position if file was shorter than expected
+            if skipped < resume_from {
                 let mut transfers = self.active_transfers.write().await;
                 if let Some(progress) = transfers.get_mut(&transfer_id) {
-                    progress.transferred_bytes = transferred;
+                    progress.transferred_bytes = skipped;
                 }
             }
 
-            // Emit progress update
-            {
-                let transfers = self.active_transfers.read().await;
-                if let Some(progress) = transfers.get(&transfer_id) {
-                    let _ = app_handle_clone.emit(
-                        "sftp_transfer_progress",
-                        &serde_json::json!({
-                            "transferId": transfer_id,
-                            "transferredBytes": transferred,
-                            "totalBytes": progress.total_bytes,
-                        }),
-                    );
+            skipped
+        } else {
+            0
+        };
+
+        // Open local file for writing (append if resuming)
+        let mut local_file = if actual_resume_from > 0 {
+            // Check if local file exists and has correct size
+            if Path::new(&local_path).exists() {
+                use tokio::io::AsyncSeekExt;
+                let mut file = TokioFile::open(&local_path).await
+                    .map_err(|e| SFTPError::IoError {
+                        message: format!("Failed to open local file: {}", e),
+                    })?;
+
+                let meta = file.metadata().await
+                    .map_err(|e| SFTPError::IoError {
+                        message: format!("Failed to get local file metadata: {}", e),
+                    })?;
+
+                if meta.len() == actual_resume_from {
+                    // File size matches, seek to end for append
+                    file.seek(std::io::SeekFrom::End(0)).await
+                        .map_err(|e| SFTPError::IoError {
+                            message: format!("Failed to seek local file: {}", e),
+                        })?;
+                    file
+                } else {
+                    // File size doesn't match, truncate and restart
+                    drop(file);
+                    TokioFile::create(&local_path).await
+                        .map_err(|e| SFTPError::IoError {
+                            message: format!("Failed to create local file: {}", e),
+                        })?
+                }
+            } else {
+                // File doesn't exist, create new
+                TokioFile::create(&local_path).await
+                    .map_err(|e| SFTPError::IoError {
+                        message: format!("Failed to create local file: {}", e),
+                    })?
+            }
+        } else {
+            // New transfer: create/truncate
+            TokioFile::create(&local_path).await
+                .map_err(|e| SFTPError::IoError {
+                    message: format!("Failed to create local file: {}", e),
+                })?
+        };
+
+        // Download file in chunks with progress updates
+        let chunk_size = 64 * 1024; // 64KB chunks
+        let mut transferred = actual_resume_from; // Start from actual resume position
+        let mut buffer = vec![0u8; chunk_size];
+
+        loop {
+            tokio::select! {
+                _ = cancel_token.cancelled() => {
+                    // Transfer was paused or cancelled
+                    {
+                        let transfers = self.active_transfers.read().await;
+                        if let Some(progress) = transfers.get(&transfer_id) {
+                            if progress.status == TransferStatus::Paused {
+                                return Err(SFTPError::Other {
+                                    message: "Transfer paused".to_string(),
+                                });
+                            }
+                        }
+                    }
+                    return Err(SFTPError::Other {
+                        message: "Transfer cancelled".to_string(),
+                    });
+                }
+                result = remote_file.read(&mut buffer) => {
+                    let bytes_read = result.map_err(|e| SFTPError::Other {
+                        message: format!("Failed to read from remote file: {}", e),
+                    })?;
+
+                    if bytes_read == 0 {
+                        break; // EOF
+                    }
+
+                    // Write chunk to local file
+                    local_file.write_all(&buffer[..bytes_read]).await
+                        .map_err(|e| SFTPError::IoError {
+                            message: format!("Failed to write to local file: {}", e),
+                        })?;
+
+                    transferred += bytes_read as u64;
+
+                    // Update progress
+                    {
+                        let mut transfers = self.active_transfers.write().await;
+                        if let Some(progress) = transfers.get_mut(&transfer_id) {
+                            // Check if status was changed to paused/cancelled
+                            if progress.status == TransferStatus::Paused || progress.status == TransferStatus::Cancelled {
+                                return Err(SFTPError::Other {
+                                    message: format!("Transfer {:?}", progress.status),
+                                });
+                            }
+                            progress.transferred_bytes = transferred;
+                        }
+                    }
+
+                    // Emit progress update
+                    {
+                        let transfers = self.active_transfers.read().await;
+                        if let Some(progress) = transfers.get(&transfer_id) {
+                            let _ = app_handle_clone.emit(
+                                "sftp_transfer_progress",
+                                &serde_json::json!({
+                                    "transferId": transfer_id,
+                                    "transferredBytes": transferred,
+                                    "totalBytes": progress.total_bytes,
+                                }),
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -470,12 +734,77 @@ impl TransferManager {
     }
 
     /// Cancel transfer
-    pub async fn cancel_transfer(&self, transfer_id: String) -> Result<(), SFTPError> {
+    pub async fn cancel_transfer(
+        &self,
+        transfer_id: String,
+        app_handle: tauri::AppHandle,
+    ) -> Result<(), SFTPError> {
+        // Cancel the transfer token to stop the loop
+        {
+            let tokens = self.cancellation_tokens.read().await;
+            if let Some(token) = tokens.get(&transfer_id) {
+                token.cancel();
+            }
+        }
+
         let mut transfers = self.active_transfers.write().await;
         if let Some(progress) = transfers.get_mut(&transfer_id) {
             if progress.is_active() {
                 progress.status = TransferStatus::Cancelled;
                 progress.completed_at = Some(Utc::now());
+
+                // Remove cancellation token
+                drop(transfers);
+                let mut tokens = self.cancellation_tokens.write().await;
+                tokens.remove(&transfer_id);
+
+                // Emit cancel event for realtime updates
+                let _ = app_handle.emit(
+                    "sftp_transfer_complete",
+                    &serde_json::json!({
+                        "transferId": transfer_id,
+                    }),
+                );
+
+                Ok(())
+            } else {
+                Err(SFTPError::TransferNotResumable { transfer_id })
+            }
+        } else {
+            Err(SFTPError::TransferNotFound { transfer_id })
+        }
+    }
+
+    /// Pause transfer
+    pub async fn pause_transfer(
+        &self,
+        transfer_id: String,
+        app_handle: tauri::AppHandle,
+    ) -> Result<(), SFTPError> {
+        // Cancel the transfer token to stop the loop
+        {
+            let tokens = self.cancellation_tokens.read().await;
+            if let Some(token) = tokens.get(&transfer_id) {
+                token.cancel();
+            }
+        }
+
+        let mut transfers = self.active_transfers.write().await;
+        if let Some(progress) = transfers.get_mut(&transfer_id) {
+            if progress.status == TransferStatus::InProgress {
+                progress.status = TransferStatus::Paused;
+
+                // Keep the cancellation token so we can track it's paused
+                // Remove it when resuming
+
+                // Emit pause event for realtime updates
+                let _ = app_handle.emit(
+                    "sftp_transfer_complete",
+                    &serde_json::json!({
+                        "transferId": transfer_id,
+                    }),
+                );
+
                 Ok(())
             } else {
                 Err(SFTPError::TransferNotResumable { transfer_id })
@@ -507,7 +836,29 @@ impl TransferManager {
             return Err(SFTPError::TransferNotResumable { transfer_id });
         }
 
+        // Remove old cancellation token
+        {
+            let mut tokens = self.cancellation_tokens.write().await;
+            tokens.remove(&transfer_id);
+        }
+
+        // Create new cancellation token for resumed transfer
+        let cancel_token = CancellationToken::new();
+        {
+            let mut tokens = self.cancellation_tokens.write().await;
+            tokens.insert(transfer_id.clone(), cancel_token.clone());
+        }
+
+        // Update status back to in progress
+        {
+            let mut transfers = self.active_transfers.write().await;
+            if let Some(progress) = transfers.get_mut(&transfer_id) {
+                progress.status = TransferStatus::InProgress;
+            }
+        }
+
         // Restart transfer from where it left off
+        // Resume functionality is implemented in execute_upload and execute_download
         match metadata.direction {
             TransferDirection::Upload => {
                 self.execute_upload(
@@ -516,6 +867,7 @@ impl TransferManager {
                     metadata.remote_path,
                     transfer_id,
                     app_handle,
+                    cancel_token,
                 )
                 .await
             }
@@ -526,6 +878,7 @@ impl TransferManager {
                     metadata.local_path,
                     transfer_id,
                     app_handle,
+                    cancel_token,
                 )
                 .await
             }
@@ -538,6 +891,7 @@ impl Clone for TransferManager {
         Self {
             active_transfers: self.active_transfers.clone(),
             transfer_metadata: self.transfer_metadata.clone(),
+            cancellation_tokens: self.cancellation_tokens.clone(),
             sftp_service: std::sync::Weak::clone(&self.sftp_service),
         }
     }
