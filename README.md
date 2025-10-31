@@ -363,7 +363,7 @@ Contributions are welcome! Please follow these guidelines:
 
 - Limited support for some SSH authentication methods
 - MacOS version is **not signed/notarized yet** due to Apple Developer Program restrictions (it takes **99 USD/year!**) So please build from source if you want to use on MacOS or run unsigned app with `xattr -rd com.apple.quarantine /path/to/Kerminal.app` after first launch.
-- Android version is currently not working.
+- Android version is currently not working (some how it works on my device (Xiaomi Redmi Note 12) but not on other devices).
 
 ## 📝 License
 
