@@ -253,6 +253,7 @@ watch(
 
 onMounted(async () => {
   await syncStore.loadDatabases();
+  await syncStore.startRealtime();
 
   try {
     const globalSettings = await syncService.getGlobalSyncSettings();

@@ -6,7 +6,7 @@ use crate::models::ssh::{
 use crate::services::ssh_config_parser;
 use crate::state::AppState;
 use serde::Deserialize;
-use tauri::State;
+use tauri::{Emitter, State};
 
 use super::common::app_result;
 
@@ -15,8 +15,11 @@ use super::common::app_result;
 pub async fn create_ssh_group(
     state: State<'_, AppState>,
     request: CreateSSHGroupRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHGroup, String> {
-    app_result!(state.ssh_service.create_ssh_group(request).await)
+    let group = app_result!(state.ssh_service.create_ssh_group(request).await)?;
+    let _ = app_handle.emit("ssh_group_created", &group);
+    Ok(group)
 }
 
 /// Get all SSH groups
@@ -37,8 +40,11 @@ pub async fn update_ssh_group(
     state: State<'_, AppState>,
     id: String,
     request: UpdateSSHGroupRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHGroup, String> {
-    app_result!(state.ssh_service.update_ssh_group(&id, request).await)
+    let group = app_result!(state.ssh_service.update_ssh_group(&id, request).await)?;
+    let _ = app_handle.emit("ssh_group_updated", &group);
+    Ok(group)
 }
 
 /// Delete SSH group with action for existing profiles
@@ -47,9 +53,12 @@ pub async fn delete_ssh_group(
     state: State<'_, AppState>,
     id: String,
     action: DeleteGroupActionDto,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let action = action.into();
-    app_result!(state.ssh_service.delete_ssh_group(&id, action).await)
+    app_result!(state.ssh_service.delete_ssh_group(&id, action).await)?;
+    let _ = app_handle.emit("ssh_group_deleted", &serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 /// Create new SSH profile
@@ -57,8 +66,11 @@ pub async fn delete_ssh_group(
 pub async fn create_ssh_profile(
     state: State<'_, AppState>,
     request: CreateSSHProfileRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHProfile, String> {
-    app_result!(state.ssh_service.create_ssh_profile(request).await)
+    let profile = app_result!(state.ssh_service.create_ssh_profile(request).await)?;
+    let _ = app_handle.emit("ssh_profile_created", &profile);
+    Ok(profile)
 }
 
 /// Get all SSH profiles
@@ -79,14 +91,23 @@ pub async fn update_ssh_profile(
     state: State<'_, AppState>,
     id: String,
     request: UpdateSSHProfileRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHProfile, String> {
-    app_result!(state.ssh_service.update_ssh_profile(&id, request).await)
+    let profile = app_result!(state.ssh_service.update_ssh_profile(&id, request).await)?;
+    let _ = app_handle.emit("ssh_profile_updated", &profile);
+    Ok(profile)
 }
 
 /// Delete SSH profile
 #[tauri::command]
-pub async fn delete_ssh_profile(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    app_result!(state.ssh_service.delete_ssh_profile(&id).await)
+pub async fn delete_ssh_profile(
+    state: State<'_, AppState>,
+    id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    app_result!(state.ssh_service.delete_ssh_profile(&id).await)?;
+    let _ = app_handle.emit("ssh_profile_deleted", &serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 /// Move profile to different group
@@ -149,9 +170,12 @@ impl From<DeleteGroupActionDto> for DeleteGroupAction {
 pub async fn create_ssh_key(
     state: State<'_, AppState>,
     request: CreateSSHKeyRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHKey, String> {
     let service = state.ssh_key_service.lock().await;
-    app_result!(service.create_ssh_key(request).await)
+    let key = app_result!(service.create_ssh_key(request).await)?;
+    let _ = app_handle.emit("ssh_key_created", &key);
+    Ok(key)
 }
 
 /// Get all SSH keys
@@ -167,9 +191,12 @@ pub async fn update_ssh_key(
     state: State<'_, AppState>,
     id: String,
     request: UpdateSSHKeyRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHKey, String> {
     let service = state.ssh_key_service.lock().await;
-    app_result!(service.update_ssh_key(&id, request).await)
+    let key = app_result!(service.update_ssh_key(&id, request).await)?;
+    let _ = app_handle.emit("ssh_key_updated", &key);
+    Ok(key)
 }
 
 /// Delete SSH key
@@ -178,9 +205,12 @@ pub async fn delete_ssh_key(
     state: State<'_, AppState>,
     id: String,
     force: bool,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let service = state.ssh_key_service.lock().await;
-    app_result!(service.delete_ssh_key(&id, force).await)
+    app_result!(service.delete_ssh_key(&id, force).await)?;
+    let _ = app_handle.emit("ssh_key_deleted", &serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 /// Count profiles using a specific key

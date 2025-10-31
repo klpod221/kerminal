@@ -218,8 +218,6 @@ const isLoadingLogs = ref(false);
 const isLoadingStatus = ref(false);
 const syncDirection = ref<"push" | "pull" | "bidirectional" | null>(null);
 
-let refreshInterval: ReturnType<typeof setInterval> | null = null;
-
 const currentDatabase = computed(() => syncStore.currentDatabase);
 const syncStatus = computed(() => syncStore.syncStatus);
 const syncLogs = computed(() => syncStore.syncLogs);
@@ -324,30 +322,11 @@ const reloadAllData = async () => {
   }
 };
 
-const startAutoRefresh = () => {
-  refreshInterval = setInterval(() => {
-    if (currentDatabase.value?.isActive) {
-      loadStatus();
-      loadStatistics();
-    }
-  }, 30000); // Refresh every 30 seconds
-};
-
-const stopAutoRefresh = () => {
-  if (refreshInterval) {
-    clearInterval(refreshInterval);
-    refreshInterval = null;
-  }
-};
-
 watch(
   () => currentDatabase.value,
   async (newDb: any) => {
     if (newDb) {
       await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
-      startAutoRefresh();
-    } else {
-      stopAutoRefresh();
     }
   },
   { immediate: true },
@@ -372,11 +351,7 @@ onMounted(async () => {
   if (currentDatabase.value) {
     await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
   }
-
-  startAutoRefresh();
 });
 
-onUnmounted(() => {
-  stopAutoRefresh();
-});
+onUnmounted(() => {});
 </script>

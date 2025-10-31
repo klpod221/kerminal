@@ -13,6 +13,7 @@ import type {
 import { savedCommandService } from "../services/savedCommand";
 import { writeToTerminal } from "../services/terminal";
 import { useWorkspaceStore } from "./workspace";
+import { api } from "../services/api";
 import {
   safeJsonParse,
   caseInsensitiveIncludes,
@@ -454,6 +455,95 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     return getGroupById(id);
   };
 
+  const upsertCommand = (cmd: SavedCommand) => {
+    if (!cmd?.id) return;
+    const i = commands.value.findIndex((c) => c?.id === cmd.id);
+    if (i === -1) {
+      commands.value = [...commands.value, cmd];
+    } else {
+      commands.value[i] = { ...commands.value[i]!, ...cmd };
+    }
+  };
+
+  const removeCommand = (id: string) => {
+    commands.value = commands.value.filter((c) => c?.id !== id);
+  };
+
+  const upsertGroup = (g: SavedCommandGroup) => {
+    if (!g?.id) return;
+    const i = groups.value.findIndex((x) => x?.id === g.id);
+    if (i === -1) {
+      groups.value = [...groups.value, g];
+    } else {
+      groups.value[i] = { ...groups.value[i]!, ...g };
+    }
+  };
+
+  const removeGroup = (id: string) => {
+    groups.value = groups.value.filter((g) => g?.id !== id);
+  };
+
+  let unsubscribeCommandRealtime: (() => void) | null = null;
+  let unsubscribeGroupRealtime: (() => void) | null = null;
+
+  const startRealtime = async (): Promise<void> => {
+    if (unsubscribeCommandRealtime && unsubscribeGroupRealtime) return;
+    try {
+      if (!unsubscribeCommandRealtime) {
+        const u1 = await api.listen<SavedCommand>(
+          "saved_command_created",
+          upsertCommand,
+        );
+        const u2 = await api.listen<SavedCommand>(
+          "saved_command_updated",
+          upsertCommand,
+        );
+        const u3 = await api.listen<{ id: string }>(
+          "saved_command_deleted",
+          ({ id }) => removeCommand(id),
+        );
+        unsubscribeCommandRealtime = () => {
+          u1();
+          u2();
+          u3();
+        };
+      }
+
+      if (!unsubscribeGroupRealtime) {
+        const g1 = await api.listen<SavedCommandGroup>(
+          "saved_command_group_created",
+          upsertGroup,
+        );
+        const g2 = await api.listen<SavedCommandGroup>(
+          "saved_command_group_updated",
+          upsertGroup,
+        );
+        const g3 = await api.listen<{ id: string }>(
+          "saved_command_group_deleted",
+          ({ id }) => removeGroup(id),
+        );
+        unsubscribeGroupRealtime = () => {
+          g1();
+          g2();
+          g3();
+        };
+      }
+    } catch (e) {
+      console.error("Failed to subscribe saved command realtime events:", e);
+    }
+  };
+
+  const stopRealtime = (): void => {
+    if (unsubscribeCommandRealtime) {
+      unsubscribeCommandRealtime();
+      unsubscribeCommandRealtime = null;
+    }
+    if (unsubscribeGroupRealtime) {
+      unsubscribeGroupRealtime();
+      unsubscribeGroupRealtime = null;
+    }
+  };
+
   return {
     commands,
     groups,
@@ -486,5 +576,8 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     findCommandById,
     getGroupById,
     findGroupById,
+
+    startRealtime,
+    stopRealtime,
   };
 });

@@ -2,7 +2,7 @@ use crate::models::ssh::{
     CreateSSHTunnelRequest, SSHTunnel, TunnelStatus, TunnelWithStatus, UpdateSSHTunnelRequest,
 };
 use crate::state::AppState;
-use tauri::State;
+use tauri::{Emitter, State};
 
 use crate::commands::database::common::app_result;
 
@@ -18,8 +18,12 @@ macro_rules! tunnel_result {
 pub async fn create_tunnel(
     state: State<'_, AppState>,
     request: CreateSSHTunnelRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHTunnel, String> {
-    app_result!(state.tunnel_service.create_tunnel(request).await)
+    let tunnel = app_result!(state.tunnel_service.create_tunnel(request).await)?;
+    let tunnel_with_status = app_result!(state.tunnel_service.get_tunnel_with_status(&tunnel.base.id).await)?;
+    let _ = app_handle.emit("tunnel_created", &tunnel_with_status);
+    Ok(tunnel)
 }
 
 /// Get all SSH tunnels with status
@@ -43,26 +47,50 @@ pub async fn update_tunnel(
     state: State<'_, AppState>,
     id: String,
     request: UpdateSSHTunnelRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SSHTunnel, String> {
-    app_result!(state.tunnel_service.update_tunnel(&id, request).await)
+    let tunnel = app_result!(state.tunnel_service.update_tunnel(&id, request).await)?;
+    let tunnel_with_status = app_result!(state.tunnel_service.get_tunnel_with_status(&tunnel.base.id).await)?;
+    let _ = app_handle.emit("tunnel_updated", &tunnel_with_status);
+    Ok(tunnel)
 }
 
 /// Delete SSH tunnel
 #[tauri::command]
-pub async fn delete_tunnel(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    app_result!(state.tunnel_service.delete_tunnel(&id).await)
+pub async fn delete_tunnel(
+    state: State<'_, AppState>,
+    id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    app_result!(state.tunnel_service.delete_tunnel(&id).await)?;
+    let _ = app_handle.emit("tunnel_deleted", &serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 /// Start SSH tunnel
 #[tauri::command]
-pub async fn start_tunnel(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    tunnel_result!(state.tunnel_service.start_tunnel(id).await)
+pub async fn start_tunnel(
+    state: State<'_, AppState>,
+    id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    tunnel_result!(state.tunnel_service.start_tunnel(id.clone()).await)?;
+    let tunnel_with_status = app_result!(state.tunnel_service.get_tunnel_with_status(&id).await)?;
+    let _ = app_handle.emit("tunnel_started", &tunnel_with_status);
+    Ok(())
 }
 
 /// Stop SSH tunnel
 #[tauri::command]
-pub async fn stop_tunnel(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    tunnel_result!(state.tunnel_service.stop_tunnel(id).await)
+pub async fn stop_tunnel(
+    state: State<'_, AppState>,
+    id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    tunnel_result!(state.tunnel_service.stop_tunnel(id.clone()).await)?;
+    let tunnel_with_status = app_result!(state.tunnel_service.get_tunnel_with_status(&id).await)?;
+    let _ = app_handle.emit("tunnel_stopped", &tunnel_with_status);
+    Ok(())
 }
 
 /// Get tunnel status

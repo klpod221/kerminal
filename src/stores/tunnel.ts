@@ -210,7 +210,6 @@ export const useTunnelStore = defineStore("tunnel", () => {
     error.value = null;
   };
 
-  // Realtime helpers
   const upsertTunnel = (updated: TunnelWithStatus) => {
     if (!updated?.id) return;
     const index = tunnels.value.findIndex((t) => t?.id === updated.id);
@@ -240,8 +239,9 @@ export const useTunnelStore = defineStore("tunnel", () => {
     tunnels.value = tunnels.value.filter((t) => t?.id !== id);
   };
 
-  // Realtime: status updates from backend
   let unsubscribeStatusRealtime: (() => void) | null = null;
+  let unsubscribeCrudRealtime: (() => void) | null = null;
+
   const startRealtimeStatus = async (): Promise<void> => {
     if (unsubscribeStatusRealtime) return;
     try {
@@ -253,11 +253,40 @@ export const useTunnelStore = defineStore("tunnel", () => {
       console.error("Failed to subscribe tunnel status realtime:", e);
     }
   };
+
+  const startRealtimeCrud = async (): Promise<void> => {
+    if (unsubscribeCrudRealtime) return;
+    try {
+      const u1 = await api.listen<TunnelWithStatus>("tunnel_created", (t) => upsertTunnel(t));
+      const u2 = await api.listen<TunnelWithStatus>("tunnel_updated", (t) => upsertTunnel(t));
+      const u3 = await api.listen<{ id: string }>("tunnel_deleted", ({ id }) => removeTunnel(id));
+      unsubscribeCrudRealtime = () => { u1(); u2(); u3(); };
+    } catch (e) {
+      console.error("Failed to subscribe tunnel CRUD realtime:", e);
+    }
+  };
+
+  const startRealtime = async (): Promise<void> => {
+    await Promise.all([startRealtimeStatus(), startRealtimeCrud()]);
+  };
+
   const stopRealtimeStatus = (): void => {
     if (unsubscribeStatusRealtime) {
       unsubscribeStatusRealtime();
       unsubscribeStatusRealtime = null;
     }
+  };
+
+  const stopRealtimeCrud = (): void => {
+    if (unsubscribeCrudRealtime) {
+      unsubscribeCrudRealtime();
+      unsubscribeCrudRealtime = null;
+    }
+  };
+
+  const stopRealtime = (): void => {
+    stopRealtimeStatus();
+    stopRealtimeCrud();
   };
 
   return {
@@ -285,5 +314,9 @@ export const useTunnelStore = defineStore("tunnel", () => {
     removeTunnel,
     startRealtimeStatus,
     stopRealtimeStatus,
+    startRealtimeCrud,
+    stopRealtimeCrud,
+    startRealtime,
+    stopRealtime,
   };
 });

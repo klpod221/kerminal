@@ -18,14 +18,17 @@ import SSHKeyManager from "./SSHKeyManager.vue";
 import SSHKeyModal from "./SSHKeyModal.vue";
 
 import { useSSHStore } from "../../stores/ssh";
+import { useSshKeyStore } from "../../stores/sshKey";
 
 const sshStore = useSSHStore();
+const sshKeyStore = useSshKeyStore();
 
 const loadAllData = async () => {
   try {
-    await sshStore.loadAll();
+    await Promise.all([sshStore.loadAll(), sshKeyStore.loadKeys()]);
+    await Promise.all([sshStore.startRealtime(), sshKeyStore.startRealtime()]);
   } catch (error) {
-    console.error("Failed to load SSH profiles:", error);
+    console.error("Failed to load SSH data:", error);
   }
 };
 

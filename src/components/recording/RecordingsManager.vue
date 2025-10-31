@@ -14,6 +14,7 @@ const recordingStore = useRecordingStore();
 onMounted(async () => {
   try {
     await recordingStore.loadRecordings();
+    await recordingStore.startRealtime();
   } catch (error) {
     console.error('Failed to load recordings:', error);
   }

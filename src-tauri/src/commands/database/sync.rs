@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{Emitter, State};
 
 use crate::{
     models::sync::{ConflictResolutionStrategy, SyncDirection, SyncLog},
@@ -169,6 +169,7 @@ pub async fn resolve_conflict_resolution(
     id: String,
     strategy: ConflictResolutionStrategy,
     app_state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let database_service = app_state.database_service.lock().await;
     let local_db = database_service.get_local_database();
@@ -177,7 +178,10 @@ pub async fn resolve_conflict_resolution(
     local_db_read
         .resolve_conflict_resolution(&id, strategy)
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+
+    let _ = app_handle.emit("sync_conflict_resolved", &serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 /// Cleanup resolved conflicts older than specified days

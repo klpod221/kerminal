@@ -450,6 +450,7 @@ const handleError = (error: string) => {
 onMounted(async () => {
   try {
     await savedCommandStore.loadAll();
+    await savedCommandStore.startRealtime();
   } catch (error) {
     console.error("Failed to load saved commands:", error);
     showError("Failed to load saved commands");

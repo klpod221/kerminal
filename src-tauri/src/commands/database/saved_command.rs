@@ -3,7 +3,7 @@ use crate::models::saved_command::{
     UpdateSavedCommandGroupRequest, UpdateSavedCommandRequest,
 };
 use crate::state::AppState;
-use tauri::State;
+use tauri::{Emitter, State};
 
 use crate::commands::database::common::app_result;
 
@@ -12,8 +12,11 @@ use crate::commands::database::common::app_result;
 pub async fn create_saved_command(
     state: State<'_, AppState>,
     request: CreateSavedCommandRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SavedCommand, String> {
-    app_result!(state.saved_command_service.create_command(request).await)
+    let command = app_result!(state.saved_command_service.create_command(request).await)?;
+    let _ = app_handle.emit("saved_command_created", &command);
+    Ok(command)
 }
 
 /// Get all saved commands
@@ -37,19 +40,28 @@ pub async fn update_saved_command(
     state: State<'_, AppState>,
     id: String,
     request: UpdateSavedCommandRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SavedCommand, String> {
-    app_result!(
+    let command = app_result!(
         state
             .saved_command_service
             .update_command(&id, request)
             .await
-    )
+    )?;
+    let _ = app_handle.emit("saved_command_updated", &command);
+    Ok(command)
 }
 
 /// Delete saved command
 #[tauri::command]
-pub async fn delete_saved_command(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    app_result!(state.saved_command_service.delete_command(&id).await)
+pub async fn delete_saved_command(
+    state: State<'_, AppState>,
+    id: String,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    app_result!(state.saved_command_service.delete_command(&id).await)?;
+    let _ = app_handle.emit("saved_command_deleted", &serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 /// Increment command usage count
@@ -72,8 +84,11 @@ pub async fn toggle_command_favorite(
 pub async fn create_saved_command_group(
     state: State<'_, AppState>,
     request: CreateSavedCommandGroupRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SavedCommandGroup, String> {
-    app_result!(state.saved_command_service.create_group(request).await)
+    let group = app_result!(state.saved_command_service.create_group(request).await)?;
+    let _ = app_handle.emit("saved_command_group_created", &group);
+    Ok(group)
 }
 
 /// Get all saved command groups
@@ -99,8 +114,11 @@ pub async fn update_saved_command_group(
     state: State<'_, AppState>,
     id: String,
     request: UpdateSavedCommandGroupRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<SavedCommandGroup, String> {
-    app_result!(state.saved_command_service.update_group(&id, request).await)
+    let group = app_result!(state.saved_command_service.update_group(&id, request).await)?;
+    let _ = app_handle.emit("saved_command_group_updated", &group);
+    Ok(group)
 }
 
 /// Delete saved command group
@@ -108,6 +126,9 @@ pub async fn update_saved_command_group(
 pub async fn delete_saved_command_group(
     state: State<'_, AppState>,
     id: String,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    app_result!(state.saved_command_service.delete_group(&id).await)
+    app_result!(state.saved_command_service.delete_group(&id).await)?;
+    let _ = app_handle.emit("saved_command_group_deleted", &serde_json::json!({ "id": id }));
+    Ok(())
 }

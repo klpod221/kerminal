@@ -291,8 +291,6 @@ const handleTimeoutChange = async () => {
 
     authStore.securitySettings.autoLockTimeout = Number(autoLockTimeout.value);
 
-    authStore.resetAutoLockTimer();
-
     message.success(
       `Auto-lock timeout updated to ${
         Number(autoLockTimeout.value) === 0

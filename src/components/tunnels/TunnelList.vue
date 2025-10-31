@@ -179,7 +179,6 @@ import {
   Play,
   Square,
 } from "lucide-vue-next";
-// Realtime handled by tunnel store
 
 const tunnelStore = useTunnelStore();
 const sshStore = useSSHStore();
@@ -286,13 +285,9 @@ const getProfileName = (profileId: string) => {
   return profile?.name || "Unknown Profile";
 };
 
-// no local realtime unsubscribe needed; handled by store
-
 onMounted(async () => {
   await Promise.all([tunnelStore.loadTunnels(), sshStore.loadProfiles()]);
-
-  // Ensure store realtime is active
-  await tunnelStore.startRealtimeStatus();
+  await tunnelStore.startRealtime();
 });
 
 onUnmounted(() => {});

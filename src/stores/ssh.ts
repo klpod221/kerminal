@@ -11,6 +11,7 @@ import type {
   UpdateSSHGroupRequest,
 } from "../types/ssh";
 import * as sshService from "../services/sshProfile";
+import { api } from "../services/api";
 
 /**
  * SSH Profiles and Groups Store
@@ -267,6 +268,83 @@ export const useSSHStore = defineStore("ssh", () => {
     }
   };
 
+  const upsertProfile = (p: SSHProfile) => {
+    if (!p?.id) return;
+    const i = profiles.value.findIndex((x) => x?.id === p.id);
+    if (i === -1) {
+      profiles.value = [...profiles.value, p];
+    } else {
+      profiles.value[i] = { ...profiles.value[i]!, ...p };
+    }
+  };
+
+  const removeProfile = (id: string) => {
+    profiles.value = profiles.value.filter((p) => p?.id !== id);
+  };
+
+  const upsertGroup = (g: SSHGroup) => {
+    if (!g?.id) return;
+    const i = groups.value.findIndex((x) => x?.id === g.id);
+    if (i === -1) {
+      groups.value = [...groups.value, g];
+    } else {
+      groups.value[i] = { ...groups.value[i]!, ...g };
+    }
+  };
+
+  const removeGroup = (id: string) => {
+    groups.value = groups.value.filter((g) => g?.id !== id);
+  };
+
+  let unsubscribeProfileRealtime: (() => void) | null = null;
+  let unsubscribeGroupRealtime: (() => void) | null = null;
+
+  const startRealtime = async (): Promise<void> => {
+    if (unsubscribeProfileRealtime && unsubscribeGroupRealtime) return;
+    try {
+      if (!unsubscribeProfileRealtime) {
+        const u1 = await api.listen<SSHProfile>("ssh_profile_created", upsertProfile);
+        const u2 = await api.listen<SSHProfile>("ssh_profile_updated", upsertProfile);
+        const u3 = await api.listen<{ id: string }>(
+          "ssh_profile_deleted",
+          ({ id }) => removeProfile(id),
+        );
+        unsubscribeProfileRealtime = () => {
+          u1();
+          u2();
+          u3();
+        };
+      }
+
+      if (!unsubscribeGroupRealtime) {
+        const g1 = await api.listen<SSHGroup>("ssh_group_created", upsertGroup);
+        const g2 = await api.listen<SSHGroup>("ssh_group_updated", upsertGroup);
+        const g3 = await api.listen<{ id: string }>(
+          "ssh_group_deleted",
+          ({ id }) => removeGroup(id),
+        );
+        unsubscribeGroupRealtime = () => {
+          g1();
+          g2();
+          g3();
+        };
+      }
+    } catch (e) {
+      console.error("Failed to subscribe SSH realtime events:", e);
+    }
+  };
+
+  const stopRealtime = (): void => {
+    if (unsubscribeProfileRealtime) {
+      unsubscribeProfileRealtime();
+      unsubscribeProfileRealtime = null;
+    }
+    if (unsubscribeGroupRealtime) {
+      unsubscribeGroupRealtime();
+      unsubscribeGroupRealtime = null;
+    }
+  };
+
   return {
     profiles,
     groups,
@@ -297,5 +375,8 @@ export const useSSHStore = defineStore("ssh", () => {
     loadAll,
     refresh,
     clearAll,
+
+    startRealtime,
+    stopRealtime,
   };
 });

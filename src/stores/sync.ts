@@ -11,6 +11,7 @@ import type {
   ConflictResolutionStrategy,
 } from "../types/sync";
 import { syncService } from "../services/sync";
+import { api } from "../services/api";
 
 /**
  * External Database Sync Store
@@ -292,6 +293,113 @@ export const useSyncStore = defineStore("sync", () => {
     isSyncing.value = false;
   }
 
+  const upsertDatabase = (db: ExternalDatabaseConfig) => {
+    if (!db?.id) return;
+    const i = databases.value.findIndex((x) => x?.id === db.id);
+    if (i === -1) {
+      databases.value = [...databases.value, db];
+    } else {
+      databases.value[i] = { ...databases.value[i]!, ...db };
+    }
+  };
+
+  const removeDatabase = (id: string) => {
+    databases.value = databases.value.filter((db) => db?.id !== id);
+    if (currentDatabaseId.value === id) {
+      currentDatabaseId.value = null;
+      syncStatus.value = null;
+    }
+  };
+
+  let unsubscribeDatabaseRealtime: (() => void) | null = null;
+  let unsubscribeSyncRealtime: (() => void) | null = null;
+  let unsubscribeConflictRealtime: (() => void) | null = null;
+
+  const startRealtime = async (): Promise<void> => {
+    if (
+      unsubscribeDatabaseRealtime &&
+      unsubscribeSyncRealtime &&
+      unsubscribeConflictRealtime
+    )
+      return;
+
+    try {
+      if (!unsubscribeDatabaseRealtime) {
+        const u1 = await api.listen<ExternalDatabaseConfig>(
+          "sync_database_created",
+          upsertDatabase,
+        );
+        const u2 = await api.listen<ExternalDatabaseConfig>(
+          "sync_database_updated",
+          upsertDatabase,
+        );
+        const u3 = await api.listen<{ id: string }>(
+          "sync_database_deleted",
+          ({ id }) => removeDatabase(id),
+        );
+        unsubscribeDatabaseRealtime = () => {
+          u1();
+          u2();
+          u3();
+        };
+      }
+
+      if (!unsubscribeSyncRealtime) {
+        const s1 = await api.listen<SyncServiceStatus>(
+          "sync_status_updated",
+          (status) => {
+            if (currentDatabaseId.value && status.lastSync?.databaseId === currentDatabaseId.value) {
+              syncStatus.value = status;
+            }
+          },
+        );
+        const s2 = await api.listen<SyncLog>("sync_log_added", (log) => {
+          syncLogs.value.unshift(log);
+        });
+        unsubscribeSyncRealtime = () => {
+          s1();
+          s2();
+        };
+      }
+
+      if (!unsubscribeConflictRealtime) {
+        const c1 = await api.listen<ConflictResolutionData>(
+          "sync_conflict_created",
+          (conflict) => {
+            conflicts.value.push(conflict);
+          },
+        );
+        const c2 = await api.listen<{ id: string }>(
+          "sync_conflict_resolved",
+          ({ id }) => {
+            conflicts.value = conflicts.value.filter((c) => c.id !== id);
+          },
+        );
+        unsubscribeConflictRealtime = () => {
+          c1();
+          c2();
+        };
+      }
+    } catch (e) {
+      console.error("Failed to subscribe sync realtime events:", e);
+    }
+  };
+
+  const stopRealtime = (): void => {
+    if (unsubscribeDatabaseRealtime) {
+      unsubscribeDatabaseRealtime();
+      unsubscribeDatabaseRealtime = null;
+    }
+    if (unsubscribeSyncRealtime) {
+      unsubscribeSyncRealtime();
+      unsubscribeSyncRealtime = null;
+    }
+    if (unsubscribeConflictRealtime) {
+      unsubscribeConflictRealtime();
+      unsubscribeConflictRealtime = null;
+    }
+  };
+
   return {
     databases,
     currentDatabaseId,
@@ -321,5 +429,8 @@ export const useSyncStore = defineStore("sync", () => {
     loadStatistics,
     setCurrentDatabase,
     reset,
+
+    startRealtime,
+    stopRealtime,
   };
 });

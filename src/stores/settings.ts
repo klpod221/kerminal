@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { getAvailableThemes } from "../utils/terminalTheme";
 import { Store } from "@tauri-apps/plugin-store";
+import { api } from "../services/api";
 import type { TerminalTheme } from "../utils/terminalTheme";
 
 export interface CustomTheme {
@@ -179,6 +180,70 @@ export const useSettingsStore = defineStore("settings", () => {
     await saveSettings();
   };
 
+  const upsertCustomTheme = (theme: CustomTheme) => {
+    if (!theme?.id) return;
+    const i = customThemes.value.findIndex((t) => t.id === theme.id);
+    if (i === -1) {
+      customThemes.value = [...customThemes.value, theme];
+    } else {
+      customThemes.value[i] = { ...customThemes.value[i]!, ...theme };
+    }
+  };
+
+  const removeCustomTheme = (id: string) => {
+    const theme = customThemes.value.find((t) => t.id === id);
+    if (theme) {
+      customThemes.value = customThemes.value.filter((t) => t.id !== id);
+      if (terminalTheme.value === theme.name) {
+        terminalTheme.value = "Default";
+        saveSettings();
+      }
+    }
+  };
+
+  let unsubscribeThemeRealtime: (() => void) | null = null;
+
+  const startRealtime = async (): Promise<void> => {
+    if (unsubscribeThemeRealtime) return;
+    try {
+      const u1 = await api.listen<CustomTheme>(
+        "settings_custom_theme_created",
+        (theme) => {
+          upsertCustomTheme(theme);
+          saveCustomThemes();
+        },
+      );
+      const u2 = await api.listen<CustomTheme>(
+        "settings_custom_theme_updated",
+        (theme) => {
+          upsertCustomTheme(theme);
+          saveCustomThemes();
+        },
+      );
+      const u3 = await api.listen<{ id: string }>(
+        "settings_custom_theme_deleted",
+        ({ id }) => {
+          removeCustomTheme(id);
+          saveCustomThemes();
+        },
+      );
+      unsubscribeThemeRealtime = () => {
+        u1();
+        u2();
+        u3();
+      };
+    } catch (e) {
+      console.error("Failed to subscribe settings realtime events:", e);
+    }
+  };
+
+  const stopRealtime = (): void => {
+    if (unsubscribeThemeRealtime) {
+      unsubscribeThemeRealtime();
+      unsubscribeThemeRealtime = null;
+    }
+  };
+
   // Initialize settings on store creation
   loadSettings();
 
@@ -199,6 +264,9 @@ export const useSettingsStore = defineStore("settings", () => {
     deleteCustomTheme,
     getCustomTheme,
     isCustomTheme,
+
+    startRealtime,
+    stopRealtime,
   };
 });
 

@@ -41,12 +41,16 @@ export const useAuthStore = defineStore("auth", () => {
     createdAt: "",
   });
 
-  let autoLockTimer: ReturnType<typeof setTimeout> | null = null;
-  // Removed backend polling; realtime only
-  let sessionCountdownInterval: ReturnType<typeof setInterval> | null = null;
   let unsubscribeAuthRealtime: (() => void) | null = null;
 
-  const sessionRemainingMs = ref<number>(0);
+  const sessionRemainingMs = computed((): number => {
+    if (!status.value.sessionExpiresAt || !status.value.isUnlocked) {
+      return 0;
+    }
+    const expires = new Date(status.value.sessionExpiresAt).getTime();
+    const now = Date.now();
+    return Math.max(0, expires - now);
+  });
 
   const isAuthenticated = computed(() => status.value.isUnlocked);
   const requiresSetup = computed(() => !status.value.isSetup);
@@ -73,10 +77,6 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-  /**
-   * Check if current session is valid (not expired)
-   */
-  // Realtime-only: no periodic validity polling
 
   /**
    * Setup master password for the first time
@@ -93,10 +93,6 @@ export const useAuthStore = defineStore("auth", () => {
 
     if (setup.autoUnlock && setup.useKeychain) {
       await tryAutoUnlock();
-
-      if (status.value.isUnlocked) {
-        setupAutoLockTimer();
-      }
     } else {
       await lock();
     }
@@ -117,8 +113,6 @@ export const useAuthStore = defineStore("auth", () => {
       await checkStatus();
 
       if (isValid) {
-        setupAutoLockTimer();
-
         return true;
       } else {
         return false;
@@ -133,8 +127,6 @@ export const useAuthStore = defineStore("auth", () => {
    * Lock the application
    */
   const lock = async (): Promise<void> => {
-    clearAutoLockTimer();
-
     await masterPasswordService.lock();
 
     await checkStatus();
@@ -148,8 +140,6 @@ export const useAuthStore = defineStore("auth", () => {
     changeData: MasterPasswordChange,
   ): Promise<boolean> => {
     await masterPasswordService.change(changeData);
-
-    clearAutoLockTimer();
 
     await checkStatus();
 
@@ -175,8 +165,6 @@ export const useAuthStore = defineStore("auth", () => {
     await loadSecuritySettings();
     await checkStatus();
 
-    setupAutoLockTimer();
-
     return true;
   };
 
@@ -189,77 +177,24 @@ export const useAuthStore = defineStore("auth", () => {
     await checkStatus();
 
     if (status.value.isUnlocked) {
-      setupAutoLockTimer();
       return true; // Return true if we are actually unlocked
     }
 
     return false; // Return false if we are still locked
   };
 
-  /**
-   * Reset auto-lock timer (called on user activity)
-   */
-  const resetAutoLockTimer = (): void => {
-    if (!status.value.isUnlocked) return;
-
-    setupAutoLockTimer();
-  };
-
-  /**
-   * Clear auto-lock timer
-   */
-  const clearAutoLockTimer = (): void => {
-    if (autoLockTimer) {
-      clearTimeout(autoLockTimer);
-      autoLockTimer = null;
-    }
-  };
-
-  /**
-   * Start periodic session validity check
-   */
-  // Removed periodic session validity check
-
-  const startSessionCountdown = (): void => {
-    stopSessionCountdown();
-    if (!status.value.sessionExpiresAt) return;
-
-    const update = () => {
-      if (!status.value.sessionExpiresAt) {
-        sessionRemainingMs.value = 0;
-        return;
-      }
-      const expires = new Date(status.value.sessionExpiresAt).getTime();
-      const now = Date.now();
-      sessionRemainingMs.value = Math.max(0, expires - now);
-    };
-
-    update();
-    sessionCountdownInterval = setInterval(update, 1000);
-  };
-
-  const stopSessionCountdown = (): void => {
-    if (sessionCountdownInterval) {
-      clearInterval(sessionCountdownInterval);
-      sessionCountdownInterval = null;
-    }
-    sessionRemainingMs.value = 0;
-  };
 
   const startAuthRealtime = async (): Promise<void> => {
     if (unsubscribeAuthRealtime) return;
     try {
       const u1 = await api.listen<any>("auth_session_unlocked", async () => {
         await checkStatus();
-        startSessionCountdown();
       });
       const u2 = await api.listen<any>("auth_session_locked", async () => {
         await checkStatus();
-        startSessionCountdown();
       });
       const u3 = await api.listen<any>("auth_session_updated", async () => {
         await checkStatus();
-        startSessionCountdown();
       });
       unsubscribeAuthRealtime = () => { u1(); u2(); u3(); };
     } catch (e) {
@@ -289,7 +224,6 @@ export const useAuthStore = defineStore("auth", () => {
       loadedDeviceCount: 0,
     };
 
-    clearAutoLockTimer();
     return true;
   };
 
@@ -301,31 +235,9 @@ export const useAuthStore = defineStore("auth", () => {
     await loadSecuritySettings();
     await getCurrentDevice();
 
-    if (status.value.isUnlocked) {
-      setupAutoLockTimer();
-      startSessionCountdown();
-    }
-
     await startAuthRealtime();
   };
 
-  /**
-   * Setup auto-lock timer based on current settings
-   */
-  const setupAutoLockTimer = (): void => {
-    clearAutoLockTimer();
-
-    const timeoutMinutes = securitySettings.value.autoLockTimeout;
-    if (timeoutMinutes > 0 && status.value.isUnlocked) {
-      autoLockTimer = setTimeout(
-        () => {
-          console.log("Auto-lock triggered");
-          lock();
-        },
-        timeoutMinutes * 60 * 1000,
-      );
-    }
-  };
 
   /**
    * Get current device information
@@ -339,8 +251,6 @@ export const useAuthStore = defineStore("auth", () => {
    * Cleanup auth store
    */
   const cleanup = (): void => {
-    clearAutoLockTimer();
-    stopSessionCountdown();
     stopAuthRealtime();
   };
 
@@ -363,7 +273,6 @@ export const useAuthStore = defineStore("auth", () => {
     changeMasterPassword,
     resetMasterPassword,
     updateMasterPasswordConfig,
-    resetAutoLockTimer,
     getCurrentDevice,
     initialize,
     cleanup,

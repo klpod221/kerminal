@@ -15,8 +15,10 @@ pub fn init(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>
                 let auth_session_manager = app_state.auth_session_manager.clone();
                 app_handle.manage(app_state);
 
+                let auth_manager_clone = auth_session_manager.clone();
                 tokio::spawn(async move {
-                    let mut manager = auth_session_manager.lock().await;
+                    let mut manager = auth_manager_clone.lock().await;
+                    manager.set_app_handle(app_handle.clone());
                     let _ = manager.initialize().await;
                 });
             }

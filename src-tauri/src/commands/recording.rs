@@ -2,7 +2,7 @@ use crate::models::recording::*;
 use crate::services::recording::*;
 use crate::state::AppState;
 use std::sync::Arc;
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -82,6 +82,7 @@ pub struct StopRecordingRequest {
 pub async fn stop_recording(
     request: StopRecordingRequest,
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<SessionRecording, String> {
     let recorder = state
         .terminal_manager
@@ -121,6 +122,9 @@ pub async fn stop_recording(
         .await
         .map_err(|e| format!("Failed to save recording to database: {}", e))?;
 
+    // Emit realtime event
+    let _ = app_handle.emit("recording_saved", &recording);
+
     Ok(recording)
 }
 
@@ -142,6 +146,7 @@ pub struct DeleteRecordingRequest {
 pub async fn delete_recording(
     request: DeleteRecordingRequest,
     state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     // Get recording to find file path
     let db = state.database_service.lock().await;
@@ -159,7 +164,12 @@ pub async fn delete_recording(
     // Delete from database
     db.delete_session_recording(&request.recording_id)
         .await
-        .map_err(|e| format!("Failed to delete recording from database: {}", e))
+        .map_err(|e| format!("Failed to delete recording from database: {}", e))?;
+
+    // Emit realtime event
+    let _ = app_handle.emit("recording_deleted", &serde_json::json!({ "id": request.recording_id }));
+
+    Ok(())
 }
 
 #[derive(Debug, serde::Deserialize)]

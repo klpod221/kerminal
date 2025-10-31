@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::{broadcast, Mutex};
 use tokio::time::{interval, Duration};
+use tauri::Emitter;
 
 use crate::database::{error::DatabaseResult, service::DatabaseService};
 
@@ -35,6 +36,7 @@ pub struct AuthSessionManager {
     database_service: Arc<Mutex<DatabaseService>>,
     event_sender: broadcast::Sender<AuthEvent>,
     session_check_handle: Option<tokio::task::JoinHandle<()>>,
+    app_handle: Option<tauri::AppHandle>,
 }
 
 impl AuthSessionManager {
@@ -45,6 +47,17 @@ impl AuthSessionManager {
             database_service,
             event_sender,
             session_check_handle: None,
+            app_handle: None,
+        }
+    }
+
+    pub fn set_app_handle(&mut self, app_handle: tauri::AppHandle) {
+        self.app_handle = Some(app_handle);
+    }
+
+    fn emit_tauri_event(&self, event_name: &str, payload: &impl serde::Serialize) {
+        if let Some(handle) = &self.app_handle {
+            let _ = handle.emit(event_name, payload);
         }
     }
 
@@ -71,10 +84,12 @@ impl AuthSessionManager {
                 });
 
                 if success {
-                    let _ = self.event_sender.send(AuthEvent::SessionUnlocked {
+                    let event = AuthEvent::SessionUnlocked {
                         timestamp: Utc::now(),
                         via_auto_unlock: true,
-                    });
+                    };
+                    let _ = self.event_sender.send(event.clone());
+                    self.emit_tauri_event("auth_session_unlocked", &event);
                 }
 
                 success
@@ -97,6 +112,7 @@ impl AuthSessionManager {
 
         let db_service = Arc::clone(&self.database_service);
         let event_sender = self.event_sender.clone();
+        let app_handle = self.app_handle.clone();
 
         let session_check_task = tokio::spawn(async move {
             let mut check_interval = interval(Duration::from_secs(30));
@@ -109,17 +125,36 @@ impl AuthSessionManager {
                 match db_guard.is_session_valid().await {
                     Ok(is_valid) => {
                         if !is_valid {
-                            let _ = event_sender.send(AuthEvent::SessionLocked {
+                            // Lock session first
+                            db_guard.lock_session().await;
+
+                            let event = AuthEvent::SessionLocked {
                                 timestamp: Utc::now(),
                                 reason: SessionLockReason::Timeout,
-                            });
+                            };
+                            let _ = event_sender.send(event.clone());
+
+                            // Emit Tauri event
+                            if let Some(handle) = &app_handle {
+                                let _ = handle.emit("auth_session_locked", &event);
+                                let _ = handle.emit("auth_session_updated", &serde_json::json!({
+                                    "sessionActive": false,
+                                    "sessionExpiresAt": serde_json::Value::Null,
+                                }));
+                            }
                         }
                     }
                     Err(_) => {
-                        let _ = event_sender.send(AuthEvent::SessionLocked {
+                        let event = AuthEvent::SessionLocked {
                             timestamp: Utc::now(),
                             reason: SessionLockReason::Error("Session check failed".to_string()),
-                        });
+                        };
+                        let _ = event_sender.send(event.clone());
+
+                        if let Some(handle) = &app_handle {
+                            let _ = handle.emit("auth_session_locked", &event);
+                        }
+
                         break; // Stop monitoring on error
                     }
                 }
@@ -139,21 +174,23 @@ impl AuthSessionManager {
 
     /// Handle manual unlock
     pub async fn on_session_unlocked(&self) -> DatabaseResult<()> {
-        let _ = self.event_sender.send(AuthEvent::SessionUnlocked {
+        let event = AuthEvent::SessionUnlocked {
             timestamp: Utc::now(),
             via_auto_unlock: false,
-        });
-
+        };
+        let _ = self.event_sender.send(event.clone());
+        self.emit_tauri_event("auth_session_unlocked", &event);
         Ok(())
     }
 
     /// Handle manual lock
     pub async fn on_session_locked(&self, reason: SessionLockReason) -> DatabaseResult<()> {
-        let _ = self.event_sender.send(AuthEvent::SessionLocked {
+        let event = AuthEvent::SessionLocked {
             timestamp: Utc::now(),
             reason,
-        });
-
+        };
+        let _ = self.event_sender.send(event.clone());
+        self.emit_tauri_event("auth_session_locked", &event);
         Ok(())
     }
 }

@@ -6,6 +6,7 @@ import type {
   UpdateSSHKeyRequest,
 } from "../types/ssh";
 import * as sshKeyService from "../services/sshKey";
+import { api } from "../services/api";
 import { message } from "../utils/message";
 
 export const useSshKeyStore = defineStore("sshKey", () => {
@@ -154,6 +155,48 @@ export const useSshKeyStore = defineStore("sshKey", () => {
     keys.value = [];
   }
 
+  const upsertKey = (key: SSHKey) => {
+    if (!key?.id) return;
+    const i = keys.value.findIndex((k) => k?.id === key.id);
+    if (i === -1) {
+      keys.value = [...keys.value, key];
+    } else {
+      keys.value[i] = { ...keys.value[i]!, ...key };
+    }
+  };
+
+  const removeKey = (id: string) => {
+    keys.value = keys.value.filter((k) => k?.id !== id);
+  };
+
+  let unsubscribeRealtime: (() => void) | null = null;
+
+  const startRealtime = async (): Promise<void> => {
+    if (unsubscribeRealtime) return;
+    try {
+      const u1 = await api.listen<SSHKey>("ssh_key_created", upsertKey);
+      const u2 = await api.listen<SSHKey>("ssh_key_updated", upsertKey);
+      const u3 = await api.listen<{ id: string }>(
+        "ssh_key_deleted",
+        ({ id }) => removeKey(id),
+      );
+      unsubscribeRealtime = () => {
+        u1();
+        u2();
+        u3();
+      };
+    } catch (e) {
+      console.error("Failed to subscribe SSH key realtime events:", e);
+    }
+  };
+
+  const stopRealtime = (): void => {
+    if (unsubscribeRealtime) {
+      unsubscribeRealtime();
+      unsubscribeRealtime = null;
+    }
+  };
+
   return {
     keys,
     loading,
@@ -167,5 +210,8 @@ export const useSshKeyStore = defineStore("sshKey", () => {
     getKeyById,
     countProfilesUsing,
     clearKeys,
+
+    startRealtime,
+    stopRealtime,
   };
 });

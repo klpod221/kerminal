@@ -1,4 +1,4 @@
-use tauri::State;
+use tauri::{Emitter, State};
 
 use crate::database::encryption::ExternalDbEncryptor;
 use crate::database::providers::{MongoDBProvider, MySQLProvider, PostgreSQLProvider};
@@ -13,6 +13,7 @@ use crate::state::AppState;
 pub async fn add_external_database(
     request: AddExternalDatabaseRequest,
     app_state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<ExternalDatabaseConfig, String> {
     let database_service = app_state.database_service.lock().await;
     let device_id = database_service.get_device_id().to_string();
@@ -37,6 +38,7 @@ pub async fn add_external_database(
         .await
         .map_err(|e| format!("Failed to save external database: {}", e))?;
 
+    let _ = app_handle.emit("sync_database_created", &config);
     Ok(config)
 }
 
@@ -85,6 +87,7 @@ pub async fn get_external_database_with_details(
 pub async fn update_external_database(
     request: UpdateExternalDatabaseRequest,
     app_state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<ExternalDatabaseConfig, String> {
     let database_service = app_state.database_service.lock().await;
 
@@ -116,6 +119,7 @@ pub async fn update_external_database(
         .await
         .map_err(|e| format!("Failed to update external database: {}", e))?;
 
+    let _ = app_handle.emit("sync_database_updated", &config);
     Ok(config)
 }
 
@@ -123,13 +127,17 @@ pub async fn update_external_database(
 pub async fn delete_external_database(
     id: String,
     app_state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let database_service = app_state.database_service.lock().await;
 
     database_service
         .delete_external_database(&id)
         .await
-        .map_err(|e| format!("Failed to delete external database: {}", e))
+        .map_err(|e| format!("Failed to delete external database: {}", e))?;
+
+    let _ = app_handle.emit("sync_database_deleted", &serde_json::json!({ "id": id }));
+    Ok(())
 }
 
 #[tauri::command]
