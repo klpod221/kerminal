@@ -104,6 +104,7 @@
             @upload="handleLocalUpload"
             @drag-files="handleLocalDragFiles"
             @open="handleLocalOpen"
+            @edit="handleLocalEdit"
             @rename="handleLocalRename"
             @delete="handleLocalDelete"
             @create-directory="handleLocalCreateDirectory"
@@ -125,6 +126,7 @@
             @download="handleRemoteDownload"
             @drag-files="handleRemoteDragFiles"
             @open="handleRemoteOpen"
+            @edit="handleRemoteEdit"
             @rename="handleRemoteRename"
             @delete="handleRemoteDelete"
             @permissions="handleRemotePermissions"
@@ -155,6 +157,8 @@
     <CreateDirectoryModal />
     <CreateFileModal />
     <SyncCompareModal />
+    <FileEditorModal />
+    <FilePreviewModal />
   </div>
 </template>
 
@@ -176,6 +180,8 @@ import FilePermissionsModal from "./FilePermissionsModal.vue";
 import CreateDirectoryModal from "./CreateDirectoryModal.vue";
 import CreateFileModal from "./CreateFileModal.vue";
 import SyncCompareModal from "./SyncCompareModal.vue";
+import FileEditorModal from "./FileEditorModal.vue";
+import FilePreviewModal from "./FilePreviewModal.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import EmptyState from "../ui/EmptyState.vue";
@@ -484,13 +490,82 @@ async function handleLocalUpload(files: FileList | File[]) {
   }
 }
 
+/**
+ * Check if a file is likely a text file based on extension
+ */
+function isTextFile(file: FileEntry): boolean {
+  if (file.fileType !== "file") return false;
+  
+  const textExtensions = new Set([
+    "txt", "md", "json", "yaml", "yml", "xml", "html", "css", "scss", "sass",
+    "js", "jsx", "ts", "tsx", "vue", "py", "rs", "go", "java", "c", "cpp",
+    "h", "hpp", "sh", "bash", "zsh", "sql", "php", "rb", "log", "ini",
+    "conf", "toml", "dockerfile", "makefile", "env", "gitignore", "editorconfig",
+    "prettierrc", "eslintrc", "babelrc", "tsconfig", "package", "lock", "gradle",
+    "maven", "pom", "cmake", "make", "nix", "lock"
+  ]);
+  
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (ext && textExtensions.has(ext)) return true;
+  
+  // Also check for files without extension (common config files)
+  const textFileNames = new Set([
+    "dockerfile", "makefile", ".gitignore", ".editorconfig", ".env",
+    ".prettierrc", ".eslintrc", ".babelrc", "readme", "license", "changelog"
+  ]);
+  
+  const lowerName = file.name.toLowerCase();
+  if (textFileNames.has(lowerName) || textFileNames.has(lowerName.replace(/^\./, ""))) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Check if a file can be previewed
+ */
+function canPreviewFile(file: FileEntry): boolean {
+  if (file.fileType !== "file") return false;
+  
+  const previewableExtensions = new Set([
+    // Images
+    "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico",
+    // Videos
+    "mp4", "webm", "ogg", "avi", "mov", "wmv", "flv", "mkv",
+    // Documents
+    "html", "htm", "md", "markdown", "pdf",
+    // Office (show info, not actual preview)
+    "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp",
+  ]);
+  
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  return ext ? previewableExtensions.has(ext) : false;
+}
+
 async function handleLocalOpen(file: FileEntry) {
   // If it's a directory, navigate to it (same as click)
   if (file.fileType === "directory") {
     handleLocalNavigate(file.path);
+  } else if (canPreviewFile(file)) {
+    // Open previewable files in preview modal
+    openOverlay("sftp-file-preview-modal", {
+      file,
+      isLocal: true,
+    });
   } else {
-    // Open local file with default application
+    // Open other files with default application
     await openPath(file.path);
+  }
+}
+
+function handleLocalEdit(file: FileEntry) {
+  // Open file in editor (for any file type)
+  if (file.fileType === "file") {
+    openOverlay("sftp-file-editor-modal", {
+      file,
+      isLocal: true,
+    });
   }
 }
 
@@ -653,11 +728,28 @@ async function handleRemoteDownload(file: FileEntry) {
 }
 
 function handleRemoteOpen(file: FileEntry) {
-  // For remote files, we can't open directly - would need to download first
+  // If it's a directory, navigate to it (same as click)
   if (file.fileType === "directory") {
     handleRemoteNavigate(file.path);
+  } else if (canPreviewFile(file)) {
+    // Open previewable files in preview modal
+    openOverlay("sftp-file-preview-modal", {
+      file,
+      isLocal: false,
+    });
   } else {
+    // For other files, suggest download
     message.info("Please download the file to open it");
+  }
+}
+
+function handleRemoteEdit(file: FileEntry) {
+  // Open file in editor (for any file type)
+  if (file.fileType === "file") {
+    openOverlay("sftp-file-editor-modal", {
+      file,
+      isLocal: false,
+    });
   }
 }
 

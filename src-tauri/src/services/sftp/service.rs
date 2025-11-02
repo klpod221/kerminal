@@ -648,5 +648,110 @@ impl SFTPService {
 
         Ok(target)
     }
+
+    /// Read file content as text
+    pub async fn read_file(
+        &self,
+        session_id: String,
+        path: String,
+    ) -> Result<String, SFTPError> {
+        let session_data = self.get_session(&session_id).await?;
+        let mut data = session_data.lock().await;
+        data.last_used = Utc::now();
+
+        // Check if file exists and is a regular file
+        let attrs = data
+            .sftp
+            .metadata(&path)
+            .await
+            .map_err(|e| {
+                if e.to_string().contains("not found") || e.to_string().contains("No such file") {
+                    SFTPError::FileNotFound { path: path.clone() }
+                } else {
+                    SFTPError::Other {
+                        message: format!("Failed to get metadata for {}: {}", path, e),
+                    }
+                }
+            })?;
+
+        if attrs.file_type() != russh_sftp::protocol::FileType::File {
+            return Err(SFTPError::Other {
+                message: format!("Path is not a regular file: {}", path),
+            });
+        }
+
+        // Check file size (limit to 10MB for text files)
+        let file_size = attrs.size.unwrap_or(0);
+        if file_size > 10 * 1024 * 1024 {
+            return Err(SFTPError::Other {
+                message: format!("File too large to edit ({} bytes). Maximum size is 10MB", file_size),
+            });
+        }
+
+        // Open and read file
+        let mut remote_file = data
+            .sftp
+            .open(&path)
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to open file {}: {}", path, e),
+            })?;
+
+        use tokio::io::AsyncReadExt;
+        let mut buffer = Vec::with_capacity(file_size as usize);
+        remote_file
+            .read_to_end(&mut buffer)
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to read file {}: {}", path, e),
+            })?;
+
+        // Try to decode as UTF-8
+        String::from_utf8(buffer).map_err(|e| SFTPError::Other {
+            message: format!("File {} is not valid UTF-8: {}", path, e),
+        })
+    }
+
+    /// Write file content as text
+    pub async fn write_file(
+        &self,
+        session_id: String,
+        path: String,
+        content: String,
+    ) -> Result<(), SFTPError> {
+        let session_data = self.get_session(&session_id).await?;
+        let mut data = session_data.lock().await;
+        data.last_used = Utc::now();
+
+        use russh_sftp::protocol::OpenFlags;
+        use tokio::io::AsyncWriteExt;
+
+        // Open file for writing (create if not exists, truncate if exists)
+        let mut remote_file = data
+            .sftp
+            .open_with_flags(&path, OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE)
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to open file for writing {}: {}", path, e),
+            })?;
+
+        // Write content
+        remote_file
+            .write_all(content.as_bytes())
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to write file {}: {}", path, e),
+            })?;
+
+        // Flush to ensure data is written
+        remote_file
+            .flush()
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to flush file {}: {}", path, e),
+            })?;
+
+        Ok(())
+    }
 }
 

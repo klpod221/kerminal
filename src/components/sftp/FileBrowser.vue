@@ -291,6 +291,7 @@ const emit = defineEmits<{
   (e: "refresh"): void;
   (e: "select", path: string): void;
   (e: "open", file: FileEntry): void;
+  (e: "edit", file: FileEntry): void;
   (e: "download", file: FileEntry): void;
   (e: "rename", file: FileEntry): void;
   (e: "delete", file: FileEntry): void;
@@ -415,6 +416,16 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
       icon: selectedFile.value.fileType === "directory" ? FolderOpen : File,
     },
   ];
+
+  // Add Edit option for files
+  if (selectedFile.value.fileType === "file") {
+    items.push({
+      id: "edit",
+      label: "Edit",
+      action: "edit",
+      icon: Pencil,
+    });
+  }
 
   if (props.isRemote && selectedFile.value.fileType === "file") {
     items.push({
@@ -769,6 +780,9 @@ function handleContextMenuClick(item: ContextMenuItem) {
   switch (action) {
     case "open":
       emit("open", selectedFile.value);
+      break;
+    case "edit":
+      emit("edit", selectedFile.value);
       break;
     case "download":
       emit("download", selectedFile.value);

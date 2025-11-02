@@ -390,6 +390,37 @@ export const useSFTPStore = defineStore("sftp", () => {
     }
   }
 
+  /**
+   * Read file content as text (remote)
+   */
+  async function readFile(
+    sessionId: string,
+    path: string,
+  ): Promise<string> {
+    try {
+      return await sftpService.readSFTPFile(sessionId, path);
+    } catch (error) {
+      console.error("Failed to read file:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Write file content as text (remote)
+   */
+  async function writeFile(
+    sessionId: string,
+    path: string,
+    content: string,
+  ): Promise<void> {
+    try {
+      await sftpService.writeSFTPFile(sessionId, path, content);
+    } catch (error) {
+      console.error("Failed to write file:", error);
+      throw error;
+    }
+  }
+
   let unsubscribeTransferRealtime: (() => void) | null = null;
 
   /**
@@ -508,6 +539,8 @@ export const useSFTPStore = defineStore("sftp", () => {
     deleteFile,
     setPermissions,
     createDirectory,
+    readFile,
+    writeFile,
     startRealtime,
     stopRealtime,
   };

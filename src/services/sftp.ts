@@ -208,3 +208,24 @@ export async function syncSFTPDirectories(
   return await api.call("sftp_sync_directory", { sessionId, operation });
 }
 
+/**
+ * Read file content as text
+ */
+export async function readSFTPFile(
+  sessionId: string,
+  path: string,
+): Promise<string> {
+  return await api.call("sftp_read_file", { sessionId, path });
+}
+
+/**
+ * Write file content as text
+ */
+export async function writeSFTPFile(
+  sessionId: string,
+  path: string,
+  content: string,
+): Promise<void> {
+  return await api.call("sftp_write_file", { sessionId, path, content });
+}
+

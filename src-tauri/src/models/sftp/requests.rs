@@ -147,4 +147,21 @@ pub struct SyncDirectoriesRequest {
     pub operation: SyncOperation,
 }
 
+/// Request for reading file content
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReadFileRequest {
+    pub session_id: String,
+    pub path: String,
+}
+
+/// Request for writing file content
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteFileRequest {
+    pub session_id: String,
+    pub path: String,
+    pub content: String,
+}
+
 

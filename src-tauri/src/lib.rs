@@ -138,7 +138,9 @@ pub fn main() {
             commands::sftp::sftp_pause_transfer,
             commands::sftp::sftp_resume_transfer,
             commands::sftp::sftp_compare_directories,
-            commands::sftp::sftp_sync_directory
+            commands::sftp::sftp_sync_directory,
+            commands::sftp::sftp_read_file,
+            commands::sftp::sftp_write_file,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

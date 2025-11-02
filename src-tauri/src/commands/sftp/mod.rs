@@ -4,9 +4,9 @@ use crate::models::sftp::requests::{
     CancelTransferRequest, CompareDirectoriesRequest, ConnectSFTPRequest,
     CreateDirectoryRequest, CreateSymlinkRequest, DeleteRequest,
     DisconnectSFTPRequest, DownloadFileRequest, GetTransferProgressRequest,
-    ListDirectoryRequest, PauseTransferRequest, ReadSymlinkRequest, RenameRequest,
+    ListDirectoryRequest, PauseTransferRequest, ReadFileRequest, ReadSymlinkRequest, RenameRequest,
     ResumeTransferRequest, SetPermissionsRequest, StatRequest,
-    SyncDirectoriesRequest, UploadFileRequest,
+    SyncDirectoriesRequest, UploadFileRequest, WriteFileRequest,
 };
 use crate::models::sftp::sync::DiffEntry;
 use crate::models::sftp::transfer::TransferProgress;
@@ -215,6 +215,29 @@ pub async fn sftp_sync_directory(
         state
             .sftp_sync_service
             .sync_directories(request.session_id, request.operation)
+            .await
+    )
+}
+
+/// Read file content as text
+#[tauri::command]
+pub async fn sftp_read_file(
+    state: State<'_, AppState>,
+    request: ReadFileRequest,
+) -> Result<String, String> {
+    sftp_result!(state.sftp_service.read_file(request.session_id, request.path).await)
+}
+
+/// Write file content as text
+#[tauri::command]
+pub async fn sftp_write_file(
+    state: State<'_, AppState>,
+    request: WriteFileRequest,
+) -> Result<(), String> {
+    sftp_result!(
+        state
+            .sftp_service
+            .write_file(request.session_id, request.path, request.content)
             .await
     )
 }
