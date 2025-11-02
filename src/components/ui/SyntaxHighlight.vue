@@ -35,23 +35,23 @@ const highlightShell = (code: string): string => {
   // Comments
   highlighted = highlighted.replace(
     /(#.*)$/gm,
-    '<span class="token-comment">$1</span>'
+    '<span class="token-comment">$1</span>',
   );
 
   // Strings (double and single quotes)
   highlighted = highlighted.replace(
     /("(?:[^"\\]|\\.)*")/g,
-    '<span class="token-string">$1</span>'
+    '<span class="token-string">$1</span>',
   );
   highlighted = highlighted.replace(
     /('(?:[^'\\]|\\.)*')/g,
-    '<span class="token-string">$1</span>'
+    '<span class="token-string">$1</span>',
   );
 
   // Variables ($VAR, ${VAR})
   highlighted = highlighted.replace(
     /(\$\{[^}]+\}|\$[a-zA-Z_][a-zA-Z0-9_]*)/g,
-    '<span class="token-variable">$1</span>'
+    '<span class="token-variable">$1</span>',
   );
 
   // Keywords (common shell commands and keywords)
@@ -116,26 +116,26 @@ const highlightShell = (code: string): string => {
     const regex = new RegExp(`\\b(${keyword})\\b`, "g");
     highlighted = highlighted.replace(
       regex,
-      '<span class="token-keyword">$1</span>'
+      '<span class="token-keyword">$1</span>',
     );
   });
 
   // Operators and pipes
   highlighted = highlighted.replace(
     /(&amp;&amp;|\|\||&gt;&gt;|&gt;|&lt;|\||;)/g,
-    '<span class="token-operator">$1</span>'
+    '<span class="token-operator">$1</span>',
   );
 
   // Numbers
   highlighted = highlighted.replace(
     /\b(\d+)\b/g,
-    '<span class="token-number">$1</span>'
+    '<span class="token-number">$1</span>',
   );
 
   // Flags (-flag, --flag)
   highlighted = highlighted.replace(
     /(\s)(--?[a-zA-Z0-9-]+)/g,
-    '$1<span class="token-flag">$2</span>'
+    '$1<span class="token-flag">$2</span>',
   );
 
   return highlighted;
@@ -147,23 +147,23 @@ const highlightJson = (code: string): string => {
   // Strings
   highlighted = highlighted.replace(
     /("(?:[^"\\]|\\.)*")(\s*:)/g,
-    '<span class="token-property">$1</span>$2'
+    '<span class="token-property">$1</span>$2',
   );
   highlighted = highlighted.replace(
     /:\s*("(?:[^"\\]|\\.)*")/g,
-    ': <span class="token-string">$1</span>'
+    ': <span class="token-string">$1</span>',
   );
 
   // Numbers
   highlighted = highlighted.replace(
     /:\s*(-?\d+\.?\d*)/g,
-    ': <span class="token-number">$1</span>'
+    ': <span class="token-number">$1</span>',
   );
 
   // Booleans and null
   highlighted = highlighted.replace(
     /\b(true|false|null)\b/g,
-    '<span class="token-keyword">$1</span>'
+    '<span class="token-keyword">$1</span>',
   );
 
   return highlighted;
@@ -231,4 +231,3 @@ const highlightedCode = computed(() => {
   color: #818cf8;
 }
 </style>
-

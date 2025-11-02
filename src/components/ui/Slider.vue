@@ -40,7 +40,10 @@
           />
 
           <!-- Scale marks -->
-          <div v-if="showMarks" class="flex justify-between text-[10px] text-gray-500 mt-1 px-0.5">
+          <div
+            v-if="showMarks"
+            class="flex justify-between text-[10px] text-gray-500 mt-1 px-0.5"
+          >
             <span>{{ min }}</span>
             <span v-if="marks.length > 0">
               <span v-for="(mark, index) in marks" :key="index" class="mx-2">
@@ -123,21 +126,18 @@ const emit = defineEmits<{
 const internalValue = ref(props.modelValue);
 const sliderId = `slider-${Math.random().toString(36).substr(2, 9)}`;
 
-// Watch for external changes
 watch(
   () => props.modelValue,
   (newValue) => {
     internalValue.value = newValue;
-  }
+  },
 );
 
-// Handle input (realtime)
 const handleInput = () => {
   emit("update:modelValue", internalValue.value);
   emit("input", internalValue.value);
 };
 
-// Handle change (on release)
 const handleChange = () => {
   emit("update:modelValue", internalValue.value);
   emit("change", internalValue.value);
@@ -223,4 +223,3 @@ const handleChange = () => {
   background: #3b82f6;
 }
 </style>
-

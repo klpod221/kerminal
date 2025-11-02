@@ -95,7 +95,6 @@ import { HelpCircle, AlertTriangle } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import Modal from "../ui/Modal.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
@@ -116,26 +115,15 @@ const handleReset = async () => {
     return;
   }
 
-  try {
-    isLoading.value = true;
-    await resetMasterPassword();
+  isLoading.value = true;
+  await resetMasterPassword();
 
-    message.success("Master password has been reset successfully!");
-    closeOverlay("forgot-password-modal");
-    closeOverlay("master-password-unlock");
+  message.success("Master password has been reset successfully!");
+  closeOverlay("forgot-password-modal");
+  closeOverlay("master-password-unlock");
 
-    confirmationText.value = "";
-  } catch (error) {
-    console.error("Error resetting master password:", error);
-    message.error(
-      getErrorMessage(
-        error,
-        "Failed to reset master password. Please try again.",
-      ),
-    );
-  } finally {
-    isLoading.value = false;
-  }
+  confirmationText.value = "";
+  isLoading.value = false;
 };
 
 /**

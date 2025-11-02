@@ -19,12 +19,13 @@ import {
   caseInsensitiveIncludes,
   getCurrentTimestamp,
 } from "../utils/helpers";
+import { handleError, type ErrorContext } from "../utils/errorHandler";
+import { message } from "../utils/message";
 
 export const useSavedCommandStore = defineStore("savedCommand", () => {
   const commands = ref<SavedCommand[]>([]);
   const groups = ref<SavedCommandGroup[]>([]);
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const isLoading = ref(false);
 
   const favoriteCommands = computed(() =>
     commands.value.filter((c) => c && c.id && c.isFavorite),
@@ -55,9 +56,15 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     () => commands.value.length > 0 || groups.value.length > 0,
   );
 
+  /**
+   * Load all saved commands with error handling
+   */
   const loadCommands = async () => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Load Saved Commands",
+    };
 
     try {
       const loadedCommands = await savedCommandService.getCommands();
@@ -65,18 +72,23 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
         (command) => command && command.id && typeof command.id === "string",
       );
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to load saved commands";
-      console.error("Failed to load saved commands:", err);
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
       commands.value = [];
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Load all saved command groups with error handling
+   */
   const loadGroups = async () => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Load Saved Command Groups",
+    };
 
     try {
       const loadedGroups = await savedCommandService.getGroups();
@@ -84,14 +96,11 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
         (group) => group && group.id && typeof group.id === "string",
       );
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : "Failed to load saved command groups";
-      console.error("Failed to load saved command groups:", err);
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
       groups.value = [];
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
@@ -99,65 +108,102 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     await Promise.all([loadCommands(), loadGroups()]);
   };
 
+  /**
+   * Create a new saved command with error handling
+   * @param request - Command creation request
+   * @returns Created command
+   */
   const createCommand = async (
     request: CreateSavedCommandRequest,
   ): Promise<SavedCommand> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Create Saved Command",
+      context: { name: request.name },
+    };
 
     try {
       const command = await savedCommandService.createCommand(request);
       await loadCommands(); // Reload to get updated list
       return command;
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to create saved command";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Update a saved command with error handling
+   * @param id - Command ID to update
+   * @param request - Update request
+   * @returns Updated command
+   */
   const updateCommand = async (
     id: string,
     request: UpdateSavedCommandRequest,
   ): Promise<SavedCommand> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Update Saved Command",
+      context: { commandId: id },
+    };
 
     try {
       const command = await savedCommandService.updateCommand(id, request);
       await loadCommands(); // Reload to get updated list
       return command;
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to update saved command";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Delete a saved command with error handling
+   * @param id - Command ID to delete
+   */
   const deleteCommand = async (id: string): Promise<void> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Delete Saved Command",
+      context: { commandId: id },
+    };
 
     try {
       await savedCommandService.deleteCommand(id);
       await loadCommands(); // Reload to get updated list
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to delete saved command";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Execute a saved command in terminal with error handling
+   * @param id - Command ID to execute
+   * @param terminalId - Optional terminal ID, otherwise uses active terminal
+   */
   const executeCommand = async (
     id: string,
     terminalId?: string,
   ): Promise<void> => {
+    const context: ErrorContext = {
+      operation: "Execute Saved Command",
+      context: { commandId: id },
+    };
+
     try {
       const command = commands.value.find((c) => c.id === id);
       if (!command) {
@@ -212,16 +258,23 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
         commands.value[commandIndex].lastUsedAt = getCurrentTimestamp();
       }
     } catch (err) {
-      console.error("Failed to execute command:", err);
-      error.value =
-        err instanceof Error ? err.message : "Failed to execute command";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
+  /**
+   * Toggle favorite status of a command with error handling
+   * @param id - Command ID
+   */
   const toggleFavorite = async (id: string): Promise<void> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Toggle Favorite",
+      context: { commandId: id },
+    };
 
     try {
       const updatedCommand = await savedCommandService.toggleFavorite(id);
@@ -230,72 +283,93 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
         commands.value[commandIndex] = updatedCommand;
       }
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to toggle favorite";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Create a saved command group with error handling
+   * @param request - Group creation request
+   * @returns Created group
+   */
   const createGroup = async (
     request: CreateSavedCommandGroupRequest,
   ): Promise<SavedCommandGroup> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Create Saved Command Group",
+      context: { name: request.name },
+    };
 
     try {
       const group = await savedCommandService.createGroup(request);
       await loadGroups(); // Reload to get updated list
       return group;
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : "Failed to create saved command group";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Update a saved command group with error handling
+   * @param id - Group ID to update
+   * @param request - Update request
+   * @returns Updated group
+   */
   const updateGroup = async (
     id: string,
     request: UpdateSavedCommandGroupRequest,
   ): Promise<SavedCommandGroup> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Update Saved Command Group",
+      context: { groupId: id },
+    };
 
     try {
       const group = await savedCommandService.updateGroup(id, request);
       await loadGroups(); // Reload to get updated list
       return group;
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : "Failed to update saved command group";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Delete a saved command group with error handling
+   * @param id - Group ID to delete
+   */
   const deleteGroup = async (id: string): Promise<void> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Delete Saved Command Group",
+      context: { groupId: id },
+    };
 
     try {
       await savedCommandService.deleteGroup(id);
       await loadAll(); // Reload both commands and groups
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : "Failed to delete saved command group";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
@@ -547,8 +621,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
   return {
     commands,
     groups,
-    loading,
-    error,
+    isLoading,
 
     favoriteCommands,
     recentCommands,

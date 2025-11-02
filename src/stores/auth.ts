@@ -12,6 +12,12 @@ import type {
 } from "../types/auth";
 import * as masterPasswordService from "../services/auth";
 import { api } from "../services/api";
+import {
+  handleError,
+  withRetry,
+  type ErrorContext,
+} from "../utils/errorHandler";
+import { message } from "../utils/message";
 
 /**
  * Authentication Store
@@ -59,11 +65,25 @@ export const useAuthStore = defineStore("auth", () => {
   );
 
   /**
-   * Check master password status from backend
+   * Check master password status from backend with error handling
    */
   const checkStatus = async (): Promise<void> => {
-    const result = await masterPasswordService.getStatus();
-    status.value = result;
+    const context: ErrorContext = {
+      operation: "Check Auth Status",
+    };
+
+    try {
+      const result = await withRetry(
+        () => masterPasswordService.getStatus(),
+        { maxRetries: 2 },
+        context,
+      );
+      status.value = result;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      // Don't throw, just log - app should still work if status check fails
+    }
   };
 
   /**
@@ -77,39 +97,56 @@ export const useAuthStore = defineStore("auth", () => {
     }
   };
 
-
   /**
-   * Setup master password for the first time
+   * Setup master password for the first time with error handling
    * @param setup - Master password setup configuration
+   * @returns True if setup successful
    */
   const setupMasterPassword = async (
     setup: MasterPasswordSetup,
   ): Promise<boolean> => {
-    await masterPasswordService.setup(setup);
+    const context: ErrorContext = {
+      operation: "Setup Master Password",
+    };
 
-    await checkStatus();
+    try {
+      await withRetry(
+        () => masterPasswordService.setup(setup),
+        { maxRetries: 1 },
+        context,
+      );
 
-    await getCurrentDevice();
+      await checkStatus();
+      await getCurrentDevice();
 
-    if (setup.autoUnlock && setup.useKeychain) {
-      await tryAutoUnlock();
-    } else {
-      await lock();
+      if (setup.autoUnlock && setup.useKeychain) {
+        await tryAutoUnlock();
+      } else {
+        await lock();
+      }
+
+      return true;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     }
-
-    return true;
   };
 
   /**
-   * Unlock with master password
+   * Unlock with master password with error handling
    * @param verification - Master password verification data
+   * @returns True if unlock successful
    */
   const unlock = async (
     verification: MasterPasswordVerification,
   ): Promise<boolean> => {
+    const context: ErrorContext = {
+      operation: "Unlock Master Password",
+    };
+
     try {
       const isValid = await masterPasswordService.verify(verification);
-
       await checkStatus();
 
       if (isValid) {
@@ -118,8 +155,10 @@ export const useAuthStore = defineStore("auth", () => {
         return false;
       }
     } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
       await checkStatus();
-      throw error;
+      throw new Error(errorMessage);
     }
   };
 
@@ -183,20 +222,26 @@ export const useAuthStore = defineStore("auth", () => {
     return false; // Return false if we are still locked
   };
 
-
   const startAuthRealtime = async (): Promise<void> => {
     if (unsubscribeAuthRealtime) return;
     try {
-      const u1 = await api.listen<any>("auth_session_unlocked", async () => {
+      const u1 = await api.listen<unknown>(
+        "auth_session_unlocked",
+        async () => {
+          await checkStatus();
+        },
+      );
+      const u2 = await api.listen<unknown>("auth_session_locked", async () => {
         await checkStatus();
       });
-      const u2 = await api.listen<any>("auth_session_locked", async () => {
+      const u3 = await api.listen<unknown>("auth_session_updated", async () => {
         await checkStatus();
       });
-      const u3 = await api.listen<any>("auth_session_updated", async () => {
-        await checkStatus();
-      });
-      unsubscribeAuthRealtime = () => { u1(); u2(); u3(); };
+      unsubscribeAuthRealtime = () => {
+        u1();
+        u2();
+        u3();
+      };
     } catch (e) {
       console.error("Failed to subscribe to auth realtime events:", e);
     }
@@ -237,7 +282,6 @@ export const useAuthStore = defineStore("auth", () => {
 
     await startAuthRealtime();
   };
-
 
   /**
    * Get current device information

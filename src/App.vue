@@ -22,9 +22,7 @@
 
         <SyncManager />
 
-        <ThemeSelectorModal />
-        <CustomThemeModal />
-        <FontSettingsModal />
+        <SettingsManager />
       </template>
     </div>
   </div>
@@ -43,9 +41,7 @@ import RecordingsManager from "./components/recording/RecordingsManager.vue";
 import TunnelManager from "./components/tunnels/TunnelManager.vue";
 import SyncManager from "./components/sync/SyncManager.vue";
 import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
-import ThemeSelectorModal from "./components/settings/ThemeSelectorModal.vue";
-import CustomThemeModal from "./components/settings/CustomThemeModal.vue";
-import FontSettingsModal from "./components/settings/FontSettingsModal.vue";
+import SettingsManager from "./components/settings/SettingsManager.vue";
 
 import { useOverlay } from "./composables/useOverlay";
 

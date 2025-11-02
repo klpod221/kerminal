@@ -64,7 +64,6 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import { Server, Lock, PlugZap } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
-import { getErrorMessage } from "../../utils/helpers";
 import type { SSHConfigHost } from "../../types/ssh";
 
 const props = defineProps<{
@@ -110,11 +109,8 @@ const handleConnect = async () => {
     await onConnect.value(password.value);
     handleCancel();
   } catch (error) {
-    console.error("SSH connection failed:", error);
-    errorMessage.value = getErrorMessage(
-      error,
-      "Failed to connect. Please check your password.",
-    );
+    // onConnect callback may throw error, display it
+    errorMessage.value = error instanceof Error ? error.message : String(error);
   } finally {
     isConnecting.value = false;
   }

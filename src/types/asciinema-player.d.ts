@@ -1,4 +1,4 @@
-declare module 'asciinema-player' {
+declare module "asciinema-player" {
   export interface PlayerOptions {
     cols?: number;
     rows?: number;
@@ -29,7 +29,6 @@ declare module 'asciinema-player' {
   export function create(
     src: string | object,
     element: HTMLElement,
-    options?: PlayerOptions
+    options?: PlayerOptions,
   ): Player;
 }
-

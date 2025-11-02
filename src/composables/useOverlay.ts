@@ -45,7 +45,6 @@ export function useOverlay() {
     const overlay = overlayStore.getOverlayById(id);
     if (overlay) {
       overlay.config.props = {};
-      console.log(`🧹 Cleared props for overlay: ${id}`);
     }
   };
 

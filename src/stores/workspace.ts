@@ -1,7 +1,13 @@
 import { defineStore } from "pinia";
 import { ref, nextTick } from "vue";
-import { debounce, safeJsonStringify } from "../utils/helpers";
+import { debounce } from "../utils/helpers";
 import { useViewStateStore } from "./viewState";
+import {
+  withRetry,
+  handleError,
+  type ErrorContext,
+} from "../utils/errorHandler";
+import { message } from "../utils/message";
 import {
   createLocalTerminal,
   createSSHTerminal,
@@ -10,7 +16,10 @@ import {
   getUserHostname,
   listenToTerminalTitleChanged,
   listenToTerminalExit,
+  resizeTerminal,
+  listenToTerminalOutput,
 } from "../services/terminal";
+import type { ResizeTerminalRequest, TerminalData } from "../types/panel";
 import { api } from "../services/api";
 import type {
   TerminalTitleChanged,
@@ -336,8 +345,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const terminal = terminals.value.find((t) => t.id === terminalId);
     if (terminal) {
       terminal.isSSHConnecting = false;
-      terminal.disconnectReason = undefined; // Clear any previous disconnect reason
-      terminal.hasError = false; // Clear any previous error
+      terminal.disconnectReason = undefined;
+      terminal.hasError = false;
       terminal.errorMessage = undefined;
     }
   };
@@ -360,10 +369,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     terminal.isSSHConnecting = true;
     terminal.backendTerminalId = undefined;
 
+    const context: ErrorContext = {
+      operation: "Reconnect SSH Terminal",
+      context: { terminalId, profileId: _profileId },
+    };
+
     try {
       await terminalReady(terminalId);
     } catch (error) {
-      console.error("Failed to reconnect SSH:", error);
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
       terminal.isSSHConnecting = false;
       terminal.disconnectReason = "connection-lost";
     }
@@ -387,7 +402,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       try {
         await closeTerminal(terminal.backendTerminalId);
       } catch (error) {
-        console.error("Failed to close backend terminal:", error);
+        const errorMessage = handleError(error, {
+          operation: "Close Terminal",
+          context: {
+            terminalId,
+            backendTerminalId: terminal.backendTerminalId,
+          },
+        });
+        message.error(errorMessage);
       }
     }
     terminals.value.splice(terminalIndex, 1);
@@ -610,7 +632,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
 
-    const tabIds = [...panel.tabs.map((tab) => tab.id)]; // Create a copy to avoid mutation during iteration
+    const tabIds = [...panel.tabs.map((tab) => tab.id)];
 
     for (const tabId of tabIds) {
       const terminalIndex = terminals.value.findIndex(
@@ -1097,36 +1119,43 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           profileId = tab.profileId;
         }
 
+        const context: ErrorContext = {
+          operation: "Create Terminal",
+          context: {
+            terminalId,
+            profileId,
+            hasSSHConfig: !!tab?.sshConfigHost,
+          },
+        };
+
         try {
           let response;
           if (tab?.sshConfigHost) {
-            response = await createSSHConfigTerminal(
-              tab.sshConfigHost,
-              title,
-              terminal.sshConfigPassword,
+            response = await withRetry(
+              () =>
+                createSSHConfigTerminal(
+                  tab.sshConfigHost!,
+                  title,
+                  terminal.sshConfigPassword,
+                ),
+              { maxRetries: 2, retryDelay: 1000 },
+              context,
             );
           } else if (profileId) {
-            response = await createSSHTerminal(profileId);
+            response = await withRetry(
+              () => createSSHTerminal(profileId),
+              { maxRetries: 2, retryDelay: 1000 },
+              context,
+            );
           } else {
             response = await createLocalTerminal(undefined, undefined, title);
           }
 
           terminal.backendTerminalId = response.terminalId;
         } catch (error) {
-          console.error("Failed to create terminal:", error);
+          const errorMessage = handleError(error, context);
+          message.error(errorMessage);
           if (terminal.isSSHConnecting && profileId) {
-            let errorMessage: string;
-            if (error instanceof Error) {
-              errorMessage = error.message;
-            } else if (typeof error === "string") {
-              errorMessage = error;
-            } else if (error && typeof error === "object") {
-              errorMessage =
-                (error as any).message ||
-                safeJsonStringify(error, "Unknown error");
-            } else {
-              errorMessage = "Unknown connection error occurred";
-            }
             await handleSSHConnectionError(terminalId, errorMessage);
           } else if (terminal.isSSHConnecting) {
             terminal.isSSHConnecting = false;
@@ -1189,7 +1218,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
       unlistenTerminalExits = await listenToTerminalExit(
         (exitEvent: TerminalExited) => {
-          console.log("Terminal exited:", exitEvent);
           const findTabByBackendId = (
             layout: PanelLayout,
           ): { panel: Panel; tab: Tab } | undefined => {
@@ -1224,22 +1252,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
               exitEvent.reason === "user-closed" ||
               terminal?.disconnectReason === "user-closed"
             ) {
-              console.log(
-                `Auto-closing tab ${result.tab.id} due to user-initiated close`,
-              );
               closeTab(result.panel.id, result.tab.id);
             } else {
               const reason = exitEvent.reason || "connection-lost";
-              console.log(
-                `Connection lost for tab ${result.tab.id} (reason: ${reason}), showing reconnect UI`,
-              );
               if (terminal) {
                 terminal.disconnectReason = reason as
                   | "connection-lost"
                   | "server-disconnect"
                   | "connection-error";
                 terminal.isSSHConnecting = false;
-                terminal.backendTerminalId = undefined; // Clear backend ID for reconnect
+                terminal.backendTerminalId = undefined;
               }
             }
           }
@@ -1250,11 +1272,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         unlistenSSHConnected = await api.listen<{ terminalId: string }>(
           "ssh-connected",
           (data: { terminalId: string }) => {
-            console.log(
-              "🎉 SSH Connected event received for terminal:",
-              data.terminalId,
-            );
-
             let terminal = terminals.value.find(
               (t) => t.backendTerminalId === data.terminalId,
             );
@@ -1264,36 +1281,13 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                 (t) => t.isSSHConnecting && !t.backendTerminalId,
               );
               if (terminal) {
-                console.log(
-                  "🔗 Linking SSH terminal frontend ID",
-                  terminal.id,
-                  "with backend ID",
-                  data.terminalId,
-                );
                 terminal.backendTerminalId = data.terminalId;
               }
             }
 
             if (terminal) {
-              console.log(
-                "✅ Clearing SSH connecting state for terminal:",
-                terminal.id,
-              );
               terminal.isSSHConnecting = false;
               handleSSHConnectionSuccess(terminal.id);
-            } else {
-              console.warn(
-                "⚠️ Terminal not found for SSH connected event:",
-                data.terminalId,
-              );
-              console.log(
-                "📋 Current terminals:",
-                terminals.value.map((t) => ({
-                  id: t.id,
-                  backendId: t.backendTerminalId,
-                  isSSHConnecting: t.isSSHConnecting,
-                })),
-              );
             }
           },
         );
@@ -1364,6 +1358,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     handleSSHConnectionError,
     handleSSHConnectionSuccess,
     reconnectSSH,
+    resizeTerminal: (request: ResizeTerminalRequest) => resizeTerminal(request),
+    listenToTerminalOutput: (callback: (data: TerminalData) => void) =>
+      listenToTerminalOutput(callback),
 
     findPanelInLayout: (panelId: string) =>
       findPanelInLayout(panelLayout.value, panelId),

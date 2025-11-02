@@ -8,7 +8,11 @@
     icon-background="bg-blue-500/20"
     icon-color="text-blue-400"
   >
-    <Form ref="passwordConfirmForm" @submit="handleConfirm" class="flex flex-col gap-4">
+    <Form
+      ref="passwordConfirmForm"
+      @submit="handleConfirm"
+      class="flex flex-col gap-4"
+    >
       <Input
         id="confirm-password"
         ref="passwordInput"
@@ -40,7 +44,6 @@ import { ref, nextTick, watch } from "vue";
 import { Key } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
-import { getErrorMessage } from "../../utils/helpers";
 import { message } from "../../utils/message";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
@@ -66,21 +69,16 @@ const handleConfirm = async () => {
 
   isVerifying.value = true;
 
-  try {
-    const isValid = await authStore.unlock({ password: password.value });
+  const isPasswordValid = await authStore.unlock({ password: password.value });
 
-    if (isValid) {
-      emit("confirm", password.value);
-      closeOverlay("password-confirm-modal");
-      password.value = "";
-    } else {
-      message.error("Invalid master password");
-    }
-  } catch (error) {
-    message.error(getErrorMessage(error, "Failed to verify password"));
-  } finally {
-    isVerifying.value = false;
+  if (isPasswordValid) {
+    emit("confirm", password.value);
+    closeOverlay("password-confirm-modal");
+    password.value = "";
+  } else {
+    message.error("Invalid master password");
   }
+  isVerifying.value = false;
 };
 
 const handleCancel = () => {

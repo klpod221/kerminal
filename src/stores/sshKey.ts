@@ -8,6 +8,7 @@ import type {
 import * as sshKeyService from "../services/sshKey";
 import { api } from "../services/api";
 import { message } from "../utils/message";
+import { handleError, type ErrorContext } from "../utils/errorHandler";
 
 export const useSshKeyStore = defineStore("sshKey", () => {
   const keys = ref<SSHKey[]>([]);
@@ -20,46 +21,67 @@ export const useSshKeyStore = defineStore("sshKey", () => {
   });
 
   /**
-   * Load all SSH keys from backend
+   * Load all SSH keys from backend with error handling
    */
   async function loadKeys(): Promise<void> {
     loading.value = true;
+    const context: ErrorContext = {
+      operation: "Load SSH Keys",
+    };
+
     try {
       keys.value = await sshKeyService.getSSHKeys();
     } catch (error) {
-      message.error(`Failed to load SSH keys: ${error}`);
-      throw error;
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       loading.value = false;
     }
   }
 
   /**
-   * Create a new SSH key
+   * Create a new SSH key with error handling
+   * @param request - Key creation request
+   * @returns Created key
    */
   async function createKey(request: CreateSSHKeyRequest): Promise<SSHKey> {
     loading.value = true;
+    const context: ErrorContext = {
+      operation: "Create SSH Key",
+      context: { name: request.name },
+    };
+
     try {
       const key = await sshKeyService.createSSHKey(request);
       keys.value.push(key);
       message.success(`SSH key "${key.name}" created successfully`);
       return key;
     } catch (error) {
-      message.error(`Failed to create SSH key: ${error}`);
-      throw error;
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       loading.value = false;
     }
   }
 
   /**
-   * Update an existing SSH key
+   * Update an existing SSH key with error handling
+   * @param id - Key ID to update
+   * @param request - Update request
+   * @returns Updated key
    */
   async function updateKey(
     id: string,
     request: UpdateSSHKeyRequest,
   ): Promise<SSHKey> {
     loading.value = true;
+    const context: ErrorContext = {
+      operation: "Update SSH Key",
+      context: { keyId: id },
+    };
+
     try {
       const updatedKey = await sshKeyService.updateSSHKey(id, request);
       const index = keys.value.findIndex((k) => k.id === id);
@@ -69,18 +91,26 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       message.success(`SSH key "${updatedKey.name}" updated successfully`);
       return updatedKey;
     } catch (error) {
-      message.error(`Failed to update SSH key: ${error}`);
-      throw error;
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       loading.value = false;
     }
   }
 
   /**
-   * Delete an SSH key
+   * Delete an SSH key with error handling
+   * @param id - Key ID to delete
+   * @param force - Force delete even if used by profiles
    */
   async function deleteKey(id: string, force = false): Promise<void> {
     loading.value = true;
+    const context: ErrorContext = {
+      operation: "Delete SSH Key",
+      context: { keyId: id, force },
+    };
+
     try {
       const count = await sshKeyService.countProfilesUsingKey(id);
 
@@ -95,16 +125,21 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       keys.value = keys.value.filter((k) => k.id !== id);
       message.success("SSH key deleted successfully");
     } catch (error) {
-      message.error(`Failed to delete SSH key: ${error}`);
-      throw error;
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       loading.value = false;
     }
   }
 
   /**
-   * Import SSH key from file (file content, not file path)
+   * Import SSH key from file with error handling
    * keyType will be auto-detected from key content
+   * @param name - Key name
+   * @param fileContent - Key file content
+   * @param passphrase - Optional passphrase
+   * @returns Imported key
    */
   async function importKeyFromFile(
     name: string,
@@ -112,6 +147,11 @@ export const useSshKeyStore = defineStore("sshKey", () => {
     passphrase?: string,
   ): Promise<SSHKey> {
     loading.value = true;
+    const context: ErrorContext = {
+      operation: "Import SSH Key",
+      context: { name },
+    };
+
     try {
       const key = await sshKeyService.createSSHKey({
         name,
@@ -122,8 +162,9 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       message.success(`SSH key "${key.name}" imported successfully`);
       return key;
     } catch (error) {
-      message.error(`Failed to import SSH key: ${error}`);
-      throw error;
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       loading.value = false;
     }
@@ -137,13 +178,21 @@ export const useSshKeyStore = defineStore("sshKey", () => {
   }
 
   /**
-   * Count profiles using a key
+   * Count profiles using a key with error handling
+   * @param keyId - Key ID to check
+   * @returns Number of profiles using the key
    */
   async function countProfilesUsing(keyId: string): Promise<number> {
+    const context: ErrorContext = {
+      operation: "Count Profiles Using Key",
+      context: { keyId },
+    };
+
     try {
       return await sshKeyService.countProfilesUsingKey(keyId);
     } catch (error) {
-      message.error(`Failed to count profiles: ${error}`);
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
       return 0;
     }
   }
@@ -176,9 +225,8 @@ export const useSshKeyStore = defineStore("sshKey", () => {
     try {
       const u1 = await api.listen<SSHKey>("ssh_key_created", upsertKey);
       const u2 = await api.listen<SSHKey>("ssh_key_updated", upsertKey);
-      const u3 = await api.listen<{ id: string }>(
-        "ssh_key_deleted",
-        ({ id }) => removeKey(id),
+      const u3 = await api.listen<{ id: string }>("ssh_key_deleted", ({ id }) =>
+        removeKey(id),
       );
       unsubscribeRealtime = () => {
         u1();

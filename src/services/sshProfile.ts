@@ -18,7 +18,6 @@ import type {
 export async function createSSHProfile(
   request: CreateSSHProfileRequest,
 ): Promise<SSHProfile> {
-  console.log("Creating SSH profile with request:", request);
   return await api.call("create_ssh_profile", request);
 }
 
@@ -166,4 +165,22 @@ export async function getConnectionPoolSize(): Promise<number> {
  */
 export async function getSSHConfigHosts(): Promise<SSHConfigHost[]> {
   return await api.call("get_ssh_config_hosts");
+}
+
+/**
+ * Test SSH connection
+ * @param request - SSH connection test request
+ */
+export async function testSSHConnection(request: {
+  host: string;
+  port: number;
+  username: string;
+  authMethod: string;
+  authData: any;
+  timeout?: number;
+  keepAlive?: boolean;
+  compression?: boolean;
+  proxy?: any;
+}): Promise<void> {
+  return await api.callRaw("test_ssh_connection", { request });
 }

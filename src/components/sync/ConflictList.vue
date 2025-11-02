@@ -1,12 +1,11 @@
 <template>
   <div>
-    <div
+    <SkeletonList
       v-if="isLoading"
-      class="flex items-center justify-center py-16 text-gray-400"
-    >
-      <RefreshCw class="w-6 h-6 animate-spin mr-3" />
-      Loading conflicts...
-    </div>
+      :items="4"
+      :show-avatar="false"
+      :show-actions="true"
+    />
 
     <div v-else-if="!conflicts.length" class="text-center py-16">
       <div class="flex justify-center mb-4">
@@ -92,11 +91,10 @@ import {
 } from "lucide-vue-next";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
+import SkeletonList from "../ui/SkeletonList.vue";
 import { useSyncStore } from "../../stores/sync";
 import { useOverlay } from "../../composables/useOverlay";
 import { formatDateOrNever } from "../../utils/formatter";
-import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 
 const syncStore = useSyncStore();
 const { openOverlay } = useOverlay();
@@ -115,16 +113,13 @@ const formatEntityType = (type: string): string => {
   return types[type] || type;
 };
 
+/**
+ * Load conflicts with error handling
+ */
 const loadConflicts = async () => {
   isLoading.value = true;
-  try {
-    await syncStore.loadConflicts();
-  } catch (error) {
-    console.error("Failed to load conflicts:", error);
-    message.error(getErrorMessage(error, "Failed to load conflicts"));
-  } finally {
-    isLoading.value = false;
-  }
+  await syncStore.loadConflicts();
+  isLoading.value = false;
 };
 
 const refresh = () => {

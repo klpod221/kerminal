@@ -221,7 +221,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
 import { Type, Check, Search, Maximize2, Eye } from "lucide-vue-next";
-import { invoke } from "@tauri-apps/api/core";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";
@@ -242,17 +241,10 @@ const sizePresets = [
   { label: "Large", size: 16 },
 ];
 
-// Load system fonts
 onMounted(async () => {
-  try {
-    availableFonts.value = await invoke<string[]>("get_system_fonts");
-  } catch (error) {
-    console.error("Failed to load system fonts:", error);
-    message.error("Failed to load system fonts");
-  }
+  availableFonts.value = await settingsStore.getSystemFonts();
 });
 
-// Watch for font size changes from store
 watch(
   () => settingsStore.fontSize,
   (newSize) => {
@@ -260,7 +252,6 @@ watch(
   },
 );
 
-// Filter fonts based on search query
 const filteredFonts = computed(() => {
   if (!searchQuery.value) {
     return availableFonts.value;
@@ -272,7 +263,6 @@ const filteredFonts = computed(() => {
   );
 });
 
-// Select font
 const selectFont = async (font: string) => {
   try {
     await settingsStore.setFontFamily(font);
@@ -283,7 +273,6 @@ const selectFont = async (font: string) => {
   }
 };
 
-// Update font size
 const updateFontSize = async () => {
   try {
     await settingsStore.setFontSize(fontSizeValue.value);
@@ -293,7 +282,6 @@ const updateFontSize = async () => {
   }
 };
 
-// Set preset size
 const setPresetSize = async (size: number) => {
   fontSizeValue.value = size;
   await updateFontSize();

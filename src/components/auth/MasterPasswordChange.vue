@@ -99,7 +99,6 @@
 import { ref } from "vue";
 import { Key, AlertTriangle } from "lucide-vue-next";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 import Modal from "../ui/Modal.vue";
@@ -123,29 +122,18 @@ const handleSubmit = async () => {
   const isValid = await changeMasterPasswordForm.value?.validate();
   if (!isValid) return;
 
-  try {
-    isLoading.value = true;
+  isLoading.value = true;
 
-    await changeMasterPassword(changeForm.value);
+  await changeMasterPassword(changeForm.value);
 
-    changeForm.value = {
-      oldPassword: "",
-      newPassword: "",
-      confirmNewPassword: "",
-    };
+  changeForm.value = {
+    oldPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  };
 
-    message.success("Master password changed successfully!");
-    closeOverlay("master-password-change");
-  } catch (error) {
-    console.error("Error changing master password:", error);
-    message.error(
-      getErrorMessage(
-        error,
-        "Failed to change master password. Please try again.",
-      ),
-    );
-  } finally {
-    isLoading.value = false;
-  }
+  message.success("Master password changed successfully!");
+  closeOverlay("master-password-change");
+  isLoading.value = false;
 };
 </script>

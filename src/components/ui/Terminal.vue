@@ -139,8 +139,8 @@ import {
   watch,
   computed,
 } from "vue";
-import { debounce, getErrorMessage } from "../../utils/helpers";
-import { resizeTerminal } from "../../services/terminal";
+import { debounce } from "../../utils/helpers";
+import { extractErrorMessage } from "../../utils/errorHandler";
 import { TerminalBufferManager, InputBatcher } from "../../core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
@@ -150,6 +150,7 @@ import Button from "./Button.vue";
 import { getTerminalTheme } from "../../utils/terminalTheme";
 import type { SimpleTerminal } from "../../core";
 import { useSettingsStore } from "../../stores/settings";
+import type { PanelLayout, Tab } from "../../types/panel";
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -228,7 +229,7 @@ const showErrorOverlay = computed(
 
 const formattedErrorMessage = computed(() => {
   const errorMsg = currentTerminal.value?.errorMessage;
-  return getErrorMessage(errorMsg, "Connection error occurred");
+  return errorMsg ? extractErrorMessage(errorMsg) : "";
 });
 
 const canReconnect = computed(
@@ -237,8 +238,6 @@ const canReconnect = computed(
 );
 
 const handleReconnect = () => {
-  console.log(currentTerminal);
-
   if (currentTerminal.value?.sshProfileId) {
     if (currentTerminal.value.hasError) {
       clearTerminal();
@@ -251,10 +250,10 @@ const handleReconnect = () => {
 };
 
 const handleCloseTab = () => {
-  const findPanelWithTab = (layout: any): string | null => {
+  const findPanelWithTab = (layout: PanelLayout): string | null => {
     if (layout.type === "panel" && layout.panel) {
       const hasTab = layout.panel.tabs.some(
-        (t: any) => t.id === props.terminalId,
+        (t: Tab) => t.id === props.terminalId,
       );
       if (hasTab) return layout.panel.id;
     } else if (layout.type === "split" && layout.children) {
@@ -292,7 +291,7 @@ const handleTerminalResize = async (): Promise<void> => {
   try {
     const dimensions = fitAddon.proposeDimensions();
     if (dimensions) {
-      await resizeTerminal({
+      await workspaceStore.resizeTerminal({
         terminalId: props.backendTerminalId,
         cols: dimensions.cols,
         rows: dimensions.rows,
@@ -373,21 +372,19 @@ watch(
   },
 );
 
-// Watch for theme changes and update terminal
 watch(
   () => settingsStore.terminalTheme,
   (newTheme) => {
     if (term) {
       const customTheme = settingsStore.getCustomTheme(newTheme);
-      const theme = customTheme 
-        ? customTheme.colors 
-        : getTerminalTheme(newTheme as any);
+      const theme = customTheme
+        ? customTheme.colors
+        : getTerminalTheme(newTheme);
       term.options.theme = theme;
     }
   },
 );
 
-// Watch for font family changes and update terminal
 watch(
   () => settingsStore.fontFamily,
   (newFont) => {
@@ -398,7 +395,6 @@ watch(
   },
 );
 
-// Watch for font size changes and update terminal
 watch(
   () => settingsStore.fontSize,
   (newSize) => {
@@ -421,9 +417,9 @@ onMounted(async () => {
   if (!terminalRef.value) return;
 
   const customTheme = settingsStore.getCustomTheme(settingsStore.terminalTheme);
-  const theme = customTheme 
-    ? customTheme.colors 
-    : getTerminalTheme(settingsStore.terminalTheme as any);
+  const theme = customTheme
+    ? customTheme.colors
+    : getTerminalTheme(settingsStore.terminalTheme);
 
   term = new Terminal({
     allowProposedApi: true,
@@ -435,7 +431,6 @@ onMounted(async () => {
     cursorBlink: true,
     cols: 110,
     rows: 30,
-    // Styling options
     fontFamily: `'${settingsStore.fontFamily}', monospace`,
     fontSize: settingsStore.fontSize,
     theme: theme,

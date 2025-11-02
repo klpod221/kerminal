@@ -8,11 +8,16 @@ import type {
 } from "../types/tunnel";
 import { tunnelService } from "../services/tunnel";
 import { api } from "../services/api";
+import {
+  withRetry,
+  handleError,
+  type ErrorContext,
+} from "../utils/errorHandler";
+import { message } from "../utils/message";
 
 export const useTunnelStore = defineStore("tunnel", () => {
   const tunnels = ref<TunnelWithStatus[]>([]);
-  const loading = ref(false);
-  const error = ref<string | null>(null);
+  const isLoading = ref(false);
 
   const activeTunnels = computed(() =>
     tunnels.value.filter(
@@ -31,41 +36,63 @@ export const useTunnelStore = defineStore("tunnel", () => {
   const tunnelCount = computed(() => tunnels.value.length);
   const activeTunnelCount = computed(() => activeTunnels.value.length);
 
+  /**
+   * Load all tunnels with retry logic
+   */
   const loadTunnels = async () => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Load Tunnels",
+    };
 
     try {
-      const loadedTunnels = await tunnelService.getTunnels();
+      const loadedTunnels = await withRetry(
+        () => tunnelService.getTunnels(),
+        { maxRetries: 2 },
+        context,
+      );
       tunnels.value = (loadedTunnels || []).filter(
         (tunnel) => tunnel && tunnel.id && typeof tunnel.id === "string",
       );
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to load tunnels";
-      console.error("Failed to load tunnels:", err);
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
       tunnels.value = []; // Ensure we have a valid array even on error
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Create a new SSH tunnel with error handling
+   * @param request - Tunnel creation request
+   * @returns Created tunnel
+   */
   const createTunnel = async (
     request: CreateSSHTunnelRequest,
   ): Promise<SSHTunnel> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
+
+    const context: ErrorContext = {
+      operation: "Create Tunnel",
+      context: { tunnelType: request.tunnelType, name: request.name },
+    };
 
     try {
-      const tunnel = await tunnelService.createTunnel(request);
+      const tunnel = await withRetry(
+        () => tunnelService.createTunnel(request),
+        { maxRetries: 1 },
+        context,
+      );
       await loadTunnels(); // Reload to get status
       return tunnel;
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to create tunnel";
-      throw err;
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
@@ -73,52 +100,65 @@ export const useTunnelStore = defineStore("tunnel", () => {
     id: string,
     request: UpdateSSHTunnelRequest,
   ): Promise<SSHTunnel> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
 
     try {
       const tunnel = await tunnelService.updateTunnel(id, request);
       // Optimistically mark as stopped to avoid stale "starting" state after edits
       const idx = tunnels.value.findIndex((t) => t?.id === id);
-      if (idx !== -1) {
+      if (idx !== -1 && tunnels.value[idx]) {
         tunnels.value[idx] = {
-          ...(tunnels.value[idx] as any),
+          ...tunnels.value[idx],
           ...tunnel,
-          status: "stopped",
+          status: "stopped" as const,
           errorMessage: undefined,
-        } as any;
+        };
       }
       await loadTunnels(); // Reload to get updated data
       return tunnel;
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to update tunnel";
+      const errorMessage = handleError(err, {
+        operation: "Update Tunnel",
+        context: { tunnelId: id },
+      });
+      message.error(errorMessage);
       throw err;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   const deleteTunnel = async (id: string): Promise<void> => {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true;
 
     try {
       await tunnelService.deleteTunnel(id);
       await loadTunnels(); // Reload to remove deleted tunnel
     } catch (err) {
-      error.value =
-        err instanceof Error ? err.message : "Failed to delete tunnel";
+      const errorMessage = handleError(err, {
+        operation: "Delete Tunnel",
+        context: { tunnelId: id },
+      });
+      message.error(errorMessage);
       throw err;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
+  /**
+   * Start a tunnel with retry logic and error handling
+   * @param id - Tunnel ID to start
+   */
   const startTunnel = async (id: string): Promise<void> => {
     if (!id) {
       throw new Error("Tunnel ID is required");
     }
+
+    const context: ErrorContext = {
+      operation: "Start Tunnel",
+      context: { tunnelId: id },
+    };
 
     try {
       const tunnel = tunnels.value.find((t) => t?.id === id);
@@ -126,7 +166,11 @@ export const useTunnelStore = defineStore("tunnel", () => {
         tunnel.status = "starting";
       }
 
-      await tunnelService.startTunnel(id);
+      await withRetry(
+        () => tunnelService.startTunnel(id),
+        { maxRetries: 2, retryDelay: 2000 },
+        context,
+      );
 
       setTimeout(async () => {
         try {
@@ -138,17 +182,22 @@ export const useTunnelStore = defineStore("tunnel", () => {
             }
           }
         } catch (err) {
-          console.error("Failed to refresh tunnel status:", err);
+          const errorMessage = handleError(err, {
+            operation: "Refresh Tunnel Status",
+            context: { tunnelId: id },
+          });
+          message.error(errorMessage);
         }
       }, 1000);
     } catch (err) {
+      const errorMessage = handleError(err, context);
+      message.error(errorMessage);
       const tunnel = tunnels.value.find((t) => t?.id === id);
       if (tunnel) {
         tunnel.status = "error";
-        tunnel.errorMessage =
-          err instanceof Error ? err.message : "Failed to start tunnel";
+        tunnel.errorMessage = errorMessage;
       }
-      throw err;
+      throw new Error(errorMessage);
     }
   };
 
@@ -206,17 +255,13 @@ export const useTunnelStore = defineStore("tunnel", () => {
     }
   };
 
-  const clearError = () => {
-    error.value = null;
-  };
-
   const upsertTunnel = (updated: TunnelWithStatus) => {
     if (!updated?.id) return;
     const index = tunnels.value.findIndex((t) => t?.id === updated.id);
     if (index === -1) {
       tunnels.value = [...tunnels.value, updated];
-    } else {
-      tunnels.value[index] = { ...tunnels.value[index], ...updated } as any;
+    } else if (tunnels.value[index]) {
+      tunnels.value[index] = { ...tunnels.value[index]!, ...updated };
     }
   };
 
@@ -226,12 +271,12 @@ export const useTunnelStore = defineStore("tunnel", () => {
     errorMessage?: string,
   ) => {
     const index = tunnels.value.findIndex((t) => t?.id === id);
-    if (index !== -1) {
+    if (index !== -1 && tunnels.value[index]) {
       tunnels.value[index] = {
         ...tunnels.value[index]!,
         status,
         errorMessage,
-      } as any;
+      };
     }
   };
 
@@ -245,10 +290,21 @@ export const useTunnelStore = defineStore("tunnel", () => {
   const startRealtimeStatus = async (): Promise<void> => {
     if (unsubscribeStatusRealtime) return;
     try {
-      const u1 = await api.listen<TunnelWithStatus>("tunnel_started", (t) => upsertTunnel(t));
-      const u2 = await api.listen<TunnelWithStatus>("tunnel_stopped", (t) => upsertTunnel(t));
-      const u3 = await api.listen<TunnelWithStatus>("tunnel_status_changed", (t) => upsertTunnel(t));
-      unsubscribeStatusRealtime = () => { u1(); u2(); u3(); };
+      const u1 = await api.listen<TunnelWithStatus>("tunnel_started", (t) =>
+        upsertTunnel(t),
+      );
+      const u2 = await api.listen<TunnelWithStatus>("tunnel_stopped", (t) =>
+        upsertTunnel(t),
+      );
+      const u3 = await api.listen<TunnelWithStatus>(
+        "tunnel_status_changed",
+        (t) => upsertTunnel(t),
+      );
+      unsubscribeStatusRealtime = () => {
+        u1();
+        u2();
+        u3();
+      };
     } catch (e) {
       console.error("Failed to subscribe tunnel status realtime:", e);
     }
@@ -257,10 +313,20 @@ export const useTunnelStore = defineStore("tunnel", () => {
   const startRealtimeCrud = async (): Promise<void> => {
     if (unsubscribeCrudRealtime) return;
     try {
-      const u1 = await api.listen<TunnelWithStatus>("tunnel_created", (t) => upsertTunnel(t));
-      const u2 = await api.listen<TunnelWithStatus>("tunnel_updated", (t) => upsertTunnel(t));
-      const u3 = await api.listen<{ id: string }>("tunnel_deleted", ({ id }) => removeTunnel(id));
-      unsubscribeCrudRealtime = () => { u1(); u2(); u3(); };
+      const u1 = await api.listen<TunnelWithStatus>("tunnel_created", (t) =>
+        upsertTunnel(t),
+      );
+      const u2 = await api.listen<TunnelWithStatus>("tunnel_updated", (t) =>
+        upsertTunnel(t),
+      );
+      const u3 = await api.listen<{ id: string }>("tunnel_deleted", ({ id }) =>
+        removeTunnel(id),
+      );
+      unsubscribeCrudRealtime = () => {
+        u1();
+        u2();
+        u3();
+      };
     } catch (e) {
       console.error("Failed to subscribe tunnel CRUD realtime:", e);
     }
@@ -291,8 +357,7 @@ export const useTunnelStore = defineStore("tunnel", () => {
 
   return {
     tunnels,
-    loading,
-    error,
+    isLoading,
 
     activeTunnels,
     stoppedTunnels,
@@ -308,7 +373,6 @@ export const useTunnelStore = defineStore("tunnel", () => {
     stopTunnel,
     refreshTunnelStatus,
     refreshAllTunnelStatus,
-    clearError,
     upsertTunnel,
     setTunnelStatus,
     removeTunnel,

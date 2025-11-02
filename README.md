@@ -11,8 +11,6 @@
 
 **Kerminal** is a modern, high-performance terminal emulator that combines the power of a full-featured local terminal with advanced SSH connection management. Built with security-first architecture using Tauri (Rust) for native performance and Vue 3 for a responsive UI, Kerminal offers everything from basic terminal operations to complex SSH workflows with encrypted profile management, tunneling, and multi-device synchronization—all in a beautiful native desktop application.
 
-Whether you need a powerful local terminal with multiple tabs and split panes, or a sophisticated SSH client for managing dozens of remote servers, Kerminal provides the perfect balance of simplicity and advanced features.
-
 Perfect for developers, DevOps engineers, system administrators, and anyone who lives in the terminal and values security, organization, and productivity.
 
 ## 🚀 Table Of Content
@@ -24,38 +22,20 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
   - [Main Interface](#main-interface)
 - [✨ Features](#-features)
   - [💻 Terminal Emulator](#-terminal-emulator)
-  - [📡 SSH Management](#-ssh-management)
-  - [🔐 Security \& Sync](#-security--sync)
-  - [💾 Saved Commands](#-saved-commands)
-  - [📹 Session Recording \& Playback](#-session-recording--playback)
+  - [📡 SSH Management \& Tunneling](#-ssh-management--tunneling)
+  - [💾 Saved Commands \& Session Recording](#-saved-commands--session-recording)
+  - [🔄 Multi-Device Sync \& Security](#-multi-device-sync--security)
   - [🎨 User Interface](#-user-interface)
-  - [📡 SSH Features](#-ssh-features)
-  - [🔀 SSH Tunneling](#-ssh-tunneling)
-  - [💾 Saved Commands](#-saved-commands-1)
-  - [🔄 Multi-Device Sync](#-multi-device-sync)
-  - [🎨 User Interface](#-user-interface-1)
 - [Installation Guide](#installation-guide)
   - [Arch Linux (install from AUR)](#arch-linux-install-from-aur)
   - [Other Platforms (Windows, macOS, Linux)](#other-platforms-windows-macos-linux)
 - [🚀 Development](#-development)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
-- [📖 Usage](#-usage)
-  - [Initial Setup](#initial-setup)
-  - [Using as Terminal Emulator](#using-as-terminal-emulator)
-  - [Recording Terminal Sessions](#recording-terminal-sessions)
-  - [Creating SSH Connections](#creating-ssh-connections)
-  - [SSH Tunneling](#ssh-tunneling)
-  - [Multi-Device Sync](#multi-device-sync)
-- [🛠️ Development](#️-development)
   - [Project Structure](#project-structure)
   - [Key Technologies](#key-technologies)
-  - [Code Quality](#code-quality)
-  - [Design Patterns](#design-patterns)
-- [📊 Performance](#-performance)
 - [🔒 Security Considerations](#-security-considerations)
 - [🤝 Contributing](#-contributing)
-  - [Development Guidelines](#development-guidelines)
 - [❗ Known Issues](#-known-issues)
 - [📝 License](#-license)
 - [👤 Author](#-author)
@@ -76,101 +56,38 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 ## ✨ Features
 
 ### 💻 Terminal Emulator
-- Multiple tabs and split panes with unlimited sessions
-- Native shell integration (bash, zsh, fish, PowerShell, etc.)
+- Multiple tabs and split panes, native shell integration (bash, zsh, fish, PowerShell, etc.)
 - WebGL-accelerated rendering with Unicode 11 support
 - Search, clickable links, clipboard integration
-- Record terminal sessions in asciicast format with full playback controls
 
-### 📡 SSH Management
+### 📡 SSH Management & Tunneling
 - Profile organization with groups, colors, and descriptions
-- Multiple authentication methods (password, keys, agent, certificate, Kerberos, PKCS11)
-- SSH key manager with import/export capabilities
-- Connection testing and proxy support (HTTP, SOCKS4/5)
-- Local/Remote/Dynamic port forwarding with auto-start
+- Authentication: password and keys (certificate, Kerberos, PKCS11, agent coming soon)
+- SSH key manager with import/export, connection testing, proxy support (HTTP, SOCKS4/5)
+- Port forwarding (Local/Remote/Dynamic) with auto-start and status monitoring
 
-### 🔐 Security & Sync
-- AES-256-GCM encryption with master password protection
-- Device-specific keys and keychain integration
-- Multi-device sync via MySQL/PostgreSQL/MongoDB
-- Conflict resolution strategies and auto-lock sessions
+### 💾 Saved Commands & Session Recording
+- Command library with groups, usage tracking, favorites, and variable substitution
+- Record sessions in asciicast format with playback controls and export capabilities
 
-### 💾 Saved Commands
-- Command library with groups and descriptions
-- Usage tracking, favorites, and quick access shortcuts
-- Variable substitution for dynamic execution
-
-### 📹 Session Recording & Playback
-- **Record Terminal Sessions**: Capture all terminal output in standard asciicast v2 format
-- **Playback with Controls**: Play, pause, seek, and adjust playback speed
-- **Session Management**: View, organize, and search recorded sessions
-- **Export Capabilities**: Export recordings for sharing or archiving
-- **Metadata Tracking**: Store session info (name, duration, terminal type, dimensions)
-- **Asciinema Compatible**: Recordings work with standard asciinema tools
+### 🔄 Multi-Device Sync & Security
+- Sync via MySQL/PostgreSQL/MongoDB with AES-256-GCM encryption
+- Conflict resolution strategies, device management, auto-sync
+- Master password protection, device-specific keys, keychain integration, auto-lock sessions
 
 ### 🎨 User Interface
-- Modern dark theme with responsive layout
-- Keyboard shortcuts and customizable colors
-- Real-time status indicators for sync and tunnels
-
-### 📡 SSH Features
-- **Profile Management**: Organize SSH connections with groups, colors, and descriptions
-- **Multiple Authentication Methods**:
-  - Password authentication
-  - Private key (RSA, Ed25519, ECDSA, DSA)
-  - SSH agent forwarding
-  - Certificate-based authentication
-  - Kerberos and PKCS11 support
-- **SSH Key Manager**: Create, import, and manage SSH keys with passphrases
-- **Connection Testing**: Verify SSH profiles before connecting
-- **Proxy Support**: HTTP, SOCKS4, and SOCKS5 proxy configurations
-- **Advanced Options**: Custom ports, keep-alive settings, compression, and more
-
-### 🔀 SSH Tunneling
-- **Local Port Forwarding**: Access remote services on local machine
-- **Remote Port Forwarding**: Expose local services to remote networks
-- **Dynamic Port Forwarding**: SOCKS proxy for routing traffic through SSH
-- **Auto-Start Tunnels**: Automatically establish tunnels on application launch
-- **Status Monitoring**: Real-time tunnel status with error handling
-
-### 💾 Saved Commands
-- **Command Library**: Store frequently used commands with descriptions
-- **Command Groups**: Organize commands by category or purpose
-- **Usage Tracking**: Track command usage frequency and favorites
-- **Quick Access**: Execute saved commands with keyboard shortcuts
-- **Variable Substitution**: Use placeholders for dynamic command execution
-
-### 🔄 Multi-Device Sync
-- **Database Providers**: Sync via MySQL, PostgreSQL, or MongoDB
-- **Encrypted Transmission**: All sync data encrypted with AES-256-GCM
-- **Conflict Resolution Strategies**:
-  - Last Write Wins
-  - First Write Wins
-  - Manual resolution with detailed conflict view
-  - Local/Remote priority modes
-- **Sync Direction Control**: Push, Pull, or Bidirectional sync
-- **Device Management**: Track and manage devices accessing your data
-- **Automatic Sync**: Configurable auto-sync intervals
-
-### 🎨 User Interface
-- **Modern Dark Theme**: Easy on the eyes for long terminal sessions
-- **Responsive Layout**: Adaptive UI for different screen sizes
-- **Keyboard Shortcuts**: Efficient navigation and command execution
-- **Customizable**: Profile colors, group organization, and layout preferences
-- **Status Indicators**: Visual feedback for sync status, tunnel status, and connection health
+- Modern dark theme, keyboard shortcuts, customizable colors, real-time status indicators
 
 ## Installation Guide
 
 ### Arch Linux (install from AUR)
 
 - Using an AUR helper (e.g., yay):
-
 ```bash
 yay -S kerminal # or kerminal-bin
 ```
 
 - Manually:
-
 ```bash
 git clone https://aur.archlinux.org/kerminal.git # or kerminal-bin.git
 cd kerminal
@@ -179,11 +96,8 @@ makepkg -si
 
 ### Other Platforms (Windows, macOS, Linux)
 
-1. **Download**
-  - Get the latest release from the [Releases](https://github.com/klpod221/kerminal/releases/latest) page.
-
-2. **Install**
-  - Follow the installation instructions for your operating system (see below).
+1. Download the latest release from the [Releases](https://github.com/klpod221/kerminal/releases/latest) page
+2. Follow the installation instructions for your operating system
 
 ## 🚀 Development
 
@@ -194,90 +108,28 @@ makepkg -si
 
 ### Installation
 
-1. **Clone the repository**
+1. Clone the repository
 ```bash
 git clone https://github.com/klpod221/kerminal.git
 cd kerminal
 ```
 
-2. **Install dependencies**
+2. Install dependencies
 ```bash
 npm install
 ```
 
-3. **Run in development mode**
+3. Run in development mode
 ```bash
 npm run tauri dev
 ```
 
-4. **Build for production**
+4. Build for production
 ```bash
 npm run tauri build
 ```
 
 The application will be available in `src-tauri/target/release/bundle/`.
-
-## 📖 Usage
-
-### Initial Setup
-
-1. **Master Password**: On first launch, create a master password to encrypt your data
-2. **Auto-Unlock** (Optional): Enable keychain integration for automatic unlocking
-3. **SSH Profiles** (Optional): Add your SSH connection profiles with credentials
-4. **External Database** (Optional): Configure MySQL/PostgreSQL/MongoDB for multi-device sync
-
-### Using as Terminal Emulator
-
-1. **New Local Terminal**: Click the "+" button or use keyboard shortcut
-2. **Split Panes**: Right-click on a terminal to split horizontally or vertically
-3. **Multiple Tabs**: Organize different projects or tasks in separate tabs
-4. **Custom Shell**: Configure your preferred shell in terminal settings
-5. **Working Directory**: Start terminals in project directories for quick access
-
-### Recording Terminal Sessions
-
-1. Click the **Record** button on any terminal tab
-2. Perform your terminal operations (commands will be captured)
-3. Click **Stop** to end recording
-4. Access recordings via **Recordings Manager**
-5. **Playback** recordings with full controls:
-   - Play/pause playback
-   - Seek to any point in the timeline
-   - Adjust playback speed (0.5x - 4x)
-   - View session metadata
-6. **Export** recordings in asciicast format for sharing
-
-### Creating SSH Connections
-
-1. Navigate to **SSH Profiles** manager
-2. Click **Add Profile** and configure:
-   - Connection details (host, port, username)
-   - Authentication method (password, key, agent)
-   - Optional: Group, color, description
-   - Advanced settings (compression, keep-alive, proxy)
-3. **Test Connection** to verify settings
-4. **Save** profile
-
-### SSH Tunneling
-
-1. Open **Tunnel Manager**
-2. Create tunnel with:
-   - SSH profile selection
-   - Tunnel type (Local/Remote/Dynamic)
-   - Port configurations
-   - Auto-start option
-3. Start/stop tunnels as needed
-4. Monitor status in real-time
-
-### Multi-Device Sync
-
-1. Configure external database in **Sync Settings**
-2. Choose conflict resolution strategy
-3. Enable auto-sync or trigger manually
-4. Manage connected devices
-5. Resolve conflicts when they occur
-
-## 🛠️ Development
 
 ### Project Structure
 
@@ -302,34 +154,6 @@ The application will be available in `src-tauri/target/release/bundle/`.
 | Database | SQLite, MySQL, PostgreSQL, MongoDB | Local and sync storage |
 | Encryption | AES-256-GCM + Argon2 | Data encryption and key derivation |
 
-### Code Quality
-
-```bash
-# Format code
-npm run pretty
-
-# Type checking
-npm run build
-
-# Full development build
-npm run tauri dev
-```
-
-### Design Patterns
-
-- **Dependency Injection**: Backend services use Arc<Mutex<T>> pattern
-- **Service Layer**: Clean separation between UI, business logic, and data access
-- **State Management**: Centralized Pinia stores with computed properties
-- **Error Handling**: Comprehensive try/catch with user-friendly messages
-
-## 📊 Performance
-
-- **Efficient Buffer Management**: Circular buffer for terminal history with memory limits
-- **Connection Pooling**: Reuse SSH connections for better performance
-- **Lazy Loading**: Components and data loaded on demand
-- **Optimized Rendering**: WebGL-accelerated terminal with efficient updates
-- **Background Processing**: Async operations don't block UI
-
 ## 🔒 Security Considerations
 
 - All sensitive data encrypted at rest with AES-256-GCM
@@ -350,15 +174,6 @@ Contributions are welcome! Please follow these guidelines:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### Development Guidelines
-
-- Follow the existing code style and patterns
-- Use TypeScript for frontend code
-- Write clear, self-documenting code
-- Test SSH connections and sync functionality
-- Follow SOLID principles
-- Keep components focused and reusable
-
 ## ❗ Known Issues
 
 - Limited support for some SSH authentication methods
@@ -375,8 +190,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Website: [klpod221.com](https://klpod221.com)
 - GitHub: [@klpod221](https://github.com/klpod221)
-- Email: klpod221@gmail.com
-- Facebook: [Bùi Thanh Xuân](https://www.facebook.com/klpod221)
+- Email: [klpod221@gmail.com](mailto:klpod221@gmail.com)
 
 ## 🙏 Acknowledgments
 
@@ -407,6 +221,8 @@ If you encounter any issues or have questions:
 - [ ] Cloud backup integration
 - [ ] Web-based version
 - [ ] Mobile app companion
+
+> See [TODO.md](TODO.md) for more details.
 
 ---
 

@@ -109,6 +109,7 @@ import { Save, Upload } from "lucide-vue-next";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
+import type { UpdateSSHKeyRequest } from "../../types/ssh";
 
 const props = defineProps<{
   keyId?: string | null;
@@ -172,19 +173,19 @@ const handleSubmit = async () => {
 
   try {
     if (keyId.value) {
-      const updateRequest: any = {
+      const updateRequest: UpdateSSHKeyRequest = {
         name: formData.value.name,
-        description: formData.value.description || undefined,
+        description: formData.value.description || null,
       };
 
       if (formData.value.privateKey.trim()) {
         updateRequest.privateKey = formData.value.privateKey;
       }
       if (formData.value.publicKey.trim()) {
-        updateRequest.publicKey = formData.value.publicKey;
+        updateRequest.publicKey = formData.value.publicKey || null;
       }
       if (formData.value.passphrase.trim()) {
-        updateRequest.passphrase = formData.value.passphrase;
+        updateRequest.passphrase = formData.value.passphrase || null;
       }
 
       await sshKeyStore.updateKey(keyId.value, updateRequest);
@@ -201,8 +202,6 @@ const handleSubmit = async () => {
     }
 
     closeModal();
-  } catch (error) {
-    console.error("Error saving SSH key:", error);
   } finally {
     isLoading.value = false;
   }
@@ -225,9 +224,6 @@ const loadKey = async () => {
         description: key.description || "",
       };
     }
-  } catch (error) {
-    console.error("Error loading SSH key:", error);
-    message.error("Failed to load SSH key");
   } finally {
     isLoading.value = false;
   }

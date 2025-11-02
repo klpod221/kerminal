@@ -9,7 +9,9 @@
   >
     <div class="space-y-4">
       <!-- Paths Info -->
-      <div class="grid grid-cols-2 gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800">
+      <div
+        class="grid grid-cols-2 gap-4 p-4 bg-gray-900/50 rounded-lg border border-gray-800"
+      >
         <div>
           <div class="text-xs text-gray-500 mb-1">Local Path</div>
           <div class="text-sm font-mono text-gray-300 truncate">
@@ -109,9 +111,7 @@
 
         <!-- Sync Options -->
         <div class="p-4 bg-gray-900/50 rounded-lg border border-gray-800">
-          <h4 class="text-sm font-medium text-gray-200 mb-3">
-            Sync Options
-          </h4>
+          <h4 class="text-sm font-medium text-gray-200 mb-3">Sync Options</h4>
           <Form ref="syncForm" @submit="handleSync">
             <Select
               id="sync-direction"
@@ -157,14 +157,8 @@
       </div>
 
       <!-- Loading State -->
-      <div
-        v-if="comparing"
-        class="flex items-center justify-center py-12"
-      >
-        <div class="text-center">
-          <div class="animate-spin rounded-full border-4 border-gray-700 border-t-blue-500 w-8 h-8 mx-auto mb-4"></div>
-          <div class="text-sm text-gray-400">Comparing directories...</div>
-        </div>
+      <div v-if="comparing" class="py-12">
+        <SkeletonText :lines="5" :last-line-width="'80%'" />
       </div>
 
       <!-- Empty State -->
@@ -195,21 +189,22 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import {
-  GitCompare,
-  File,
-  Check,
-  AlertCircle,
-} from "lucide-vue-next";
+import { GitCompare, File, Check, AlertCircle } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import Form from "../ui/Form.vue";
 import Select from "../ui/Select.vue";
+import SkeletonText from "../ui/SkeletonText.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSFTPStore } from "../../stores/sftp";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
-import type { DiffEntry, DiffType, SyncDirection, SyncOperation } from "../../types/sftp";
+import type {
+  DiffEntry,
+  DiffType,
+  SyncDirection,
+  SyncOperation,
+  FileEntry,
+} from "../../types/sftp";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
 const sftpStore = useSFTPStore();
@@ -254,19 +249,17 @@ const summary = computed(() => {
   return {
     onlyLocal: diffs.value.filter((d) => d.diffType === "onlyLocal").length,
     onlyRemote: diffs.value.filter((d) => d.diffType === "onlyRemote").length,
-    different:
-      diffs.value.filter(
-        (d) =>
-          d.diffType === "sizeDiffers" ||
-          d.diffType === "timeDiffers" ||
-          d.diffType === "permissionsDiffer",
-      ).length,
+    different: diffs.value.filter(
+      (d) =>
+        d.diffType === "sizeDiffers" ||
+        d.diffType === "timeDiffers" ||
+        d.diffType === "permissionsDiffer",
+    ).length,
     identical: diffs.value.filter((d) => d.diffType === "identical").length,
   };
 });
 
 const filteredDiffs = computed(() => {
-  // Filter out identical files
   return diffs.value.filter((d) => d.diffType !== "identical");
 });
 
@@ -277,24 +270,14 @@ async function handleCompare() {
   }
 
   comparing.value = true;
-  try {
-    const results = await sftpStore.compareDirectories(
-      sftpStore.activeSessionId,
-      localPath.value,
-      remotePath.value,
-    );
-    diffs.value = results;
-    message.success(
-      `Comparison complete: ${results.length} files analyzed`,
-    );
-  } catch (error) {
-    console.error("Failed to compare directories:", error);
-    message.error(
-      getErrorMessage(error, "Failed to compare directories"),
-    );
-  } finally {
-    comparing.value = false;
-  }
+  const results = await sftpStore.compareDirectories(
+    sftpStore.activeSessionId,
+    localPath.value,
+    remotePath.value,
+  );
+  diffs.value = results;
+  message.success(`Comparison complete: ${results.length} files analyzed`);
+  comparing.value = false;
 }
 
 async function handleSync() {
@@ -307,26 +290,25 @@ async function handleSync() {
   if (!isValid) return;
 
   syncing.value = true;
-  try {
-    const operation: SyncOperation = {
-      direction: syncDirection.value,
-      localPath: localPath.value,
-      remotePath: remotePath.value,
-      ...syncOptions.value,
-    };
-    await sftpStore.syncDirectories(sftpStore.activeSessionId, operation);
-    message.success("Sync completed successfully");
-    // Refresh comparison after sync
-    await handleCompare();
-  } catch (error) {
-    console.error("Failed to sync directories:", error);
-    message.error(getErrorMessage(error, "Failed to sync directories"));
-  } finally {
-    syncing.value = false;
-  }
+  const operation: SyncOperation = {
+    direction: syncDirection.value,
+    localPath: localPath.value,
+    remotePath: remotePath.value,
+    ...syncOptions.value,
+  };
+  await sftpStore.syncDirectories(sftpStore.activeSessionId, operation);
+  message.success("Sync completed successfully");
+  await handleCompare();
+  syncing.value = false;
 }
 
-function formatFileInfo(entry: any): string {
+/**
+ * Format file information for display
+ * @param entry - File entry to format
+ * @returns Formatted file information string
+ */
+function formatFileInfo(entry: FileEntry | null): string {
+  if (!entry) return "N/A";
   const parts: string[] = [];
   if (entry.size !== null) {
     parts.push(formatBytes(entry.size));
@@ -436,4 +418,3 @@ function closeModal() {
   closeOverlay("sftp-sync-compare-modal");
 }
 </script>
-

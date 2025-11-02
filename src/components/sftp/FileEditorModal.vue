@@ -48,7 +48,6 @@ import Button from "../ui/Button.vue";
 import CodeEditor from "../ui/CodeEditor.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useSFTPStore } from "../../stores/sftp";
 import type { FileEntry } from "../../types/sftp";
 import { readFile, writeFile } from "@tauri-apps/plugin-fs";
@@ -75,7 +74,6 @@ const isLocal = getOverlayProp<boolean>(
   false,
 );
 
-// Detect language from file extension
 const language = computed(() => {
   if (!file.value) return "plaintext";
   const ext = file.value.name.split(".").pop()?.toLowerCase();
@@ -119,6 +117,10 @@ const language = computed(() => {
   return languageMap[ext || ""] || "plaintext";
 });
 
+/**
+ * Load file content into editor with error handling
+ * Supports both local and remote files
+ */
 async function loadFileContent() {
   if (!file.value) return;
 
@@ -126,8 +128,7 @@ async function loadFileContent() {
   error.value = null;
 
   try {
-    // Check file size before loading (limit to 10MB for text files)
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if (file.value.size && file.value.size > MAX_FILE_SIZE) {
       throw new Error(
         `File too large to edit (${formatFileSize(file.value.size)}). Maximum size is 10MB`,
@@ -135,20 +136,16 @@ async function loadFileContent() {
     }
 
     if (isLocal.value) {
-      // Read local file using Tauri fs API
       const fileContent = await readFile(file.value.path);
-      // Convert Uint8Array to string
       const decoder = new TextDecoder();
       const decoded = decoder.decode(fileContent);
 
-      // Check if file is valid UTF-8 text (check for null bytes which indicate binary)
       if (decoded.includes("\0")) {
         throw new Error("File appears to be binary, not text");
       }
 
       content.value = decoded;
     } else {
-      // Read remote file via SFTP
       if (!sftpStore.activeSessionId) {
         throw new Error("No active SFTP session");
       }
@@ -158,8 +155,9 @@ async function loadFileContent() {
       );
     }
   } catch (err) {
-    console.error("Failed to load file:", err);
-    error.value = getErrorMessage(err, "Failed to load file");
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("Failed to load file:", errorMessage);
+    error.value = errorMessage;
   } finally {
     loading.value = false;
   }
@@ -173,19 +171,26 @@ function formatFileSize(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
+/**
+ * Save file content with error handling
+ * Supports both local and remote file saving
+ */
 async function handleSave() {
   if (!file.value || !content.value) return;
 
   saving.value = true;
+
   try {
     if (isLocal.value) {
-      // Write local file using Tauri fs API
       const encoder = new TextEncoder();
       const fileContent = encoder.encode(content.value);
       await writeFile(file.value.path, fileContent);
       message.success("File saved successfully");
+
+      if (sftpStore.browserState.localPath) {
+        await sftpStore.listLocalDirectory(sftpStore.browserState.localPath);
+      }
     } else {
-      // Write remote file via SFTP
       if (!sftpStore.activeSessionId) {
         throw new Error("No active SFTP session");
       }
@@ -195,26 +200,24 @@ async function handleSave() {
         content.value,
       );
       message.success("File saved successfully");
-    }
 
-    // Refresh directory to show updated file
-    if (isLocal.value && sftpStore.browserState.localPath) {
-      await sftpStore.listLocalDirectory(sftpStore.browserState.localPath);
-    } else if (
-      !isLocal.value &&
-      sftpStore.activeSessionId &&
-      sftpStore.browserState.remotePath
-    ) {
-      await sftpStore.listRemoteDirectory(
-        sftpStore.activeSessionId,
-        sftpStore.browserState.remotePath,
-      );
+      if (sftpStore.activeSessionId && sftpStore.browserState.remotePath) {
+        await sftpStore.listRemoteDirectory(
+          sftpStore.activeSessionId,
+          sftpStore.browserState.remotePath,
+        );
+      }
     }
 
     closeModal();
   } catch (err) {
-    console.error("Failed to save file:", err);
-    message.error(getErrorMessage(err, "Failed to save file"));
+    if (isLocal.value) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      console.error("Failed to save file:", errorMessage);
+      message.error(errorMessage);
+    } else {
+      throw err;
+    }
   } finally {
     saving.value = false;
   }
@@ -226,7 +229,6 @@ function closeModal() {
   closeOverlay("sftp-file-editor-modal");
 }
 
-// Load file content when modal opens
 watch(
   () => file.value,
   (fileValue) => {
@@ -243,4 +245,3 @@ onMounted(() => {
   }
 });
 </script>
-

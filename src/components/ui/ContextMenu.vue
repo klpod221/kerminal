@@ -74,7 +74,6 @@ const contextMenuRef = ref<HTMLElement | null>(null);
 const visible = ref(false);
 const position = ref({ x: 0, y: 0 });
 
-
 /**
  * Hides the context menu
  */
@@ -119,7 +118,6 @@ const handleContextMenu = (event: MouseEvent): void => {
       hide();
     }
   }
-  // Reset flag after handling
   setTimeout(() => {
     isOpeningMenu = false;
   }, 50);
@@ -157,8 +155,7 @@ const show = async (x: number, y: number): Promise<void> => {
       position.value.y = Math.max(0, y - rect.height);
     }
   }
-  
-  // Reset flag after a short delay
+
   setTimeout(() => {
     isOpeningMenu = false;
   }, 100);

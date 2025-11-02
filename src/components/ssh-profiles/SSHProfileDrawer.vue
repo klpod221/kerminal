@@ -311,13 +311,10 @@ const filteredConfigHosts = computed(() => {
 });
 
 const createNewProfile = () => {
-  console.log("Creating new profile...");
   openOverlay("ssh-profile-modal");
 };
 
 const connectToProfile = (profile: SSHProfile) => {
-  console.log("Connecting to:", profile.name);
-
   const activePanelId = workspaceStore.activePanelId || "panel-1";
 
   workspaceStore.addSSHTab(activePanelId, profile.id, profile.name);
@@ -326,12 +323,10 @@ const connectToProfile = (profile: SSHProfile) => {
 };
 
 const editProfile = (profile: SSHProfile) => {
-  console.log("Editing profile:", profile.name);
   openOverlay("ssh-profile-modal", { sshProfileId: profile.id });
 };
 
 const deleteProfile = async (profile: SSHProfile) => {
-  console.log("Deleting profile:", profile.name);
   try {
     await sshStore.deleteProfile(profile.id);
   } catch (error) {
@@ -340,12 +335,10 @@ const deleteProfile = async (profile: SSHProfile) => {
 };
 
 const addProfileToGroup = (groupId: string) => {
-  console.log("Adding profile to group:", groupId);
   openOverlay("ssh-profile-modal", { groupId });
 };
 
 const editGroup = (group: SSHGroup) => {
-  console.log("Editing group:", group.name);
   openOverlay("ssh-group-modal", { sshGroupId: group.id });
 };
 
@@ -369,17 +362,13 @@ const deleteGroup = async (group: SSHGroup) => {
 };
 
 const connectToConfigHost = async (host: SSHConfigHost) => {
-  console.log("Connecting to SSH config host:", host.name);
-
   try {
     const activePanelId = workspaceStore.activePanelId || "panel-1";
     const displayName = host.user
       ? `${host.user}@${host.hostname}`
       : host.hostname;
 
-    // Check if password is required
     if (requiresPassword(host)) {
-      // Open password modal and close drawer
       await openOverlay("ssh-config-password-modal", {
         host,
         onConnect: async (password: string) => {
@@ -391,9 +380,7 @@ const connectToConfigHost = async (host: SSHConfigHost) => {
           );
         },
       });
-      // Note: Drawer will close when password modal opens (overlay system behavior)
     } else {
-      // Connect directly (has key file)
       workspaceStore.addSSHConfigTab(activePanelId, host.name, displayName);
       closeOverlay("ssh-profile-drawer");
     }

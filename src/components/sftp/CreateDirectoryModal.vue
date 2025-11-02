@@ -17,7 +17,7 @@
         autofocus
       />
       <div class="text-xs text-gray-500 mt-2">
-        Directory will be created in: 
+        Directory will be created in:
         <span class="font-mono text-gray-400">{{ currentPath }}</span>
       </div>
     </Form>
@@ -40,7 +40,6 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
 
@@ -68,41 +67,30 @@ async function handleSubmit() {
   const isValid = await createDirectoryForm.value?.validate();
   if (!isValid || !directoryName.value) return;
 
-  // Check if name contains path separators
-  if (
-    directoryName.value.includes("/") ||
-    directoryName.value.includes("\\")
-  ) {
+  if (directoryName.value.includes("/") || directoryName.value.includes("\\")) {
     message.error("Directory name cannot contain path separators");
     return;
   }
 
   loading.value = true;
-  try {
-    const isLocal = getOverlayProp<boolean>(
-      "sftp-create-directory-modal",
-      "isLocal",
-      false,
-      false,
-    );
-    
-    // Emit event to parent to handle directory creation
-    const event = new CustomEvent("sftp-create-directory", {
-      detail: {
-        path: currentPath.value,
-        name: directoryName.value,
-        isLocal: isLocal.value,
-      },
-    });
-    window.dispatchEvent(event);
-    closeModal();
-  } catch (error) {
-    console.error("Failed to create directory:", error);
-    message.error(
-      getErrorMessage(error, "Failed to create directory"),
-    );
-    loading.value = false;
-  }
+  const isLocal = getOverlayProp<boolean>(
+    "sftp-create-directory-modal",
+    "isLocal",
+    false,
+    false,
+  );
+
+  // Emit event to parent to handle directory creation
+  const event = new CustomEvent("sftp-create-directory", {
+    detail: {
+      path: currentPath.value,
+      name: directoryName.value,
+      isLocal: isLocal.value,
+    },
+  });
+  window.dispatchEvent(event);
+  closeModal();
+  loading.value = false;
 }
 
 function closeModal() {
@@ -110,4 +98,3 @@ function closeModal() {
   closeOverlay("sftp-create-directory-modal");
 }
 </script>
-

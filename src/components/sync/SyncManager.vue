@@ -96,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onBeforeUnmount } from "vue";
 import {
   Activity,
   Settings,
@@ -118,9 +118,7 @@ import ConflictList from "./ConflictList.vue";
 import DeviceManager from "./DeviceManager.vue";
 import ExternalDatabaseModal from "./ExternalDatabaseModal.vue";
 import ConflictResolutionModal from "./ConflictResolutionModal.vue";
-import { syncService } from "../../services/sync";
 import { message, showConfirm } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
 import { useOverlay } from "../../composables/useOverlay";
 
@@ -182,20 +180,14 @@ const toggleConnection = async () => {
   if (!selectedDatabaseId.value) return;
 
   isConnecting.value = true;
-  try {
-    if (currentDatabase.value?.isActive) {
-      await syncStore.disconnect(selectedDatabaseId.value);
-      message.success("Disconnected from database");
-    } else {
-      await syncStore.connect(selectedDatabaseId.value);
-      message.success("Connected to database");
-    }
-  } catch (error) {
-    console.error("Connection toggle failed:", error);
-    message.error(getErrorMessage(error, "Connection failed"));
-  } finally {
-    isConnecting.value = false;
+  if (currentDatabase.value?.isActive) {
+    await syncStore.disconnect(selectedDatabaseId.value);
+    message.success("Disconnected from database");
+  } else {
+    await syncStore.connect(selectedDatabaseId.value);
+    message.success("Connected to database");
   }
+  isConnecting.value = false;
 };
 
 const confirmDeleteDatabase = async () => {
@@ -211,17 +203,12 @@ const confirmDeleteDatabase = async () => {
 
   if (!confirmed) return;
 
-  try {
-    await syncStore.deleteDatabase(selectedDatabaseId.value);
-    message.success(`Database "${db.name}" deleted successfully`);
+  await syncStore.deleteDatabase(selectedDatabaseId.value);
+  message.success(`Database "${db.name}" deleted successfully`);
 
-    selectedDatabaseId.value = "";
-    if (syncStore.databases.length > 0) {
-      selectedDatabaseId.value = syncStore.databases[0].id;
-    }
-  } catch (error) {
-    console.error("Failed to delete database:", error);
-    message.error(getErrorMessage(error, "Failed to delete database"));
+  selectedDatabaseId.value = "";
+  if (syncStore.databases.length > 0) {
+    selectedDatabaseId.value = syncStore.databases[0].id;
   }
 };
 
@@ -231,13 +218,9 @@ watch(
     if (newId) {
       syncStore.setCurrentDatabase(newId);
 
-      try {
-        await syncService.updateGlobalSyncSettings({
-          selectedDatabaseId: newId,
-        });
-      } catch (error) {
-        console.error("Failed to save selected database:", error);
-      }
+      await syncStore.updateGlobalSyncSettings({
+        selectedDatabaseId: newId,
+      });
     }
   },
 );
@@ -251,12 +234,18 @@ watch(
   },
 );
 
-onMounted(async () => {
-  await syncStore.loadDatabases();
-  await syncStore.startRealtime();
-
+/**
+ * Initialize sync feature:
+ * - Load all databases
+ * - Start realtime listeners for live updates
+ * - Restore selected database from global settings
+ */
+const initialize = async () => {
   try {
-    const globalSettings = await syncService.getGlobalSyncSettings();
+    await syncStore.loadDatabases();
+    await syncStore.startRealtime();
+
+    const globalSettings = await syncStore.getGlobalSyncSettings();
     if (globalSettings?.selectedDatabaseId) {
       const dbExists = syncStore.databases.find(
         (db) => db.id === globalSettings.selectedDatabaseId,
@@ -265,14 +254,32 @@ onMounted(async () => {
         selectedDatabaseId.value = globalSettings.selectedDatabaseId;
       }
     }
-  } catch (e) {}
 
-  if (!selectedDatabaseId.value && syncStore.databases.length > 0) {
-    selectedDatabaseId.value = syncStore.databases[0].id;
-  }
+    if (!selectedDatabaseId.value && syncStore.databases.length > 0) {
+      selectedDatabaseId.value = syncStore.databases[0].id;
+    }
 
-  if (syncStore.currentDatabaseId) {
-    selectedDatabaseId.value = syncStore.currentDatabaseId;
+    if (syncStore.currentDatabaseId) {
+      selectedDatabaseId.value = syncStore.currentDatabaseId;
+    }
+  } catch (error) {
+    console.error("Failed to initialize sync:", error);
   }
+};
+
+/**
+ * Cleanup when component is unmounted:
+ * - Stop realtime listeners to prevent memory leaks
+ */
+const cleanup = () => {
+  syncStore.stopRealtime();
+};
+
+onMounted(() => {
+  initialize();
+});
+
+onBeforeUnmount(() => {
+  cleanup();
 });
 </script>

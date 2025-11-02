@@ -176,7 +176,7 @@ export class TerminalBufferManager {
     try {
       const activeTerminals = await bufferService.listTerminals();
       const activeTerminalIds = Array.isArray(activeTerminals)
-        ? activeTerminals.map((t: any) => t.id)
+        ? activeTerminals.map((t) => t.id)
         : [];
 
       await bufferService.cleanupTerminalBuffers(activeTerminalIds);

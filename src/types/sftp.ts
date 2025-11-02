@@ -142,3 +142,10 @@ export interface SFTPBrowserState {
   activeTransfers: Map<string, TransferProgress>;
 }
 
+/**
+ * Drag and drop data structure for file browser
+ */
+export interface FileBrowserDragData {
+  files: Partial<FileEntry>[];
+  isRemote: boolean;
+}

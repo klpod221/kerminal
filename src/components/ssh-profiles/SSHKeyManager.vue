@@ -31,12 +31,12 @@
       </div>
 
       <!-- Loading -->
-      <div v-if="sshKeyStore.loading" class="text-center py-8">
-        <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
-        ></div>
-        <p class="text-gray-400 mt-4">Loading SSH keys...</p>
-      </div>
+      <SkeletonList
+        v-if="sshKeyStore.loading"
+        :items="4"
+        :show-avatar="false"
+        :show-actions="true"
+      />
 
       <!-- Keys Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -122,6 +122,7 @@ import Card from "../ui/Card.vue";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import EmptyState from "../ui/EmptyState.vue";
+import SkeletonList from "../ui/SkeletonList.vue";
 import { Key, Plus, Edit3, Trash2 } from "lucide-vue-next";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";

@@ -1,8 +1,11 @@
 <template>
   <div class="space-y-4">
-    <div v-if="isLoading" class="text-center py-8 text-gray-400">
-      Loading devices...
-    </div>
+    <SkeletonList
+      v-if="isLoading"
+      :items="4"
+      :show-avatar="false"
+      :show-actions="true"
+    />
 
     <template v-else>
       <!-- Current Device Section -->
@@ -28,16 +31,12 @@
           <div class="flex-1 space-y-2">
             <div class="flex items-center gap-2">
               <h4 class="text-white font-medium">
-                {{ currentDevice.deviceName }}
+                {{ currentDevice.name }}
               </h4>
               <Badge variant="primary" size="sm">Current</Badge>
             </div>
             <div class="text-sm text-gray-400 space-y-1">
-              <p>Device ID: {{ currentDevice.deviceId }}</p>
-              <p>
-                OS: {{ currentDevice.osInfo.osType }}
-                {{ currentDevice.osInfo.osVersion }}
-              </p>
+              <p>Device ID: {{ currentDevice.id }}</p>
               <p>Type: {{ currentDevice.deviceType }}</p>
             </div>
           </div>
@@ -70,7 +69,7 @@
         <div class="space-y-2">
           <div
             v-for="device in otherDevices"
-            :key="device.deviceId"
+            :key="device.id"
             class="bg-gray-800 border border-gray-700 rounded-lg p-4"
           >
             <div class="flex items-start justify-between">
@@ -81,11 +80,11 @@
                 <div class="flex-1">
                   <div class="flex items-center gap-2 mb-1">
                     <h4 class="text-sm font-medium text-gray-200">
-                      {{ device.deviceName }}
+                      {{ device.name }}
                     </h4>
                     <Badge
                       v-if="
-                        device.lastSeen && isRecentlyActive(device.lastSeen)
+                        device.lastSeenAt && isRecentlyActive(device.lastSeenAt)
                       "
                       variant="success"
                     >
@@ -95,18 +94,14 @@
                   </div>
                   <div class="text-xs text-gray-400 space-y-1">
                     <div>
-                      ID: <span class="font-mono">{{ device.deviceId }}</span>
+                      ID: <span class="font-mono">{{ device.id }}</span>
                     </div>
                     <div>Type: {{ device.deviceType }}</div>
                     <div>
-                      OS: {{ device.osInfo.osType }}
-                      {{ device.osInfo.osVersion }}
+                      Last Seen: {{ formatDateOrNever(device.lastSeenAt) }}
                     </div>
                     <div>
-                      Last Seen: {{ formatDateOrNever(device.lastSeen) }}
-                    </div>
-                    <div>
-                      Registered: {{ formatDateOrNever(device.createdAt) }}
+                      Registered: {{ formatDateOrNever(device.registeredAt) }}
                     </div>
                   </div>
                 </div>
@@ -160,29 +155,38 @@
 import { ref, computed, onMounted } from "vue";
 import { Computer, PlusCircle, RefreshCw } from "lucide-vue-next";
 import Card from "../ui/Card.vue";
+import SkeletonList from "../ui/SkeletonList.vue";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage, isRecentlyActive } from "../../utils/helpers";
+import { isRecentlyActive } from "../../utils/helpers";
 import { formatDateOrNever } from "../../utils/formatter";
-import { syncService } from "../../services/sync";
-import type { Device } from "../../types/sync";
+import { useSyncStore } from "../../stores/sync";
 
+const syncStore = useSyncStore();
 const isLoading = ref(false);
 const isRefreshing = ref(false);
-const devices = ref<Device[]>([]);
-const currentDevice = ref<Device | null>(null);
+
+type StoreDevice = {
+  id: string;
+  name: string;
+  deviceType: string;
+  registeredAt: string;
+  lastSeenAt: string;
+};
+
+const devices = ref<StoreDevice[]>([]);
+const currentDevice = ref<StoreDevice | null>(null);
 
 const otherDevices = computed(() => {
   if (!currentDevice.value) return devices.value;
-  return devices.value.filter(
-    (d) => d.deviceId !== currentDevice.value?.deviceId,
-  );
+  return devices.value.filter((d) => d.id !== currentDevice.value?.id);
 });
 
 const onlineDevicesCount = computed(() => {
-  return devices.value.filter((d) => d.lastSeen && isRecentlyActive(d.lastSeen))
-    .length;
+  return devices.value.filter(
+    (d) => d.lastSeenAt && isRecentlyActive(d.lastSeenAt),
+  ).length;
 });
 
 const getDeviceIcon = (type: string): string => {
@@ -196,55 +200,44 @@ const getDeviceIcon = (type: string): string => {
   return icons[type] || "💻";
 };
 
+/**
+ * Load all devices
+ */
 const loadDevices = async () => {
   isRefreshing.value = true;
-  try {
-    const allDevices = await syncService.getAllDevices();
-    devices.value = allDevices;
-  } catch (error) {
-    console.error("Failed to load devices:", error);
-    message.error(getErrorMessage(error, "Failed to load devices"));
-  } finally {
-    isRefreshing.value = false;
-  }
+  const allDevices = await syncStore.getAllDevices();
+  devices.value = allDevices;
+  isRefreshing.value = false;
 };
 
+/**
+ * Load current device
+ */
 const loadCurrentDevice = async () => {
-  try {
-    const device = await syncService.getCurrentDevice();
-    currentDevice.value = device;
-  } catch (error) {
-    console.error("Failed to load current device:", error);
-  }
+  const device = await syncStore.getCurrentDevice();
+  currentDevice.value = device;
 };
 
+/**
+ * Register current device
+ */
 const registerCurrentDevice = async () => {
   isLoading.value = true;
-  try {
-    const device = await syncService.registerDevice(
-      "Current Device",
-      "Desktop",
-    );
-    currentDevice.value = device;
-    await loadDevices();
-    message.success("Device registered successfully");
-  } catch (error) {
-    console.error("Failed to register device:", error);
-    message.error(getErrorMessage(error, "Failed to register device"));
-  } finally {
-    isLoading.value = false;
-  }
+  const device = await syncStore.registerDevice("Current Device", "Desktop");
+  currentDevice.value = device;
+  await loadDevices();
+  message.success("Device registered successfully");
+  isLoading.value = false;
 };
 
-const showDeviceInfo = (device: Device) => {
+const showDeviceInfo = (device: StoreDevice) => {
   const info = `
 Device Information:
-- Name: ${device.deviceName}
-- ID: ${device.deviceId}
+- Name: ${device.name}
+- ID: ${device.id}
 - Type: ${device.deviceType}
-- OS: ${device.osInfo.osType} ${device.osInfo.osVersion}
-- Last Seen: ${formatDateOrNever(device.lastSeen)}
-- Registered: ${formatDateOrNever(device.createdAt)}
+- Last Seen: ${formatDateOrNever(device.lastSeenAt)}
+- Registered: ${formatDateOrNever(device.registeredAt)}
   `.trim();
 
   message.info(info);
@@ -252,10 +245,7 @@ Device Information:
 
 onMounted(async () => {
   isLoading.value = true;
-  try {
-    await Promise.all([loadCurrentDevice(), loadDevices()]);
-  } finally {
-    isLoading.value = false;
-  }
+  await Promise.all([loadCurrentDevice(), loadDevices()]);
+  isLoading.value = false;
 });
 </script>

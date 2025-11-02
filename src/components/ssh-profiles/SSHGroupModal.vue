@@ -62,11 +62,14 @@ import Textarea from "../ui/Textarea.vue";
 import ColorPicker from "../ui/ColorPicker.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useOverlay } from "../../composables/useOverlay";
-import { SSHGroup } from "../../types/ssh";
+import type {
+  SSHGroup,
+  CreateSSHGroupRequest,
+  UpdateSSHGroupRequest,
+} from "../../types/ssh";
 
 const props = defineProps<{
   sshGroupId?: string | null;
@@ -93,13 +96,9 @@ const sshGroup = ref({
 const loadGroup = () => {
   if (!sshGroupId.value) return;
 
-  try {
-    const group = sshStore.findGroupById(sshGroupId.value);
-    if (group) {
-      sshGroup.value = { ...group };
-    }
-  } catch (error) {
-    console.error("Error loading SSH group:", error);
+  const group = sshStore.findGroupById(sshGroupId.value);
+  if (group) {
+    sshGroup.value = { ...group };
   }
 };
 
@@ -108,27 +107,25 @@ const handleSubmit = async () => {
   if (!isValid || !sshGroup.value) return;
 
   isLoading.value = true;
-  try {
-    const groupData = {
+  if (sshGroupId.value) {
+    const updateData: UpdateSSHGroupRequest = {
+      name: sshGroup.value.name,
+      description: sshGroup.value.description || null,
+      color: sshGroup.value.color || null,
+    };
+    await sshStore.updateGroup(sshGroupId.value, updateData);
+    message.success("SSH group updated successfully.");
+  } else {
+    const createData: CreateSSHGroupRequest = {
       name: sshGroup.value.name!,
       description: sshGroup.value.description,
       color: sshGroup.value.color,
-    } as any; // Type assertion for create request
-
-    if (sshGroupId.value) {
-      await sshStore.updateGroup(sshGroupId.value, groupData);
-      message.success("SSH group updated successfully.");
-    } else {
-      await sshStore.createGroup(groupData);
-      message.success("SSH group created successfully.");
-    }
-    closeModal();
-  } catch (error) {
-    console.error("Error saving SSH group:", error);
-    message.error(getErrorMessage(error, "Failed to save SSH group."));
-  } finally {
-    isLoading.value = false;
+    };
+    await sshStore.createGroup(createData);
+    message.success("SSH group created successfully.");
   }
+  closeModal();
+  isLoading.value = false;
 };
 
 const closeModal = () => {
@@ -143,7 +140,6 @@ const closeModal = () => {
 watch(
   () => sshGroupId.value,
   (newId) => {
-    console.log("🔍 SSHGroupModal prop changed:", { sshGroupId: newId });
     if (newId) {
       loadGroup();
     } else {

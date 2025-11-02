@@ -131,7 +131,6 @@ export const useOverlayStore = defineStore("overlay", () => {
 
     try {
       if (overlay.transitioning) {
-        console.warn(`⚠️ Overlay ${targetId} is already transitioning`);
         return;
       }
 
@@ -141,7 +140,6 @@ export const useOverlayStore = defineStore("overlay", () => {
         const canClose = await overlay.config.onBeforeClose();
         if (canClose === false) {
           overlay.transitioning = false;
-          console.log(`🚫 Close cancelled for overlay: ${targetId}`);
           return;
         }
       }
@@ -193,11 +191,6 @@ export const useOverlayStore = defineStore("overlay", () => {
     }
 
     history.value = history.value.filter((historyId) => historyId !== targetId);
-
-    console.log(`🔒 Closed overlay: ${targetId}`, {
-      activeNow: activeOverlayId.value,
-      history: history.value,
-    });
   };
 
   const closeAll = (): void => {

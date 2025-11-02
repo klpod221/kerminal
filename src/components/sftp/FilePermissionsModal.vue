@@ -114,32 +114,16 @@
             Quick Presets
           </div>
           <div class="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              @click="setPreset(0o644)"
-            >
+            <Button variant="outline" size="sm" @click="setPreset(0o644)">
               0644 (rw-r--r--)
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="setPreset(0o755)"
-            >
+            <Button variant="outline" size="sm" @click="setPreset(0o755)">
               0755 (rwxr-xr-x)
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="setPreset(0o600)"
-            >
+            <Button variant="outline" size="sm" @click="setPreset(0o600)">
               0600 (rw-------)
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              @click="setPreset(0o777)"
-            >
+            <Button variant="outline" size="sm" @click="setPreset(0o777)">
               0777 (rwxrwxrwx)
             </Button>
           </div>
@@ -166,7 +150,6 @@ import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import type { FileEntry } from "../../types/sftp";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
@@ -211,7 +194,6 @@ watch(
   { immediate: true },
 );
 
-// Watch octal input changes
 watch(octalPermissions, (octal) => {
   const match = octal.match(/^0?([0-7]{3,4})$/);
   if (match) {
@@ -263,7 +245,6 @@ function setPreset(mode: number) {
 async function handleSubmit() {
   if (!file.value || loading.value) return;
 
-  // Validate octal format
   const match = octalPermissions.value.match(/^0?([0-7]{3,4})$/);
   if (!match) {
     message.error("Invalid permissions format. Use octal format (e.g., 0644)");
@@ -273,20 +254,14 @@ async function handleSubmit() {
   const mode = parseInt(match[1], 8);
 
   loading.value = true;
-  try {
-    // Emit event to parent to handle permissions change
-    const event = new CustomEvent("sftp-permissions", {
-      detail: { path: file.value.path, mode },
-    });
-    window.dispatchEvent(event);
-    closeModal();
-  } catch (error) {
-    console.error("Failed to update permissions:", error);
-    message.error(
-      getErrorMessage(error, "Failed to update permissions"),
-    );
-    loading.value = false;
-  }
+
+  // Emit event to parent to handle permissions change
+  const event = new CustomEvent("sftp-permissions", {
+    detail: { path: file.value.path, mode },
+  });
+  window.dispatchEvent(event);
+  closeModal();
+  loading.value = false;
 }
 
 function closeModal() {
@@ -299,4 +274,3 @@ function closeModal() {
   closeOverlay("sftp-file-permissions-modal");
 }
 </script>
-

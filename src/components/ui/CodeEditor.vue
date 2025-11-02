@@ -100,7 +100,7 @@ watch(
     if (newValue !== code.value) {
       code.value = newValue;
     }
-  }
+  },
 );
 
 const handleChange = (value: string) => {
@@ -131,4 +131,3 @@ const handleMount = (editor: editor.IStandaloneCodeEditor) => {
   color: #6b7280;
 }
 </style>
-

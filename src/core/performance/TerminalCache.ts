@@ -4,6 +4,7 @@
  */
 
 import { api } from "../../services/api";
+import type { TerminalInfo } from "../../types/panel";
 
 /**
  * Cache entry with timestamp for TTL management
@@ -31,9 +32,18 @@ export interface CacheStats {
 export class TerminalCache {
   private static instance: TerminalCache | null = null;
 
-  private terminalInfoCache = new Map<string, CacheEntry<any>>();
-  private bufferStatsCache: CacheEntry<any> | null = null;
-  private terminalListCache: CacheEntry<any[]> | null = null;
+  private terminalInfoCache = new Map<string, CacheEntry<TerminalInfo>>();
+  private bufferStatsCache: CacheEntry<{
+    lines: number;
+    cols: number;
+    cursorRow: number;
+    cursorCol: number;
+    totalTerminals?: number;
+    totalLines?: number;
+    memoryUsage?: number;
+  }> | null = null;
+  private terminalListCache: CacheEntry<TerminalInfo[]> | null = null;
+  private bufferHasCache = new Map<string, CacheEntry<boolean>>();
 
   private readonly DEFAULT_TTL = 5000; // 5 seconds
   private readonly BUFFER_STATS_TTL = 3000; // 3 seconds for stats
@@ -59,7 +69,7 @@ export class TerminalCache {
    * @param terminalId - Terminal identifier
    * @returns Promise of terminal info
    */
-  async getTerminalInfo(terminalId: string): Promise<any> {
+  async getTerminalInfo(terminalId: string): Promise<TerminalInfo> {
     const cacheKey = terminalId;
     const cached = this.terminalInfoCache.get(cacheKey);
 
@@ -70,9 +80,9 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = await api.call("get_terminal_info", {
+      const data = (await api.call("get_terminal_info", {
         terminalId: terminalId,
-      });
+      })) as TerminalInfo;
       this.terminalInfoCache.set(cacheKey, {
         data,
         timestamp: Date.now(),
@@ -88,7 +98,15 @@ export class TerminalCache {
    * Get buffer statistics with caching
    * @returns Promise of buffer statistics
    */
-  async getBufferStats(): Promise<any> {
+  async getBufferStats(): Promise<{
+    lines: number;
+    cols: number;
+    cursorRow: number;
+    cursorCol: number;
+    totalTerminals?: number;
+    totalLines?: number;
+    memoryUsage?: number;
+  }> {
     if (
       this.bufferStatsCache &&
       this.isEntryValid(this.bufferStatsCache, this.BUFFER_STATS_TTL)
@@ -99,7 +117,15 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = await api.call("get_buffer_stats");
+      const data = (await api.call("get_buffer_stats")) as {
+        lines: number;
+        cols: number;
+        cursorRow: number;
+        cursorCol: number;
+        totalTerminals?: number;
+        totalLines?: number;
+        memoryUsage?: number;
+      };
       this.bufferStatsCache = {
         data,
         timestamp: Date.now(),
@@ -115,7 +141,7 @@ export class TerminalCache {
    * Get terminal list with caching
    * @returns Promise of terminal list
    */
-  async getTerminalList(): Promise<any[]> {
+  async getTerminalList(): Promise<TerminalInfo[]> {
     if (
       this.terminalListCache &&
       this.isEntryValid(this.terminalListCache, this.TERMINAL_LIST_TTL)
@@ -126,7 +152,7 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = await api.call("list_terminals");
+      const data = (await api.call("list_terminals")) as TerminalInfo[];
       this.terminalListCache = {
         data,
         timestamp: Date.now(),
@@ -146,7 +172,7 @@ export class TerminalCache {
    */
   async hasTerminalBuffer(terminalId: string): Promise<boolean> {
     const cacheKey = `buffer_has_${terminalId}`;
-    const cached = this.terminalInfoCache.get(cacheKey);
+    const cached = this.bufferHasCache.get(cacheKey);
 
     if (cached && this.isEntryValid(cached, 1000)) {
       this.stats.hits++;
@@ -155,10 +181,10 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = await api.call("has_terminal_buffer", {
+      const data = (await api.call("has_terminal_buffer", {
         terminalId: terminalId,
-      });
-      this.terminalInfoCache.set(cacheKey, {
+      })) as boolean;
+      this.bufferHasCache.set(cacheKey, {
         data,
         timestamp: Date.now(),
       });

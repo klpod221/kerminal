@@ -12,7 +12,7 @@ class ApiClient {
    * @param data - The data to send (will be wrapped in { request: data })
    * @returns Promise with the result
    */
-  async call<T = any>(command: string, data?: any): Promise<T> {
+  async call<T = unknown>(command: string, data?: unknown): Promise<T> {
     try {
       if (data === undefined || data === null) {
         return await invoke<T>(command);
@@ -31,7 +31,7 @@ class ApiClient {
    * @param args - Individual arguments to pass to the command
    * @returns Promise with the result
    */
-  async callRaw<T = any>(command: string, ...args: any[]): Promise<T> {
+  async callRaw<T = unknown>(command: string, ...args: unknown[]): Promise<T> {
     try {
       if (args.length === 0) {
         return await invoke<T>(command);
@@ -41,24 +41,15 @@ class ApiClient {
         args[0] !== null &&
         !Array.isArray(args[0])
       ) {
-        return await invoke<T>(command, args[0]);
+        return await invoke<T>(command, args[0] as Record<string, unknown>);
       } else {
-        const params: Record<string, any> = {};
+        const params: Record<string, unknown> = {};
 
         const paramNames = this.getParameterNames(command);
         args.forEach((arg, index) => {
           const paramName = paramNames[index] || `arg${index}`;
           params[paramName] = arg;
         });
-
-      // Debug logging (disabled in production)
-      if (import.meta.env.DEV) {
-        console.log(`🔍 API Debug - Command: ${command}`, {
-          args,
-          paramNames,
-          params,
-        });
-      }
 
         return await invoke<T>(command, params);
       }
@@ -87,7 +78,12 @@ class ApiClient {
       update_ssh_key: ["id", "request"],
       delete_ssh_key: ["id", "force"],
       count_profiles_using_key: ["key_id"],
-      import_ssh_key_from_file: ["name", "file_path", "passphrase", "description"],
+      import_ssh_key_from_file: [
+        "name",
+        "file_path",
+        "passphrase",
+        "description",
+      ],
       get_tunnel: ["id"],
       update_tunnel: ["id", "request"],
       delete_tunnel: ["id"],
@@ -131,7 +127,7 @@ class ApiClient {
    * @param callback - Callback function to handle the event
    * @returns Promise that resolves to an unlisten function
    */
-  async listen<T = any>(
+  async listen<T = unknown>(
     eventName: string,
     callback: (data: T) => void,
   ): Promise<() => void> {

@@ -10,7 +10,8 @@
     <div class="space-y-4">
       <p class="text-gray-300">
         Are you sure you want to delete
-        <span class="font-medium text-white">{{ file?.name }}</span>?
+        <span class="font-medium text-white">{{ file?.name }}</span
+        >?
       </p>
       <p class="text-sm text-gray-500">
         {{
@@ -36,8 +37,6 @@ import { Trash2 } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import { useOverlay } from "../../composables/useOverlay";
-import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import type { FileEntry } from "../../types/sftp";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
@@ -55,33 +54,27 @@ async function handleSubmit() {
   if (!file.value || loading.value) return;
 
   loading.value = true;
-  try {
-    const isLocal = getOverlayProp<boolean>(
-      "sftp-file-delete-modal",
-      "isLocal",
-      false,
-      false,
-    );
-    
-    // Emit event to parent to handle delete
-    const event = new CustomEvent("sftp-delete", {
-      detail: {
-        path: file.value.path,
-        isDirectory: file.value.fileType === "directory",
-        isLocal: isLocal.value,
-      },
-    });
-    window.dispatchEvent(event);
-    closeModal();
-  } catch (error) {
-    console.error("Failed to delete:", error);
-    message.error(getErrorMessage(error, "Failed to delete file"));
-    loading.value = false;
-  }
+  const isLocal = getOverlayProp<boolean>(
+    "sftp-file-delete-modal",
+    "isLocal",
+    false,
+    false,
+  );
+
+  // Emit event to parent to handle delete
+  const event = new CustomEvent("sftp-delete", {
+    detail: {
+      path: file.value.path,
+      isDirectory: file.value.fileType === "directory",
+      isLocal: isLocal.value,
+    },
+  });
+  window.dispatchEvent(event);
+  closeModal();
+  loading.value = false;
 }
 
 function closeModal() {
   closeOverlay("sftp-file-delete-modal");
 }
 </script>
-

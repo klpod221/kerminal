@@ -17,7 +17,7 @@
         autofocus
       />
       <div class="text-xs text-gray-500 mt-2">
-        File will be created in: 
+        File will be created in:
         <span class="font-mono text-gray-400">{{ currentPath }}</span>
       </div>
     </Form>
@@ -40,7 +40,6 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
 
@@ -75,34 +74,24 @@ async function handleSubmit() {
   const isValid = await createFileForm.value?.validate();
   if (!isValid || !fileName.value) return;
 
-  // Check if name contains path separators
-  if (
-    fileName.value.includes("/") ||
-    fileName.value.includes("\\")
-  ) {
+  if (fileName.value.includes("/") || fileName.value.includes("\\")) {
     message.error("File name cannot contain path separators");
     return;
   }
 
   loading.value = true;
-  try {
-    // Emit event to parent to handle file creation
-    const event = new CustomEvent("sftp-create-file", {
-      detail: {
-        path: currentPath.value,
-        name: fileName.value,
-        isLocal: isLocal.value,
-      },
-    });
-    window.dispatchEvent(event);
-    closeModal();
-  } catch (error) {
-    console.error("Failed to create file:", error);
-    message.error(
-      getErrorMessage(error, "Failed to create file"),
-    );
-    loading.value = false;
-  }
+
+  // Emit event to parent to handle file creation
+  const event = new CustomEvent("sftp-create-file", {
+    detail: {
+      path: currentPath.value,
+      name: fileName.value,
+      isLocal: isLocal.value,
+    },
+  });
+  window.dispatchEvent(event);
+  closeModal();
+  loading.value = false;
 }
 
 function closeModal() {
@@ -110,4 +99,3 @@ function closeModal() {
   closeOverlay("sftp-create-file-modal");
 }
 </script>
-

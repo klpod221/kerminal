@@ -192,24 +192,10 @@
       </div>
     </template>
   </Drawer>
-
-  <!-- Modals -->
-  <SavedCommandModal
-    modal-id="saved-command-modal"
-    :groups="savedCommandStore.groups"
-    @success="handleCommandSaved"
-    @error="handleError"
-  />
-
-  <SavedCommandGroupModal
-    modal-id="saved-command-group-modal"
-    @success="handleGroupSaved"
-    @error="handleError"
-  />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed } from "vue";
 import {
   Terminal,
   Search,
@@ -236,8 +222,6 @@ import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import EmptyState from "../ui/EmptyState.vue";
 import SavedCommandItem from "./SavedCommandItem.vue";
-import SavedCommandModal from "./SavedCommandModal.vue";
-import SavedCommandGroupModal from "./SavedCommandGroupModal.vue";
 
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
@@ -250,8 +234,6 @@ import type {
 
 const { openOverlay } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
-const showSuccess = (msg: string) => message.success(msg);
-const showError = (msg: string) => message.error(msg);
 
 const searchQuery = ref("");
 const activeFilter = ref<"all" | "favorites" | "recent" | "unused">("all");
@@ -374,45 +356,30 @@ const editGroup = (group: SavedCommandGroup) => {
 };
 
 const executeCommand = async (command: SavedCommand) => {
-  try {
-    await savedCommandStore.executeCommand(command.id);
-    showSuccess(`Executed: ${command.name}`);
-  } catch (error) {
-    console.error("Failed to execute command:", error);
-    showError("Failed to execute command");
-  }
+  await savedCommandStore.executeCommand(command.id);
+  message.success(`Executed: ${command.name}`);
 };
 
 const copyCommand = async (command: SavedCommand) => {
   try {
     await navigator.clipboard.writeText(command.command);
-    showSuccess("Command copied to clipboard");
+    message.success("Command copied to clipboard");
   } catch (error) {
     console.error("Failed to copy command:", error);
-    showError("Failed to copy command");
+    message.error("Failed to copy command");
   }
 };
 
 const toggleFavorite = async (command: SavedCommand) => {
-  try {
-    await savedCommandStore.toggleFavorite(command.id);
-    showSuccess(
-      command.isFavorite ? "Removed from favorites" : "Added to favorites",
-    );
-  } catch (error) {
-    console.error("Failed to toggle favorite:", error);
-    showError("Failed to update favorite status");
-  }
+  await savedCommandStore.toggleFavorite(command.id);
+  message.success(
+    command.isFavorite ? "Removed from favorites" : "Added to favorites",
+  );
 };
 
 const deleteCommand = async (command: SavedCommand) => {
-  try {
-    await savedCommandStore.deleteCommand(command.id);
-    showSuccess("Command deleted successfully");
-  } catch (error) {
-    console.error("Failed to delete command:", error);
-    showError("Failed to delete command");
-  }
+  await savedCommandStore.deleteCommand(command.id);
+  message.success("Command deleted successfully");
 };
 
 const confirmDeleteGroup = async (group: SavedCommandGroup) => {
@@ -426,43 +393,7 @@ const confirmDeleteGroup = async (group: SavedCommandGroup) => {
 };
 
 const deleteGroup = async (group: SavedCommandGroup) => {
-  try {
-    await savedCommandStore.deleteGroup(group.id);
-    showSuccess("Group deleted successfully");
-  } catch (error) {
-    console.error("Failed to delete group:", error);
-    showError("Failed to delete group");
-  }
+  await savedCommandStore.deleteGroup(group.id);
+  message.success("Group deleted successfully");
 };
-
-const handleCommandSaved = () => {
-  showSuccess("Command saved successfully");
-};
-
-const handleGroupSaved = () => {
-  showSuccess("Group saved successfully");
-};
-
-const handleError = (error: string) => {
-  showError(error);
-};
-
-onMounted(async () => {
-  try {
-    await savedCommandStore.loadAll();
-    await savedCommandStore.startRealtime();
-  } catch (error) {
-    console.error("Failed to load saved commands:", error);
-    showError("Failed to load saved commands");
-  }
-});
-
-watch(
-  () => savedCommandStore.loading,
-  (loading) => {
-    if (!loading && savedCommandStore.error) {
-      showError(savedCommandStore.error);
-    }
-  },
-);
 </script>

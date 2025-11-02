@@ -143,13 +143,8 @@ import Input from "../ui/Input.vue";
 import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import {
-  getErrorMessage,
-  safeJsonParse,
-  getCurrentTimestamp,
-} from "../../utils/helpers";
+import { safeJsonParse, getCurrentTimestamp } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
-import { syncService } from "../../services/sync";
 import { useOverlay } from "../../composables/useOverlay";
 import type {
   DatabaseType,
@@ -247,7 +242,7 @@ const loadDatabase = async () => {
 
   isLoading.value = true;
   try {
-    const data = await syncService.getDatabaseWithDetails(databaseId.value);
+    const data = await syncStore.getDatabaseWithDetails(databaseId.value);
 
     if (!data || !data.config) {
       throw new Error("Database not found or invalid data");
@@ -284,9 +279,6 @@ const loadDatabase = async () => {
         (parsed.conflictResolutionStrategy as ConflictResolutionStrategy) ||
         "LastWriteWins";
     }
-  } catch (error) {
-    console.error("Error loading database:", error);
-    message.error(getErrorMessage(error, "Failed to load database"));
   } finally {
     isLoading.value = false;
   }
@@ -309,9 +301,6 @@ const testConnection = async () => {
     } else {
       message.error("Connection failed!");
     }
-  } catch (error) {
-    console.error("Connection test failed:", error);
-    message.error(getErrorMessage(error, "Connection test failed"));
   } finally {
     isTesting.value = false;
   }
@@ -338,7 +327,14 @@ const handleSubmit = async () => {
     };
 
     if (databaseId.value) {
-      const updatePayload: any = {
+      interface UpdateDatabasePayload {
+        name?: string;
+        connectionDetails?: ConnectionDetails;
+        autoSync?: boolean;
+        syncIntervalMinutes?: number;
+        conflictResolutionStrategy?: ConflictResolutionStrategy;
+      }
+      const updatePayload: UpdateDatabasePayload = {
         name: database.value.name,
         autoSync: syncSettings.value.autoSync,
         syncIntervalMinutes: syncSettings.value.syncIntervalMinutes,
@@ -362,9 +358,6 @@ const handleSubmit = async () => {
     }
 
     closeModal();
-  } catch (error) {
-    console.error("Error saving database:", error);
-    message.error(getErrorMessage(error, "Failed to save database"));
   } finally {
     isLoading.value = false;
   }

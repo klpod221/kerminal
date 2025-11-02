@@ -2,7 +2,7 @@
   <Modal id="tunnel-manager-modal" title="SSH Tunnel Manager" size="xl">
     <!-- Empty State -->
     <EmptyState
-      v-if="tunnelStore.tunnels.length === 0 && !tunnelStore.loading"
+      v-if="tunnelStore.tunnels.length === 0 && !tunnelStore.isLoading"
       :icon="Route"
       :icon-size="64"
       title="No SSH Tunnels"
@@ -38,12 +38,12 @@
       </div>
 
       <!-- Loading -->
-      <div v-if="tunnelStore.loading" class="text-center py-8">
-        <div
-          class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
-        ></div>
-        <p class="text-gray-400 mt-4">Loading tunnels...</p>
-      </div>
+      <SkeletonList
+        v-if="tunnelStore.isLoading"
+        :items="5"
+        :show-avatar="false"
+        :show-actions="true"
+      />
 
       <!-- Tunnels List -->
       <div v-else class="flex flex-col gap-4">
@@ -74,15 +74,21 @@
               </div>
               <div class="flex items-center gap-1">
                 <Button
-                  v-if="tunnel.status === 'stopped' || tunnel.status === 'error'"
+                  v-if="
+                    tunnel.status === 'stopped' || tunnel.status === 'error'
+                  "
                   variant="ghost"
                   size="sm"
                   :icon="Play"
-                  :title="tunnel.status === 'error' ? 'Retry tunnel' : 'Start tunnel'"
+                  :title="
+                    tunnel.status === 'error' ? 'Retry tunnel' : 'Start tunnel'
+                  "
                   @click="startTunnel(tunnel)"
                 />
                 <Button
-                  v-else-if="tunnel.status === 'running' || tunnel.status === 'starting'"
+                  v-else-if="
+                    tunnel.status === 'running' || tunnel.status === 'starting'
+                  "
                   variant="ghost"
                   size="sm"
                   :icon="Square"
@@ -93,8 +99,14 @@
                   variant="ghost"
                   size="sm"
                   :icon="Edit3"
-                  :disabled="tunnel.status === 'starting' || tunnel.status === 'running'"
-                  :title="tunnel.status === 'starting' || tunnel.status === 'running' ? 'Cannot edit while tunnel is active' : 'Edit tunnel'"
+                  :disabled="
+                    tunnel.status === 'starting' || tunnel.status === 'running'
+                  "
+                  :title="
+                    tunnel.status === 'starting' || tunnel.status === 'running'
+                      ? 'Cannot edit while tunnel is active'
+                      : 'Edit tunnel'
+                  "
                   @click="openTunnelModal(tunnel)"
                 />
                 <Button
@@ -108,8 +120,14 @@
                   variant="ghost"
                   size="sm"
                   :icon="Trash2"
-                  :disabled="tunnel.status === 'starting' || tunnel.status === 'running'"
-                  :title="tunnel.status === 'starting' || tunnel.status === 'running' ? 'Cannot delete while tunnel is active' : 'Delete tunnel'"
+                  :disabled="
+                    tunnel.status === 'starting' || tunnel.status === 'running'
+                  "
+                  :title="
+                    tunnel.status === 'starting' || tunnel.status === 'running'
+                      ? 'Cannot delete while tunnel is active'
+                      : 'Delete tunnel'
+                  "
                   @click="confirmDelete(tunnel)"
                 />
               </div>
@@ -170,6 +188,7 @@ import Badge from "../ui/Badge.vue";
 import Card from "../ui/Card.vue";
 import EmptyState from "../ui/EmptyState.vue";
 import TunnelStatusIndicator from "./TunnelStatusIndicator.vue";
+import SkeletonList from "../ui/SkeletonList.vue";
 import {
   Plus,
   Route,
@@ -203,11 +222,7 @@ const startTunnel = async (tunnel: TunnelWithStatus) => {
     return;
   }
 
-  try {
-    await tunnelStore.startTunnel(tunnel.id);
-  } catch (error) {
-    console.error("Failed to start tunnel:", error);
-  }
+  await tunnelStore.startTunnel(tunnel.id);
 };
 
 const stopTunnel = async (tunnel: TunnelWithStatus) => {
@@ -216,11 +231,7 @@ const stopTunnel = async (tunnel: TunnelWithStatus) => {
     return;
   }
 
-  try {
-    await tunnelStore.stopTunnel(tunnel.id);
-  } catch (error) {
-    console.error("Failed to stop tunnel:", error);
-  }
+  await tunnelStore.stopTunnel(tunnel.id);
 };
 
 const duplicateTunnel = async (tunnel: TunnelWithStatus) => {
@@ -241,11 +252,7 @@ const duplicateTunnel = async (tunnel: TunnelWithStatus) => {
     autoStart: false, // Don't auto-start duplicates
   };
 
-  try {
-    await tunnelStore.createTunnel(duplicateData);
-  } catch (error) {
-    console.error("Failed to duplicate tunnel:", error);
-  }
+  await tunnelStore.createTunnel(duplicateData);
 };
 
 const confirmDelete = async (tunnel: TunnelWithStatus) => {
@@ -255,11 +262,7 @@ const confirmDelete = async (tunnel: TunnelWithStatus) => {
   );
 
   if (confirmed && tunnel.id) {
-    try {
-      await tunnelStore.deleteTunnel(tunnel.id);
-    } catch (error) {
-      console.error("Failed to delete tunnel:", error);
-    }
+    await tunnelStore.deleteTunnel(tunnel.id);
   }
 };
 

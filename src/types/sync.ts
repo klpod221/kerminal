@@ -44,6 +44,7 @@ export interface DatabaseSyncSettings {
   autoSync: boolean;
   syncIntervalMinutes: number;
   conflictResolutionStrategy: ConflictResolutionStrategy;
+  syncDirection?: SyncDirection;
 }
 
 export interface SyncSettings {
@@ -121,8 +122,8 @@ export interface ConflictResolutionData {
   id: string;
   entityType: string;
   entityId: string;
-  localData: any;
-  remoteData: any;
+  localData: Record<string, unknown>;
+  remoteData: Record<string, unknown>;
   resolutionStrategy?: ConflictResolutionStrategy;
   resolvedAt?: string;
   createdAt: string;

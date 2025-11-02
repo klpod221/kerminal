@@ -36,7 +36,6 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import type { FileEntry } from "../../types/sftp";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
@@ -66,7 +65,6 @@ async function handleSubmit() {
   const isValid = await renameForm.value?.validate();
   if (!isValid || !file.value || !newName.value) return;
 
-  // Check if name contains path separators
   if (newName.value.includes("/") || newName.value.includes("\\")) {
     message.error("File name cannot contain path separators");
     return;
@@ -80,27 +78,20 @@ async function handleSubmit() {
   }
 
   loading.value = true;
-  try {
-    const isLocal = getOverlayProp<boolean>(
-      "sftp-file-rename-modal",
-      "isLocal",
-      false,
-      false,
-    );
+  const isLocal = getOverlayProp<boolean>(
+    "sftp-file-rename-modal",
+    "isLocal",
+    false,
+    false,
+  );
 
-    // Emit event to parent to handle rename
-    const event = new CustomEvent("sftp-rename", {
-      detail: { oldPath: file.value.path, newPath, isLocal: isLocal.value },
-    });
-    window.dispatchEvent(event);
-    closeModal();
-  } catch (error) {
-    console.error("Failed to rename:", error);
-    message.error(
-      getErrorMessage(error, "Failed to rename file"),
-    );
-    loading.value = false;
-  }
+  // Emit event to parent to handle rename
+  const event = new CustomEvent("sftp-rename", {
+    detail: { oldPath: file.value.path, newPath, isLocal: isLocal.value },
+  });
+  window.dispatchEvent(event);
+  closeModal();
+  loading.value = false;
 }
 
 function closeModal() {
@@ -108,4 +99,3 @@ function closeModal() {
   closeOverlay("sftp-file-rename-modal");
 }
 </script>
-

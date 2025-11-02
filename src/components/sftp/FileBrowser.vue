@@ -2,12 +2,7 @@
   <div class="h-full flex flex-col bg-[#0D0D0D]">
     <!-- Path bar -->
     <div class="flex items-center gap-2 px-4 py-2 border-b border-gray-800">
-      <Button
-        variant="ghost"
-        size="sm"
-        @click="goUp"
-        :disabled="!canGoUp"
-      >
+      <Button variant="ghost" size="sm" @click="goUp" :disabled="!canGoUp">
         <ArrowUp :size="16" />
       </Button>
       <div class="flex-1 relative">
@@ -49,11 +44,7 @@
       >
         <FolderPlus :size="16" />
       </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        @click="$emit('refresh')"
-      >
+      <Button variant="ghost" size="sm" @click="$emit('refresh')">
         <RefreshCw :size="16" />
       </Button>
     </div>
@@ -82,7 +73,9 @@
 
       <div v-else class="flex-1 flex flex-col overflow-hidden">
         <!-- Column headers -->
-        <div class="flex items-center px-4 py-1.5 border-b border-gray-800 bg-gray-900/50 text-xs font-medium text-gray-400 sticky top-0 z-10">
+        <div
+          class="flex items-center px-4 py-1.5 border-b border-gray-800 bg-gray-900/50 text-xs font-medium text-gray-400 sticky top-0 z-10"
+        >
           <div class="w-8 shrink-0"></div>
           <div
             class="flex items-center gap-2 flex-1 min-w-0 cursor-pointer hover:text-gray-300 select-none"
@@ -125,7 +118,9 @@
                 :size="14"
               />
               <ChevronDown
-                v-else-if="sortColumn === 'modified' && sortDirection === 'desc'"
+                v-else-if="
+                  sortColumn === 'modified' && sortDirection === 'desc'
+                "
                 :size="14"
               />
             </div>
@@ -143,10 +138,14 @@
               draggable="true"
               class="flex items-center px-4 py-2 hover:bg-gray-800/50 cursor-pointer group transition-colors"
               :class="{
-                'bg-blue-500/10 border-l-2 border-blue-500': isSelected(file.path),
+                'bg-blue-500/10 border-l-2 border-blue-500': isSelected(
+                  file.path,
+                ),
                 'bg-gray-800/30': focusedIndex === index,
-                'opacity-50': isDragging && draggedFiles.some(f => f.path === file.path),
-                'bg-blue-500/20 border-l-2 border-blue-400': dragOverIndex === index && isDragOver,
+                'opacity-50':
+                  isDragging && draggedFiles.some((f) => f.path === file.path),
+                'bg-blue-500/20 border-l-2 border-blue-400':
+                  dragOverIndex === index && isDragOver,
               }"
               @dragstart="handleDragStart($event, file)"
               @dragend="handleDragEnd"
@@ -188,15 +187,13 @@
                     :size="18"
                     class="text-yellow-400"
                   />
-                  <FileQuestion
-                    v-else
-                    :size="18"
-                    class="text-gray-500"
-                  />
+                  <FileQuestion v-else :size="18" class="text-gray-500" />
                 </div>
 
                 <div class="flex-1 min-w-0">
-                  <div class="text-sm text-gray-200 truncate flex items-center gap-2">
+                  <div
+                    class="text-sm text-gray-200 truncate flex items-center gap-2"
+                  >
                     <span>{{ file.name }}</span>
                     <span
                       v-if="file.fileType === 'symlink' && file.symlinkTarget"
@@ -231,10 +228,7 @@
       </div>
 
       <!-- Loading indicator -->
-      <div
-        v-if="loading"
-        class="flex items-center justify-center h-32"
-      >
+      <div v-if="loading" class="flex items-center justify-center h-32">
         <div class="text-gray-500 text-sm">Loading...</div>
       </div>
     </div>
@@ -267,7 +261,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from "lucide-vue-next";
-import type { FileEntry } from "../../types/sftp";
+import type { FileEntry, FileBrowserDragData } from "../../types/sftp";
 import Button from "../ui/Button.vue";
 import EmptyState from "../ui/EmptyState.vue";
 import ContextMenu, { type ContextMenuItem } from "../ui/ContextMenu.vue";
@@ -299,7 +293,12 @@ const emit = defineEmits<{
   (e: "upload", files: FileList): void;
   (e: "createDirectory"): void;
   (e: "createFile"): void;
-  (e: "drag-files", files: FileEntry[], targetPath: string, isSourceRemote: boolean): void;
+  (
+    e: "drag-files",
+    files: FileEntry[],
+    targetPath: string,
+    isSourceRemote: boolean,
+  ): void;
 }>();
 
 const fileListRef = ref<HTMLElement>();
@@ -332,7 +331,6 @@ function setFileItemRef(index: number, el: HTMLElement | null) {
   fileItemRefs.value[index] = el;
 }
 
-// Watch currentPath changes
 watch(
   () => props.currentPath,
   (newPath) => {
@@ -342,7 +340,6 @@ watch(
   },
 );
 
-// Generate suggestions based on current path and files
 const suggestions = computed(() => {
   if (!showSuggestions.value || !pathInput.value) {
     return [];
@@ -351,28 +348,24 @@ const suggestions = computed(() => {
   const input = pathInput.value.trim();
   if (!input) return [];
 
-  // Get parent directory path
   const parts = input.split("/").filter((p) => p);
-  const parentPath = parts.length === 0
-    ? "/"
-    : input.startsWith("/")
-      ? `/${parts.slice(0, -1).join("/")}`
-      : parts.slice(0, -1).join("/");
+  const parentPath =
+    parts.length === 0
+      ? "/"
+      : input.startsWith("/")
+        ? `/${parts.slice(0, -1).join("/")}`
+        : parts.slice(0, -1).join("/");
 
-  // Get all directory names from current files
   const directoryNames = props.files
     .filter((f) => f.fileType === "directory")
     .map((f) => f.name);
 
-  // Get the partial path being typed (last segment)
   const lastSegment = input.split("/").pop() || "";
 
-  // Filter directories that match the partial path
   const matching = directoryNames.filter((name) =>
     name.toLowerCase().startsWith(lastSegment.toLowerCase()),
   );
 
-  // Generate full paths for suggestions
   return matching
     .map((name) => {
       if (input.endsWith("/")) {
@@ -383,11 +376,10 @@ const suggestions = computed(() => {
       }
       return `${parentPath}/${name}`;
     })
-    .slice(0, 10); // Limit to 10 suggestions
+    .slice(0, 10);
 });
 
 const contextMenuItems = computed<ContextMenuItem[]>(() => {
-  // Empty area context menu - only show New File and New Folder
   if (isEmptyContextMenu.value) {
     return [
       {
@@ -405,7 +397,6 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
     ];
   }
 
-  // File/folder context menu
   if (!selectedFile.value) return [];
 
   const items: ContextMenuItem[] = [
@@ -417,7 +408,6 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
     },
   ];
 
-  // Add Edit option for files
   if (selectedFile.value.fileType === "file") {
     items.push({
       id: "edit",
@@ -436,7 +426,6 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
     });
   }
 
-  // Add separator and New File/Folder options
   items.push(
     {
       type: "divider",
@@ -496,7 +485,6 @@ const sortedFiles = computed(() => {
   const files = [...props.files];
 
   return files.sort((a, b) => {
-    // Directories first (unless sorting by size)
     if (sortColumn.value !== "size") {
       if (a.fileType === "directory" && b.fileType !== "directory") {
         return -1;
@@ -582,32 +570,26 @@ function goUp() {
   }
 
   const parentParts = parts.slice(0, -1);
-  const parentPath = parentParts.length === 0
-    ? "/"
-    : isAbsolute
-      ? `/${parentParts.join("/")}`
-      : parentParts.join("/");
+  const parentPath =
+    parentParts.length === 0
+      ? "/"
+      : isAbsolute
+        ? `/${parentParts.join("/")}`
+        : parentParts.join("/");
 
   emit("navigate", parentPath);
 }
 
-function handleFileClick(
-  event: MouseEvent,
-  file: FileEntry,
-  index: number,
-) {
-  // Update focused index
+function handleFileClick(event: MouseEvent, file: FileEntry, index: number) {
   const wasSelected = isSelected(file.path);
   focusedIndex.value = index;
 
-  // Handle Ctrl/Cmd + Click for multi-select
   if (event.ctrlKey || event.metaKey) {
     lastFocusedIndex.value = index;
     toggleSelection(file.path);
     return;
   }
 
-  // Handle Shift + Click for range select
   if (event.shiftKey && lastFocusedIndex.value >= 0) {
     const start = Math.min(lastFocusedIndex.value, index);
     const end = Math.max(lastFocusedIndex.value, index);
@@ -621,27 +603,21 @@ function handleFileClick(
     return;
   }
 
-  // Single click: select this item (clear others first)
   if (!event.ctrlKey && !event.metaKey && !event.shiftKey) {
     lastFocusedIndex.value = index;
 
-    // If clicking on an already-selected item and it's the only one, just focus it
     if (wasSelected && props.selectedFiles.size === 1) {
-      return; // Already selected and it's the only one, just update focus
+      return;
     }
 
-    // Save current selections before clearing
     const selectedCount = props.selectedFiles.size;
     const currentSelections = Array.from(props.selectedFiles);
 
-    // Clear all selections first
     currentSelections.forEach((path) => {
-      emit("select", path); // Toggle off
+      emit("select", path);
     });
 
-    // Then select this one (only if it wasn't selected, or if multiple were selected before)
     if (!wasSelected || selectedCount > 1) {
-      // Use nextTick to ensure previous clears are processed
       nextTick(() => {
         if (!props.selectedFiles.has(file.path)) {
           emit("select", file.path);
@@ -654,7 +630,6 @@ function handleFileClick(
 function handleKeyDown(event: KeyboardEvent) {
   if (!fileListRef.value || sortedFiles.value.length === 0) return;
 
-  // Arrow keys for navigation
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     const direction = event.key === "ArrowDown" ? 1 : -1;
@@ -666,7 +641,6 @@ function handleKeyDown(event: KeyboardEvent) {
     focusedIndex.value = newIndex;
     lastFocusedIndex.value = newIndex;
 
-    // Scroll into view
     nextTick(() => {
       const element = fileItemRefs.value[newIndex];
       if (element) {
@@ -676,14 +650,12 @@ function handleKeyDown(event: KeyboardEvent) {
     return;
   }
 
-  // Enter to open
   if (event.key === "Enter" && focusedIndex.value >= 0) {
     const file = sortedFiles.value[focusedIndex.value];
     handleFileDoubleClick(file);
     return;
   }
 
-  // Space to toggle selection
   if (event.key === " " && focusedIndex.value >= 0) {
     event.preventDefault();
     const file = sortedFiles.value[focusedIndex.value];
@@ -691,7 +663,6 @@ function handleKeyDown(event: KeyboardEvent) {
     return;
   }
 
-  // Ctrl/Cmd + A to select all
   if ((event.ctrlKey || event.metaKey) && event.key === "a") {
     event.preventDefault();
     sortedFiles.value.forEach((file) => {
@@ -704,7 +675,6 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 function handleFileDoubleClick(file: FileEntry) {
-  // Double click: open/navigate
   if (file.fileType === "directory") {
     emit("navigate", file.path);
   } else {
@@ -728,7 +698,6 @@ function showContextMenu(event: MouseEvent, file: FileEntry) {
   isEmptyContextMenu.value = false;
   selectedFile.value = file;
 
-  // Use nextTick to ensure selectedFile is set and context menu items are computed
   nextTick(() => {
     if (contextMenuRef.value && selectedFile.value) {
       contextMenuRef.value.show(event.clientX, event.clientY);
@@ -737,9 +706,8 @@ function showContextMenu(event: MouseEvent, file: FileEntry) {
 }
 
 function showEmptyContextMenu(event: MouseEvent) {
-  // Only show if clicking on empty area (not on a file item)
   const target = event.target as HTMLElement;
-  const fileItem = target.closest('[data-file-item]');
+  const fileItem = target.closest("[data-file-item]");
 
   if (!fileItem) {
     event.preventDefault();
@@ -760,7 +728,6 @@ function showEmptyContextMenu(event: MouseEvent) {
 function handleContextMenuClick(item: ContextMenuItem) {
   const action = item.action || item.id;
 
-  // Handle empty area actions
   if (isEmptyContextMenu.value) {
     switch (action) {
       case "createFile":
@@ -774,7 +741,6 @@ function handleContextMenuClick(item: ContextMenuItem) {
     return;
   }
 
-  // Handle file/folder actions
   if (!selectedFile.value) return;
 
   switch (action) {
@@ -811,15 +777,14 @@ function handleContextMenuClick(item: ContextMenuItem) {
 function handleDragStart(event: DragEvent, file: FileEntry) {
   if (!event.dataTransfer) return;
 
-  // Get all selected files, or just this one if not selected
-  const filesToDrag = props.selectedFiles.size > 0 && isSelected(file.path)
-    ? sortedFiles.value.filter((f) => props.selectedFiles.has(f.path))
-    : [file];
+  const filesToDrag =
+    props.selectedFiles.size > 0 && isSelected(file.path)
+      ? sortedFiles.value.filter((f) => props.selectedFiles.has(f.path))
+      : [file];
 
   draggedFiles.value = filesToDrag;
   isDragging.value = true;
 
-  // Store file data in dataTransfer for cross-browser drag
   event.dataTransfer.effectAllowed = "move";
   event.dataTransfer.setData(
     "application/x-filebrowser-files",
@@ -835,10 +800,11 @@ function handleDragStart(event: DragEvent, file: FileEntry) {
     }),
   );
 
-  // Also set text data for fallback
-  event.dataTransfer.setData("text/plain", filesToDrag.map((f) => f.name).join(", "));
+  event.dataTransfer.setData(
+    "text/plain",
+    filesToDrag.map((f) => f.name).join(", "),
+  );
 
-  // Set drag image (optional: customize the drag preview)
   if (event.dataTransfer.setDragImage && event.target) {
     const dragImage = document.createElement("div");
     dragImage.textContent = `${filesToDrag.length} item${filesToDrag.length > 1 ? "s" : ""}`;
@@ -868,20 +834,18 @@ function handleDragOver(event: DragEvent, file: FileEntry, index: number) {
   event.preventDefault();
   if (!event.dataTransfer) return;
 
-  // Check if this is an internal drag (from file browser) by checking types
-  const isInternalDrag = event.dataTransfer.types.includes("application/x-filebrowser-files");
+  const isInternalDrag = event.dataTransfer.types.includes(
+    "application/x-filebrowser-files",
+  );
 
   if (isInternalDrag) {
-    // Cross-browser drag or different path
     if (file.fileType === "directory") {
       dragOverIndex.value = index;
       event.dataTransfer.dropEffect = "copy";
     } else {
-      // Allow dropping on empty area (will use current path)
       event.dataTransfer.dropEffect = "copy";
     }
   } else {
-    // External drag (from desktop)
     if (file.fileType === "directory") {
       dragOverIndex.value = index;
       event.dataTransfer.dropEffect = "copy";
@@ -907,16 +871,20 @@ function handleFileDrop(event: DragEvent, file: FileEntry) {
   isDragOver.value = false;
   dragOverIndex.value = -1;
 
-  // Check if this is an internal drag from file browser
-  const dragData = event.dataTransfer.getData("application/x-filebrowser-files");
+  const dragData = event.dataTransfer.getData(
+    "application/x-filebrowser-files",
+  );
   if (dragData) {
-    const data = JSON.parse(dragData);
-    const targetPath = file.fileType === "directory" ? file.path : props.currentPath;
+    const data = JSON.parse(dragData) as FileBrowserDragData;
+    const targetPath =
+      file.fileType === "directory" ? file.path : props.currentPath;
 
-    // Convert stored data back to FileEntry format
-    const draggedFileEntries: FileEntry[] = data.files.map((f: any) => ({
-      ...f,
-      modified: null,
+    const draggedFileEntries: FileEntry[] = data.files.map((f) => ({
+      name: f.name || "",
+      path: f.path || "",
+      fileType: f.fileType || "file",
+      size: f.size ?? null,
+      modified: f.modified || new Date().toISOString(),
       accessed: null,
       permissions: 0o644,
       symlinkTarget: null,
@@ -924,12 +892,10 @@ function handleFileDrop(event: DragEvent, file: FileEntry) {
       gid: null,
     }));
 
-    // Emit with source information
     emit("drag-files", draggedFileEntries, targetPath, data.isRemote);
     return;
   }
 
-  // Fallback: handle external file drop (upload)
   handleExternalDrop(event);
 }
 
@@ -937,7 +903,6 @@ function onDragEnter(event: DragEvent) {
   event.preventDefault();
   if (!event.dataTransfer) return;
 
-  // Check if this is an internal drag or external file drag
   if (
     event.dataTransfer.types.includes("application/x-filebrowser-files") ||
     event.dataTransfer.types.includes("Files")
@@ -947,17 +912,11 @@ function onDragEnter(event: DragEvent) {
 }
 
 function onDragLeave(event: DragEvent) {
-  // Only clear if we're actually leaving the container (not just moving to a child)
   const rect = fileListRef.value?.getBoundingClientRect();
   if (rect) {
     const x = event.clientX;
     const y = event.clientY;
-    if (
-      x < rect.left ||
-      x > rect.right ||
-      y < rect.top ||
-      y > rect.bottom
-    ) {
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
       isDragOver.value = false;
       dragOverIndex.value = -1;
     }
@@ -968,7 +927,6 @@ function onDragOver(event: DragEvent) {
   event.preventDefault();
   if (!event.dataTransfer) return;
 
-  // Set drop effect for both internal and external drags
   event.dataTransfer.dropEffect = "copy";
 }
 
@@ -979,16 +937,19 @@ async function onDrop(event: DragEvent) {
   isDragOver.value = false;
   dragOverIndex.value = -1;
 
-  // Check if this is an internal drag from file browser (already handled in handleFileDrop)
-  const dragData = event.dataTransfer.getData("application/x-filebrowser-files");
+  const dragData = event.dataTransfer.getData(
+    "application/x-filebrowser-files",
+  );
   if (dragData) {
-    // This was handled by handleFileDrop, but handle empty area drop here
-    const data = JSON.parse(dragData);
+    const data = JSON.parse(dragData) as FileBrowserDragData;
     const targetPath = props.currentPath;
 
-    const draggedFileEntries: FileEntry[] = data.files.map((f: any) => ({
-      ...f,
-      modified: null,
+    const draggedFileEntries: FileEntry[] = data.files.map((f) => ({
+      name: f.name || "",
+      path: f.path || "",
+      fileType: f.fileType || "file",
+      size: f.size ?? null,
+      modified: f.modified || new Date().toISOString(),
       accessed: null,
       permissions: 0o644,
       symlinkTarget: null,
@@ -1000,7 +961,6 @@ async function onDrop(event: DragEvent) {
     return;
   }
 
-  // Handle external file drop
   handleExternalDrop(event);
 }
 
@@ -1009,16 +969,13 @@ async function handleExternalDrop(event: DragEvent) {
 
   const files: File[] = [];
 
-  // Try to get file paths from dataTransfer items (for desktop drag & drop)
   if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
     for (let i = 0; i < event.dataTransfer.items.length; i++) {
       const item = event.dataTransfer.items[i];
 
-      // Check for file path in items
       if (item.kind === "file") {
         const entry = item.webkitGetAsEntry?.();
         if (entry && entry.isFile) {
-          // For FileSystemFileEntry, we need to get the file
           const fileEntry = entry as FileSystemFileEntry;
           const file = await new Promise<File | null>((resolve) => {
             fileEntry.file(resolve, () => resolve(null));
@@ -1027,7 +984,6 @@ async function handleExternalDrop(event: DragEvent) {
             files.push(file);
           }
         } else {
-          // Try to get as File directly
           const file = item.getAsFile();
           if (file) {
             files.push(file);
@@ -1037,8 +993,11 @@ async function handleExternalDrop(event: DragEvent) {
     }
   }
 
-  // Fallback to files API if items didn't work
-  if (files.length === 0 && event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+  if (
+    files.length === 0 &&
+    event.dataTransfer.files &&
+    event.dataTransfer.files.length > 0
+  ) {
     files.push(...Array.from(event.dataTransfer.files));
   }
 
@@ -1048,7 +1007,6 @@ async function handleExternalDrop(event: DragEvent) {
 }
 
 function handlePathInput() {
-  // Show suggestions as user types
   if (pathInput.value && pathInput.value !== props.currentPath) {
     showSuggestions.value = true;
     selectedSuggestionIndex.value = -1;
@@ -1056,8 +1014,10 @@ function handlePathInput() {
 }
 
 function handlePathSubmit() {
-  // If a suggestion is selected, use it
-  if (selectedSuggestionIndex.value >= 0 && suggestions.value[selectedSuggestionIndex.value]) {
+  if (
+    selectedSuggestionIndex.value >= 0 &&
+    suggestions.value[selectedSuggestionIndex.value]
+  ) {
     const suggestion = suggestions.value[selectedSuggestionIndex.value];
     pathInput.value = suggestion;
     showSuggestions.value = false;
@@ -1082,11 +1042,9 @@ function handlePathCancel() {
 }
 
 function handlePathBlur() {
-  // Delay hiding suggestions to allow click on suggestion
   setTimeout(() => {
     showSuggestions.value = false;
     selectedSuggestionIndex.value = -1;
-    // Reset to current path if not navigated
     if (pathInput.value !== props.currentPath) {
       pathInput.value = props.currentPath;
     }
@@ -1119,7 +1077,6 @@ function selectSuggestion(suggestion: string) {
   emit("navigate", suggestion);
 }
 
-// Reset focus when files change
 watch(
   () => props.files.length,
   () => {
@@ -1130,10 +1087,8 @@ watch(
 );
 
 onMounted(() => {
-  // Focus the file list for keyboard navigation
   if (fileListRef.value) {
     fileListRef.value.focus();
   }
 });
 </script>
-

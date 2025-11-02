@@ -357,8 +357,8 @@ import {
   Thermometer,
 } from "lucide-vue-next";
 
-import { getSystemInfo } from "../services/dashboard";
 import { useWindowSize } from "../composables/useWindowSize";
+import { useSettingsStore } from "../stores/settings";
 
 const { isMobile } = useWindowSize();
 
@@ -423,7 +423,8 @@ const fetchSystemInfo = async () => {
   loading.value = true;
 
   try {
-    const info = await getSystemInfo();
+    const settingsStore = useSettingsStore();
+    const info = await settingsStore.getSystemInfo();
     systemInfo.value = info as SystemInfo;
     lastUpdated.value = new Date();
   } catch (error) {

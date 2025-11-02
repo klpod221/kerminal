@@ -21,9 +21,7 @@
       <!-- JSON Editor -->
       <div class="space-y-2">
         <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-medium text-gray-300">
-            Theme JSON
-          </label>
+          <label class="text-sm font-medium text-gray-300"> Theme JSON </label>
           <button
             class="text-xs text-purple-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-purple-500/10"
             @click="copyTemplate"
@@ -43,14 +41,29 @@
 
       <!-- Quick Reference -->
       <Collapsible title="Available Color Properties" :default-expanded="false">
-        <div class="p-3 bg-gray-800 rounded text-xs text-gray-400 font-mono space-y-1">
-          <div><span class="text-purple-400">background</span> * - Background color</div>
-          <div><span class="text-purple-400">foreground</span> * - Text color</div>
+        <div
+          class="p-3 bg-gray-800 rounded text-xs text-gray-400 font-mono space-y-1"
+        >
+          <div>
+            <span class="text-purple-400">background</span> * - Background color
+          </div>
+          <div>
+            <span class="text-purple-400">foreground</span> * - Text color
+          </div>
           <div><span class="text-gray-500">cursor</span> - Cursor color</div>
           <div class="pt-2 text-gray-500">Normal colors:</div>
-          <div><span class="text-gray-500">black, red, green, yellow, blue, magenta, cyan, white</span></div>
+          <div>
+            <span class="text-gray-500"
+              >black, red, green, yellow, blue, magenta, cyan, white</span
+            >
+          </div>
           <div class="pt-2 text-gray-500">Bright colors:</div>
-          <div><span class="text-gray-500">brightBlack, brightRed, brightGreen, brightYellow, brightBlue, brightMagenta, brightCyan, brightWhite</span></div>
+          <div>
+            <span class="text-gray-500"
+              >brightBlack, brightRed, brightGreen, brightYellow, brightBlue,
+              brightMagenta, brightCyan, brightWhite</span
+            >
+          </div>
         </div>
       </Collapsible>
 
@@ -64,19 +77,30 @@
             color: parsedColors.foreground,
           }"
         >
-          <div>$ <span :style="{ color: parsedColors.green || '#00ff00' }">echo</span> <span :style="{ color: parsedColors.yellow || '#ffff00' }">"Hello World"</span></div>
-          <div :style="{ color: parsedColors.green || '#00ff00' }">Hello World</div>
-          <div>$ <span :style="{ color: parsedColors.cyan || '#00ffff' }">ls</span> <span :style="{ color: parsedColors.blue || '#0000ff' }">-la</span></div>
+          <div>
+            $
+            <span :style="{ color: parsedColors.green || '#00ff00' }"
+              >echo</span
+            >
+            <span :style="{ color: parsedColors.yellow || '#ffff00' }"
+              >"Hello World"</span
+            >
+          </div>
+          <div :style="{ color: parsedColors.green || '#00ff00' }">
+            Hello World
+          </div>
+          <div>
+            $
+            <span :style="{ color: parsedColors.cyan || '#00ffff' }">ls</span>
+            <span :style="{ color: parsedColors.blue || '#0000ff' }">-la</span>
+          </div>
         </div>
       </div>
     </div>
 
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
-        <Button
-          variant="outline"
-          @click="closeOverlay('custom-theme-modal')"
-        >
+        <Button variant="outline" @click="closeOverlay('custom-theme-modal')">
           Cancel
         </Button>
         <Button
@@ -85,7 +109,7 @@
           :disabled="!isValid"
           @click="handleSave"
         >
-          {{ isEditing ? 'Update' : 'Create' }}
+          {{ isEditing ? "Update" : "Create" }}
         </Button>
       </div>
     </template>
@@ -117,11 +141,13 @@ const parsedColors = ref<TerminalTheme | null>(null);
 
 const isEditing = computed(() => !!themeId.value);
 const isValid = computed(() => {
-  return themeName.value.trim().length >= 3 &&
-         !jsonError.value &&
-         parsedColors.value !== null &&
-         parsedColors.value.background &&
-         parsedColors.value.foreground;
+  return (
+    themeName.value.trim().length >= 3 &&
+    !jsonError.value &&
+    parsedColors.value !== null &&
+    parsedColors.value.background &&
+    parsedColors.value.foreground
+  );
 });
 
 const handleJsonInput = () => {
@@ -139,7 +165,7 @@ const handleJsonInput = () => {
     // Validate hex colors
     const hexRegex = /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
     for (const [key, value] of Object.entries(parsed)) {
-      if (value && typeof value === 'string' && !hexRegex.test(value)) {
+      if (value && typeof value === "string" && !hexRegex.test(value)) {
         jsonError.value = `Invalid hex color for "${key}": ${value}`;
         parsedColors.value = null;
         return;
@@ -185,7 +211,7 @@ watch(
   () => themeId.value,
   (id) => {
     if (id) {
-      const theme = settingsStore.customThemes.find(t => t.id === id);
+      const theme = settingsStore.customThemes.find((t) => t.id === id);
       if (theme) {
         themeName.value = theme.name;
         jsonInput.value = JSON.stringify(theme.colors, null, 2);
@@ -194,14 +220,18 @@ watch(
     } else {
       // Reset for new theme
       themeName.value = "";
-      jsonInput.value = JSON.stringify({
-        background: "#1a1a1a",
-        foreground: "#ffffff"
-      }, null, 2);
+      jsonInput.value = JSON.stringify(
+        {
+          background: "#1a1a1a",
+          foreground: "#ffffff",
+        },
+        null,
+        2,
+      );
       handleJsonInput();
     }
   },
-  { immediate: true }
+  { immediate: true },
 );
 
 const handleSave = async () => {
@@ -209,10 +239,17 @@ const handleSave = async () => {
 
   try {
     if (isEditing.value && themeId.value) {
-      await settingsStore.updateCustomTheme(themeId.value, themeName.value, parsedColors.value);
+      await settingsStore.updateCustomTheme(
+        themeId.value,
+        themeName.value,
+        parsedColors.value,
+      );
       message.success("Custom theme updated successfully");
     } else {
-      await settingsStore.createCustomTheme(themeName.value, parsedColors.value);
+      await settingsStore.createCustomTheme(
+        themeName.value,
+        parsedColors.value,
+      );
       message.success("Custom theme created successfully");
     }
 
@@ -223,4 +260,3 @@ const handleSave = async () => {
   }
 };
 </script>
-

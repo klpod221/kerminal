@@ -50,12 +50,11 @@
           <h4 class="text-sm font-medium text-gray-100">Last Sync</h4>
         </div>
 
-        <div
+        <SkeletonText
           v-if="isLoadingStatus"
-          class="text-center py-4 text-gray-400 text-sm"
-        >
-          Loading sync status...
-        </div>
+          :lines="4"
+          :last-line-width="'60%'"
+        />
 
         <div v-else-if="syncStatus?.lastSync" class="space-y-2 text-xs">
           <div class="flex justify-between">
@@ -197,9 +196,9 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import Card from "../ui/Card.vue";
 import Badge from "../ui/Badge.vue";
+import SkeletonText from "../ui/SkeletonText.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { formatDateOrNever } from "../../utils/formatter";
 import { useSyncStore } from "../../stores/sync";
 import { useSSHStore } from "../../stores/ssh";
@@ -240,6 +239,10 @@ const getStatusVariant = (
   }
 };
 
+/**
+ * Handle sync operation with error handling
+ * @param direction - Sync direction
+ */
 const handleSync = async (direction: "push" | "pull" | "bidirectional") => {
   if (!currentDatabase.value) return;
 
@@ -255,40 +258,35 @@ const handleSync = async (direction: "push" | "pull" | "bidirectional") => {
 
     // Reload all application data in background
     reloadAllData();
-  } catch (error) {
-    console.error("Sync failed:", error);
-    message.error(getErrorMessage(error, "Sync failed"));
   } finally {
     isSyncing.value = false;
     syncDirection.value = null;
   }
 };
 
+/**
+ * Load sync status with error handling
+ */
 const loadStatus = async () => {
   if (!currentDatabase.value) return;
 
   isLoadingStatus.value = true;
   try {
     await syncStore.loadSyncStatus(currentDatabase.value.id);
-  } catch (error) {
-    console.error("Failed to load sync status:", error);
   } finally {
     isLoadingStatus.value = false;
   }
 };
 
+/**
+ * Load sync logs with error handling
+ */
 const loadLogs = async () => {
   if (!currentDatabase.value) return;
 
   isLoadingLogs.value = true;
-  try {
-    await syncStore.loadSyncLogs(currentDatabase.value.id, 10);
-  } catch (error) {
-    console.error("Failed to load sync logs:", error);
-    message.error(getErrorMessage(error, "Failed to load sync logs"));
-  } finally {
-    isLoadingLogs.value = false;
-  }
+  await syncStore.loadSyncLogs(currentDatabase.value.id, 10);
+  isLoadingLogs.value = false;
 };
 
 const loadStatistics = async () => {
@@ -314,8 +312,6 @@ const reloadAllData = async () => {
 
     // Reload tunnels
     await tunnelStore.loadTunnels();
-
-    console.log("All data reloaded successfully after sync");
   } catch (error) {
     console.error("Failed to reload data:", error);
     // Don't show error message to user since this is background refresh
@@ -323,8 +319,8 @@ const reloadAllData = async () => {
 };
 
 watch(
-  () => currentDatabase.value,
-  async (newDb: any) => {
+  currentDatabase,
+  async (newDb) => {
     if (newDb) {
       await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
     }
@@ -332,7 +328,6 @@ watch(
   { immediate: true },
 );
 
-// Watch for database connection changes
 watch(
   () => currentDatabase.value?.isActive,
   async (isActive: boolean | undefined) => {
@@ -347,7 +342,6 @@ onMounted(async () => {
     await syncStore.loadDatabases();
   }
 
-  // Load initial data if database is already selected
   if (currentDatabase.value) {
     await Promise.all([loadStatus(), loadLogs(), loadStatistics()]);
   }

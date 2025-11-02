@@ -3,7 +3,11 @@ import { ref, computed } from "vue";
 import { getAvailableThemes } from "../utils/terminalTheme";
 import { Store } from "@tauri-apps/plugin-store";
 import { api } from "../services/api";
+import * as settingsService from "../services/settings";
+import { getSystemInfo as getSystemInfoService } from "../services/dashboard";
 import type { TerminalTheme } from "../utils/terminalTheme";
+import { handleError, type ErrorContext } from "../utils/errorHandler";
+import { message } from "../utils/message";
 
 export interface CustomTheme {
   id: string;
@@ -44,28 +48,32 @@ export const useSettingsStore = defineStore("settings", () => {
   // All available themes (built-in + custom)
   const availableThemes = computed(() => [
     ...builtInThemes,
-    ...customThemes.value.map(t => t.name)
+    ...customThemes.value.map((t) => t.name),
   ]);
 
-  // Load settings from Tauri store
+  /**
+   * Load settings from Tauri store with error handling
+   */
   const loadSettings = async () => {
+    const context: ErrorContext = {
+      operation: "Load Settings",
+    };
+
     try {
       isLoading.value = true;
       const storeInstance = await initStore();
 
-      // Load custom themes
-      const savedCustomThemes = await storeInstance.get<CustomTheme[]>("custom-themes");
+      const savedCustomThemes =
+        await storeInstance.get<CustomTheme[]>("custom-themes");
       if (savedCustomThemes) {
         customThemes.value = savedCustomThemes;
       }
 
-      // Load selected theme
       const savedTheme = await storeInstance.get<string>("terminal-theme");
       if (savedTheme) {
         terminalTheme.value = savedTheme;
       }
 
-      // Load font settings
       const savedFontFamily = await storeInstance.get<string>("font-family");
       if (savedFontFamily) {
         fontFamily.value = savedFontFamily;
@@ -76,14 +84,21 @@ export const useSettingsStore = defineStore("settings", () => {
         fontSize.value = savedFontSize;
       }
     } catch (error) {
-      console.error("Failed to load settings from Tauri store:", error);
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
     } finally {
       isLoading.value = false;
     }
   };
 
-  // Save settings to Tauri store
+  /**
+   * Save settings to Tauri store with error handling
+   */
   const saveSettings = async () => {
+    const context: ErrorContext = {
+      operation: "Save Settings",
+    };
+
     try {
       const storeInstance = await initStore();
       await storeInstance.set("terminal-theme", terminalTheme.value);
@@ -91,17 +106,16 @@ export const useSettingsStore = defineStore("settings", () => {
       await storeInstance.set("font-size", fontSize.value);
       await storeInstance.save();
     } catch (error) {
-      console.error("Failed to save settings to Tauri store:", error);
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
     }
   };
 
-  // Set terminal theme
   const setTerminalTheme = async (theme: string) => {
     terminalTheme.value = theme;
     await saveSettings();
   };
 
-  // Create custom theme
   const createCustomTheme = async (name: string, colors: TerminalTheme) => {
     const newTheme: CustomTheme = {
       id: `custom-${Date.now()}`,
@@ -116,30 +130,30 @@ export const useSettingsStore = defineStore("settings", () => {
     return newTheme;
   };
 
-  // Update custom theme
-  const updateCustomTheme = async (id: string, name: string, colors: TerminalTheme) => {
-    const theme = customThemes.value.find(t => t.id === id);
+  const updateCustomTheme = async (
+    id: string,
+    name: string,
+    colors: TerminalTheme,
+  ) => {
+    const theme = customThemes.value.find((t) => t.id === id);
     if (theme) {
       theme.name = name;
       theme.colors = colors;
       theme.updatedAt = new Date().toISOString();
       await saveCustomThemes();
 
-      // If this is the current theme, trigger a refresh
       if (terminalTheme.value === name) {
         terminalTheme.value = name;
       }
     }
   };
 
-  // Delete custom theme
   const deleteCustomTheme = async (id: string) => {
-    const theme = customThemes.value.find(t => t.id === id);
+    const theme = customThemes.value.find((t) => t.id === id);
     if (theme) {
-      customThemes.value = customThemes.value.filter(t => t.id !== id);
+      customThemes.value = customThemes.value.filter((t) => t.id !== id);
       await saveCustomThemes();
 
-      // If this was the current theme, switch to default
       if (terminalTheme.value === theme.name) {
         terminalTheme.value = "Default";
         await saveSettings();
@@ -147,17 +161,14 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   };
 
-  // Get custom theme by name
   const getCustomTheme = (name: string): CustomTheme | undefined => {
-    return customThemes.value.find(t => t.name === name);
+    return customThemes.value.find((t) => t.name === name);
   };
 
-  // Check if theme is custom
   const isCustomTheme = (name: string): boolean => {
-    return customThemes.value.some(t => t.name === name);
+    return customThemes.value.some((t) => t.name === name);
   };
 
-  // Save custom themes to store
   const saveCustomThemes = async () => {
     try {
       const storeInstance = await initStore();
@@ -168,13 +179,11 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   };
 
-  // Set font family
   const setFontFamily = async (font: string) => {
     fontFamily.value = font;
     await saveSettings();
   };
 
-  // Set font size
   const setFontSize = async (size: number) => {
     fontSize.value = size;
     await saveSettings();
@@ -244,6 +253,42 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   };
 
+  /**
+   * Get system fonts with error handling
+   * @returns Array of system font names
+   */
+  async function getSystemFonts(): Promise<string[]> {
+    const context: ErrorContext = {
+      operation: "Get System Fonts",
+    };
+
+    try {
+      return await settingsService.getSystemFonts();
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Get system info with error handling
+   * @returns System information
+   */
+  async function getSystemInfoFunc(): Promise<any> {
+    const context: ErrorContext = {
+      operation: "Get System Info",
+    };
+
+    try {
+      return await getSystemInfoService();
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
   // Initialize settings on store creation
   loadSettings();
 
@@ -264,9 +309,10 @@ export const useSettingsStore = defineStore("settings", () => {
     deleteCustomTheme,
     getCustomTheme,
     isCustomTheme,
+    getSystemFonts,
+    getSystemInfo: getSystemInfoFunc,
 
     startRealtime,
     stopRealtime,
   };
 });
-

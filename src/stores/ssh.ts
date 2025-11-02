@@ -12,6 +12,12 @@ import type {
 } from "../types/ssh";
 import * as sshService from "../services/sshProfile";
 import { api } from "../services/api";
+import {
+  withRetry,
+  handleError,
+  type ErrorContext,
+} from "../utils/errorHandler";
+import { message } from "../utils/message";
 
 /**
  * SSH Profiles and Groups Store
@@ -121,42 +127,104 @@ export const useSSHStore = defineStore("ssh", () => {
   });
 
   /**
-   * Load all SSH profiles from backend
+   * Load all SSH profiles from backend with error handling
    */
   const loadProfiles = async (): Promise<void> => {
-    const loadedProfiles = await sshService.getSSHProfiles();
-    profiles.value = loadedProfiles;
+    const context: ErrorContext = {
+      operation: "Load SSH Profiles",
+    };
+
+    try {
+      const loadedProfiles = await withRetry(
+        () => sshService.getSSHProfiles(),
+        { maxRetries: 2 },
+        context,
+      );
+      profiles.value = loadedProfiles;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      profiles.value = [];
+      throw new Error(errorMessage);
+    }
   };
 
   /**
-   * Create new SSH profile
+   * Create new SSH profile with error handling
+   * @param request - Profile creation request
+   * @returns Created profile
    */
   const createProfile = async (
     request: CreateSSHProfileRequest,
   ): Promise<SSHProfile> => {
-    const newProfile = await sshService.createSSHProfile(request);
-    await loadProfiles(); // Reload to ensure data consistency
-    return newProfile;
+    const context: ErrorContext = {
+      operation: "Create SSH Profile",
+      context: { name: request.name, host: request.host },
+    };
+
+    try {
+      const newProfile = await withRetry(
+        () => sshService.createSSHProfile(request),
+        { maxRetries: 1 },
+        context,
+      );
+      await loadProfiles(); // Reload to ensure data consistency
+      return newProfile;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   /**
-   * Update existing SSH profile
+   * Update existing SSH profile with error handling
+   * @param id - Profile ID to update
+   * @param request - Update request
+   * @returns Updated profile
    */
   const updateProfile = async (
     id: string,
     request: UpdateSSHProfileRequest,
   ): Promise<SSHProfile> => {
-    const updatedProfile = await sshService.updateSSHProfile(id, request);
-    await loadProfiles(); // Reload to ensure data consistency
-    return updatedProfile;
+    const context: ErrorContext = {
+      operation: "Update SSH Profile",
+      context: { profileId: id },
+    };
+
+    try {
+      const updatedProfile = await withRetry(
+        () => sshService.updateSSHProfile(id, request),
+        { maxRetries: 1 },
+        context,
+      );
+      await loadProfiles(); // Reload to ensure data consistency
+      return updatedProfile;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   /**
-   * Delete SSH profile
+   * Delete SSH profile with error handling
+   * @param id - Profile ID to delete
    */
   const deleteProfile = async (id: string): Promise<void> => {
-    await sshService.deleteSSHProfile(id);
-    await loadProfiles(); // Reload to ensure data consistency
+    const context: ErrorContext = {
+      operation: "Delete SSH Profile",
+      context: { profileId: id },
+    };
+
+    try {
+      await sshService.deleteSSHProfile(id);
+      await loadProfiles(); // Reload to ensure data consistency
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   /**
@@ -171,57 +239,138 @@ export const useSSHStore = defineStore("ssh", () => {
   };
 
   /**
-   * Duplicate SSH profile
+   * Duplicate SSH profile with error handling
+   * @param id - Profile ID to duplicate
+   * @param newName - Name for the duplicated profile
+   * @returns Duplicated profile
    */
   const duplicateProfile = async (
     id: string,
     newName: string,
   ): Promise<SSHProfile> => {
-    const duplicatedProfile = await sshService.duplicateSSHProfile(id, newName);
-    await loadProfiles(); // Reload to ensure data consistency
-    return duplicatedProfile;
+    const context: ErrorContext = {
+      operation: "Duplicate SSH Profile",
+      context: { profileId: id, newName },
+    };
+
+    try {
+      const duplicatedProfile = await withRetry(
+        () => sshService.duplicateSSHProfile(id, newName),
+        { maxRetries: 1 },
+        context,
+      );
+      await loadProfiles(); // Reload to ensure data consistency
+      return duplicatedProfile;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   /**
-   * Load all SSH groups from backend
+   * Load all SSH groups from backend with error handling
    */
   const loadGroups = async (): Promise<void> => {
-    const loadedGroups = await sshService.getSSHGroups();
-    groups.value = loadedGroups;
+    const context: ErrorContext = {
+      operation: "Load SSH Groups",
+    };
+
+    try {
+      const loadedGroups = await withRetry(
+        () => sshService.getSSHGroups(),
+        { maxRetries: 2 },
+        context,
+      );
+      groups.value = loadedGroups;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      groups.value = [];
+      throw new Error(errorMessage);
+    }
   };
 
   /**
-   * Create new SSH group
+   * Create new SSH group with error handling
+   * @param request - Group creation request
+   * @returns Created group
    */
   const createGroup = async (
     request: CreateSSHGroupRequest,
   ): Promise<SSHGroup> => {
-    const newGroup = await sshService.createSSHGroup(request);
-    await loadGroups(); // Reload to ensure data consistency
-    return newGroup;
+    const context: ErrorContext = {
+      operation: "Create SSH Group",
+      context: { name: request.name },
+    };
+
+    try {
+      const newGroup = await withRetry(
+        () => sshService.createSSHGroup(request),
+        { maxRetries: 1 },
+        context,
+      );
+      await loadGroups(); // Reload to ensure data consistency
+      return newGroup;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   /**
-   * Update existing SSH group
+   * Update existing SSH group with error handling
+   * @param id - Group ID to update
+   * @param request - Update request
+   * @returns Updated group
    */
   const updateGroup = async (
     id: string,
     request: UpdateSSHGroupRequest,
   ): Promise<SSHGroup> => {
-    const updatedGroup = await sshService.updateSSHGroup(id, request);
-    await loadGroups(); // Reload to ensure data consistency
-    return updatedGroup;
+    const context: ErrorContext = {
+      operation: "Update SSH Group",
+      context: { groupId: id },
+    };
+
+    try {
+      const updatedGroup = await withRetry(
+        () => sshService.updateSSHGroup(id, request),
+        { maxRetries: 1 },
+        context,
+      );
+      await loadGroups(); // Reload to ensure data consistency
+      return updatedGroup;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   /**
-   * Delete SSH group with action for existing profiles
+   * Delete SSH group with action for existing profiles and error handling
+   * @param id - Group ID to delete
+   * @param action - Action to take for profiles in the group
    */
   const deleteGroup = async (
     id: string,
     action: DeleteGroupAction,
   ): Promise<void> => {
-    await sshService.deleteSSHGroup(id, action);
-    await loadAll();
+    const context: ErrorContext = {
+      operation: "Delete SSH Group",
+      context: { groupId: id },
+    };
+
+    try {
+      await sshService.deleteSSHGroup(id, action);
+      await loadAll();
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
   };
 
   /**
@@ -249,20 +398,64 @@ export const useSSHStore = defineStore("ssh", () => {
   };
 
   /**
-   * Load SSH config hosts from ~/.ssh/config
+   * Test SSH connection with error handling
+   * @param request - SSH connection test request
+   * @throws Enhanced error if test fails
+   */
+  async function testConnection(request: {
+    host: string;
+    port: number;
+    username: string;
+    authMethod: string;
+    authData: any;
+    timeout?: number;
+    keepAlive?: boolean;
+    compression?: boolean;
+    proxy?: any;
+  }): Promise<void> {
+    const context: ErrorContext = {
+      operation: "Test SSH Connection",
+      context: { host: request.host, username: request.username },
+    };
+
+    try {
+      await withRetry(
+        () => sshService.testSSHConnection(request),
+        { maxRetries: 1 },
+        context,
+      );
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Load SSH config hosts from ~/.ssh/config with error handling
    * Uses cache to avoid re-parsing on every call
+   * @param force - Force reload even if already loaded
    */
   const loadConfigHosts = async (force = false): Promise<void> => {
     if (!force && configHostsLoaded.value) {
       return;
     }
 
+    const context: ErrorContext = {
+      operation: "Load SSH Config Hosts",
+    };
+
     try {
-      const hosts = await sshService.getSSHConfigHosts();
+      const hosts = await withRetry(
+        () => sshService.getSSHConfigHosts(),
+        { maxRetries: 1 },
+        context,
+      );
       configHosts.value = hosts;
       configHostsLoaded.value = true;
     } catch (error) {
-      console.error("Failed to load SSH config hosts:", error);
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
       configHosts.value = [];
       configHostsLoaded.value = false;
     }
@@ -303,8 +496,14 @@ export const useSSHStore = defineStore("ssh", () => {
     if (unsubscribeProfileRealtime && unsubscribeGroupRealtime) return;
     try {
       if (!unsubscribeProfileRealtime) {
-        const u1 = await api.listen<SSHProfile>("ssh_profile_created", upsertProfile);
-        const u2 = await api.listen<SSHProfile>("ssh_profile_updated", upsertProfile);
+        const u1 = await api.listen<SSHProfile>(
+          "ssh_profile_created",
+          upsertProfile,
+        );
+        const u2 = await api.listen<SSHProfile>(
+          "ssh_profile_updated",
+          upsertProfile,
+        );
         const u3 = await api.listen<{ id: string }>(
           "ssh_profile_deleted",
           ({ id }) => removeProfile(id),
@@ -375,6 +574,8 @@ export const useSSHStore = defineStore("ssh", () => {
     loadAll,
     refresh,
     clearAll,
+
+    testConnection,
 
     startRealtime,
     stopRealtime,

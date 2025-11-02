@@ -119,10 +119,8 @@ import { ref, computed, watch } from "vue";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useSyncStore } from "../../stores/sync";
 import { useOverlay } from "../../composables/useOverlay";
-import { syncService } from "../../services/sync";
 import type { ConflictResolutionStrategy } from "../../types/sync";
 
 const props = defineProps<{
@@ -185,36 +183,30 @@ const handleResolveWithStrategy = async (
   isResolving.value = true;
   choice.value = strategy;
 
-  try {
-    if (strategy === "LocalWins") {
-      await syncStore.resolveConflict(conflictId.value, "local");
-    } else if (strategy === "RemoteWins") {
-      await syncStore.resolveConflict(conflictId.value, "remote");
-    } else {
-      await syncService.resolveConflictResolution(conflictId.value, strategy);
-      syncStore.conflicts = syncStore.conflicts.filter(
-        (c) => c.id !== conflictId.value,
-      );
-    }
-
-    const strategyLabel =
-      {
-        LocalWins: "Local",
-        RemoteWins: "Remote",
-        LastWriteWins: "Latest (Last Write)",
-        FirstWriteWins: "Oldest (First Write)",
-        Manual: "Manual",
-      }[strategy] || strategy;
-
-    message.success(`Conflict resolved: ${strategyLabel} version kept`);
-    closeOverlay("conflict-resolution-modal");
-  } catch (error) {
-    console.error("Failed to resolve conflict:", error);
-    message.error(getErrorMessage(error, "Failed to resolve conflict"));
-  } finally {
-    isResolving.value = false;
-    choice.value = null;
+  if (strategy === "LocalWins") {
+    await syncStore.resolveConflict(conflictId.value, "local");
+  } else if (strategy === "RemoteWins") {
+    await syncStore.resolveConflict(conflictId.value, "remote");
+  } else {
+    await syncStore.resolveConflictResolution(conflictId.value, strategy);
+    syncStore.conflicts = syncStore.conflicts.filter(
+      (c) => c.id !== conflictId.value,
+    );
   }
+
+  const strategyLabel =
+    {
+      LocalWins: "Local",
+      RemoteWins: "Remote",
+      LastWriteWins: "Latest (Last Write)",
+      FirstWriteWins: "Oldest (First Write)",
+      Manual: "Manual",
+    }[strategy] || strategy;
+
+  message.success(`Conflict resolved: ${strategyLabel} version kept`);
+  closeOverlay("conflict-resolution-modal");
+  isResolving.value = false;
+  choice.value = null;
 };
 
 watch(

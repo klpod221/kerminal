@@ -10,8 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { Video } from 'lucide-vue-next';
-import Modal from '../ui/Modal.vue';
-import RecordingsLibrary from './RecordingsLibrary.vue';
+import { Video } from "lucide-vue-next";
+import Modal from "../ui/Modal.vue";
+import RecordingsLibrary from "./RecordingsLibrary.vue";
 </script>
-

@@ -7,29 +7,20 @@
         {{ formattedTime }}
       </span>
     </div>
-    <Button
-      variant="ghost"
-      @click="handleStop"
-      title="Stop recording"
-    >
+    <Button variant="ghost" @click="handleStop" title="Stop recording">
       <Square :size="14" class="text-red-500" fill="currentColor" />
     </Button>
   </div>
-  <Button
-    v-else
-    variant="ghost"
-    @click="handleStart"
-    title="Start recording"
-  >
+  <Button v-else variant="ghost" @click="handleStart" title="Start recording">
     <Circle :size="14" class="text-gray-400 hover:text-red-500" />
   </Button>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onUnmounted } from 'vue';
-import { Circle, Square } from 'lucide-vue-next';
-import { useRecordingStore } from '../../stores/recording';
-import Button from '../ui/Button.vue';
+import { computed, ref, watch, onUnmounted } from "vue";
+import { Circle, Square } from "lucide-vue-next";
+import { useRecordingStore } from "../../stores/recording";
+import Button from "../ui/Button.vue";
 
 interface RecordingControlsProps {
   terminalId: string;
@@ -41,12 +32,14 @@ const recordingStore = useRecordingStore();
 const recordingTime = ref(0);
 let interval: number | null = null;
 
-const isRecording = computed(() => recordingStore.isRecording(props.terminalId));
+const isRecording = computed(() =>
+  recordingStore.isRecording(props.terminalId),
+);
 
 const formattedTime = computed(() => {
   const minutes = Math.floor(recordingTime.value / 60);
   const seconds = recordingTime.value % 60;
-  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  return `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 });
 
 async function handleStart() {
@@ -57,7 +50,7 @@ async function handleStart() {
       recordingTime.value++;
     }, 1000);
   } catch (error) {
-    console.error('Failed to start recording:', error);
+    console.error("Failed to start recording:", error);
   }
 }
 
@@ -71,7 +64,7 @@ async function handleStop() {
   try {
     await recordingStore.stopRecording(props.terminalId);
   } catch (error) {
-    console.error('Failed to stop recording:', error);
+    console.error("Failed to stop recording:", error);
   }
 }
 
@@ -89,4 +82,3 @@ onUnmounted(() => {
   }
 });
 </script>
-

@@ -59,6 +59,6 @@ export async function cleanupTerminalBuffers(
  * List all terminals from backend
  * @returns Promise of terminal list
  */
-export async function listTerminals(): Promise<any[]> {
-  return await api.callRaw<any[]>("list_terminals");
+export async function listTerminals(): Promise<Array<{ id: string }>> {
+  return await api.callRaw<Array<{ id: string }>>("list_terminals");
 }

@@ -20,37 +20,6 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 /**
- * Extract error message from error object
- * @param error - The error object
- * @param fallbackMessage - Fallback message if no specific error message is found
- * @returns The error message to display
- */
-export function getErrorMessage(
-  error: unknown,
-  fallbackMessage: string,
-): string {
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (error && typeof error === "object") {
-    if ("message" in error && typeof error.message === "string") {
-      return error.message;
-    }
-
-    if (error instanceof Error) {
-      return error.message;
-    }
-
-    if ("error" in error && typeof error.error === "string") {
-      return error.error;
-    }
-  }
-
-  return fallbackMessage;
-}
-
-/**
  * Convert byte array to string
  */
 export const bytesToString = (bytes: number[]): string => {

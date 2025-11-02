@@ -4,9 +4,7 @@
       <kbd
         class="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-medium text-gray-300 bg-gray-800 border border-gray-600 rounded shadow-sm"
         :class="[
-          size === 'sm'
-            ? 'min-w-5 h-5 text-xs'
-            : 'min-w-6 h-6 text-xs',
+          size === 'sm' ? 'min-w-5 h-5 text-xs' : 'min-w-6 h-6 text-xs',
           variant === 'light'
             ? 'bg-gray-700 border-gray-500 text-gray-200'
             : 'bg-gray-800 border-gray-600 text-gray-300',

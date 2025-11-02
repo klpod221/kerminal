@@ -35,7 +35,11 @@
       :size="isMobile ? 16 : 14"
       class="transition-colors duration-200 shrink-0"
       :class="[
-        isActive && !isRecording ? 'text-blue-400' : isRecording ? 'text-red-400' : 'text-gray-400',
+        isActive && !isRecording
+          ? 'text-blue-400'
+          : isRecording
+            ? 'text-red-400'
+            : 'text-gray-400',
         isMobile ? 'mr-1.5' : 'mr-2',
       ]"
     />
@@ -60,7 +64,9 @@
       :size="isMobile ? 16 : 14"
       class="text-gray-500 hover:text-red-400 transition-all duration-300 ease-out shrink-0 transform hover:scale-110 cursor-pointer touch-manipulation"
       :class="[
-        isTouch ? 'ml-1 opacity-100' : 'ml-1.5 opacity-0 group-hover:opacity-100',
+        isTouch
+          ? 'ml-1 opacity-100'
+          : 'ml-1.5 opacity-0 group-hover:opacity-100',
       ]"
       @click.stop="$emit('close')"
     />

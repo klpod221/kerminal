@@ -283,14 +283,17 @@ import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
-import * as sshService from "../../services/sshProfile";
-import type { SSHProfile, AuthMethod, AuthData } from "../../types/ssh";
-import { invoke } from "@tauri-apps/api/core";
+import type {
+  SSHProfile,
+  AuthMethod,
+  AuthData,
+  CreateSSHProfileRequest,
+  UpdateSSHProfileRequest,
+} from "../../types/ssh";
 
 const props = defineProps<{
   sshProfileId?: string | null;
@@ -447,16 +450,14 @@ const testConnection = async () => {
 
       const formAuthData = buildAuthData();
       if (formAuthData) {
-        console.log("Edit mode - using new form auth data:", formAuthData);
         authData = formAuthData;
       } else {
-        const existingProfile = await sshService.getSSHProfile(
+        const existingProfile = await sshStore.findProfileById(
           sshProfileId.value,
         );
-        console.log(
-          "Edit mode - using existing auth data:",
-          existingProfile.authData,
-        );
+        if (!existingProfile) {
+          throw new Error("Profile not found");
+        }
         authData = existingProfile.authData;
       }
 
@@ -481,7 +482,6 @@ const testConnection = async () => {
       };
     } else {
       const authData = buildAuthData();
-      console.log("Create mode - form auth data:", authData);
       if (!authData) {
         throw new Error("Cannot test connection without authentication data");
       }
@@ -492,7 +492,7 @@ const testConnection = async () => {
         username: sshProfile.value.username,
         authMethod: sshProfile.value.authMethod,
         authData: authData,
-        timeout: sshProfile.value.timeout || 30,
+        timeout: sshProfile.value.timeout || 5,
         keepAlive: sshProfile.value.keepAlive ?? true,
         compression: sshProfile.value.compression ?? false,
         proxy: enableProxy.value
@@ -507,25 +507,33 @@ const testConnection = async () => {
       };
     }
 
-    console.log("Test request:", testRequest);
-    await invoke("test_ssh_connection", { request: testRequest });
+    if (!testRequest.host || !testRequest.username || !testRequest.authMethod) {
+      throw new Error("Missing required fields for connection test");
+    }
+
+    await sshStore.testConnection({
+      host: testRequest.host,
+      port: testRequest.port || 22,
+      username: testRequest.username,
+      authMethod: testRequest.authMethod,
+      authData: testRequest.authData,
+      timeout: testRequest.timeout,
+      keepAlive: testRequest.keepAlive,
+      compression: testRequest.compression,
+      proxy: testRequest.proxy,
+    });
     message.success("SSH connection test successful!");
-  } catch (error) {
-    console.error("SSH connection test failed:", error);
-    message.error(
-      `SSH connection test failed: ${getErrorMessage(error as Error, "Unknown error")}`,
-    );
   } finally {
     isTesting.value = false;
   }
 };
 
 const handleSubmit = async () => {
-  console.log("Submitting form...");
   const isValid = await sshProfileForm.value?.validate();
   if (!isValid || !sshProfile.value) return;
 
   isLoading.value = true;
+
   try {
     const authData = buildAuthData();
     const profileData = {
@@ -541,20 +549,20 @@ const handleSubmit = async () => {
             password: proxyConfig.value.password || null,
           }
         : null,
-    } as any; // Type assertion to handle the complexity
+    };
 
     if (sshProfileId.value) {
-      await sshStore.updateProfile(sshProfileId.value, profileData);
+      await sshStore.updateProfile(
+        sshProfileId.value,
+        profileData as UpdateSSHProfileRequest,
+      );
       message.success("SSH profile updated successfully.");
     } else {
-      await sshStore.createProfile(profileData);
+      await sshStore.createProfile(profileData as CreateSSHProfileRequest);
       message.success("SSH profile created successfully.");
     }
 
     closeModal();
-  } catch (error) {
-    console.error("Error saving SSH profile:", error);
-    message.error(getErrorMessage(error, "Failed to save SSH profile."));
   } finally {
     isLoading.value = false;
   }
@@ -592,12 +600,6 @@ const closeModal = () => {
 watch(
   () => [sshProfileId.value, groupId.value],
   ([newId, newGroupId]) => {
-    console.log("🔍 SSHProfileModal props changed:", {
-      sshProfileId: newId,
-      groupId: newGroupId,
-      fromProps: { sshProfileId: props.sshProfileId, groupId: props.groupId },
-    });
-
     if (newId) {
       loadProfile();
     } else {

@@ -1,11 +1,9 @@
 <template>
   <Card title="Sync Settings">
-    <div
-      v-if="isLoading"
-      class="flex items-center justify-center py-16 text-gray-400"
-    >
-      <RefreshCw class="w-6 h-6 animate-spin mr-3" />
-      Loading settings...
+    <div v-if="isLoading" class="space-y-4">
+      <SkeletonText :lines="3" />
+      <SkeletonLoader variant="rectangular" size="lg" />
+      <SkeletonText :lines="2" :last-line-width="'40%'" />
     </div>
 
     <div v-else class="space-y-4">
@@ -96,17 +94,18 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { RefreshCw } from "lucide-vue-next";
 import Card from "../ui/Card.vue";
+import SkeletonText from "../ui/SkeletonText.vue";
+import SkeletonLoader from "../ui/SkeletonLoader.vue";
 import Badge from "../ui/Badge.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Input from "../ui/Input.vue";
 import Select from "../ui/Select.vue";
 import Button from "../ui/Button.vue";
-import { syncService } from "../../services/sync";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
+import { useSyncStore } from "../../stores/sync";
 
+const syncStore = useSyncStore();
 const isLoading = ref(false);
 const isSaving = ref(false);
 const isDirty = ref(false);
@@ -135,25 +134,19 @@ const syncDirectionOptions = [
 
 const loadSettings = async () => {
   isLoading.value = true;
-  try {
-    const data = await syncService.getGlobalSyncSettings();
-    settings.value = data || null;
-    if (data) {
-      localSettings.value = {
-        isActive: data.isActive ?? false,
-        autoSyncEnabled: data.autoSyncEnabled ?? false,
-        syncIntervalMinutes: data.syncIntervalMinutes ?? 15,
-        conflictStrategy: data.conflictStrategy ?? "manual",
-        syncDirection: data.syncDirection ?? "both",
-      };
-    }
-    isDirty.value = false;
-  } catch (error) {
-    console.error("Failed to load global settings:", error);
-    message.error(getErrorMessage(error, "Failed to load global settings"));
-  } finally {
-    isLoading.value = false;
+  const data = await syncStore.getGlobalSyncSettings();
+  settings.value = data || null;
+  if (data) {
+    localSettings.value = {
+      isActive: data.isActive ?? false,
+      autoSyncEnabled: data.autoSyncEnabled ?? false,
+      syncIntervalMinutes: data.syncIntervalMinutes ?? 15,
+      conflictStrategy: data.conflictStrategy ?? "manual",
+      syncDirection: data.syncDirection ?? "both",
+    };
   }
+  isDirty.value = false;
+  isLoading.value = false;
 };
 
 const markDirty = () => {
@@ -171,23 +164,17 @@ const reset = () => {
 const save = async () => {
   if (!isDirty.value) return;
   isSaving.value = true;
-  try {
-    const updates = {
-      isActive: localSettings.value.isActive,
-      autoSyncEnabled: localSettings.value.autoSyncEnabled,
-      syncIntervalMinutes: localSettings.value.syncIntervalMinutes,
-      conflictStrategy: localSettings.value.conflictStrategy,
-      syncDirection: localSettings.value.syncDirection,
-    };
-    await syncService.updateGlobalSyncSettings(updates);
-    await loadSettings();
-    message.success("Global sync settings saved successfully");
-  } catch (error) {
-    console.error("Failed to save global settings:", error);
-    message.error(getErrorMessage(error, "Failed to save global settings"));
-  } finally {
-    isSaving.value = false;
-  }
+  const updates = {
+    isActive: localSettings.value.isActive,
+    autoSyncEnabled: localSettings.value.autoSyncEnabled,
+    syncIntervalMinutes: localSettings.value.syncIntervalMinutes,
+    conflictStrategy: localSettings.value.conflictStrategy,
+    syncDirection: localSettings.value.syncDirection,
+  };
+  await syncStore.updateGlobalSyncSettings(updates);
+  await loadSettings();
+  message.success("Global sync settings saved successfully");
+  isSaving.value = false;
 };
 
 const getStrategyDescription = (): string => {

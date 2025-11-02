@@ -2,9 +2,7 @@
   <div
     class="flex items-center border-b border-gray-800 relative bg-[#0D0D0D] sm:h-[30px] sm:min-h-[30px] sm:max-h-[30px]"
     :class="
-      isMobile
-        ? 'h-9 min-h-9 max-h-9'
-        : 'h-[30px] min-h-[30px] max-h-[30px]'
+      isMobile ? 'h-9 min-h-9 max-h-9' : 'h-[30px] min-h-[30px] max-h-[30px]'
     "
     @dragover="onPanelDragOver"
     @drop="onPanelDrop"
@@ -15,8 +13,7 @@
     <div
       class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
       :class="{
-        'opacity-100 bg-linear-to-r from-blue-900/20 to-transparent':
-          isActive,
+        'opacity-100 bg-linear-to-r from-blue-900/20 to-transparent': isActive,
         'opacity-0': !isActive,
       }"
     ></div>
@@ -105,7 +102,10 @@
       </div>
 
       <!-- Recording Controls -->
-      <div v-if="activeBackendTerminalId" class="shrink-0 flex items-center px-1">
+      <div
+        v-if="activeBackendTerminalId"
+        class="shrink-0 flex items-center px-1"
+      >
         <RecordingControls :terminal-id="activeBackendTerminalId" />
       </div>
 
@@ -528,7 +528,7 @@ const handleMoveToNewPanel = (tab: TabType): void => {
 };
 
 const onTabDragStart = (tab: TabType): void => {
-  console.log("Tab drag started:", tab, "from panel:", props.panel.id);
+  console.log("onTabDragStart", tab);
 };
 
 const onTabDrop = (draggedTab: TabType, targetTab: TabType): void => {

@@ -27,16 +27,17 @@
 </template>
 
 <script setup lang="ts">
+import type { Component } from "vue";
 import Button from "./Button.vue";
 
 interface Props {
-  icon: any;
+  icon: Component;
   iconSize?: number;
   iconClass?: string;
   title?: string;
   description?: string;
   actionText?: string;
-  actionIcon?: any;
+  actionIcon?: Component;
   actionVariant?:
     | "primary"
     | "secondary"

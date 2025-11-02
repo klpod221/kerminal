@@ -602,7 +602,7 @@ export function getTerminalTheme(
   if (customTheme) {
     return customTheme;
   }
-  
+
   // Otherwise, look up in built-in themes
   return THEMES[themeName as keyof typeof THEMES] || THEMES["Default"];
 }

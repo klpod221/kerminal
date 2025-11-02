@@ -29,7 +29,9 @@
     </div>
 
     <!-- Header with connection selector -->
-    <div class="flex items-center justify-between px-4 py-2 border-b border-gray-800">
+    <div
+      class="flex items-center justify-between px-4 py-2 border-b border-gray-800"
+    >
       <div class="flex items-center gap-3">
         <Select
           id="sftp-profile-select"
@@ -87,10 +89,7 @@
 
     <!-- Dual-pane layout -->
     <div v-if="sftpStore.activeSessionId" class="flex-1 overflow-hidden">
-      <Splitpanes
-        class="default-theme"
-        @resize="onPaneResize"
-      >
+      <Splitpanes class="default-theme" @resize="onPaneResize">
         <Pane :size="50" :min-size="20">
           <!-- Local file browser -->
           <FileBrowser
@@ -138,10 +137,7 @@
     </div>
 
     <!-- Empty state when not connected -->
-    <div
-      v-else
-      class="flex-1 flex items-center justify-center"
-    >
+    <div v-else class="flex-1 flex items-center justify-center">
       <EmptyState
         :icon="FolderOpen"
         title="No SFTP Connection"
@@ -170,7 +166,6 @@ import { FolderOpen, Activity, GitCompare } from "lucide-vue-next";
 import { useSFTPStore } from "../../stores/sftp";
 import { useSSHStore } from "../../stores/ssh";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import FileBrowser from "./FileBrowser.vue";
 import TransferManager from "./TransferManager.vue";
@@ -197,11 +192,9 @@ const { openOverlay, closeOverlay, isOverlayVisible } = useOverlay();
 
 const selectedProfileId = ref<string>("");
 
-// Watch for transfers and auto-open modal if new transfers start
 watch(
   () => sftpStore.activeTransfers.length,
   (newLength, oldLength) => {
-    // Auto-open modal when first transfer starts
     if (newLength > 0 && oldLength === 0) {
       if (!isOverlayVisible("sftp-transfer-manager-modal")) {
         openOverlay("sftp-transfer-manager-modal");
@@ -237,7 +230,6 @@ const sshProfiles = computed(() => {
 onMounted(async () => {
   await sshStore.loadProfiles();
 
-  // Listen for modal events
   window.addEventListener("sftp-rename", handleRenameSubmit);
   window.addEventListener("sftp-delete", handleDeleteSubmit);
   window.addEventListener("sftp-permissions", handlePermissionsSubmit);
@@ -249,7 +241,10 @@ onUnmounted(() => {
   window.removeEventListener("sftp-rename", handleRenameSubmit);
   window.removeEventListener("sftp-delete", handleDeleteSubmit);
   window.removeEventListener("sftp-permissions", handlePermissionsSubmit);
-  window.removeEventListener("sftp-create-directory", handleCreateDirectorySubmit);
+  window.removeEventListener(
+    "sftp-create-directory",
+    handleCreateDirectorySubmit,
+  );
   window.removeEventListener("sftp-create-file", handleCreateFileSubmit);
 });
 
@@ -262,15 +257,12 @@ async function handleRenameSubmit(event: Event) {
 
   try {
     if (customEvent.detail.isLocal) {
-      // Rename local file using Tauri fs API
       await rename(customEvent.detail.oldPath, customEvent.detail.newPath);
 
-      // Refresh directory
       const dirPath = await dirname(customEvent.detail.newPath);
       await sftpStore.listLocalDirectory(dirPath);
       message.success("File renamed successfully");
     } else {
-      // Rename remote file
       if (!sftpStore.activeSessionId) return;
 
       await sftpStore.renameFile(
@@ -281,10 +273,9 @@ async function handleRenameSubmit(event: Event) {
       message.success("File renamed successfully");
     }
   } catch (error) {
-    console.error("Failed to rename file:", error);
-    message.error(
-      getErrorMessage(error, "Failed to rename file"),
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Failed to rename file:", errorMessage);
+    message.error(errorMessage);
   }
 }
 
@@ -297,24 +288,19 @@ async function handleDeleteSubmit(event: Event) {
 
   try {
     if (customEvent.detail.isLocal) {
-      // Delete local file using Tauri fs API
-      // Check if it's a directory
       const fileStat = await stat(customEvent.detail.path);
       const isDirectory = fileStat.isDirectory;
 
-      // Delete file or directory
       if (isDirectory) {
         await remove(customEvent.detail.path, { recursive: true });
       } else {
         await remove(customEvent.detail.path);
       }
 
-      // Refresh directory
       const dirPath = await dirname(customEvent.detail.path);
       await sftpStore.listLocalDirectory(dirPath);
       message.success("File deleted successfully");
     } else {
-      // Delete remote file
       if (!sftpStore.activeSessionId) return;
 
       await sftpStore.deleteFile(
@@ -325,10 +311,9 @@ async function handleDeleteSubmit(event: Event) {
       message.success("File deleted successfully");
     }
   } catch (error) {
-    console.error("Failed to delete file:", error);
-    message.error(
-      getErrorMessage(error, "Failed to delete file"),
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Failed to delete file:", errorMessage);
+    message.error(errorMessage);
   }
 }
 
@@ -339,58 +324,42 @@ async function handlePermissionsSubmit(event: Event) {
   }>;
   if (!sftpStore.activeSessionId) return;
 
-  try {
-    await sftpStore.setPermissions(
-      sftpStore.activeSessionId,
-      customEvent.detail.path,
-      customEvent.detail.mode,
-    );
-    message.success("Permissions updated successfully");
-  } catch (error) {
-    console.error("Failed to update permissions:", error);
-    message.error(
-      getErrorMessage(error, "Failed to update permissions"),
-    );
-  }
+  await sftpStore.setPermissions(
+    sftpStore.activeSessionId,
+    customEvent.detail.path,
+    customEvent.detail.mode,
+  );
+  message.success("Permissions updated successfully");
 }
 
+/**
+ * Handle SSH profile selection and connect to SFTP
+ * @param profileId - SSH profile ID to connect with
+ */
 async function handleProfileSelect(profileId: string) {
   if (!profileId || profileId === "") return;
 
-  try {
-    await sftpStore.connect(profileId);
+  await sftpStore.connect(profileId);
 
-    // Initialize paths
-    const homeDir = await getHomeDirectory();
-    await sftpStore.listLocalDirectory(homeDir);
+  const homeDir = await getHomeDirectory();
+  await sftpStore.listLocalDirectory(homeDir);
 
-    if (sftpStore.activeSessionId) {
-      await sftpStore.listRemoteDirectory(
-        sftpStore.activeSessionId,
-        "/",
-      );
-    }
-
-    message.success("SFTP connected successfully");
-  } catch (error) {
-    console.error("Failed to connect SFTP:", error);
-    message.error(
-      getErrorMessage(error, "Failed to connect SFTP"),
-    );
+  if (sftpStore.activeSessionId) {
+    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, "/");
   }
+
+  message.success("SFTP connected successfully");
 }
 
+/**
+ * Disconnect from SFTP
+ */
 async function handleDisconnect() {
   if (!sftpStore.activeSessionId) return;
 
-  try {
-    await sftpStore.disconnect(sftpStore.activeSessionId);
-    message.success("SFTP disconnected");
-    selectedProfileId.value = "";
-  } catch (error) {
-    console.error("Failed to disconnect SFTP:", error);
-    message.error("Failed to disconnect SFTP");
-  }
+  await sftpStore.disconnect(sftpStore.activeSessionId);
+  message.success("SFTP disconnected");
+  selectedProfileId.value = "";
 }
 
 async function getHomeDirectory(): Promise<string> {
@@ -416,6 +385,10 @@ function handleLocalSelect(path: string) {
   }
 }
 
+/**
+ * Handle local file upload to remote SFTP server
+ * @param files - FileList or File array to upload
+ */
 async function handleLocalUpload(files: FileList | File[]) {
   if (!sftpStore.activeSessionId) return;
 
@@ -425,63 +398,46 @@ async function handleLocalUpload(files: FileList | File[]) {
 
   try {
     for (const file of fileArray) {
-      try {
-        let filePath = "";
-
-        // Try to get path from file object (Tauri adds path property for desktop drag & drop)
-        if ("path" in file && (file as any).path) {
-          filePath = (file as any).path;
-        } else if (file instanceof File) {
-          // For browser File API, save to temporary directory first
-          // Get temp directory
-          const tempDirPath = await tempDir();
-          const tempFilePath = await join(
-            tempDirPath,
-            `sftp_upload_${Date.now()}_${file.name}`,
-          );
-
-          // Read file as array buffer
-          const arrayBuffer = await file.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-
-          // Write to temp file (writeFile accepts Uint8Array for binary)
-          await writeFile(tempFilePath, uint8Array);
-
-          filePath = tempFilePath;
-          tempFilesToCleanup.push(tempFilePath);
-        } else {
-          continue;
-        }
-
-        // Upload to remote path with same filename
-        const normalizedRemotePath = remotePath.endsWith("/")
-          ? remotePath.slice(0, -1)
-          : remotePath;
-        const remoteFilePath = `${normalizedRemotePath}/${file.name}`;
-
-        await sftpStore.uploadFile(
-          sftpStore.activeSessionId,
-          filePath,
-          remoteFilePath,
+      let filePath = "";
+      const fileWithPath = file as File & { path?: string };
+      if (fileWithPath.path) {
+        filePath = fileWithPath.path;
+      } else if (file instanceof File) {
+        const tempDirPath = await tempDir();
+        const tempFilePath = await join(
+          tempDirPath,
+          `sftp_upload_${Date.now()}_${file.name}`,
         );
-        message.success(`Uploading ${file.name}...`);
-      } catch (error) {
-        console.error("Failed to upload file:", error);
-        message.error(
-          getErrorMessage(error, `Failed to upload ${file.name}`),
-        );
+
+        const arrayBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        await writeFile(tempFilePath, uint8Array);
+
+        filePath = tempFilePath;
+        tempFilesToCleanup.push(tempFilePath);
+      } else {
+        continue;
       }
+      const normalizedRemotePath = remotePath.endsWith("/")
+        ? remotePath.slice(0, -1)
+        : remotePath;
+      const remoteFilePath = `${normalizedRemotePath}/${file.name}`;
+
+      await sftpStore.uploadFile(
+        sftpStore.activeSessionId,
+        filePath,
+        remoteFilePath,
+      );
+      message.success(`Uploading ${file.name}...`);
     }
   } finally {
-    // Cleanup temp files after a delay (give time for upload to start)
-    // We don't delete immediately because upload happens asynchronously
     if (tempFilesToCleanup.length > 0) {
       setTimeout(async () => {
         for (const tempPath of tempFilesToCleanup) {
           try {
             await remove(tempPath);
           } catch (error) {
-            // Ignore cleanup errors
             console.warn("Failed to cleanup temp file:", tempPath, error);
           }
         }
@@ -495,40 +451,62 @@ async function handleLocalUpload(files: FileList | File[]) {
  */
 function canPreviewFile(file: FileEntry): boolean {
   if (file.fileType !== "file") return false;
-  
+
   const previewableExtensions = new Set([
     // Images
-    "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "ico",
+    "jpg",
+    "jpeg",
+    "png",
+    "gif",
+    "bmp",
+    "webp",
+    "svg",
+    "ico",
     // Videos
-    "mp4", "webm", "ogg", "avi", "mov", "wmv", "flv", "mkv",
+    "mp4",
+    "webm",
+    "ogg",
+    "avi",
+    "mov",
+    "wmv",
+    "flv",
+    "mkv",
     // Documents
-    "html", "htm", "md", "markdown", "pdf",
+    "html",
+    "htm",
+    "md",
+    "markdown",
+    "pdf",
     // Office (show info, not actual preview)
-    "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp",
+    "doc",
+    "docx",
+    "xls",
+    "xlsx",
+    "ppt",
+    "pptx",
+    "odt",
+    "ods",
+    "odp",
   ]);
-  
+
   const ext = file.name.split(".").pop()?.toLowerCase();
   return ext ? previewableExtensions.has(ext) : false;
 }
 
 async function handleLocalOpen(file: FileEntry) {
-  // If it's a directory, navigate to it (same as click)
   if (file.fileType === "directory") {
     handleLocalNavigate(file.path);
   } else if (canPreviewFile(file)) {
-    // Open previewable files in preview modal
     openOverlay("sftp-file-preview-modal", {
       file,
       isLocal: true,
     });
   } else {
-    // Open other files with default application
     await openPath(file.path);
   }
 }
 
 function handleLocalEdit(file: FileEntry) {
-  // Open file in editor (for any file type)
   if (file.fileType === "file") {
     openOverlay("sftp-file-editor-modal", {
       file,
@@ -538,7 +516,6 @@ function handleLocalEdit(file: FileEntry) {
 }
 
 function handleLocalRename(file: FileEntry) {
-  // Use the same rename modal as remote files for consistency
   openOverlay("sftp-file-rename-modal", {
     file,
     isLocal: true,
@@ -546,7 +523,6 @@ function handleLocalRename(file: FileEntry) {
 }
 
 function handleLocalDelete(file: FileEntry) {
-  // Use the same delete modal as remote files for consistency
   openOverlay("sftp-file-delete-modal", {
     file,
     isLocal: true,
@@ -559,10 +535,7 @@ function handleRemoteNavigate(path: string) {
 }
 
 function handleRemoteRefresh() {
-  if (
-    !sftpStore.activeSessionId ||
-    !sftpStore.browserState.remotePath
-  ) {
+  if (!sftpStore.activeSessionId || !sftpStore.browserState.remotePath) {
     return;
   }
   sftpStore.listRemoteDirectory(
@@ -585,41 +558,32 @@ async function handleLocalDragFiles(
   targetPath: string,
   isSourceRemote: boolean,
 ) {
-  // This handler is called by the local browser when files are dropped
-  // If source is local (isSourceRemote=false), it means drag within local browser (ignore or handle move)
-  // If source is remote (isSourceRemote=true), it means drag from remote to local (download)
   if (!sftpStore.activeSessionId) return;
 
-  // If source is remote, download files to local
   if (isSourceRemote) {
     const localPath = targetPath || sftpStore.browserState.localPath || "/";
 
     for (const file of files) {
-      try {
-        if (file.fileType === "directory") {
-          message.warning(`Skipping directory: ${file.name} (directory drag not supported yet)`);
-          continue;
-        }
+      if (file.fileType === "directory") {
+        message.warning(
+          `Skipping directory: ${file.name} (directory drag not supported yet)`,
+        );
+        continue;
+      }
 
-        const localFilePath = localPath === "/"
+      const localFilePath =
+        localPath === "/"
           ? await join("/", file.name)
           : await join(localPath, file.name);
 
-        await sftpStore.downloadFile(
-          sftpStore.activeSessionId,
-          file.path,
-          localFilePath,
-        );
-        message.success(`Downloading ${file.name}...`);
-      } catch (error) {
-        console.error("Failed to download file:", error);
-        message.error(
-          getErrorMessage(error, `Failed to download ${file.name}`),
-        );
-      }
+      await sftpStore.downloadFile(
+        sftpStore.activeSessionId,
+        file.path,
+        localFilePath,
+      );
+      message.success(`Downloading ${file.name}...`);
     }
   }
-  // If source is local and dropped on local browser, ignore (same browser)
 }
 
 async function handleRemoteDragFiles(
@@ -627,92 +591,71 @@ async function handleRemoteDragFiles(
   targetPath: string,
   isSourceRemote: boolean,
 ) {
-  // This handler is called by the remote browser when files are dropped
-  // If source is remote (isSourceRemote=true), it means drag within remote browser (ignore or handle move)
-  // If source is local (isSourceRemote=false), it means drag from local to remote (upload)
   if (!sftpStore.activeSessionId) return;
 
-  // If source is local, upload files to remote
   if (!isSourceRemote) {
     const remotePath = targetPath || sftpStore.browserState.remotePath || "/";
 
     for (const file of files) {
-      try {
-        if (file.fileType === "directory") {
-          message.warning(`Skipping directory: ${file.name} (directory drag not supported yet)`);
-          continue;
-        }
-
-        const normalizedRemotePath = remotePath.endsWith("/")
-          ? remotePath.slice(0, -1)
-          : remotePath;
-        const remoteFilePath = `${normalizedRemotePath}/${file.name}`;
-
-        await sftpStore.uploadFile(
-          sftpStore.activeSessionId,
-          file.path,
-          remoteFilePath,
+      if (file.fileType === "directory") {
+        message.warning(
+          `Skipping directory: ${file.name} (directory drag not supported yet)`,
         );
-        message.success(`Uploading ${file.name}...`);
-      } catch (error) {
-        console.error("Failed to upload file:", error);
-        message.error(
-          getErrorMessage(error, `Failed to upload ${file.name}`),
-        );
+        continue;
       }
+
+      const normalizedRemotePath = remotePath.endsWith("/")
+        ? remotePath.slice(0, -1)
+        : remotePath;
+      const remoteFilePath = `${normalizedRemotePath}/${file.name}`;
+
+      await sftpStore.uploadFile(
+        sftpStore.activeSessionId,
+        file.path,
+        remoteFilePath,
+      );
+      message.success(`Uploading ${file.name}...`);
     }
   }
-  // If source is remote and dropped on remote browser, ignore (same browser)
 }
 
 async function handleRemoteDownload(file: FileEntry) {
   if (!sftpStore.activeSessionId) return;
 
-  try {
-    const localPathResult = await save({
-      defaultPath: file.name,
-      filters: [
-        {
-          name: "All Files",
-          extensions: ["*"],
-        },
-      ],
-    });
+  const localPathResult = await save({
+    defaultPath: file.name,
+    filters: [
+      {
+        name: "All Files",
+        extensions: ["*"],
+      },
+    ],
+  });
 
-    if (localPathResult) {
-      await sftpStore.downloadFile(
-        sftpStore.activeSessionId,
-        file.path,
-        localPathResult,
-      );
-      message.success("Download started");
-    }
-  } catch (error) {
-    console.error("Failed to download file:", error);
-    message.error(
-      getErrorMessage(error, "Failed to download file"),
+  if (localPathResult) {
+    await sftpStore.downloadFile(
+      sftpStore.activeSessionId,
+      file.path,
+      localPathResult,
     );
+    message.success("Download started");
   }
 }
 
 function handleRemoteOpen(file: FileEntry) {
-  // If it's a directory, navigate to it (same as click)
   if (file.fileType === "directory") {
     handleRemoteNavigate(file.path);
   } else if (canPreviewFile(file)) {
-    // Open previewable files in preview modal
     openOverlay("sftp-file-preview-modal", {
       file,
       isLocal: false,
     });
   } else {
-    // For other files, suggest download
     message.info("Please download the file to open it");
   }
 }
 
 function handleRemoteEdit(file: FileEntry) {
-  // Open file in editor (for any file type)
   if (file.fileType === "file") {
     openOverlay("sftp-file-editor-modal", {
       file,
@@ -752,7 +695,6 @@ async function handleCreateDirectorySubmit(event: Event) {
 
   try {
     if (customEvent.detail.isLocal) {
-      // Create local directory using Tauri fs API
       const directoryPath =
         customEvent.detail.path === "/"
           ? `/${customEvent.detail.name}`
@@ -760,28 +702,22 @@ async function handleCreateDirectorySubmit(event: Event) {
 
       await mkdir(directoryPath);
 
-      // Refresh directory
       await sftpStore.listLocalDirectory(customEvent.detail.path);
       message.success("Directory created successfully");
     } else {
-      // Create remote directory
       if (!sftpStore.activeSessionId) return;
 
       const directoryPath =
         customEvent.detail.path === "/"
           ? `/${customEvent.detail.name}`
           : `${customEvent.detail.path}/${customEvent.detail.name}`;
-      await sftpStore.createDirectory(
-        sftpStore.activeSessionId,
-        directoryPath,
-      );
+      await sftpStore.createDirectory(sftpStore.activeSessionId, directoryPath);
       message.success("Directory created successfully");
     }
   } catch (error) {
-    console.error("Failed to create directory:", error);
-    message.error(
-      getErrorMessage(error, "Failed to create directory"),
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Failed to create directory:", errorMessage);
+    message.error(errorMessage);
   }
 }
 
@@ -804,20 +740,16 @@ async function handleCreateFileSubmit(event: Event) {
 
   try {
     if (customEvent.detail.isLocal) {
-      // Create local file using Tauri fs API
       const filePath =
         customEvent.detail.path === "/"
           ? `/${customEvent.detail.name}`
           : await join(customEvent.detail.path, customEvent.detail.name);
 
-      // Create empty file
       await writeFile(filePath, new Uint8Array());
 
-      // Refresh directory
       await sftpStore.listLocalDirectory(customEvent.detail.path);
       message.success("File created successfully");
     } else {
-      // Create remote file via SFTP
       if (!sftpStore.activeSessionId) return;
 
       const filePath =
@@ -833,30 +765,22 @@ async function handleCreateFileSubmit(event: Event) {
 
       await writeFile(tempFilePath, new Uint8Array());
 
-      // Upload empty file
       await sftpStore.uploadFile(
         sftpStore.activeSessionId,
         tempFilePath,
         filePath,
       );
 
-      // Cleanup temp file
-      await remove(tempFilePath).catch(() => {
-        // Ignore cleanup errors
-      });
+      await remove(tempFilePath).catch(() => {});
 
       message.success("File created successfully");
     }
   } catch (error) {
-    console.error("Failed to create file:", error);
-    message.error(
-      getErrorMessage(error, "Failed to create file"),
-    );
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Failed to create file:", errorMessage);
+    message.error(errorMessage);
   }
 }
 
-function onPaneResize() {
-  // Handle pane resize if needed
-}
+function onPaneResize() {}
 </script>
-

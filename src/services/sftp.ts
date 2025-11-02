@@ -9,18 +9,14 @@ import type {
 /**
  * Connect to SFTP server using SSH profile
  */
-export async function connectSFTP(
-  profileId: string,
-): Promise<string> {
+export async function connectSFTP(profileId: string): Promise<string> {
   return await api.call("sftp_connect", { profileId });
 }
 
 /**
  * Disconnect SFTP session
  */
-export async function disconnectSFTP(
-  sessionId: string,
-): Promise<void> {
+export async function disconnectSFTP(sessionId: string): Promise<void> {
   return await api.call("sftp_disconnect", { sessionId });
 }
 
@@ -159,27 +155,21 @@ export async function getSFTPTransferProgress(
 /**
  * Cancel transfer
  */
-export async function cancelSFTPTransfer(
-  transferId: string,
-): Promise<void> {
+export async function cancelSFTPTransfer(transferId: string): Promise<void> {
   return await api.call("sftp_cancel_transfer", { transferId });
 }
 
 /**
  * Pause transfer
  */
-export async function pauseSFTPTransfer(
-  transferId: string,
-): Promise<void> {
+export async function pauseSFTPTransfer(transferId: string): Promise<void> {
   return await api.call("sftp_pause_transfer", { transferId });
 }
 
 /**
  * Resume interrupted transfer
  */
-export async function resumeSFTPTransfer(
-  transferId: string,
-): Promise<void> {
+export async function resumeSFTPTransfer(transferId: string): Promise<void> {
   return await api.call("sftp_resume_transfer", { transferId });
 }
 
@@ -228,4 +218,3 @@ export async function writeSFTPFile(
 ): Promise<void> {
   return await api.call("sftp_write_file", { sessionId, path, content });
 }
-

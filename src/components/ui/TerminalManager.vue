@@ -20,8 +20,8 @@ import Terminal from "./Terminal.vue";
 import type { ComponentPublicInstance } from "vue";
 import { bytesToString } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
-import { listenToTerminalOutput } from "../../services/terminal";
 import { TerminalBufferManager } from "../../core";
+import { useWorkspaceStore } from "../../stores/workspace";
 
 interface TerminalManagerProps {
   terminals: TerminalInstance[];
@@ -132,21 +132,24 @@ watch(
 
 onMounted(async () => {
   try {
-    outputUnlisten = await listenToTerminalOutput((terminalData) => {
-      const backendTerminalId = terminalData.terminalId;
+    const workspaceStore = useWorkspaceStore();
+    outputUnlisten = await workspaceStore.listenToTerminalOutput(
+      (terminalData) => {
+        const backendTerminalId = terminalData.terminalId;
 
-      const matchingTerminal = props.terminals.find(
-        (t) => t.backendTerminalId === backendTerminalId,
-      );
-      if (!matchingTerminal) return;
+        const matchingTerminal = props.terminals.find(
+          (t) => t.backendTerminalId === backendTerminalId,
+        );
+        if (!matchingTerminal) return;
 
-      const terminalRef = terminalRefs.value[matchingTerminal.id];
+        const terminalRef = terminalRefs.value[matchingTerminal.id];
 
-      if (terminalRef && "writeOutput" in terminalRef) {
-        const output = bytesToString(terminalData.data);
-        (terminalRef as TerminalComponent).writeOutput(output);
-      }
-    });
+        if (terminalRef && "writeOutput" in terminalRef) {
+          const output = bytesToString(terminalData.data);
+          (terminalRef as TerminalComponent).writeOutput(output);
+        }
+      },
+    );
 
     const handleWindowFocus = (): void => {
       setTimeout(() => {

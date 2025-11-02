@@ -33,7 +33,9 @@
     <!-- Custom Themes Section -->
     <div v-if="settingsStore.customThemes.length > 0" class="space-y-2 mb-6">
       <div class="flex items-center gap-2 px-2 py-1.5">
-        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        <span
+          class="text-xs font-semibold text-gray-400 uppercase tracking-wider"
+        >
           Custom Themes
         </span>
         <div class="flex-1 h-px bg-purple-500/30"></div>
@@ -80,8 +82,12 @@
           <!-- Theme Name -->
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
-              <span class="font-medium text-white text-sm truncate">{{ theme }}</span>
-              <span class="shrink-0 px-1.5 py-0.5 text-[10px] bg-purple-500/20 text-purple-300 rounded font-medium">
+              <span class="font-medium text-white text-sm truncate">{{
+                theme
+              }}</span>
+              <span
+                class="shrink-0 px-1.5 py-0.5 text-[10px] bg-purple-500/20 text-purple-300 rounded font-medium"
+              >
                 CUSTOM
               </span>
             </div>
@@ -127,7 +133,9 @@
     <!-- Built-in Themes Section -->
     <div class="space-y-2">
       <div class="flex items-center gap-2 px-2 py-1.5">
-        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+        <span
+          class="text-xs font-semibold text-gray-400 uppercase tracking-wider"
+        >
           Built-in Themes
         </span>
         <div class="flex-1 h-px bg-gray-700"></div>
@@ -173,17 +181,16 @@
 
           <!-- Theme Name -->
           <div class="flex-1 min-w-0">
-            <div class="font-medium text-white text-sm truncate">{{ theme }}</div>
+            <div class="font-medium text-white text-sm truncate">
+              {{ theme }}
+            </div>
             <div class="text-xs text-gray-500 mt-0.5">
               {{ getThemeDescription(theme) }}
             </div>
           </div>
 
           <!-- Selected Indicator -->
-          <div
-            v-if="settingsStore.terminalTheme === theme"
-            class="shrink-0"
-          >
+          <div v-if="settingsStore.terminalTheme === theme" class="shrink-0">
             <component :is="Check" class="w-5 h-5 text-purple-400" />
           </div>
         </div>
@@ -217,7 +224,7 @@ const { openOverlay } = useOverlay();
 
 // Separate custom and built-in themes
 const customThemesList = computed(() => {
-  return settingsStore.customThemes.map(t => t.name);
+  return settingsStore.customThemes.map((t) => t.name);
 });
 
 const builtInThemesList = computed(() => {
@@ -247,7 +254,6 @@ const handleDeleteTheme = async (themeName: string) => {
   const customTheme = settingsStore.getCustomTheme(themeName);
   if (!customTheme) return;
 
-  // Confirm before delete
   const confirmed = await showConfirm(
     "Delete Theme",
     `Are you sure you want to delete "${themeName}" theme?`,
@@ -265,9 +271,7 @@ const handleDeleteTheme = async (themeName: string) => {
 
 const getThemeColors = (themeName: string) => {
   const customTheme = settingsStore.getCustomTheme(themeName);
-  const theme = customTheme
-    ? customTheme.colors
-    : getTerminalTheme(themeName as any);
+  const theme = customTheme ? customTheme.colors : getTerminalTheme(themeName);
 
   return {
     background: theme.background,
@@ -280,14 +284,9 @@ const getThemeColors = (themeName: string) => {
 
 const getThemeDescription = (themeName: string) => {
   const customTheme = settingsStore.getCustomTheme(themeName);
-  const theme = customTheme
-    ? customTheme.colors
-    : getTerminalTheme(themeName as any);
+  const theme = customTheme ? customTheme.colors : getTerminalTheme(themeName);
 
-  const isDark =
-    parseInt(theme.background.substring(1, 3), 16) < 128;
+  const isDark = parseInt(theme.background.substring(1, 3), 16) < 128;
   return isDark ? "Dark theme" : "Light theme";
 };
 </script>
-
-

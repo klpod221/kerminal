@@ -2,7 +2,7 @@ export interface SessionRecording {
   id: string;
   terminalId: string;
   sessionName: string;
-  terminalType: 'Local' | 'SSH';
+  terminalType: "Local" | "SSH";
   startedAt: string;
   endedAt?: string;
   durationMs?: number;
@@ -35,4 +35,3 @@ export interface AsciicastEvent {
   eventType: string;
   data: string;
 }
-

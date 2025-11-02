@@ -16,9 +16,7 @@
         <div class="text-sm text-gray-400">
           {{ recordingStore.recordings.length }} recording(s) saved
         </div>
-        <div class="text-xs text-gray-500">
-          Total: {{ formatTotalSize() }}
-        </div>
+        <div class="text-xs text-gray-500">Total: {{ formatTotalSize() }}</div>
       </div>
       <Input
         id="search-recordings"
@@ -33,12 +31,12 @@
     </div>
 
     <!-- Loading -->
-    <div v-if="recordingStore.isLoading" class="text-center py-8">
-      <div
-        class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"
-      ></div>
-      <p class="text-gray-400 mt-4">Loading recordings...</p>
-    </div>
+    <SkeletonList
+      v-if="recordingStore.isLoading"
+      :items="6"
+      :show-avatar="false"
+      :show-actions="true"
+    />
 
     <!-- Recordings Grid -->
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -91,7 +89,9 @@
 
           <!-- Details -->
           <div class="space-y-1">
-            <div class="flex items-center justify-between text-xs text-gray-400">
+            <div
+              class="flex items-center justify-between text-xs text-gray-400"
+            >
               <div class="flex items-center gap-1">
                 <Clock :size="12" />
                 <span>{{ formatDate(recording.startedAt) }}</span>
@@ -119,22 +119,31 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { Video, Download, Trash2, Search, Clock, HardDrive, Play } from 'lucide-vue-next';
-import Card from '../ui/Card.vue';
-import Badge from '../ui/Badge.vue';
-import Button from '../ui/Button.vue';
-import Input from '../ui/Input.vue';
-import EmptyState from '../ui/EmptyState.vue';
-import { useRecordingStore } from '../../stores/recording';
-import { useOverlay } from '../../composables/useOverlay';
-import { message, showConfirm } from '../../utils/message';
-import type { SessionRecording } from '../../types/recording';
-import { save } from '@tauri-apps/plugin-dialog';
+import { ref, computed, onMounted } from "vue";
+import {
+  Video,
+  Download,
+  Trash2,
+  Search,
+  Clock,
+  HardDrive,
+  Play,
+} from "lucide-vue-next";
+import Card from "../ui/Card.vue";
+import Badge from "../ui/Badge.vue";
+import Button from "../ui/Button.vue";
+import Input from "../ui/Input.vue";
+import EmptyState from "../ui/EmptyState.vue";
+import SkeletonList from "../ui/SkeletonList.vue";
+import { useRecordingStore } from "../../stores/recording";
+import { useOverlay } from "../../composables/useOverlay";
+import { message, showConfirm } from "../../utils/message";
+import type { SessionRecording } from "../../types/recording";
+import { save } from "@tauri-apps/plugin-dialog";
 
 const recordingStore = useRecordingStore();
 const { openOverlay } = useOverlay();
-const searchQuery = ref('');
+const searchQuery = ref("");
 
 const filteredRecordings = computed(() => {
   if (!searchQuery.value) return recordingStore.recordings;
@@ -142,18 +151,18 @@ const filteredRecordings = computed(() => {
   return recordingStore.recordings.filter(
     (r) =>
       r.sessionName.toLowerCase().includes(query) ||
-      r.terminalType.toLowerCase().includes(query)
+      r.terminalType.toLowerCase().includes(query),
   );
 });
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -165,7 +174,7 @@ function formatRelativeTime(dateStr: string) {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffMins < 1) return 'Just now';
+  if (diffMins < 1) return "Just now";
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
@@ -173,7 +182,7 @@ function formatRelativeTime(dateStr: string) {
 }
 
 function formatDuration(ms?: number) {
-  if (!ms) return '0:00';
+  if (!ms) return "0:00";
   const totalSeconds = Math.floor(ms / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -182,7 +191,7 @@ function formatDuration(ms?: number) {
   if (hours > 0) {
     return `${hours}h ${minutes}m`;
   }
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function formatFileSize(bytes: number) {
@@ -192,37 +201,34 @@ function formatFileSize(bytes: number) {
 }
 
 function formatTotalSize() {
-  const total = recordingStore.recordings.reduce((sum, r) => sum + r.fileSize, 0);
+  const total = recordingStore.recordings.reduce(
+    (sum, r) => sum + r.fileSize,
+    0,
+  );
   return formatFileSize(total);
 }
 
 function handlePlay(recording: SessionRecording) {
-  openOverlay('playback-modal', { recordingId: recording.id });
+  openOverlay("playback-modal", { recordingId: recording.id });
 }
 
 async function handleExport(recording: SessionRecording) {
-  try {
-    // Use Tauri dialog to select save location
-    const filePath = await save({
-      defaultPath: `${recording.sessionName.replace(/[^a-z0-9]/gi, '_')}.cast`,
-      filters: [{
-        name: 'Asciicast Recording',
-        extensions: ['cast']
-      }]
-    });
+  const filePath = await save({
+    defaultPath: `${recording.sessionName.replace(/[^a-z0-9]/gi, "_")}.cast`,
+    filters: [
+      {
+        name: "Asciicast Recording",
+        extensions: ["cast"],
+      },
+    ],
+  });
 
-    if (!filePath) {
-      // User cancelled
-      return;
-    }
-
-    // Use backend to copy file
-    await recordingStore.exportRecording(recording.id, filePath);
-    message.success('Recording exported successfully');
-  } catch (error) {
-    console.error('Failed to export recording:', error);
-    message.error('Failed to export recording');
+  if (!filePath) {
+    return;
   }
+
+  await recordingStore.exportRecording(recording.id, filePath);
+  message.success("Recording exported successfully");
 }
 
 async function handleDelete(recording: SessionRecording) {
@@ -235,18 +241,16 @@ async function handleDelete(recording: SessionRecording) {
   }
 }
 
+/**
+ * Delete a recording
+ * @param recording - Recording to delete
+ */
 async function deleteRecording(recording: SessionRecording) {
-  try {
-    await recordingStore.deleteRecording(recording.id);
-    message.success('Recording deleted successfully');
-  } catch (error) {
-    console.error('Failed to delete recording:', error);
-    message.error('Failed to delete recording');
-  }
+  await recordingStore.deleteRecording(recording.id);
+  message.success("Recording deleted successfully");
 }
 
 onMounted(() => {
   recordingStore.loadRecordings();
 });
 </script>
-

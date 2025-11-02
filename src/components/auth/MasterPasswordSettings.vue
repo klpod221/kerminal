@@ -125,7 +125,6 @@ import { ref, watch } from "vue";
 import { useAuthStore } from "../../stores/auth";
 import { Key, Lock, Trash2 } from "lucide-vue-next";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
@@ -133,8 +132,6 @@ import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Select from "../ui/Select.vue";
 import Card from "../ui/Card.vue";
-import PasswordConfirmModal from "./PasswordConfirmModal.vue";
-import ResetConfirmModal from "./ResetConfirmModal.vue";
 
 const isLoading = ref(false);
 const autoUnlockEnabled = ref(false);
@@ -166,27 +163,17 @@ const handleAutoUnlockToggle = async () => {
   }
 
   isLoading.value = true;
-  try {
-    const config = {
-      autoUnlock: autoUnlockEnabled.value,
-      autoLockTimeout: autoLockTimeout.value,
-      ...(password && { password }),
-    };
+  const config = {
+    autoUnlock: autoUnlockEnabled.value,
+    autoLockTimeout: autoLockTimeout.value,
+    ...(password && { password }),
+  };
 
-    await authStore.updateMasterPasswordConfig(config);
-    message.success(
-      `Auto-unlock has been ${
-        autoUnlockEnabled.value ? "enabled" : "disabled"
-      }.`,
-    );
-  } catch (error) {
-    message.error(
-      getErrorMessage(error, "Failed to update auto-unlock setting."),
-    );
-    autoUnlockEnabled.value = !autoUnlockEnabled.value;
-  } finally {
-    isLoading.value = false;
-  }
+  await authStore.updateMasterPasswordConfig(config);
+  message.success(
+    `Auto-unlock has been ${autoUnlockEnabled.value ? "enabled" : "disabled"}.`,
+  );
+  isLoading.value = false;
 };
 
 let passwordConfirmResolver:
@@ -219,15 +206,10 @@ const onPasswordCancelled = () => {
 
 const handleLock = async () => {
   isLoading.value = true;
-  try {
-    await authStore.lock();
-    closeOverlay("master-password-settings");
-    message.success("Session locked.");
-  } catch (error) {
-    message.error(getErrorMessage(error, "Failed to lock session."));
-  } finally {
-    isLoading.value = false;
-  }
+  await authStore.lock();
+  closeOverlay("master-password-settings");
+  message.success("Session locked.");
+  isLoading.value = false;
 };
 
 const openChangePasswordModal = () => {
@@ -241,23 +223,12 @@ const handleResetPassword = async () => {
   if (!confirmed) return;
 
   isLoading.value = true;
-  try {
-    await authStore.resetMasterPassword();
-    closeOverlay("master-password-settings");
-    message.success(
-      "Master password has been reset successfully. You can now set up a new master password.",
-    );
-  } catch (error) {
-    console.error("Error resetting master password:", error);
-    message.error(
-      getErrorMessage(
-        error,
-        "Failed to reset master password. Please try again.",
-      ),
-    );
-  } finally {
-    isLoading.value = false;
-  }
+  await authStore.resetMasterPassword();
+  closeOverlay("master-password-settings");
+  message.success(
+    "Master password has been reset successfully. You can now set up a new master password.",
+  );
+  isLoading.value = false;
 };
 
 const showResetConfirmationModal = (): Promise<boolean> => {
@@ -283,28 +254,21 @@ const onResetCancelled = () => {
 
 const handleTimeoutChange = async () => {
   isLoading.value = true;
-  try {
-    await authStore.updateMasterPasswordConfig({
-      autoUnlock: autoUnlockEnabled.value,
-      autoLockTimeout: autoLockTimeout.value,
-    });
+  await authStore.updateMasterPasswordConfig({
+    autoUnlock: autoUnlockEnabled.value,
+    autoLockTimeout: autoLockTimeout.value,
+  });
 
-    authStore.securitySettings.autoLockTimeout = Number(autoLockTimeout.value);
+  authStore.securitySettings.autoLockTimeout = Number(autoLockTimeout.value);
 
-    message.success(
-      `Auto-lock timeout updated to ${
-        Number(autoLockTimeout.value) === 0
-          ? "never"
-          : `${autoLockTimeout.value} minutes`
-      }.`,
-    );
-  } catch (error) {
-    message.error(
-      getErrorMessage(error, "Failed to update auto-lock timeout."),
-    );
-  } finally {
-    isLoading.value = false;
-  }
+  message.success(
+    `Auto-lock timeout updated to ${
+      Number(autoLockTimeout.value) === 0
+        ? "never"
+        : `${autoLockTimeout.value} minutes`
+    }.`,
+  );
+  isLoading.value = false;
 };
 
 watch(

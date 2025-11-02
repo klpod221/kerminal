@@ -36,9 +36,6 @@
       </div>
     </template>
   </Modal>
-
-  <!-- Forgot Password Modal -->
-  <ForgotPasswordModal />
 </template>
 
 <script setup lang="ts">
@@ -48,9 +45,7 @@ import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
-import ForgotPasswordModal from "./ForgotPasswordModal.vue";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 
@@ -70,28 +65,17 @@ const handleSubmit = async () => {
   const isValid = await masterPasswordUnlockForm.value?.validate();
   if (!isValid) return;
 
-  try {
-    isLoading.value = true;
-    const success = await unlock(verificationForm.value);
+  isLoading.value = true;
+  const success = await unlock(verificationForm.value);
 
-    if (success) {
-      verificationForm.value.password = "";
-      message.success("Master password unlocked successfully!");
-      closeOverlay("master-password-unlock");
-    } else {
-      message.error("Invalid master password. Please try again.");
-    }
-  } catch (error) {
-    console.error("Error during master password unlock:", error);
-    message.error(
-      getErrorMessage(
-        error,
-        "Failed to unlock master password. Please try again.",
-      ),
-    );
-  } finally {
-    isLoading.value = false;
+  if (success) {
+    verificationForm.value.password = "";
+    message.success("Master password unlocked successfully!");
+    closeOverlay("master-password-unlock");
+  } else {
+    message.error("Invalid master password. Please try again.");
   }
+  isLoading.value = false;
 };
 
 /**

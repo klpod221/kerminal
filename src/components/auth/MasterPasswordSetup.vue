@@ -10,10 +10,7 @@
     <div class="flex flex-col gap-4">
       <div class="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
         <div class="flex items-start gap-2">
-          <AlertCircle
-            :size="20"
-            class="text-yellow-500 mt-0.5 shrink-0"
-          />
+          <AlertCircle :size="20" class="text-yellow-500 mt-0.5 shrink-0" />
           <div class="flex-1">
             <h4 class="text-sm font-medium text-yellow-200 mb-1">
               Important for Multi-Device Sync
@@ -111,7 +108,6 @@
 import { ref } from "vue";
 import { Save, AlertCircle } from "lucide-vue-next";
 import { message } from "../../utils/message";
-import { getErrorMessage } from "../../utils/helpers";
 import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 import Modal from "../ui/Modal.vue";
@@ -138,42 +134,31 @@ const handleSubmit = async () => {
   const isValid = await masterPasswordSetupForm.value?.validate();
   if (!isValid) return;
 
-  try {
-    isLoading.value = true;
+  isLoading.value = true;
 
-    const success = await setupMasterPassword(setupForm.value);
+  const success = await setupMasterPassword(setupForm.value);
 
-    if (success) {
-      const wasAutoUnlock =
-        setupForm.value.autoUnlock && setupForm.value.useKeychain;
+  if (success) {
+    const wasAutoUnlock =
+      setupForm.value.autoUnlock && setupForm.value.useKeychain;
 
-      setupForm.value = {
-        deviceName: "",
-        password: "",
-        confirmPassword: "",
-        useKeychain: true,
-        autoUnlock: false,
-        autoLockTimeout: 0,
-      };
+    setupForm.value = {
+      deviceName: "",
+      password: "",
+      confirmPassword: "",
+      useKeychain: true,
+      autoUnlock: false,
+      autoLockTimeout: 0,
+    };
 
-      message.success("Master password setup successfully!");
+    message.success("Master password setup successfully!");
 
-      closeOverlay("master-password-setup");
+    closeOverlay("master-password-setup");
 
-      if (!wasAutoUnlock) {
-        setTimeout(() => {}, 100);
-      }
+    if (!wasAutoUnlock) {
+      setTimeout(() => {}, 100);
     }
-  } catch (error) {
-    console.error("Error during master password setup:", error);
-    message.error(
-      getErrorMessage(
-        error,
-        "Failed to set up master password. Please try again.",
-      ),
-    );
-  } finally {
-    isLoading.value = false;
   }
+  isLoading.value = false;
 };
 </script>

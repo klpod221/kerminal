@@ -1,6 +1,6 @@
 <template>
   <Modal
-    :id="modalId"
+    id="saved-command-group-modal"
     :title="isEditing ? 'Edit Command Group' : 'New Command Group'"
     :show-close-button="true"
   >
@@ -126,24 +126,23 @@ import Button from "../ui/Button.vue";
 import ColorPicker from "../ui/ColorPicker.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
-import type { SavedCommandGroup } from "../../types/savedCommand";
+import { message } from "../../utils/message";
 
 interface Props {
-  modalId: string;
   groupId?: string | null;
 }
 
 const props = defineProps<Props>();
 
-const emit = defineEmits<{
-  success: [group: SavedCommandGroup];
-  error: [error: string];
-}>();
-
 const { closeOverlay, getOverlayProp } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
 
-const groupId = getOverlayProp(props.modalId, "groupId", props.groupId, null);
+const groupId = getOverlayProp(
+  "saved-command-group-modal",
+  "groupId",
+  props.groupId,
+  null,
+);
 
 const groupForm = ref<InstanceType<typeof Form> | null>(null);
 const loading = ref(false);
@@ -194,22 +193,16 @@ const loadGroup = async () => {
   if (!groupId.value) return;
 
   loading.value = true;
-  try {
-    const group = await savedCommandStore.findGroupById(groupId.value);
-    if (group) {
-      formData.value = {
-        name: group.name,
-        description: group.description || "",
-        color: group.color || "#6b7280",
-        icon: group.icon || "",
-      };
-    }
-  } catch (error) {
-    console.error("Error loading group:", error);
-    emit("error", "Failed to load group");
-  } finally {
-    loading.value = false;
+  const group = await savedCommandStore.findGroupById(groupId.value);
+  if (group) {
+    formData.value = {
+      name: group.name,
+      description: group.description || "",
+      color: group.color || "#6b7280",
+      icon: group.icon || "",
+    };
   }
+  loading.value = false;
 };
 
 const handleSubmit = async () => {
@@ -217,35 +210,23 @@ const handleSubmit = async () => {
   if (!isValid) return;
 
   loading.value = true;
-  try {
-    const groupData = {
-      name: formData.value.name,
-      description: formData.value.description || undefined,
-      color: formData.value.color || undefined,
-      icon: formData.value.icon || undefined,
-    };
+  const groupData = {
+    name: formData.value.name,
+    description: formData.value.description || undefined,
+    color: formData.value.color || undefined,
+    icon: formData.value.icon || undefined,
+  };
 
-    if (isEditing.value && groupId.value) {
-      const updatedGroup = await savedCommandStore.updateGroup(
-        groupId.value,
-        groupData,
-      );
-      emit("success", updatedGroup);
-    } else {
-      const newGroup = await savedCommandStore.createGroup(groupData);
-      emit("success", newGroup);
-    }
-
-    closeModal();
-  } catch (error) {
-    console.error("Failed to save group:", error);
-    emit(
-      "error",
-      error instanceof Error ? error.message : "Failed to save group",
-    );
-  } finally {
-    loading.value = false;
+  if (isEditing.value && groupId.value) {
+    await savedCommandStore.updateGroup(groupId.value, groupData);
+    message.success("Group updated successfully.");
+  } else {
+    await savedCommandStore.createGroup(groupData);
+    message.success("Group created successfully.");
   }
+
+  closeModal();
+  loading.value = false;
 };
 
 const closeModal = () => {
@@ -255,16 +236,12 @@ const closeModal = () => {
     color: "#6b7280",
     icon: "",
   };
-  closeOverlay(props.modalId);
+  closeOverlay("saved-command-group-modal");
 };
 
 watch(
   () => groupId.value,
   (newGroupId) => {
-    console.log("🔍 SavedCommandGroupModal props changed:", {
-      groupId: newGroupId,
-    });
-
     if (newGroupId) {
       loadGroup();
     } else {
