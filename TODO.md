@@ -53,6 +53,11 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 ## Terminal & Editor
 
+- [ ] **Smarter terminal buffer management**
+  - Smartly load only the necessary lines of the terminal buffer
+  - Load only the lines that are visible in the terminal
+  - Load only the lines that are needed
+
 - [ ] **Command palette**
   - Ctrl+P / Ctrl+K to open command palette
   - Quick access to all features and commands
