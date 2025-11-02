@@ -491,38 +491,6 @@ async function handleLocalUpload(files: FileList | File[]) {
 }
 
 /**
- * Check if a file is likely a text file based on extension
- */
-function isTextFile(file: FileEntry): boolean {
-  if (file.fileType !== "file") return false;
-  
-  const textExtensions = new Set([
-    "txt", "md", "json", "yaml", "yml", "xml", "html", "css", "scss", "sass",
-    "js", "jsx", "ts", "tsx", "vue", "py", "rs", "go", "java", "c", "cpp",
-    "h", "hpp", "sh", "bash", "zsh", "sql", "php", "rb", "log", "ini",
-    "conf", "toml", "dockerfile", "makefile", "env", "gitignore", "editorconfig",
-    "prettierrc", "eslintrc", "babelrc", "tsconfig", "package", "lock", "gradle",
-    "maven", "pom", "cmake", "make", "nix", "lock"
-  ]);
-  
-  const ext = file.name.split(".").pop()?.toLowerCase();
-  if (ext && textExtensions.has(ext)) return true;
-  
-  // Also check for files without extension (common config files)
-  const textFileNames = new Set([
-    "dockerfile", "makefile", ".gitignore", ".editorconfig", ".env",
-    ".prettierrc", ".eslintrc", ".babelrc", "readme", "license", "changelog"
-  ]);
-  
-  const lowerName = file.name.toLowerCase();
-  if (textFileNames.has(lowerName) || textFileNames.has(lowerName.replace(/^\./, ""))) {
-    return true;
-  }
-  
-  return false;
-}
-
-/**
  * Check if a file can be previewed
  */
 function canPreviewFile(file: FileEntry): boolean {
