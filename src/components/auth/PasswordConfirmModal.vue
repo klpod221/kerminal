@@ -53,15 +53,6 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 
-const props = withDefaults(
-  defineProps<{
-    message?: string;
-  }>(),
-  {
-    message: undefined,
-  }
-);
-
 const emit = defineEmits<{
   confirm: [password: string];
   cancel: [];
