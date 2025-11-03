@@ -13,6 +13,9 @@
       @submit="handleConfirm"
       class="flex flex-col gap-4"
     >
+      <p v-if="message" class="text-sm text-gray-300 mb-2">
+        {{ message }}
+      </p>
       <Input
         id="confirm-password"
         ref="passwordInput"
@@ -49,6 +52,15 @@ import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
+
+const props = withDefaults(
+  defineProps<{
+    message?: string;
+  }>(),
+  {
+    message: undefined,
+  }
+);
 
 const emit = defineEmits<{
   confirm: [password: string];

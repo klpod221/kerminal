@@ -132,6 +132,8 @@ import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Select from "../ui/Select.vue";
 import Card from "../ui/Card.vue";
+import PasswordConfirmModal from "./PasswordConfirmModal.vue";
+import ResetConfirmModal from "./ResetConfirmModal.vue";
 
 const isLoading = ref(false);
 const autoUnlockEnabled = ref(false);
