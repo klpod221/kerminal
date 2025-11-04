@@ -7,6 +7,7 @@
       sizeClasses,
       variantClasses,
       loading && 'cursor-not-allowed',
+      attrs.class,
     ]"
     :title="title"
     :disabled="disabled || loading"
@@ -49,7 +50,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, useAttrs } from "vue";
 import type { Component } from "vue";
 
 interface ButtonProps {
@@ -79,6 +80,7 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 });
 
 const emit = defineEmits(["click"]);
+const attrs = useAttrs();
 
 const sizeClasses = computed(() => {
   const hasOnlyIcon = props.icon && !props.text;

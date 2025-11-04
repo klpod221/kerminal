@@ -7,34 +7,34 @@
       </Button>
       <div class="flex-1 relative flex items-center gap-1">
         <div
-          class="flex items-center gap-1 px-2 py-1 bg-gray-900 rounded text-xs text-gray-400 border border-transparent"
+          class="flex items-center gap-1 bg-gray-900 rounded-xl text-xs text-gray-400 border border-transparent"
         >
-          <button
-            type="button"
-            class="px-1.5 py-0.5 rounded transition-colors"
-            :class="
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="FolderRoot"
+            :class="[
+              'px-1.5 py-0.5 h-auto min-w-0',
               !isSearchMode
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'text-gray-500 hover:text-gray-300'
-            "
+                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/20 hover:text-blue-400'
+                : 'text-gray-500 hover:text-gray-300',
+            ]"
             @click="isSearchMode = false"
             title="Path mode"
-          >
-            /
-          </button>
-          <button
-            type="button"
-            class="px-1.5 py-0.5 rounded transition-colors"
-            :class="
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="Search"
+            :class="[
+              'px-1.5 py-0.5 h-auto min-w-0',
               isSearchMode
-                ? 'bg-blue-500/20 text-blue-400'
-                : 'text-gray-500 hover:text-gray-300'
-            "
+                ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/20 hover:text-blue-400'
+                : 'text-gray-500 hover:text-gray-300',
+            ]"
             @click="isSearchMode = true"
             title="Search mode"
-          >
-            <Search :size="12" />
-          </button>
+          />
         </div>
         <div class="flex-1 relative">
           <!-- Path input -->
@@ -323,6 +323,7 @@ import {
   ChevronUp,
   ChevronDown,
   Search,
+  FolderRoot,
 } from "lucide-vue-next";
 import type { FileEntry, FileBrowserDragData } from "../../types/sftp";
 import Button from "../ui/Button.vue";
