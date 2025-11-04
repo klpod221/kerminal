@@ -79,8 +79,8 @@
       <Button variant="ghost" @click="handleCancel"> Cancel </Button>
       <Button
         variant="danger"
-        :disabled="confirmationText !== 'RESET' || isLoading"
-        :loading="isLoading"
+        :disabled="confirmationText !== 'RESET' || authStore.isLoading"
+        :loading="authStore.isLoading"
         @click="handleReset"
       >
         Reset Master Password
@@ -100,11 +100,11 @@ import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 
 const confirmationText = ref("");
-const isLoading = ref(false);
 const confirmationInput = ref<InstanceType<typeof Input>>();
 
 const { overlayStore, closeOverlay } = useOverlay();
-const { resetMasterPassword } = useAuthStore();
+const authStore = useAuthStore();
+const { resetMasterPassword } = authStore;
 
 /**
  * Handle reset confirmation
@@ -115,7 +115,6 @@ const handleReset = async () => {
     return;
   }
 
-  isLoading.value = true;
   await resetMasterPassword();
 
   message.success("Master password has been reset successfully!");
@@ -123,7 +122,6 @@ const handleReset = async () => {
   closeOverlay("master-password-unlock");
 
   confirmationText.value = "";
-  isLoading.value = false;
 };
 
 /**

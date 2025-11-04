@@ -28,6 +28,7 @@ export const useSSHStore = defineStore("ssh", () => {
   const groups = ref<SSHGroup[]>([]);
   const configHosts = ref<SSHConfigHost[]>([]);
   const configHostsLoaded = ref(false);
+  const isLoading = ref(false);
 
   /**
    * Optimized data structure containing group info with profiles and fast lookup indices
@@ -130,6 +131,7 @@ export const useSSHStore = defineStore("ssh", () => {
    * Load all SSH profiles from backend with error handling
    */
   const loadProfiles = async (): Promise<void> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Load SSH Profiles",
     };
@@ -146,6 +148,8 @@ export const useSSHStore = defineStore("ssh", () => {
       message.error(errorMessage);
       profiles.value = [];
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -157,6 +161,7 @@ export const useSSHStore = defineStore("ssh", () => {
   const createProfile = async (
     request: CreateSSHProfileRequest,
   ): Promise<SSHProfile> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Create SSH Profile",
       context: { name: request.name, host: request.host },
@@ -174,6 +179,8 @@ export const useSSHStore = defineStore("ssh", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -187,6 +194,7 @@ export const useSSHStore = defineStore("ssh", () => {
     id: string,
     request: UpdateSSHProfileRequest,
   ): Promise<SSHProfile> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Update SSH Profile",
       context: { profileId: id },
@@ -204,6 +212,8 @@ export const useSSHStore = defineStore("ssh", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -212,6 +222,7 @@ export const useSSHStore = defineStore("ssh", () => {
    * @param id - Profile ID to delete
    */
   const deleteProfile = async (id: string): Promise<void> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Delete SSH Profile",
       context: { profileId: id },
@@ -224,6 +235,8 @@ export const useSSHStore = defineStore("ssh", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -234,8 +247,13 @@ export const useSSHStore = defineStore("ssh", () => {
     profileId: string,
     groupId: string | null,
   ): Promise<void> => {
-    await sshService.moveProfileToGroup(profileId, groupId);
-    await loadProfiles(); // Reload to ensure data consistency
+    isLoading.value = true;
+    try {
+      await sshService.moveProfileToGroup(profileId, groupId);
+      await loadProfiles(); // Reload to ensure data consistency
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   /**
@@ -248,6 +266,7 @@ export const useSSHStore = defineStore("ssh", () => {
     id: string,
     newName: string,
   ): Promise<SSHProfile> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Duplicate SSH Profile",
       context: { profileId: id, newName },
@@ -265,6 +284,8 @@ export const useSSHStore = defineStore("ssh", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -272,6 +293,7 @@ export const useSSHStore = defineStore("ssh", () => {
    * Load all SSH groups from backend with error handling
    */
   const loadGroups = async (): Promise<void> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Load SSH Groups",
     };
@@ -288,6 +310,8 @@ export const useSSHStore = defineStore("ssh", () => {
       message.error(errorMessage);
       groups.value = [];
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -299,6 +323,7 @@ export const useSSHStore = defineStore("ssh", () => {
   const createGroup = async (
     request: CreateSSHGroupRequest,
   ): Promise<SSHGroup> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Create SSH Group",
       context: { name: request.name },
@@ -316,6 +341,8 @@ export const useSSHStore = defineStore("ssh", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -329,6 +356,7 @@ export const useSSHStore = defineStore("ssh", () => {
     id: string,
     request: UpdateSSHGroupRequest,
   ): Promise<SSHGroup> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Update SSH Group",
       context: { groupId: id },
@@ -346,6 +374,8 @@ export const useSSHStore = defineStore("ssh", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -358,6 +388,7 @@ export const useSSHStore = defineStore("ssh", () => {
     id: string,
     action: DeleteGroupAction,
   ): Promise<void> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Delete SSH Group",
       context: { groupId: id },
@@ -370,6 +401,8 @@ export const useSSHStore = defineStore("ssh", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -377,7 +410,12 @@ export const useSSHStore = defineStore("ssh", () => {
    * Load all data (profiles and groups)
    */
   const loadAll = async (): Promise<void> => {
-    await Promise.all([loadProfiles(), loadGroups()]);
+    isLoading.value = true;
+    try {
+      await Promise.all([loadProfiles(), loadGroups()]);
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   /**
@@ -441,6 +479,7 @@ export const useSSHStore = defineStore("ssh", () => {
       return;
     }
 
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Load SSH Config Hosts",
     };
@@ -458,6 +497,8 @@ export const useSSHStore = defineStore("ssh", () => {
       message.error(errorMessage);
       configHosts.value = [];
       configHostsLoaded.value = false;
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -549,6 +590,7 @@ export const useSSHStore = defineStore("ssh", () => {
     groups,
     configHosts,
     configHostsLoaded,
+    isLoading,
 
     groupsWithProfiles,
     ungroupedProfiles,

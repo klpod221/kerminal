@@ -28,7 +28,7 @@
           type="submit"
           variant="primary"
           :icon="Unlock"
-          :loading="isLoading"
+          :loading="authStore.isLoading"
           @click="handleSubmit"
         >
           Unlock
@@ -50,13 +50,13 @@ import { useOverlay } from "../../composables/useOverlay";
 import { useAuthStore } from "../../stores/auth";
 
 const { closeOverlay, openOverlay } = useOverlay();
-const { unlock } = useAuthStore();
+const authStore = useAuthStore();
+const { unlock } = authStore;
 
 const masterPasswordUnlockForm = ref<InstanceType<typeof Form> | null>(null);
 const verificationForm = ref({
   password: "",
 });
-const isLoading = ref(false);
 
 /**
  * Handle form submission to unlock master password
@@ -65,7 +65,6 @@ const handleSubmit = async () => {
   const isValid = await masterPasswordUnlockForm.value?.validate();
   if (!isValid) return;
 
-  isLoading.value = true;
   const success = await unlock(verificationForm.value);
 
   if (success) {
@@ -75,7 +74,6 @@ const handleSubmit = async () => {
   } else {
     message.error("Invalid master password. Please try again.");
   }
-  isLoading.value = false;
 };
 
 /**

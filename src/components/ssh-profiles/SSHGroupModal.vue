@@ -42,7 +42,7 @@
         <Button
           type="submit"
           variant="primary"
-          :loading="isLoading"
+          :loading="sshStore.isLoading"
           :icon="Save"
           @click="handleSubmit"
         >
@@ -86,7 +86,6 @@ const sshGroupId = getOverlayProp(
 );
 
 const sshGroupForm = ref<InstanceType<typeof Form> | null>(null);
-const isLoading = ref(false);
 const sshGroup = ref({
   name: "",
   description: "",
@@ -106,26 +105,28 @@ const handleSubmit = async () => {
   const isValid = await sshGroupForm.value?.validate();
   if (!isValid || !sshGroup.value) return;
 
-  isLoading.value = true;
-  if (sshGroupId.value) {
-    const updateData: UpdateSSHGroupRequest = {
-      name: sshGroup.value.name,
-      description: sshGroup.value.description || null,
-      color: sshGroup.value.color || null,
-    };
-    await sshStore.updateGroup(sshGroupId.value, updateData);
-    message.success("SSH group updated successfully.");
-  } else {
-    const createData: CreateSSHGroupRequest = {
-      name: sshGroup.value.name!,
-      description: sshGroup.value.description,
-      color: sshGroup.value.color,
-    };
-    await sshStore.createGroup(createData);
-    message.success("SSH group created successfully.");
+  try {
+    if (sshGroupId.value) {
+      const updateData: UpdateSSHGroupRequest = {
+        name: sshGroup.value.name,
+        description: sshGroup.value.description || null,
+        color: sshGroup.value.color || null,
+      };
+      await sshStore.updateGroup(sshGroupId.value, updateData);
+      message.success("SSH group updated successfully.");
+    } else {
+      const createData: CreateSSHGroupRequest = {
+        name: sshGroup.value.name!,
+        description: sshGroup.value.description,
+        color: sshGroup.value.color,
+      };
+      await sshStore.createGroup(createData);
+      message.success("SSH group created successfully.");
+    }
+    closeModal();
+  } catch (error) {
+    // Error is handled by the store
   }
-  closeModal();
-  isLoading.value = false;
 };
 
 const closeModal = () => {

@@ -63,7 +63,7 @@
             id="auto-unlock-enabled"
             v-model="autoUnlockEnabled"
             @change="handleAutoUnlockToggle"
-            :disabled="isLoading"
+            :disabled="authStore.isLoading"
             label="Auto-unlock on startup"
             helper-text="Automatically unlock master password when the application starts using system keychain"
           />
@@ -74,13 +74,13 @@
             label="Auto-lock Timeout"
             :options="timeoutOptions"
             @change="handleTimeoutChange"
-            :disabled="isLoading"
+            :disabled="authStore.isLoading"
             helper-text="Automatically lock the session after period"
           />
 
           <Button
             variant="danger"
-            :disabled="isLoading"
+            :disabled="authStore.isLoading"
             :icon="Trash2"
             @click="handleResetPassword"
           >
@@ -89,7 +89,7 @@
 
           <Button
             variant="primary"
-            :disabled="isLoading"
+            :disabled="authStore.isLoading"
             :icon="Key"
             @click="openChangePasswordModal"
           >
@@ -99,7 +99,7 @@
           <Button
             variant="secondary"
             @click="handleLock"
-            :disabled="isLoading"
+            :disabled="authStore.isLoading"
             :icon="Lock"
           >
             Lock Session
@@ -135,7 +135,6 @@ import Card from "../ui/Card.vue";
 import PasswordConfirmModal from "./PasswordConfirmModal.vue";
 import ResetConfirmModal from "./ResetConfirmModal.vue";
 
-const isLoading = ref(false);
 const autoUnlockEnabled = ref(false);
 const autoLockTimeout = ref(0);
 
@@ -164,7 +163,6 @@ const handleAutoUnlockToggle = async () => {
     password = result.password;
   }
 
-  isLoading.value = true;
   const config = {
     autoUnlock: autoUnlockEnabled.value,
     autoLockTimeout: autoLockTimeout.value,
@@ -175,7 +173,6 @@ const handleAutoUnlockToggle = async () => {
   message.success(
     `Auto-unlock has been ${autoUnlockEnabled.value ? "enabled" : "disabled"}.`,
   );
-  isLoading.value = false;
 };
 
 let passwordConfirmResolver:
@@ -207,11 +204,9 @@ const onPasswordCancelled = () => {
 };
 
 const handleLock = async () => {
-  isLoading.value = true;
   await authStore.lock();
   closeOverlay("master-password-settings");
   message.success("Session locked.");
-  isLoading.value = false;
 };
 
 const openChangePasswordModal = () => {
@@ -224,13 +219,11 @@ const handleResetPassword = async () => {
   const confirmed = await showResetConfirmationModal();
   if (!confirmed) return;
 
-  isLoading.value = true;
   await authStore.resetMasterPassword();
   closeOverlay("master-password-settings");
   message.success(
     "Master password has been reset successfully. You can now set up a new master password.",
   );
-  isLoading.value = false;
 };
 
 const showResetConfirmationModal = (): Promise<boolean> => {
@@ -255,7 +248,6 @@ const onResetCancelled = () => {
 };
 
 const handleTimeoutChange = async () => {
-  isLoading.value = true;
   await authStore.updateMasterPasswordConfig({
     autoUnlock: autoUnlockEnabled.value,
     autoLockTimeout: autoLockTimeout.value,
@@ -270,7 +262,6 @@ const handleTimeoutChange = async () => {
         : `${autoLockTimeout.value} minutes`
     }.`,
   );
-  isLoading.value = false;
 };
 
 watch(

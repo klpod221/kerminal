@@ -32,8 +32,8 @@
       <Button variant="ghost" @click="handleCancel"> Cancel </Button>
       <Button
         variant="primary"
-        :disabled="!password || isVerifying"
-        :loading="isVerifying"
+        :disabled="!password || authStore.isLoading"
+        :loading="authStore.isLoading"
         @click="handleConfirm"
       >
         Confirm
@@ -60,7 +60,6 @@ const emit = defineEmits<{
 
 const passwordConfirmForm = ref<InstanceType<typeof Form>>();
 const password = ref("");
-const isVerifying = ref(false);
 const passwordInput = ref<InstanceType<typeof Input>>();
 
 const { overlayStore, closeOverlay } = useOverlay();
@@ -69,8 +68,6 @@ const authStore = useAuthStore();
 const handleConfirm = async () => {
   const isValid = await passwordConfirmForm.value?.validate();
   if (!isValid) return;
-
-  isVerifying.value = true;
 
   const isPasswordValid = await authStore.unlock({ password: password.value });
 
@@ -81,7 +78,6 @@ const handleConfirm = async () => {
   } else {
     message.error("Invalid master password");
   }
-  isVerifying.value = false;
 };
 
 const handleCancel = () => {

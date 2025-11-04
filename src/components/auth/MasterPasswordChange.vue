@@ -29,7 +29,7 @@
           type="password"
           placeholder="Enter your current password"
           rules="required|password"
-          :disabled="isLoading"
+          :disabled="authStore.isLoading"
         />
 
         <Input
@@ -39,7 +39,7 @@
           type="password"
           placeholder="Enter a strong new password"
           rules="required|password|different:current-password"
-          :disabled="isLoading"
+          :disabled="authStore.isLoading"
         />
 
         <Input
@@ -49,7 +49,7 @@
           type="password"
           placeholder="Confirm your new password"
           rules="required|password|same:new-password"
-          :disabled="isLoading"
+          :disabled="authStore.isLoading"
         />
 
         <Card>
@@ -77,7 +77,7 @@
       <Button
         type="button"
         variant="secondary"
-        :disabled="isLoading"
+        :disabled="authStore.isLoading"
         @click="closeOverlay('master-password-change')"
       >
         Cancel
@@ -86,7 +86,7 @@
         type="submit"
         variant="primary"
         @click="handleSubmit"
-        :loading="isLoading"
+        :loading="authStore.isLoading"
         :icon="Key"
       >
         Change Password
@@ -108,10 +108,10 @@ import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";
 
 const { closeOverlay } = useOverlay();
-const { changeMasterPassword } = useAuthStore();
+const authStore = useAuthStore();
+const { changeMasterPassword } = authStore;
 
 const changeMasterPasswordForm = ref<InstanceType<typeof Form> | null>(null);
-const isLoading = ref(false);
 const changeForm = ref({
   oldPassword: "",
   newPassword: "",
@@ -121,8 +121,6 @@ const changeForm = ref({
 const handleSubmit = async () => {
   const isValid = await changeMasterPasswordForm.value?.validate();
   if (!isValid) return;
-
-  isLoading.value = true;
 
   await changeMasterPassword(changeForm.value);
 
@@ -134,6 +132,5 @@ const handleSubmit = async () => {
 
   message.success("Master password changed successfully!");
   closeOverlay("master-password-change");
-  isLoading.value = false;
 };
 </script>

@@ -148,7 +148,9 @@
             <FileBrowser
               :files="sftpStore.browserState.remoteFiles"
               :current-path="sftpStore.browserState.remotePath"
-              :loading="sftpStore.browserState.loading.remote || sftpStore.connecting"
+              :loading="
+                sftpStore.browserState.loading.remote || sftpStore.connecting
+              "
               :is-remote="true"
               :selected-files="sftpStore.browserState.selectedRemoteFiles"
               @navigate="handleRemoteNavigate"

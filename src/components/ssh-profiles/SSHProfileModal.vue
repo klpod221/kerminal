@@ -259,7 +259,7 @@
           <Button
             type="submit"
             variant="primary"
-            :loading="isLoading"
+            :loading="sshStore.isLoading"
             :icon="Save"
             @click="handleSubmit"
           >
@@ -319,8 +319,8 @@ const groupId = getOverlayProp(
 );
 
 const sshProfileForm = ref<InstanceType<typeof Form> | null>(null);
-const isLoading = ref(false);
 const isTesting = ref(false);
+const isLoadingProfile = ref(false);
 
 const sshProfile = ref({
   name: "",
@@ -381,7 +381,7 @@ const openKeyManager = () => {
 const loadProfile = async () => {
   if (!sshProfileId.value) return;
 
-  isLoading.value = true;
+  isLoadingProfile.value = true;
   try {
     const profile = await sshStore.findProfileById(sshProfileId.value);
     if (profile) {
@@ -418,7 +418,7 @@ const loadProfile = async () => {
   } catch (error) {
     console.error("Error loading SSH profile:", error);
   } finally {
-    isLoading.value = false;
+    isLoadingProfile.value = false;
   }
 };
 
@@ -539,8 +539,6 @@ const handleSubmit = async () => {
   const isValid = await sshProfileForm.value?.validate();
   if (!isValid || !sshProfile.value) return;
 
-  isLoading.value = true;
-
   try {
     const authData = buildAuthData();
     const profileData = {
@@ -570,8 +568,8 @@ const handleSubmit = async () => {
     }
 
     closeModal();
-  } finally {
-    isLoading.value = false;
+  } catch (error) {
+    // Error is handled by the store
   }
 };
 

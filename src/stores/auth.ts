@@ -47,6 +47,8 @@ export const useAuthStore = defineStore("auth", () => {
     createdAt: "",
   });
 
+  const isLoading = ref(false);
+
   let unsubscribeAuthRealtime: (() => void) | null = null;
 
   const sessionRemainingMs = computed((): number => {
@@ -68,6 +70,7 @@ export const useAuthStore = defineStore("auth", () => {
    * Check master password status from backend with error handling
    */
   const checkStatus = async (): Promise<void> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Check Auth Status",
     };
@@ -83,6 +86,8 @@ export const useAuthStore = defineStore("auth", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       // Don't throw, just log - app should still work if status check fails
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -90,10 +95,15 @@ export const useAuthStore = defineStore("auth", () => {
    * Load security settings from backend
    */
   const loadSecuritySettings = async (): Promise<void> => {
-    const config = await masterPasswordService.getConfig();
-    if (config && config.sessionTimeoutMinutes !== undefined) {
-      securitySettings.value.autoLockTimeout =
-        config.sessionTimeoutMinutes || 0;
+    isLoading.value = true;
+    try {
+      const config = await masterPasswordService.getConfig();
+      if (config && config.sessionTimeoutMinutes !== undefined) {
+        securitySettings.value.autoLockTimeout =
+          config.sessionTimeoutMinutes || 0;
+      }
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -105,6 +115,7 @@ export const useAuthStore = defineStore("auth", () => {
   const setupMasterPassword = async (
     setup: MasterPasswordSetup,
   ): Promise<boolean> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Setup Master Password",
     };
@@ -130,6 +141,8 @@ export const useAuthStore = defineStore("auth", () => {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -141,6 +154,7 @@ export const useAuthStore = defineStore("auth", () => {
   const unlock = async (
     verification: MasterPasswordVerification,
   ): Promise<boolean> => {
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Unlock Master Password",
     };
@@ -159,6 +173,8 @@ export const useAuthStore = defineStore("auth", () => {
       message.error(errorMessage);
       await checkStatus();
       throw new Error(errorMessage);
+    } finally {
+      isLoading.value = false;
     }
   };
 
@@ -166,9 +182,13 @@ export const useAuthStore = defineStore("auth", () => {
    * Lock the application
    */
   const lock = async (): Promise<void> => {
-    await masterPasswordService.lock();
-
-    await checkStatus();
+    isLoading.value = true;
+    try {
+      await masterPasswordService.lock();
+      await checkStatus();
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   /**
@@ -178,11 +198,14 @@ export const useAuthStore = defineStore("auth", () => {
   const changeMasterPassword = async (
     changeData: MasterPasswordChange,
   ): Promise<boolean> => {
-    await masterPasswordService.change(changeData);
-
-    await checkStatus();
-
-    return true;
+    isLoading.value = true;
+    try {
+      await masterPasswordService.change(changeData);
+      await checkStatus();
+      return true;
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   /**
@@ -192,34 +215,43 @@ export const useAuthStore = defineStore("auth", () => {
   const updateMasterPasswordConfig = async (
     config: MasterPasswordConfig | MasterPasswordConfigUpdate,
   ): Promise<boolean> => {
-    const configData = {
-      ...config,
-      ...(config.autoLockTimeout !== undefined && {
-        autoLockTimeout: Number(config.autoLockTimeout),
-      }),
-    };
+    isLoading.value = true;
+    try {
+      const configData = {
+        ...config,
+        ...(config.autoLockTimeout !== undefined && {
+          autoLockTimeout: Number(config.autoLockTimeout),
+        }),
+      };
 
-    await masterPasswordService.updateConfig(configData);
+      await masterPasswordService.updateConfig(configData);
 
-    await loadSecuritySettings();
-    await checkStatus();
+      await loadSecuritySettings();
+      await checkStatus();
 
-    return true;
+      return true;
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   /**
    * Try auto-unlock using keychain
    */
   const tryAutoUnlock = async (): Promise<boolean> => {
-    await masterPasswordService.tryAutoUnlock();
+    isLoading.value = true;
+    try {
+      await masterPasswordService.tryAutoUnlock();
+      await checkStatus();
 
-    await checkStatus();
+      if (status.value.isUnlocked) {
+        return true; // Return true if we are actually unlocked
+      }
 
-    if (status.value.isUnlocked) {
-      return true; // Return true if we are actually unlocked
+      return false; // Return false if we are still locked
+    } finally {
+      isLoading.value = false;
     }
-
-    return false; // Return false if we are still locked
   };
 
   const startAuthRealtime = async (): Promise<void> => {
@@ -257,19 +289,24 @@ export const useAuthStore = defineStore("auth", () => {
    * Reset master password (removes all encrypted data)
    */
   const resetMasterPassword = async (): Promise<boolean> => {
-    await masterPasswordService.reset();
+    isLoading.value = true;
+    try {
+      await masterPasswordService.reset();
 
-    status.value = {
-      isSetup: false,
-      isUnlocked: false,
-      autoUnlockEnabled: false,
-      keychainAvailable: false,
-      sessionActive: false,
-      sessionExpiresAt: undefined,
-      loadedDeviceCount: 0,
-    };
+      status.value = {
+        isSetup: false,
+        isUnlocked: false,
+        autoUnlockEnabled: false,
+        keychainAvailable: false,
+        sessionActive: false,
+        sessionExpiresAt: undefined,
+        loadedDeviceCount: 0,
+      };
 
-    return true;
+      return true;
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   /**
@@ -287,8 +324,13 @@ export const useAuthStore = defineStore("auth", () => {
    * Get current device information
    */
   const getCurrentDevice = async (): Promise<void> => {
-    const deviceInfo = await masterPasswordService.getCurrentDevice();
-    currentDevice.value = deviceInfo;
+    isLoading.value = true;
+    try {
+      const deviceInfo = await masterPasswordService.getCurrentDevice();
+      currentDevice.value = deviceInfo;
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   /**
@@ -302,6 +344,7 @@ export const useAuthStore = defineStore("auth", () => {
     status,
     securitySettings,
     currentDevice,
+    isLoading,
     sessionRemainingMs,
 
     isAuthenticated,

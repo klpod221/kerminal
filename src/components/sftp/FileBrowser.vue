@@ -121,7 +121,7 @@
       tabindex="0"
     >
       <EmptyState
-        v-if="(filteredFiles.length === 0 && searchQuery) && !loading"
+        v-if="filteredFiles.length === 0 && searchQuery && !loading"
         :icon="Folder"
         title="No results"
         :description="`No files match '${searchQuery}'`"
@@ -633,7 +633,11 @@ const filteredFiles = computed(() => {
   const matchSize = (size: number | null): boolean => {
     if (!size) return false;
     const queryLower = query.toLowerCase();
-    if (queryLower.includes("kb") || queryLower.includes("mb") || queryLower.includes("gb")) {
+    if (
+      queryLower.includes("kb") ||
+      queryLower.includes("mb") ||
+      queryLower.includes("gb")
+    ) {
       const sizeKB = size / 1024;
       const sizeMB = size / (1024 * 1024);
       const sizeGB = size / (1024 * 1024 * 1024);

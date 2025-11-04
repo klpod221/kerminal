@@ -36,7 +36,7 @@
           label="Device Name"
           placeholder="My Arch Linux"
           rules="required"
-          :disabled="isLoading"
+          :disabled="authStore.isLoading"
           :autofocus="true"
         />
 
@@ -52,7 +52,7 @@
           type="password"
           placeholder="Enter a strong password"
           rules="required|password"
-          :disabled="isLoading"
+          :disabled="authStore.isLoading"
         />
 
         <Input
@@ -62,7 +62,7 @@
           type="password"
           placeholder="Confirm your password"
           rules="required|password|same:master-password"
-          :disabled="isLoading"
+          :disabled="authStore.isLoading"
         />
 
         <h4
@@ -94,7 +94,7 @@
       <Button
         type="submit"
         variant="primary"
-        :loading="isLoading"
+        :loading="authStore.isLoading"
         :icon="Save"
         @click="handleSubmit"
       >
@@ -117,7 +117,8 @@ import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
 
 const { closeOverlay } = useOverlay();
-const { setupMasterPassword } = useAuthStore();
+const authStore = useAuthStore();
+const { setupMasterPassword } = authStore;
 
 const masterPasswordSetupForm = ref<InstanceType<typeof Form> | null>(null);
 const setupForm = ref({
@@ -128,13 +129,10 @@ const setupForm = ref({
   autoUnlock: false,
   autoLockTimeout: 0,
 });
-const isLoading = ref(false);
 
 const handleSubmit = async () => {
   const isValid = await masterPasswordSetupForm.value?.validate();
   if (!isValid) return;
-
-  isLoading.value = true;
 
   const success = await setupMasterPassword(setupForm.value);
 
@@ -159,6 +157,5 @@ const handleSubmit = async () => {
       setTimeout(() => {}, 100);
     }
   }
-  isLoading.value = false;
 };
 </script>
