@@ -123,8 +123,8 @@ export const useSFTPStore = defineStore("sftp", () => {
       if (activeSessionId.value === sessionId) {
         activeSessionId.value = null;
         browserState.value.activeSessionId = null;
-        browserState.value.localFiles = [];
         browserState.value.remoteFiles = [];
+        browserState.value.remotePath = "";
       }
     } catch (error) {
       const errorMessage = handleError(error, context);

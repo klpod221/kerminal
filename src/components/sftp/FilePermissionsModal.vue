@@ -11,7 +11,16 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-2">
-            File: <span class="font-medium text-white">{{ file?.name }}</span>
+            <span v-if="files.length === 1">
+              File:
+              <span class="font-medium text-white">{{ files[0]?.name }}</span>
+            </span>
+            <span v-else>
+              <span class="font-medium text-white"
+                >{{ files.length }} files</span
+              >
+              <span class="text-gray-400 text-sm ml-2">(selected)</span>
+            </span>
           </label>
         </div>
 
@@ -135,13 +144,16 @@
       <Button variant="ghost" @click="closeModal">Cancel</Button>
       <Button variant="primary" :loading="loading" @click="handleSubmit">
         Apply Permissions
+        <span v-if="files.length > 1" class="ml-1"
+          >({{ files.length }} files)</span
+        >
       </Button>
     </template>
   </Modal>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import { Shield } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Form from "../ui/Form.vue";
@@ -165,6 +177,24 @@ const file = getOverlayProp<FileEntry | null>(
   null,
 );
 
+const files = getOverlayProp<FileEntry[]>(
+  "sftp-file-permissions-modal",
+  "files",
+  [],
+  [],
+);
+
+// Use files array if available, otherwise fall back to single file
+const actualFiles = computed(() => {
+  if (files.value && files.value.length > 0) {
+    return files.value;
+  }
+  if (file.value) {
+    return [file.value];
+  }
+  return [];
+});
+
 interface PermissionFlags {
   read: boolean;
   write: boolean;
@@ -181,13 +211,15 @@ const permissions = ref<{
   others: { read: false, write: false, execute: false },
 });
 
-// Initialize permissions from file
+// Initialize permissions from first file (if multiple files, use first one's permissions as default)
 watch(
-  () => file.value,
-  (fileValue) => {
-    if (fileValue) {
-      const mode = fileValue.permissions;
-      octalPermissions.value = `0${mode.toString(8)}`;
+  () => actualFiles.value,
+  (fileList) => {
+    if (fileList.length > 0) {
+      const firstFile = fileList[0];
+      // Mask to get only permission bits (0o777), excluding file type bits
+      const mode = firstFile.permissions & 0o777;
+      octalPermissions.value = `0${mode.toString(8).padStart(3, "0")}`;
       updatePermissionsFromOctal(mode);
     }
   },
@@ -195,9 +227,12 @@ watch(
 );
 
 watch(octalPermissions, (octal) => {
+  // Accept 3 or 4 digit octal (with or without leading 0)
   const match = octal.match(/^0?([0-7]{3,4})$/);
   if (match) {
-    const octalValue = parseInt(match[1], 8);
+    let octalValue = parseInt(match[1], 8);
+    // Mask to ensure we only have permission bits (0o777)
+    octalValue = octalValue & 0o777;
     updatePermissionsFromOctal(octalValue);
   }
 });
@@ -234,16 +269,20 @@ function updateOctal() {
   if (permissions.value.others.write) mode |= 0o002;
   if (permissions.value.others.execute) mode |= 0o001;
 
-  octalPermissions.value = `0${mode.toString(8)}`;
+  // Ensure we only have permission bits and format as 3-digit octal
+  mode = mode & 0o777;
+  octalPermissions.value = `0${mode.toString(8).padStart(3, "0")}`;
 }
 
 function setPreset(mode: number) {
+  // Ensure mode is only permission bits
+  mode = mode & 0o777;
   updatePermissionsFromOctal(mode);
-  octalPermissions.value = `0${mode.toString(8)}`;
+  octalPermissions.value = `0${mode.toString(8).padStart(3, "0")}`;
 }
 
 async function handleSubmit() {
-  if (!file.value || loading.value) return;
+  if (actualFiles.value.length === 0 || loading.value) return;
 
   const match = octalPermissions.value.match(/^0?([0-7]{3,4})$/);
   if (!match) {
@@ -256,8 +295,12 @@ async function handleSubmit() {
   loading.value = true;
 
   // Emit event to parent to handle permissions change
+  // If multiple files, emit array of paths
   const event = new CustomEvent("sftp-permissions", {
-    detail: { path: file.value.path, mode },
+    detail: {
+      paths: actualFiles.value.map((f: FileEntry) => f.path),
+      mode,
+    },
   });
   window.dispatchEvent(event);
   closeModal();

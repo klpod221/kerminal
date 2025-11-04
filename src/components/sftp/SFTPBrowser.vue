@@ -1,33 +1,5 @@
 <template>
   <div class="h-full flex flex-col bg-[#0D0D0D] relative">
-    <!-- Connecting Overlay -->
-    <div
-      v-if="sftpStore.connecting"
-      class="absolute inset-0 bg-[#0D0D0D]/95 flex items-center justify-center z-50"
-    >
-      <div class="flex flex-col items-center space-y-4">
-        <!-- Large spinning icon -->
-        <div class="relative">
-          <div
-            class="animate-spin rounded-full h-12 w-12 border-2 border-gray-600 border-t-blue-400"
-          ></div>
-          <!-- Pulse effect -->
-          <div
-            class="absolute inset-0 animate-ping rounded-full h-12 w-12 border border-blue-400/20"
-          ></div>
-        </div>
-        <!-- Loading text -->
-        <div class="text-center">
-          <p class="text-lg font-medium text-white mb-1">
-            Connecting to SFTP...
-          </p>
-          <p class="text-sm text-gray-400">
-            Please wait while establishing connection
-          </p>
-        </div>
-      </div>
-    </div>
-
     <!-- Header with connection selector -->
     <div
       class="flex items-center justify-between px-4 py-2 border-b border-gray-800"
@@ -44,7 +16,7 @@
         />
         <Button
           v-if="sftpStore.activeSessionId"
-          variant="ghost"
+          variant="danger"
           size="sm"
           :disabled="sftpStore.connecting"
           @click="handleDisconnect"
@@ -88,61 +60,113 @@
     </div>
 
     <!-- Dual-pane layout -->
-    <div v-if="sftpStore.activeSessionId" class="flex-1 overflow-hidden">
+    <div class="flex-1 overflow-hidden">
       <Splitpanes class="default-theme" @resize="onPaneResize">
-        <Pane :size="50" :min-size="20">
+        <Pane
+          :size="sftpStore.activeSessionId || sftpStore.connecting ? 50 : 100"
+          :min-size="20"
+          :class="
+            isDraggingOverPane === 'local'
+              ? 'bg-blue-500/10 border-2 border-blue-500 border-dashed'
+              : ''
+          "
+        >
           <!-- Local file browser -->
-          <FileBrowser
-            :files="sftpStore.browserState.localFiles"
-            :current-path="sftpStore.browserState.localPath"
-            :loading="sftpStore.browserState.loading.local"
-            :selected-files="sftpStore.browserState.selectedLocalFiles"
-            @navigate="handleLocalNavigate"
-            @refresh="handleLocalRefresh"
-            @select="handleLocalSelect"
-            @upload="handleLocalUpload"
-            @drag-files="handleLocalDragFiles"
-            @open="handleLocalOpen"
-            @edit="handleLocalEdit"
-            @rename="handleLocalRename"
-            @delete="handleLocalDelete"
-            @create-directory="handleLocalCreateDirectory"
-            @create-file="handleLocalCreateFile"
-          />
+          <div
+            class="h-full w-full"
+            @dragover="handlePaneDragOver('local', $event)"
+            @dragenter="handlePaneDragEnter('local', $event)"
+            @dragleave="handlePaneDragLeave('local', $event)"
+            @drop.prevent="handlePaneDrop('local', $event)"
+          >
+            <FileBrowser
+              :files="sftpStore.browserState.localFiles"
+              :current-path="sftpStore.browserState.localPath"
+              :loading="sftpStore.browserState.loading.local"
+              :selected-files="sftpStore.browserState.selectedLocalFiles"
+              @navigate="handleLocalNavigate"
+              @refresh="handleLocalRefresh"
+              @select="handleLocalSelect"
+              @upload="handleLocalUpload"
+              @drag-files="handleLocalDragFiles"
+              @open="handleLocalOpen"
+              @edit="handleLocalEdit"
+              @rename="handleLocalRename"
+              @delete="handleLocalDelete"
+              @download="handleLocalDownload"
+              @create-directory="handleLocalCreateDirectory"
+              @create-file="handleLocalCreateFile"
+            />
+          </div>
         </Pane>
 
-        <Pane :size="50" :min-size="20">
+        <Pane
+          v-if="sftpStore.activeSessionId || sftpStore.connecting"
+          :size="50"
+          :min-size="20"
+          :class="
+            isDraggingOverPane === 'remote'
+              ? 'bg-blue-500/10 border-2 border-blue-500 border-dashed'
+              : ''
+          "
+        >
           <!-- Remote file browser -->
-          <FileBrowser
-            :files="sftpStore.browserState.remoteFiles"
-            :current-path="sftpStore.browserState.remotePath"
-            :loading="sftpStore.browserState.loading.remote"
-            :is-remote="true"
-            :selected-files="sftpStore.browserState.selectedRemoteFiles"
-            @navigate="handleRemoteNavigate"
-            @refresh="handleRemoteRefresh"
-            @select="handleRemoteSelect"
-            @download="handleRemoteDownload"
-            @drag-files="handleRemoteDragFiles"
-            @open="handleRemoteOpen"
-            @edit="handleRemoteEdit"
-            @rename="handleRemoteRename"
-            @delete="handleRemoteDelete"
-            @permissions="handleRemotePermissions"
-            @create-directory="handleRemoteCreateDirectory"
-            @create-file="handleRemoteCreateFile"
-          />
+          <div
+            class="h-full w-full relative"
+            @dragover="handlePaneDragOver('remote', $event)"
+            @dragenter="handlePaneDragEnter('remote', $event)"
+            @dragleave="handlePaneDragLeave('remote', $event)"
+            @drop.prevent="handlePaneDrop('remote', $event)"
+          >
+            <!-- Connecting Overlay for Remote Panel -->
+            <div
+              v-if="sftpStore.connecting"
+              class="absolute inset-0 bg-[#0D0D0D]/95 flex items-center justify-center z-50"
+            >
+              <div class="flex flex-col items-center space-y-4">
+                <!-- Large spinning icon -->
+                <div class="relative">
+                  <div
+                    class="animate-spin rounded-full h-12 w-12 border-2 border-gray-600 border-t-blue-400"
+                  ></div>
+                  <!-- Pulse effect -->
+                  <div
+                    class="absolute inset-0 animate-ping rounded-full h-12 w-12 border border-blue-400/20"
+                  ></div>
+                </div>
+                <!-- Loading text -->
+                <div class="text-center">
+                  <p class="text-lg font-medium text-white mb-1">
+                    Connecting to SFTP...
+                  </p>
+                  <p class="text-sm text-gray-400">
+                    Please wait while establishing connection
+                  </p>
+                </div>
+              </div>
+            </div>
+            <FileBrowser
+              :files="sftpStore.browserState.remoteFiles"
+              :current-path="sftpStore.browserState.remotePath"
+              :loading="sftpStore.browserState.loading.remote || sftpStore.connecting"
+              :is-remote="true"
+              :selected-files="sftpStore.browserState.selectedRemoteFiles"
+              @navigate="handleRemoteNavigate"
+              @refresh="handleRemoteRefresh"
+              @select="handleRemoteSelect"
+              @download="handleRemoteDownload"
+              @delete="handleRemoteDelete"
+              @permissions="handleRemotePermissions"
+              @drag-files="handleRemoteDragFiles"
+              @open="handleRemoteOpen"
+              @edit="handleRemoteEdit"
+              @rename="handleRemoteRename"
+              @create-directory="handleRemoteCreateDirectory"
+              @create-file="handleRemoteCreateFile"
+            />
+          </div>
         </Pane>
       </Splitpanes>
-    </div>
-
-    <!-- Empty state when not connected -->
-    <div v-else class="flex-1 flex items-center justify-center">
-      <EmptyState
-        :icon="FolderOpen"
-        title="No SFTP Connection"
-        description="Select an SSH profile to connect"
-      />
     </div>
 
     <!-- Modals -->
@@ -162,7 +186,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
-import { FolderOpen, Activity, GitCompare } from "lucide-vue-next";
+import { Activity, GitCompare } from "lucide-vue-next";
 import { useSFTPStore } from "../../stores/sftp";
 import { useSSHStore } from "../../stores/ssh";
 import { message } from "../../utils/message";
@@ -179,18 +203,30 @@ import FileEditorModal from "./FileEditorModal.vue";
 import FilePreviewModal from "./FilePreviewModal.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
-import EmptyState from "../ui/EmptyState.vue";
 import type { FileEntry } from "../../types/sftp";
-import { rename, remove, stat, writeFile, mkdir } from "@tauri-apps/plugin-fs";
+import {
+  rename,
+  remove,
+  stat,
+  writeFile,
+  mkdir,
+  readDir,
+} from "@tauri-apps/plugin-fs";
 import { dirname, homeDir, tempDir, join } from "@tauri-apps/api/path";
+import * as sftpService from "../../services/sftp";
 import { openPath } from "@tauri-apps/plugin-opener";
-import { save } from "@tauri-apps/plugin-dialog";
+import { save, open } from "@tauri-apps/plugin-dialog";
 
 const sftpStore = useSFTPStore();
 const sshStore = useSSHStore();
 const { openOverlay, closeOverlay, isOverlayVisible } = useOverlay();
 
 const selectedProfileId = ref<string>("");
+const isDraggingOverPane = ref<"local" | "remote" | null>(null);
+const dragEnterCounter = ref<{ local: number; remote: number }>({
+  local: 0,
+  remote: 0,
+});
 
 watch(
   () => sftpStore.activeTransfers.length,
@@ -229,6 +265,35 @@ const sshProfiles = computed(() => {
 
 onMounted(async () => {
   await sshStore.loadProfiles();
+
+  if (
+    !sftpStore.browserState.localPath ||
+    sftpStore.browserState.localFiles.length === 0
+  ) {
+    const homeDir = await getHomeDirectory();
+    await sftpStore.listLocalDirectory(homeDir);
+  }
+
+  if (sftpStore.activeSessionId && sftpStore.activeSession) {
+    selectedProfileId.value = sftpStore.activeSession.profileId;
+  }
+
+  watch(
+    () => sftpStore.activeSession,
+    (session) => {
+      if (session) {
+        selectedProfileId.value = session.profileId;
+      } else {
+        selectedProfileId.value = "";
+      }
+    },
+    { immediate: true },
+  );
+
+  watch(
+    () => sftpStore.activeSessionId,
+    () => {},
+  );
 
   window.addEventListener("sftp-rename", handleRenameSubmit);
   window.addEventListener("sftp-delete", handleDeleteSubmit);
@@ -319,17 +384,41 @@ async function handleDeleteSubmit(event: Event) {
 
 async function handlePermissionsSubmit(event: Event) {
   const customEvent = event as CustomEvent<{
-    path: string;
+    path?: string;
+    paths?: string[];
     mode: number;
   }>;
   if (!sftpStore.activeSessionId) return;
 
-  await sftpStore.setPermissions(
-    sftpStore.activeSessionId,
-    customEvent.detail.path,
-    customEvent.detail.mode,
-  );
-  message.success("Permissions updated successfully");
+  const paths =
+    customEvent.detail.paths ||
+    (customEvent.detail.path ? [customEvent.detail.path] : []);
+
+  if (paths.length === 0) return;
+
+  try {
+    for (const path of paths) {
+      await sftpStore.setPermissions(
+        sftpStore.activeSessionId,
+        path,
+        customEvent.detail.mode,
+      );
+    }
+
+    const dirPath =
+      paths.length > 0
+        ? paths[0].substring(0, paths[0].lastIndexOf("/")) || "/"
+        : sftpStore.browserState.remotePath || "/";
+
+    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, dirPath);
+
+    message.success(
+      `Permissions updated successfully for ${paths.length} item${paths.length > 1 ? "s" : ""}`,
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    message.error(`Failed to update permissions: ${errorMessage}`);
+  }
 }
 
 /**
@@ -341,11 +430,17 @@ async function handleProfileSelect(profileId: string) {
 
   await sftpStore.connect(profileId);
 
-  const homeDir = await getHomeDirectory();
-  await sftpStore.listLocalDirectory(homeDir);
+  selectedProfileId.value = profileId;
+
+  if (!sftpStore.browserState.localPath) {
+    const homeDir = await getHomeDirectory();
+    await sftpStore.listLocalDirectory(homeDir);
+  }
 
   if (sftpStore.activeSessionId) {
-    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, "/");
+    const profile = sshStore.profiles.find((p) => p.id === profileId);
+    const remotePath = profile?.username ? `/home/${profile.username}` : "/";
+    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, remotePath);
   }
 
   message.success("SFTP connected successfully");
@@ -400,7 +495,9 @@ async function handleLocalUpload(files: FileList | File[]) {
     for (const file of fileArray) {
       let filePath = "";
       const fileWithPath = file as File & { path?: string };
-      if (fileWithPath.path) {
+
+      if (fileWithPath.path && !fileWithPath.path.includes("/")) {
+        // File has a direct path (not from directory structure)
         filePath = fileWithPath.path;
       } else if (file instanceof File) {
         const tempDirPath = await tempDir();
@@ -419,6 +516,7 @@ async function handleLocalUpload(files: FileList | File[]) {
       } else {
         continue;
       }
+
       const normalizedRemotePath = remotePath.endsWith("/")
         ? remotePath.slice(0, -1)
         : remotePath;
@@ -431,6 +529,8 @@ async function handleLocalUpload(files: FileList | File[]) {
       );
       message.success(`Uploading ${file.name}...`);
     }
+
+    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, remotePath);
   } finally {
     if (tempFilesToCleanup.length > 0) {
       setTimeout(async () => {
@@ -441,7 +541,7 @@ async function handleLocalUpload(files: FileList | File[]) {
             console.warn("Failed to cleanup temp file:", tempPath, error);
           }
         }
-      }, 5000); // Cleanup after 5 seconds (enough time for upload to start)
+      }, 5000);
     }
   }
 }
@@ -453,7 +553,6 @@ function canPreviewFile(file: FileEntry): boolean {
   if (file.fileType !== "file") return false;
 
   const previewableExtensions = new Set([
-    // Images
     "jpg",
     "jpeg",
     "png",
@@ -462,7 +561,6 @@ function canPreviewFile(file: FileEntry): boolean {
     "webp",
     "svg",
     "ico",
-    // Videos
     "mp4",
     "webm",
     "ogg",
@@ -471,12 +569,74 @@ function canPreviewFile(file: FileEntry): boolean {
     "wmv",
     "flv",
     "mkv",
-    // Documents
     "html",
     "htm",
     "md",
     "markdown",
     "pdf",
+    "txt",
+    "text",
+    "log",
+    "json",
+    "yaml",
+    "yml",
+    "xml",
+    "csv",
+    "tsv",
+    "ini",
+    "conf",
+    "config",
+    "cfg",
+    "properties",
+    "env",
+    "gitignore",
+    "gitattributes",
+    "dockerfile",
+    "makefile",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "ps1",
+    "bat",
+    "cmd",
+    "js",
+    "ts",
+    "jsx",
+    "tsx",
+    "vue",
+    "svelte",
+    "py",
+    "java",
+    "c",
+    "cpp",
+    "cc",
+    "h",
+    "hpp",
+    "cs",
+    "go",
+    "rs",
+    "rb",
+    "php",
+    "swift",
+    "kt",
+    "scala",
+    "clj",
+    "hs",
+    "ml",
+    "sql",
+    "r",
+    "m",
+    "pl",
+    "pm",
+    "lua",
+    "vim",
+    "css",
+    "scss",
+    "sass",
+    "less",
+    "styl",
+    "stylus",
     // Office (show info, not actual preview)
     "doc",
     "docx",
@@ -522,11 +682,45 @@ function handleLocalRename(file: FileEntry) {
   });
 }
 
-function handleLocalDelete(file: FileEntry) {
-  openOverlay("sftp-file-delete-modal", {
-    file,
-    isLocal: true,
-  });
+function handleLocalDelete(files: FileEntry[]) {
+  if (files.length === 0) return;
+
+  if (files.length === 1) {
+    openOverlay("sftp-file-delete-modal", {
+      file: files[0],
+      isLocal: true,
+    });
+  } else {
+    deleteLocalFiles(files);
+  }
+}
+
+async function deleteLocalFiles(files: FileEntry[]) {
+  try {
+    for (const file of files) {
+      const fileStat = await stat(file.path);
+      const isDirectory = fileStat.isDirectory;
+
+      if (isDirectory) {
+        await remove(file.path, { recursive: true });
+      } else {
+        await remove(file.path);
+      }
+    }
+
+    const dirPath =
+      files.length > 0
+        ? await dirname(files[0].path)
+        : sftpStore.browserState.localPath || "/";
+
+    await sftpStore.listLocalDirectory(dirPath);
+    message.success(
+      `Deleted ${files.length} item${files.length > 1 ? "s" : ""} successfully`,
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    message.error(`Failed to delete: ${errorMessage}`);
+  }
 }
 
 function handleRemoteNavigate(path: string) {
@@ -553,35 +747,159 @@ function handleRemoteSelect(path: string) {
   }
 }
 
+/**
+ * Generate a unique filename by appending a number
+ */
+async function generateUniqueLocalPath(
+  basePath: string,
+  fileName: string,
+): Promise<string> {
+  const baseName = fileName.substring(0, fileName.lastIndexOf(".")) || fileName;
+  const ext = fileName.includes(".")
+    ? fileName.substring(fileName.lastIndexOf("."))
+    : "";
+
+  let counter = 1;
+  let newPath =
+    basePath === "/"
+      ? await join("/", fileName)
+      : await join(basePath, fileName);
+
+  while (true) {
+    try {
+      await stat(newPath);
+      const newName = `${baseName} (${counter})${ext}`;
+      newPath =
+        basePath === "/"
+          ? await join("/", newName)
+          : await join(basePath, newName);
+      counter++;
+    } catch {
+      break;
+    }
+  }
+
+  return newPath;
+}
+
+/**
+ * Generate a unique remote filename by appending a number
+ */
+async function generateUniqueRemotePath(
+  sessionId: string,
+  basePath: string,
+  fileName: string,
+): Promise<string> {
+  const baseName = fileName.substring(0, fileName.lastIndexOf(".")) || fileName;
+  const ext = fileName.includes(".")
+    ? fileName.substring(fileName.lastIndexOf("."))
+    : "";
+
+  let counter = 1;
+  let newPath = basePath === "/" ? `/${fileName}` : `${basePath}/${fileName}`;
+
+  while (true) {
+    try {
+      await sftpService.statSFTP(sessionId, newPath);
+      const newName = `${baseName} (${counter})${ext}`;
+      newPath = basePath === "/" ? `/${newName}` : `${basePath}/${newName}`;
+      counter++;
+    } catch {
+      break;
+    }
+  }
+
+  return newPath;
+}
+
 async function handleLocalDragFiles(
   files: FileEntry[],
   targetPath: string,
   isSourceRemote: boolean,
 ) {
-  if (!sftpStore.activeSessionId) return;
+  if (!sftpStore.activeSessionId && isSourceRemote) {
+    return;
+  }
 
   if (isSourceRemote) {
     const localPath = targetPath || sftpStore.browserState.localPath || "/";
 
     for (const file of files) {
       if (file.fileType === "directory") {
-        message.warning(
-          `Skipping directory: ${file.name} (directory drag not supported yet)`,
+        try {
+          await downloadDirectoryRecursive(
+            sftpStore.activeSessionId!,
+            file.path,
+            localPath,
+            file.name,
+          );
+          message.success(`Downloading directory ${file.name}...`);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          message.error(
+            `Failed to download directory ${file.name}: ${errorMessage}`,
+          );
+        }
+      } else {
+        let localFilePath =
+          localPath === "/"
+            ? await join("/", file.name)
+            : await join(localPath, file.name);
+
+        try {
+          await stat(localFilePath);
+          localFilePath = await generateUniqueLocalPath(localPath, file.name);
+          message.info(
+            `${file.name} already exists, using ${localFilePath.split("/").pop()}`,
+          );
+        } catch {}
+
+        await sftpStore.downloadFile(
+          sftpStore.activeSessionId!,
+          file.path,
+          localFilePath,
         );
-        continue;
+        message.success(`Downloading ${file.name}...`);
       }
+    }
 
-      const localFilePath =
-        localPath === "/"
-          ? await join("/", file.name)
-          : await join(localPath, file.name);
+    await sftpStore.listLocalDirectory(localPath);
+  } else {
+    const destinationPath =
+      targetPath || sftpStore.browserState.localPath || "/";
 
-      await sftpStore.downloadFile(
-        sftpStore.activeSessionId,
-        file.path,
-        localFilePath,
-      );
-      message.success(`Downloading ${file.name}...`);
+    for (const file of files) {
+      try {
+        const currentDir = await dirname(file.path);
+        if (currentDir === destinationPath) {
+          message.info(`${file.name} is already in the target directory`);
+          continue;
+        }
+
+        let newPath =
+          destinationPath === "/"
+            ? await join("/", file.name)
+            : await join(destinationPath, file.name);
+
+        try {
+          await stat(newPath);
+          newPath = await generateUniqueLocalPath(destinationPath, file.name);
+          message.info(
+            `${file.name} already exists, using ${newPath.split("/").pop()}`,
+          );
+        } catch {}
+
+        await rename(file.path, newPath);
+        message.success(`Moved ${file.name} to ${destinationPath}`);
+
+        await sftpStore.listLocalDirectory(currentDir);
+        await sftpStore.listLocalDirectory(destinationPath);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        message.error(`Failed to move ${file.name}: ${errorMessage}`);
+      }
     }
   }
 }
@@ -591,55 +909,173 @@ async function handleRemoteDragFiles(
   targetPath: string,
   isSourceRemote: boolean,
 ) {
-  if (!sftpStore.activeSessionId) return;
+  if (!sftpStore.activeSessionId) {
+    return;
+  }
 
   if (!isSourceRemote) {
     const remotePath = targetPath || sftpStore.browserState.remotePath || "/";
 
     for (const file of files) {
       if (file.fileType === "directory") {
-        message.warning(
-          `Skipping directory: ${file.name} (directory drag not supported yet)`,
+        try {
+          await uploadDirectoryRecursive(
+            sftpStore.activeSessionId,
+            file.path,
+            remotePath,
+            file.name,
+          );
+          message.success(`Uploading directory ${file.name}...`);
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          message.error(
+            `Failed to upload directory ${file.name}: ${errorMessage}`,
+          );
+        }
+      } else {
+        const normalizedRemotePath = remotePath.endsWith("/")
+          ? remotePath.slice(0, -1)
+          : remotePath;
+        let remoteFilePath = `${normalizedRemotePath}/${file.name}`;
+
+        try {
+          await sftpService.statSFTP(sftpStore.activeSessionId, remoteFilePath);
+          remoteFilePath = await generateUniqueRemotePath(
+            sftpStore.activeSessionId,
+            normalizedRemotePath,
+            file.name,
+          );
+          message.info(
+            `${file.name} already exists, using ${remoteFilePath.split("/").pop()}`,
+          );
+        } catch {}
+
+        await sftpStore.uploadFile(
+          sftpStore.activeSessionId,
+          file.path,
+          remoteFilePath,
         );
-        continue;
+        message.success(`Uploading ${file.name}...`);
       }
+    }
+  } else {
+    const destinationPath =
+      targetPath || sftpStore.browserState.remotePath || "/";
 
-      const normalizedRemotePath = remotePath.endsWith("/")
-        ? remotePath.slice(0, -1)
-        : remotePath;
-      const remoteFilePath = `${normalizedRemotePath}/${file.name}`;
+    for (const file of files) {
+      try {
+        const currentDir =
+          file.path.substring(0, file.path.lastIndexOf("/")) || "/";
+        if (currentDir === destinationPath) {
+          message.info(`${file.name} is already in the target directory`);
+          continue;
+        }
 
-      await sftpStore.uploadFile(
-        sftpStore.activeSessionId,
-        file.path,
-        remoteFilePath,
-      );
-      message.success(`Uploading ${file.name}...`);
+        let newPath =
+          destinationPath === "/"
+            ? `/${file.name}`
+            : `${destinationPath}/${file.name}`;
+
+        try {
+          await sftpService.statSFTP(sftpStore.activeSessionId, newPath);
+          newPath = await generateUniqueRemotePath(
+            sftpStore.activeSessionId,
+            destinationPath,
+            file.name,
+          );
+          message.info(
+            `${file.name} already exists, using ${newPath.split("/").pop()}`,
+          );
+        } catch {}
+
+        await sftpStore.renameFile(
+          sftpStore.activeSessionId,
+          file.path,
+          newPath,
+        );
+        message.success(`Moved ${file.name} to ${destinationPath}`);
+
+        await sftpStore.listRemoteDirectory(
+          sftpStore.activeSessionId,
+          currentDir,
+        );
+        await sftpStore.listRemoteDirectory(
+          sftpStore.activeSessionId,
+          destinationPath,
+        );
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        message.error(`Failed to move ${file.name}: ${errorMessage}`);
+      }
     }
   }
 }
 
-async function handleRemoteDownload(file: FileEntry) {
-  if (!sftpStore.activeSessionId) return;
+async function handleRemoteDownload(files: FileEntry[]) {
+  if (!sftpStore.activeSessionId || files.length === 0) return;
 
-  const localPathResult = await save({
-    defaultPath: file.name,
-    filters: [
-      {
-        name: "All Files",
-        extensions: ["*"],
-      },
-    ],
-  });
+  let targetDir: string | null = null;
 
-  if (localPathResult) {
-    await sftpStore.downloadFile(
-      sftpStore.activeSessionId,
-      file.path,
-      localPathResult,
-    );
-    message.success("Download started");
+  if (files.length === 1) {
+    const localPathResult = await save({
+      defaultPath: files[0].name,
+      filters: [
+        {
+          name: "All Files",
+          extensions: ["*"],
+        },
+      ],
+    });
+
+    if (localPathResult) {
+      await sftpStore.downloadFile(
+        sftpStore.activeSessionId,
+        files[0].path,
+        localPathResult,
+      );
+      const downloadDir = await dirname(localPathResult);
+      const currentLocalPath = sftpStore.browserState.localPath || "/";
+      if (downloadDir === currentLocalPath) {
+        await sftpStore.listLocalDirectory(currentLocalPath);
+      }
+      message.success("Download started");
+    }
+  } else {
+    const selectedDir = await open({
+      directory: true,
+      multiple: false,
+    });
+
+    if (selectedDir && typeof selectedDir === "string") {
+      targetDir = selectedDir;
+    } else if (Array.isArray(selectedDir) && selectedDir.length > 0) {
+      targetDir = selectedDir[0];
+    }
+
+    if (targetDir) {
+      for (const file of files) {
+        if (file.fileType === "file") {
+          const localFilePath = await join(targetDir, file.name);
+          await sftpStore.downloadFile(
+            sftpStore.activeSessionId,
+            file.path,
+            localFilePath,
+          );
+        }
+      }
+
+      await sftpStore.listLocalDirectory(targetDir);
+      message.success(
+        `Downloading ${files.length} file${files.length > 1 ? "s" : ""}...`,
+      );
+    }
   }
+}
+
+async function handleLocalDownload(_files: FileEntry[]) {
+  message.info("Local download not implemented");
 }
 
 function handleRemoteOpen(file: FileEntry) {
@@ -668,12 +1104,47 @@ function handleRemoteRename(file: FileEntry) {
   openOverlay("sftp-file-rename-modal", { file });
 }
 
-function handleRemoteDelete(file: FileEntry) {
-  openOverlay("sftp-file-delete-modal", { file });
+function handleRemoteDelete(files: FileEntry[]) {
+  if (files.length === 0) return;
+
+  if (files.length === 1) {
+    openOverlay("sftp-file-delete-modal", { file: files[0] });
+  } else {
+    deleteRemoteFiles(files);
+  }
 }
 
-function handleRemotePermissions(file: FileEntry) {
-  openOverlay("sftp-file-permissions-modal", { file });
+async function deleteRemoteFiles(files: FileEntry[]) {
+  if (!sftpStore.activeSessionId) return;
+
+  try {
+    for (const file of files) {
+      await sftpStore.deleteFile(
+        sftpStore.activeSessionId,
+        file.path,
+        file.fileType === "directory",
+      );
+    }
+
+    const dirPath =
+      files.length > 0
+        ? files[0].path.substring(0, files[0].path.lastIndexOf("/")) || "/"
+        : sftpStore.browserState.remotePath || "/";
+
+    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, dirPath);
+    message.success(
+      `Deleted ${files.length} item${files.length > 1 ? "s" : ""} successfully`,
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    message.error(`Failed to delete: ${errorMessage}`);
+  }
+}
+
+function handleRemotePermissions(files: FileEntry[]) {
+  if (files.length === 0) return;
+
+  openOverlay("sftp-file-permissions-modal", { files });
 }
 
 function handleLocalCreateDirectory() {
@@ -712,6 +1183,10 @@ async function handleCreateDirectorySubmit(event: Event) {
           ? `/${customEvent.detail.name}`
           : `${customEvent.detail.path}/${customEvent.detail.name}`;
       await sftpStore.createDirectory(sftpStore.activeSessionId, directoryPath);
+      await sftpStore.listRemoteDirectory(
+        sftpStore.activeSessionId,
+        customEvent.detail.path,
+      );
       message.success("Directory created successfully");
     }
   } catch (error) {
@@ -773,6 +1248,11 @@ async function handleCreateFileSubmit(event: Event) {
 
       await remove(tempFilePath).catch(() => {});
 
+      await sftpStore.listRemoteDirectory(
+        sftpStore.activeSessionId,
+        customEvent.detail.path,
+      );
+
       message.success("File created successfully");
     }
   } catch (error) {
@@ -783,4 +1263,255 @@ async function handleCreateFileSubmit(event: Event) {
 }
 
 function onPaneResize() {}
+
+/**
+ * Handle drag enter pane for visual feedback
+ */
+function handlePaneDragEnter(pane: "local" | "remote", event: DragEvent) {
+  event.preventDefault();
+  if (!event.dataTransfer) return;
+
+  dragEnterCounter.value[pane]++;
+
+  if (event.dataTransfer.types.includes("application/x-filebrowser-files")) {
+    if (dragEnterCounter.value[pane] === 1) {
+      isDraggingOverPane.value = pane;
+    }
+    event.dataTransfer.dropEffect = "copy";
+  }
+}
+
+/**
+ * Handle drag over pane for visual feedback
+ */
+function handlePaneDragOver(pane: "local" | "remote", event: DragEvent) {
+  event.preventDefault();
+  if (!event.dataTransfer) return;
+
+  if (event.dataTransfer.types.includes("application/x-filebrowser-files")) {
+    isDraggingOverPane.value = pane;
+    event.dataTransfer.dropEffect = "copy";
+  }
+}
+
+/**
+ * Handle drag leave pane
+ */
+function handlePaneDragLeave(pane: "local" | "remote", event: DragEvent) {
+  event.preventDefault();
+  dragEnterCounter.value[pane]--;
+
+  if (dragEnterCounter.value[pane] === 0) {
+    isDraggingOverPane.value = null;
+  }
+}
+
+/**
+ * Handle drop on pane wrapper
+ */
+function handlePaneDrop(pane: "local" | "remote", event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  isDraggingOverPane.value = null;
+  dragEnterCounter.value[pane] = 0;
+
+  if (!event.dataTransfer) return;
+
+  const dragData = event.dataTransfer.getData(
+    "application/x-filebrowser-files",
+  );
+
+  if (dragData) {
+    try {
+      const data = JSON.parse(dragData) as {
+        files: Array<{
+          path: string;
+          name: string;
+          fileType: string;
+          size?: number | null;
+          modified?: string;
+        }>;
+        isRemote: boolean;
+        sourcePath: string;
+      };
+
+      const isSourceRemote = data.isRemote;
+      if (
+        (pane === "local" && isSourceRemote) ||
+        (pane === "remote" && !isSourceRemote)
+      ) {
+        const targetPath =
+          pane === "local"
+            ? sftpStore.browserState.localPath || "/"
+            : sftpStore.browserState.remotePath || "/";
+
+        const draggedFileEntries: FileEntry[] = data.files.map((f) => ({
+          name: f.name || "",
+          path: f.path || "",
+          fileType: (f.fileType || "file") as FileEntry["fileType"],
+          size: f.size ?? null,
+          modified: f.modified || new Date().toISOString(),
+          accessed: null,
+          permissions: 0o644,
+          symlinkTarget: null,
+          uid: null,
+          gid: null,
+        }));
+
+        if (pane === "local") {
+          handleLocalDragFiles(draggedFileEntries, targetPath, isSourceRemote);
+        } else {
+          handleRemoteDragFiles(draggedFileEntries, targetPath, isSourceRemote);
+        }
+      }
+    } catch (error) {}
+  }
+}
+
+/**
+ * Recursively collect all files from a local directory
+ */
+async function collectLocalDirectoryFiles(
+  dirPath: string,
+  basePath: string,
+): Promise<Array<{ path: string; relativePath: string }>> {
+  const files: Array<{ path: string; relativePath: string }> = [];
+  const entries = await readDir(dirPath);
+
+  for (const entry of entries) {
+    const normalizedPath = dirPath.endsWith("/")
+      ? dirPath.slice(0, -1)
+      : dirPath;
+    const entryPath =
+      normalizedPath === "/"
+        ? `/${entry.name}`
+        : `${normalizedPath}/${entry.name}`;
+
+    try {
+      const entryStat = await stat(entryPath);
+      const relativePath = entryPath.replace(basePath, "").replace(/^\//, "");
+
+      if (entryStat.isDirectory) {
+        const subFiles = await collectLocalDirectoryFiles(entryPath, basePath);
+        files.push(...subFiles);
+      } else {
+        files.push({ path: entryPath, relativePath });
+      }
+    } catch (error) {
+      console.warn(`Failed to process ${entryPath}:`, error);
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Recursively collect all files from a remote directory
+ */
+async function collectRemoteDirectoryFiles(
+  sessionId: string,
+  dirPath: string,
+  basePath: string,
+): Promise<Array<{ path: string; relativePath: string }>> {
+  const files: Array<{ path: string; relativePath: string }> = [];
+
+  const entries = await sftpService.listSFTPDirectory(sessionId, dirPath);
+
+  for (const entry of entries) {
+    if (entry.name === "." || entry.name === "..") {
+      continue;
+    }
+
+    const relativePath = entry.path.replace(basePath, "").replace(/^\//, "");
+
+    if (entry.fileType === "directory") {
+      const subFiles = await collectRemoteDirectoryFiles(
+        sessionId,
+        entry.path,
+        basePath,
+      );
+      files.push(...subFiles);
+    } else if (entry.fileType === "file") {
+      files.push({ path: entry.path, relativePath });
+    }
+  }
+
+  return files;
+}
+
+/**
+ * Upload a directory recursively to remote
+ */
+async function uploadDirectoryRecursive(
+  sessionId: string,
+  localDirPath: string,
+  remoteBasePath: string,
+  dirName: string,
+): Promise<void> {
+  const remoteDirPath = remoteBasePath.endsWith("/")
+    ? `${remoteBasePath}${dirName}`
+    : `${remoteBasePath}/${dirName}`;
+
+  try {
+    await sftpStore.createDirectory(sessionId, remoteDirPath);
+  } catch (error) {}
+
+  const files = await collectLocalDirectoryFiles(localDirPath, localDirPath);
+
+  for (const file of files) {
+    const remoteFilePath = remoteDirPath.endsWith("/")
+      ? `${remoteDirPath}${file.relativePath}`
+      : `${remoteDirPath}/${file.relativePath}`;
+
+    const remoteParentDir = await dirname(remoteFilePath).catch(() => {
+      const parts = remoteFilePath.split("/");
+      parts.pop();
+      return parts.join("/") || "/";
+    });
+
+    try {
+      await sftpStore.createDirectory(sessionId, remoteParentDir);
+    } catch (error) {}
+
+    await sftpStore.uploadFile(sessionId, file.path, remoteFilePath);
+  }
+}
+
+/**
+ * Download a directory recursively from remote
+ */
+async function downloadDirectoryRecursive(
+  sessionId: string,
+  remoteDirPath: string,
+  localBasePath: string,
+  dirName: string,
+): Promise<void> {
+  const localDirPath = await join(localBasePath, dirName);
+  try {
+    await mkdir(localDirPath, { recursive: true });
+  } catch (error) {}
+
+  const files = await collectRemoteDirectoryFiles(
+    sessionId,
+    remoteDirPath,
+    remoteDirPath,
+  );
+
+  for (const file of files) {
+    const localFilePath = await join(localDirPath, file.relativePath);
+
+    const localParentDir = await dirname(localFilePath).catch(() => {
+      const parts = localFilePath.split("/");
+      parts.pop();
+      return parts.join("/") || "/";
+    });
+
+    try {
+      await mkdir(localParentDir, { recursive: true });
+    } catch (error) {}
+
+    await sftpStore.downloadFile(sessionId, file.path, localFilePath);
+  }
+}
 </script>

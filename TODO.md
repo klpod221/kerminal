@@ -6,15 +6,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 ## SFTP Browser
 
-- [ ] **Directory drag & drop support**
-  - Implement recursive directory upload/download when dragging and dropping directories
-  - Currently only shows warning: "directory drag not supported yet"
-  - Location: `SFTPBrowser.vue` lines 599-643
-
-- [ ] **Drag & drop between 2 panes**
-  - Copy/Move files between local and remote panes
-  - Visual feedback when dragging over target pane
-
 - [ ] **File search**
   - Search files in current directory
   - Filter by name, extension, size, date

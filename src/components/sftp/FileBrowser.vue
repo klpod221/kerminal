@@ -52,12 +52,13 @@
     <!-- File list -->
     <div
       ref="fileListRef"
+      data-filebrowser="true"
       class="flex-1 flex flex-col overflow-hidden relative"
       :class="{
         'bg-blue-500/5': isDragOver && dragOverIndex === -1,
       }"
       @dragover.prevent="onDragOver"
-      @drop.prevent="onDrop"
+      @drop.stop.prevent="onDrop"
       @dragenter.prevent="onDragEnter"
       @dragleave="onDragLeave"
       @contextmenu.prevent="showEmptyContextMenu"
@@ -151,7 +152,7 @@
               @dragend="handleDragEnd"
               @dragover.prevent="handleDragOver($event, file, index)"
               @dragleave="handleDragLeave(index)"
-              @drop.prevent="handleFileDrop($event, file)"
+              @drop.stop.prevent="handleFileDrop($event, file)"
               @click="handleFileClick($event, file, index)"
               @dblclick="handleFileDoubleClick(file)"
               @contextmenu.prevent="showContextMenu($event, file)"
@@ -286,10 +287,10 @@ const emit = defineEmits<{
   (e: "select", path: string): void;
   (e: "open", file: FileEntry): void;
   (e: "edit", file: FileEntry): void;
-  (e: "download", file: FileEntry): void;
+  (e: "download", files: FileEntry[]): void;
   (e: "rename", file: FileEntry): void;
-  (e: "delete", file: FileEntry): void;
-  (e: "permissions", file: FileEntry): void;
+  (e: "delete", files: FileEntry[]): void;
+  (e: "permissions", files: FileEntry[]): void;
   (e: "upload", files: FileList): void;
   (e: "createDirectory"): void;
   (e: "createFile"): void;
@@ -696,6 +697,10 @@ function showContextMenu(event: MouseEvent, file: FileEntry) {
   event.stopImmediatePropagation();
 
   isEmptyContextMenu.value = false;
+
+  // If there are multiple files selected and the clicked file is one of them,
+  // we'll process all selected files for certain actions (delete, download, permissions)
+  // For other actions (rename, open, edit), we'll only process the clicked file
   selectedFile.value = file;
 
   nextTick(() => {
@@ -743,31 +748,62 @@ function handleContextMenuClick(item: ContextMenuItem) {
 
   if (!selectedFile.value) return;
 
-  switch (action) {
-    case "open":
-      emit("open", selectedFile.value);
-      break;
-    case "edit":
-      emit("edit", selectedFile.value);
-      break;
-    case "download":
-      emit("download", selectedFile.value);
-      break;
-    case "rename":
-      emit("rename", selectedFile.value);
-      break;
-    case "delete":
-      emit("delete", selectedFile.value);
-      break;
-    case "permissions":
-      emit("permissions", selectedFile.value);
-      break;
-    case "createFile":
-      emit("createFile");
-      break;
-    case "createDirectory":
-      emit("createDirectory");
-      break;
+  const multiFileActions = new Set(["delete", "download", "permissions"]);
+
+  const shouldProcessAll =
+    multiFileActions.has(action) &&
+    props.selectedFiles.has(selectedFile.value.path) &&
+    props.selectedFiles.size > 1;
+
+  if (shouldProcessAll) {
+    // Process all selected files for multi-file actions
+    const filesToProcess: FileEntry[] = [];
+    for (const file of sortedFiles.value) {
+      if (props.selectedFiles.has(file.path)) {
+        filesToProcess.push(file);
+      }
+    }
+
+    // Emit all files at once for multi-file actions
+    switch (action) {
+      case "download":
+        emit("download", filesToProcess);
+        break;
+      case "delete":
+        emit("delete", filesToProcess);
+        break;
+      case "permissions":
+        emit("permissions", filesToProcess);
+        break;
+    }
+  } else {
+    // Process only the clicked file
+    switch (action) {
+      case "open":
+        emit("open", selectedFile.value);
+        break;
+      case "edit":
+        emit("edit", selectedFile.value);
+        break;
+      case "download":
+        emit("download", [selectedFile.value]);
+        break;
+      case "rename":
+        emit("rename", selectedFile.value);
+        break;
+      case "delete":
+        emit("delete", [selectedFile.value]);
+        break;
+      case "permissions":
+        emit("permissions", [selectedFile.value]);
+        break;
+      case "createFile":
+        emit("createFile");
+        break;
+      case "createDirectory":
+        emit("createDirectory");
+        break;
+    }
   }
 
   selectedFile.value = null;
@@ -785,25 +821,29 @@ function handleDragStart(event: DragEvent, file: FileEntry) {
   draggedFiles.value = filesToDrag;
   isDragging.value = true;
 
-  event.dataTransfer.effectAllowed = "move";
-  event.dataTransfer.setData(
-    "application/x-filebrowser-files",
-    JSON.stringify({
-      files: filesToDrag.map((f) => ({
-        path: f.path,
-        name: f.name,
-        fileType: f.fileType,
-        size: f.size,
-      })),
-      isRemote: props.isRemote,
-      sourcePath: props.currentPath,
-    }),
-  );
+  const dragData = {
+    files: filesToDrag.map((f) => ({
+      path: f.path,
+      name: f.name,
+      fileType: f.fileType,
+      size: f.size,
+    })),
+    isRemote: props.isRemote,
+    sourcePath: props.currentPath,
+  };
 
+  const dragDataString = JSON.stringify(dragData);
+
+  event.dataTransfer.effectAllowed = "copyMove";
+  event.dataTransfer.dropEffect = "copy";
+
+  // Set data in multiple formats to ensure it's available
+  event.dataTransfer.setData("application/x-filebrowser-files", dragDataString);
   event.dataTransfer.setData(
     "text/plain",
     filesToDrag.map((f) => f.name).join(", "),
   );
+  event.dataTransfer.setData("text/json", dragDataString);
 
   if (event.dataTransfer.setDragImage && event.target) {
     const dragImage = document.createElement("div");
@@ -925,6 +965,7 @@ function onDragLeave(event: DragEvent) {
 
 function onDragOver(event: DragEvent) {
   event.preventDefault();
+  event.stopPropagation();
   if (!event.dataTransfer) return;
 
   event.dataTransfer.dropEffect = "copy";
@@ -932,36 +973,112 @@ function onDragOver(event: DragEvent) {
 
 async function onDrop(event: DragEvent) {
   event.preventDefault();
+  event.stopPropagation();
+
   if (!event.dataTransfer) return;
 
   isDragOver.value = false;
   dragOverIndex.value = -1;
 
-  const dragData = event.dataTransfer.getData(
-    "application/x-filebrowser-files",
-  );
+  // Try to get data - it might be empty in drop event, so we need to check items
+  let dragData = "";
+
+  // First try getData
+  try {
+    dragData = event.dataTransfer.getData("application/x-filebrowser-files");
+  } catch (e) {
+    // Ignore
+  }
+
+  // If getData doesn't work, the data might not be available in drop event
+  // This is expected behavior - dataTransfer.getData only works in drop event
+
   if (dragData) {
-    const data = JSON.parse(dragData) as FileBrowserDragData;
-    const targetPath = props.currentPath;
+    try {
+      const data = JSON.parse(dragData) as FileBrowserDragData;
+      const targetPath = props.currentPath;
 
-    const draggedFileEntries: FileEntry[] = data.files.map((f) => ({
-      name: f.name || "",
-      path: f.path || "",
-      fileType: f.fileType || "file",
-      size: f.size ?? null,
-      modified: f.modified || new Date().toISOString(),
-      accessed: null,
-      permissions: 0o644,
-      symlinkTarget: null,
-      uid: null,
-      gid: null,
-    }));
+      const draggedFileEntries: FileEntry[] = data.files.map((f) => ({
+        name: f.name || "",
+        path: f.path || "",
+        fileType: f.fileType || "file",
+        size: f.size ?? null,
+        modified: f.modified || new Date().toISOString(),
+        accessed: null,
+        permissions: 0o644,
+        symlinkTarget: null,
+        uid: null,
+        gid: null,
+      }));
 
-    emit("drag-files", draggedFileEntries, targetPath, data.isRemote);
-    return;
+      emit("drag-files", draggedFileEntries, targetPath, data.isRemote);
+      return;
+    } catch (error) {
+      // Ignore parse errors
+    }
   }
 
   handleExternalDrop(event);
+}
+
+// Recursively collect all files from a directory entry
+async function collectFilesFromDirectory(
+  entry: FileSystemDirectoryEntry,
+  relativePath: string = "",
+): Promise<File[]> {
+  const files: File[] = [];
+  const reader = entry.createReader();
+
+  const readEntries = (): Promise<FileSystemEntry[]> => {
+    return new Promise((resolve, reject) => {
+      reader.readEntries(
+        (entries) => resolve(entries),
+        (error) => reject(error),
+      );
+    });
+  };
+
+  let entries: FileSystemEntry[] = [];
+  try {
+    entries = await readEntries();
+
+    // Read all batches (readEntries may return partial results)
+    while (entries.length > 0) {
+      for (const entry of entries) {
+        if (entry.isFile) {
+          const fileEntry = entry as FileSystemFileEntry;
+          const file = await new Promise<File | null>((resolve, reject) => {
+            fileEntry.file(resolve, reject);
+          });
+          if (file) {
+            // Preserve directory structure by adding path property
+            const fileWithPath = file as File & { path?: string };
+            fileWithPath.path =
+              relativePath === ""
+                ? entry.name
+                : `${relativePath}/${entry.name}`;
+            files.push(file);
+          }
+        } else if (entry.isDirectory) {
+          const dirEntry = entry as FileSystemDirectoryEntry;
+          const newRelativePath =
+            relativePath === "" ? entry.name : `${relativePath}/${entry.name}`;
+          const subFiles = await collectFilesFromDirectory(
+            dirEntry,
+            newRelativePath,
+          );
+          files.push(...subFiles);
+        }
+      }
+      // Try to read more entries
+      const moreEntries = await readEntries();
+      entries = moreEntries;
+    }
+  } catch (error) {
+    console.error("Error reading directory:", error);
+  }
+
+  return files;
 }
 
 async function handleExternalDrop(event: DragEvent) {
@@ -975,13 +1092,20 @@ async function handleExternalDrop(event: DragEvent) {
 
       if (item.kind === "file") {
         const entry = item.webkitGetAsEntry?.();
-        if (entry && entry.isFile) {
-          const fileEntry = entry as FileSystemFileEntry;
-          const file = await new Promise<File | null>((resolve) => {
-            fileEntry.file(resolve, () => resolve(null));
-          });
-          if (file) {
-            files.push(file);
+        if (entry) {
+          if (entry.isFile) {
+            const fileEntry = entry as FileSystemFileEntry;
+            const file = await new Promise<File | null>((resolve, reject) => {
+              fileEntry.file(resolve, reject);
+            });
+            if (file) {
+              files.push(file);
+            }
+          } else if (entry.isDirectory) {
+            // Handle directory drag & drop
+            const dirEntry = entry as FileSystemDirectoryEntry;
+            const dirFiles = await collectFilesFromDirectory(dirEntry);
+            files.push(...dirFiles);
           }
         } else {
           const file = item.getAsFile();

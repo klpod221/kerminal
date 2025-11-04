@@ -5,7 +5,7 @@
     :icon="FileText"
     icon-background="bg-blue-500/20"
     icon-color="text-blue-400"
-    size="2xl"
+    size="6xl"
   >
     <div v-if="loading" class="flex items-center justify-center py-8">
       <div class="text-gray-400">Loading file...</div>

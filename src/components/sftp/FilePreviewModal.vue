@@ -5,7 +5,7 @@
     :icon="previewIcon"
     icon-background="bg-purple-500/20"
     icon-color="text-purple-400"
-    size="2xl"
+    size="6xl"
   >
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="text-gray-400">Loading preview...</div>
@@ -94,6 +94,18 @@
         >
           <pre class="text-xs text-gray-300 whitespace-pre-wrap font-mono">{{
             htmlContent
+          }}</pre>
+        </div>
+      </div>
+
+      <!-- Text Preview -->
+      <div v-else-if="previewType === 'text'" class="flex flex-col gap-2">
+        <div
+          class="bg-gray-900 rounded-lg p-4 overflow-auto border border-gray-700"
+          style="max-height: 70vh"
+        >
+          <pre class="text-xs text-gray-300 whitespace-pre-wrap font-mono">{{
+            textContent
           }}</pre>
         </div>
       </div>
@@ -218,12 +230,20 @@
         Download
       </Button>
       <Button
+        v-if="canEdit && previewType === 'text'"
+        variant="primary"
+        @click="openInEditor"
+      >
+        Edit
+      </Button>
+      <Button
         v-if="
           canEdit &&
           previewType !== 'image' &&
           previewType !== 'video' &&
           previewType !== 'pdf' &&
-          previewType !== 'office'
+          previewType !== 'office' &&
+          previewType !== 'text'
         "
         variant="primary"
         @click="openInEditor"
@@ -263,6 +283,7 @@ const previewUrl = ref<string>("");
 const htmlContent = ref<string>("");
 const markdownContent = ref<string>("");
 const renderedMarkdown = ref<string>("");
+const textContent = ref<string>("");
 const viewMode = ref<"rendered" | "source">("rendered");
 const tempFilePath = ref<string | null>(null);
 
@@ -319,6 +340,76 @@ const previewType = computed(() => {
     return "pdf";
   }
 
+  // Text files
+  const textExtensions = [
+    "txt",
+    "text",
+    "log",
+    "json",
+    "yaml",
+    "yml",
+    "xml",
+    "csv",
+    "tsv",
+    "ini",
+    "conf",
+    "config",
+    "cfg",
+    "properties",
+    "env",
+    "gitignore",
+    "gitattributes",
+    "dockerfile",
+    "makefile",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "ps1",
+    "bat",
+    "cmd",
+    "js",
+    "ts",
+    "jsx",
+    "tsx",
+    "vue",
+    "svelte",
+    "py",
+    "java",
+    "c",
+    "cpp",
+    "cc",
+    "h",
+    "hpp",
+    "cs",
+    "go",
+    "rs",
+    "rb",
+    "php",
+    "swift",
+    "kt",
+    "scala",
+    "clj",
+    "hs",
+    "ml",
+    "sql",
+    "r",
+    "m",
+    "pl",
+    "pm",
+    "lua",
+    "vim",
+    "css",
+    "scss",
+    "sass",
+    "less",
+    "styl",
+    "stylus",
+  ];
+  if (textExtensions.includes(ext)) {
+    return "text";
+  }
+
   // Office documents
   if (
     ["doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp"].includes(
@@ -340,6 +431,7 @@ const previewIcon = computed(() => {
       return File;
     case "html":
     case "markdown":
+    case "text":
       return FileCode;
     case "pdf":
       return File;
@@ -349,7 +441,7 @@ const previewIcon = computed(() => {
 });
 
 const canEdit = computed(() => {
-  return ["html", "markdown"].includes(previewType.value);
+  return ["html", "markdown", "text"].includes(previewType.value);
 });
 
 function renderMarkdown(md: string): string {
@@ -421,12 +513,26 @@ async function loadLocalPreview() {
     const decoder = new TextDecoder();
     markdownContent.value = decoder.decode(fileContent);
     renderedMarkdown.value = renderMarkdown(markdownContent.value);
+  } else if (previewType.value === "text") {
+    const fileContent = await readFile(file.value.path);
+    const decoder = new TextDecoder();
+    textContent.value = decoder.decode(fileContent);
   }
 }
 
 async function loadRemotePreview() {
   if (!file.value || !sftpStore.activeSessionId) {
     throw new Error("No active SFTP session");
+  }
+
+  // For text files, check file size (limit to 10MB for preview)
+  if (
+    previewType.value === "text" &&
+    file.value.size &&
+    file.value.size > 10 * 1024 * 1024
+  ) {
+    error.value = "File too large to preview (max 10MB)";
+    return;
   }
 
   await cleanupTempFile();
@@ -501,6 +607,10 @@ async function loadRemotePreview() {
       const decoder = new TextDecoder();
       markdownContent.value = decoder.decode(fileContent);
       renderedMarkdown.value = renderMarkdown(markdownContent.value);
+    } else if (previewType.value === "text") {
+      const fileContent = await readFile(tempFile);
+      const decoder = new TextDecoder();
+      textContent.value = decoder.decode(fileContent);
     }
   } catch (err) {
     await cleanupTempFile();
