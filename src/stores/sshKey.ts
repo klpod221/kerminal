@@ -12,7 +12,7 @@ import { handleError, type ErrorContext } from "../utils/errorHandler";
 
 export const useSshKeyStore = defineStore("sshKey", () => {
   const keys = ref<SSHKey[]>([]);
-  const loading = ref(false);
+  const isLoading = ref(false);
 
   const keyCount = computed(() => keys.value.length);
 
@@ -24,7 +24,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
    * Load all SSH keys from backend with error handling
    */
   async function loadKeys(): Promise<void> {
-    loading.value = true;
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Load SSH Keys",
     };
@@ -36,7 +36,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       message.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   }
 
@@ -46,7 +46,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
    * @returns Created key
    */
   async function createKey(request: CreateSSHKeyRequest): Promise<SSHKey> {
-    loading.value = true;
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Create SSH Key",
       context: { name: request.name },
@@ -62,7 +62,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       message.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   }
 
@@ -76,7 +76,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
     id: string,
     request: UpdateSSHKeyRequest,
   ): Promise<SSHKey> {
-    loading.value = true;
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Update SSH Key",
       context: { keyId: id },
@@ -95,7 +95,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       message.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   }
 
@@ -105,7 +105,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
    * @param force - Force delete even if used by profiles
    */
   async function deleteKey(id: string, force = false): Promise<void> {
-    loading.value = true;
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Delete SSH Key",
       context: { keyId: id, force },
@@ -129,7 +129,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       message.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   }
 
@@ -146,7 +146,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
     fileContent: string,
     passphrase?: string,
   ): Promise<SSHKey> {
-    loading.value = true;
+    isLoading.value = true;
     const context: ErrorContext = {
       operation: "Import SSH Key",
       context: { name },
@@ -166,7 +166,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
       message.error(errorMessage);
       throw new Error(errorMessage);
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   }
 
@@ -247,7 +247,7 @@ export const useSshKeyStore = defineStore("sshKey", () => {
 
   return {
     keys,
-    loading,
+    isLoading,
     keyCount,
     keysByName,
     loadKeys,

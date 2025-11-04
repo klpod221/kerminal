@@ -2,7 +2,7 @@
   <Modal id="ssh-key-manager-modal" title="SSH Key Manager" size="xl">
     <!-- Empty State -->
     <EmptyState
-      v-if="sshKeyStore.keys.length === 0 && !sshKeyStore.loading"
+      v-if="sshKeyStore.keys.length === 0 && !sshKeyStore.isLoading"
       :icon="Key"
       :icon-size="64"
       title="No SSH Keys"
@@ -32,7 +32,7 @@
 
       <!-- Loading -->
       <SkeletonList
-        v-if="sshKeyStore.loading"
+        v-if="sshKeyStore.isLoading"
         :items="4"
         :show-avatar="false"
         :show-actions="true"

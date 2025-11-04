@@ -287,6 +287,7 @@ import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useSshKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
+import * as sshService from "../../services/sshProfile";
 import type {
   SSHProfile,
   AuthMethod,
@@ -450,9 +451,12 @@ const testConnection = async () => {
 
       const formAuthData = buildAuthData();
       if (formAuthData) {
+        // User entered password in form, use it
         authData = formAuthData;
       } else {
-        const existingProfile = await sshStore.findProfileById(
+        // Password is empty (or other auth method), get from database with decrypted password
+        // Use getSSHProfile() which decrypts password, not findProfileById() from store
+        const existingProfile = await sshService.getSSHProfile(
           sshProfileId.value,
         );
         if (!existingProfile) {
@@ -523,6 +527,9 @@ const testConnection = async () => {
       proxy: testRequest.proxy,
     });
     message.success("SSH connection test successful!");
+  } catch (error) {
+    // Error is handled by the store's testConnection method
+    throw error;
   } finally {
     isTesting.value = false;
   }

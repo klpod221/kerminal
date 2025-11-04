@@ -87,7 +87,7 @@
         >
         <Button
           variant="primary"
-          :loading="isLoading"
+          :loading="sshKeyStore.isLoading"
           :icon="Save"
           @click="handleSubmit"
         >
@@ -121,7 +121,6 @@ const { closeOverlay, getOverlayProp } = useOverlay();
 const keyId = getOverlayProp("ssh-key-modal", "keyId", props.keyId, null);
 
 const keyForm = ref<InstanceType<typeof Form> | null>(null);
-const isLoading = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 const selectedFileName = ref("");
 
@@ -169,63 +168,50 @@ const handleSubmit = async () => {
   const isValid = await keyForm.value?.validate();
   if (!isValid) return;
 
-  isLoading.value = true;
+  if (keyId.value) {
+    const updateRequest: UpdateSSHKeyRequest = {
+      name: formData.value.name,
+      description: formData.value.description || null,
+    };
 
-  try {
-    if (keyId.value) {
-      const updateRequest: UpdateSSHKeyRequest = {
-        name: formData.value.name,
-        description: formData.value.description || null,
-      };
-
-      if (formData.value.privateKey.trim()) {
-        updateRequest.privateKey = formData.value.privateKey;
-      }
-      if (formData.value.publicKey.trim()) {
-        updateRequest.publicKey = formData.value.publicKey || null;
-      }
-      if (formData.value.passphrase.trim()) {
-        updateRequest.passphrase = formData.value.passphrase || null;
-      }
-
-      await sshKeyStore.updateKey(keyId.value, updateRequest);
-      message.success("SSH key updated successfully");
-    } else {
-      await sshKeyStore.createKey({
-        name: formData.value.name,
-        privateKey: formData.value.privateKey,
-        publicKey: formData.value.publicKey || undefined,
-        passphrase: formData.value.passphrase || undefined,
-        description: formData.value.description || undefined,
-      });
-      message.success("SSH key created successfully");
+    if (formData.value.privateKey.trim()) {
+      updateRequest.privateKey = formData.value.privateKey;
+    }
+    if (formData.value.publicKey.trim()) {
+      updateRequest.publicKey = formData.value.publicKey || null;
+    }
+    if (formData.value.passphrase.trim()) {
+      updateRequest.passphrase = formData.value.passphrase || null;
     }
 
-    closeModal();
-  } finally {
-    isLoading.value = false;
+    await sshKeyStore.updateKey(keyId.value, updateRequest);
+  } else {
+    await sshKeyStore.createKey({
+      name: formData.value.name,
+      privateKey: formData.value.privateKey,
+      publicKey: formData.value.publicKey || undefined,
+      passphrase: formData.value.passphrase || undefined,
+      description: formData.value.description || undefined,
+    });
   }
+
+  closeModal();
 };
 
 const loadKey = async () => {
   if (!keyId.value) return;
 
-  isLoading.value = true;
-  try {
-    await sshKeyStore.loadKeys();
-    const key = sshKeyStore.keys.find((k) => k.id === keyId.value);
+  await sshKeyStore.loadKeys();
+  const key = sshKeyStore.keys.find((k) => k.id === keyId.value);
 
-    if (key) {
-      formData.value = {
-        name: key.name,
-        privateKey: "", // Keep empty to avoid showing encrypted data
-        publicKey: "", // Keep empty unless user wants to update
-        passphrase: "", // Keep empty unless user wants to update
-        description: key.description || "",
-      };
-    }
-  } finally {
-    isLoading.value = false;
+  if (key) {
+    formData.value = {
+      name: key.name,
+      privateKey: "", // Keep empty to avoid showing encrypted data
+      publicKey: "", // Keep empty unless user wants to update
+      passphrase: "", // Keep empty unless user wants to update
+      description: key.description || "",
+    };
   }
 };
 
