@@ -1,38 +1,93 @@
 <template>
   <div class="h-full flex flex-col bg-[#0D0D0D]">
-    <!-- Path bar -->
+    <!-- Combined Path & Search bar -->
     <div class="flex items-center gap-2 px-4 py-2 border-b border-gray-800">
       <Button variant="ghost" size="sm" @click="goUp" :disabled="!canGoUp">
         <ArrowUp :size="16" />
       </Button>
-      <div class="flex-1 relative">
-        <input
-          v-model="pathInput"
-          type="text"
-          class="w-full px-3 py-1 bg-gray-900 rounded text-sm text-gray-300 font-mono border border-transparent focus:border-blue-500 focus:outline-none"
-          @keydown.enter="handlePathSubmit"
-          @keydown.escape="handlePathCancel"
-          @keydown.arrow-down.prevent="navigateSuggestion(1)"
-          @keydown.arrow-up.prevent="navigateSuggestion(-1)"
-          @input="handlePathInput"
-          @blur="handlePathBlur"
-          @focus="handlePathFocus"
-          placeholder="Enter path..."
-        />
-        <!-- Autocomplete suggestions -->
+      <div class="flex-1 relative flex items-center gap-1">
         <div
-          v-if="showSuggestions && suggestions.length > 0"
-          class="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-50 max-h-60 overflow-auto"
+          class="flex items-center gap-1 px-2 py-1 bg-gray-900 rounded text-xs text-gray-400 border border-transparent"
         >
-          <div
-            v-for="(suggestion, index) in suggestions"
-            :key="index"
-            class="px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-200"
-            :class="{ 'bg-gray-700': selectedSuggestionIndex === index }"
-            @click="selectSuggestion(suggestion)"
-            @mouseenter="selectedSuggestionIndex = index"
+          <button
+            type="button"
+            class="px-1.5 py-0.5 rounded transition-colors"
+            :class="
+              !isSearchMode
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'text-gray-500 hover:text-gray-300'
+            "
+            @click="isSearchMode = false"
+            title="Path mode"
           >
-            {{ suggestion }}
+            /
+          </button>
+          <button
+            type="button"
+            class="px-1.5 py-0.5 rounded transition-colors"
+            :class="
+              isSearchMode
+                ? 'bg-blue-500/20 text-blue-400'
+                : 'text-gray-500 hover:text-gray-300'
+            "
+            @click="isSearchMode = true"
+            title="Search mode"
+          >
+            <Search :size="12" />
+          </button>
+        </div>
+        <div class="flex-1 relative">
+          <!-- Path input -->
+          <input
+            v-if="!isSearchMode"
+            v-model="pathInput"
+            type="text"
+            class="w-full px-3 py-1 bg-gray-900 rounded text-sm text-gray-300 font-mono border border-transparent focus:border-blue-500 focus:outline-none"
+            @keydown.enter="handlePathSubmit"
+            @keydown.escape="handlePathCancel"
+            @keydown.arrow-down.prevent="navigateSuggestion(1)"
+            @keydown.arrow-up.prevent="navigateSuggestion(-1)"
+            @input="handlePathInput"
+            @blur="handlePathBlur"
+            @focus="handlePathFocus"
+            placeholder="Enter path..."
+          />
+          <!-- Search input -->
+          <div v-else class="flex items-center gap-1">
+            <input
+              ref="searchInputRef"
+              v-model="searchQuery"
+              type="text"
+              class="flex-1 px-2 py-1 bg-gray-900 rounded text-sm text-gray-300 border border-transparent focus:border-blue-500 focus:outline-none"
+              placeholder="Search files..."
+              @keydown.enter="handleSearchEnter"
+            />
+            <Button
+              variant="ghost"
+              size="sm"
+              class="h-7 px-2"
+              :class="{ 'bg-blue-500/20': searchOptions.useRegex }"
+              @click="searchOptions.useRegex = !searchOptions.useRegex"
+              title="Use regex"
+            >
+              <span class="text-xs">.*</span>
+            </Button>
+          </div>
+          <!-- Path autocomplete suggestions -->
+          <div
+            v-if="!isSearchMode && showSuggestions && suggestions.length > 0"
+            class="absolute top-full left-0 right-0 mt-1 bg-gray-800 border border-gray-700 rounded shadow-lg z-50 max-h-60 overflow-auto"
+          >
+            <div
+              v-for="(suggestion, index) in suggestions"
+              :key="index"
+              class="px-3 py-2 hover:bg-gray-700 cursor-pointer text-sm text-gray-200"
+              :class="{ 'bg-gray-700': selectedSuggestionIndex === index }"
+              @click="selectSuggestion(suggestion)"
+              @mouseenter="selectedSuggestionIndex = index"
+            >
+              {{ suggestion }}
+            </div>
           </div>
         </div>
       </div>
@@ -66,7 +121,13 @@
       tabindex="0"
     >
       <EmptyState
-        v-if="files.length === 0 && !loading"
+        v-if="(filteredFiles.length === 0 && searchQuery) && !loading"
+        :icon="Folder"
+        title="No results"
+        :description="`No files match '${searchQuery}'`"
+      />
+      <EmptyState
+        v-else-if="files.length === 0 && !loading"
         :icon="Folder"
         title="Empty directory"
         description="No files or folders in this directory"
@@ -132,7 +193,7 @@
         <div class="flex-1 overflow-auto">
           <div class="divide-y divide-gray-800/50">
             <div
-              v-for="(file, index) in sortedFiles"
+              v-for="(file, index) in filteredFiles"
               :key="file.path"
               :ref="(el) => setFileItemRef(index, el as HTMLElement)"
               data-file-item
@@ -261,6 +322,7 @@ import {
   FilePlus,
   ChevronUp,
   ChevronDown,
+  Search,
 } from "lucide-vue-next";
 import type { FileEntry, FileBrowserDragData } from "../../types/sftp";
 import Button from "../ui/Button.vue";
@@ -305,8 +367,21 @@ const emit = defineEmits<{
 const fileListRef = ref<HTMLElement>();
 const contextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null);
 const selectedFile = ref<FileEntry | null>(null);
+const searchInputRef = ref<HTMLInputElement>();
 
 const isEmptyContextMenu = ref(false);
+
+// Search state
+const isSearchMode = ref(false);
+const searchQuery = ref("");
+const searchOptions = ref({
+  useRegex: false,
+  searchContent: false,
+  filterByName: true,
+  filterByExtension: true,
+  filterBySize: false,
+  filterByDate: false,
+});
 
 // Path input state
 const pathInput = ref(props.currentPath);
@@ -335,11 +410,21 @@ function setFileItemRef(index: number, el: HTMLElement | null) {
 watch(
   () => props.currentPath,
   (newPath) => {
-    if (pathInput.value !== newPath) {
+    if (pathInput.value !== newPath && !isSearchMode.value) {
       pathInput.value = newPath;
     }
   },
 );
+
+watch(isSearchMode, (newValue) => {
+  if (newValue) {
+    nextTick(() => {
+      searchInputRef.value?.focus();
+    });
+  } else {
+    searchQuery.value = "";
+  }
+});
 
 const suggestions = computed(() => {
   if (!showSuggestions.value || !pathInput.value) {
@@ -516,6 +601,86 @@ const sortedFiles = computed(() => {
   });
 });
 
+const filteredFiles = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return sortedFiles.value;
+  }
+
+  const query = searchQuery.value.trim();
+  let regex: RegExp | null = null;
+
+  try {
+    if (searchOptions.value.useRegex) {
+      regex = new RegExp(query, "i");
+    }
+  } catch (error) {
+    // Invalid regex, fall back to plain text search
+    regex = null;
+  }
+
+  const matchText = (text: string): boolean => {
+    if (regex) {
+      return regex.test(text);
+    }
+    return text.toLowerCase().includes(query.toLowerCase());
+  };
+
+  const matchExtension = (fileName: string): boolean => {
+    const ext = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+    return matchText(ext);
+  };
+
+  const matchSize = (size: number | null): boolean => {
+    if (!size) return false;
+    const queryLower = query.toLowerCase();
+    if (queryLower.includes("kb") || queryLower.includes("mb") || queryLower.includes("gb")) {
+      const sizeKB = size / 1024;
+      const sizeMB = size / (1024 * 1024);
+      const sizeGB = size / (1024 * 1024 * 1024);
+      return (
+        matchText(`${Math.round(sizeKB)}kb`) ||
+        matchText(`${Math.round(sizeMB)}mb`) ||
+        matchText(`${sizeGB.toFixed(2)}gb`)
+      );
+    }
+    return matchText(size.toString());
+  };
+
+  const matchDate = (dateString: string | null): boolean => {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const dateStr = date.toLocaleDateString();
+    const timeStr = date.toLocaleTimeString();
+    return matchText(dateStr) || matchText(timeStr);
+  };
+
+  return sortedFiles.value.filter((file) => {
+    let matches = false;
+
+    if (searchOptions.value.filterByName) {
+      matches = matches || matchText(file.name);
+    }
+
+    if (searchOptions.value.filterByExtension && file.fileType === "file") {
+      matches = matches || matchExtension(file.name);
+    }
+
+    if (searchOptions.value.filterBySize && file.fileType === "file") {
+      matches = matches || matchSize(file.size);
+    }
+
+    if (searchOptions.value.filterByDate) {
+      matches = matches || matchDate(file.modified);
+    }
+
+    if (!matches && searchOptions.value.filterByName) {
+      matches = matchText(file.name);
+    }
+
+    return matches;
+  });
+});
+
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -596,7 +761,7 @@ function handleFileClick(event: MouseEvent, file: FileEntry, index: number) {
     const end = Math.max(lastFocusedIndex.value, index);
 
     for (let i = start; i <= end; i++) {
-      const filePath = sortedFiles.value[i].path;
+      const filePath = filteredFiles.value[i].path;
       if (!props.selectedFiles.has(filePath)) {
         emit("select", filePath);
       }
@@ -629,7 +794,7 @@ function handleFileClick(event: MouseEvent, file: FileEntry, index: number) {
 }
 
 function handleKeyDown(event: KeyboardEvent) {
-  if (!fileListRef.value || sortedFiles.value.length === 0) return;
+  if (!fileListRef.value || filteredFiles.value.length === 0) return;
 
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
@@ -637,7 +802,7 @@ function handleKeyDown(event: KeyboardEvent) {
     const currentIndex = focusedIndex.value < 0 ? 0 : focusedIndex.value;
     const newIndex = Math.max(
       0,
-      Math.min(sortedFiles.value.length - 1, currentIndex + direction),
+      Math.min(filteredFiles.value.length - 1, currentIndex + direction),
     );
     focusedIndex.value = newIndex;
     lastFocusedIndex.value = newIndex;
@@ -652,21 +817,21 @@ function handleKeyDown(event: KeyboardEvent) {
   }
 
   if (event.key === "Enter" && focusedIndex.value >= 0) {
-    const file = sortedFiles.value[focusedIndex.value];
+    const file = filteredFiles.value[focusedIndex.value];
     handleFileDoubleClick(file);
     return;
   }
 
   if (event.key === " " && focusedIndex.value >= 0) {
     event.preventDefault();
-    const file = sortedFiles.value[focusedIndex.value];
+    const file = filteredFiles.value[focusedIndex.value];
     toggleSelection(file.path);
     return;
   }
 
   if ((event.ctrlKey || event.metaKey) && event.key === "a") {
     event.preventDefault();
-    sortedFiles.value.forEach((file) => {
+    filteredFiles.value.forEach((file) => {
       if (!props.selectedFiles.has(file.path)) {
         emit("select", file.path);
       }
@@ -689,6 +854,18 @@ function isSelected(path: string): boolean {
 
 function toggleSelection(path: string) {
   emit("select", path);
+}
+
+function handleSearchEnter() {
+  if (filteredFiles.value.length > 0) {
+    focusedIndex.value = 0;
+    nextTick(() => {
+      const element = fileItemRefs.value[0];
+      if (element) {
+        element.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+    });
+  }
 }
 
 function showContextMenu(event: MouseEvent, file: FileEntry) {

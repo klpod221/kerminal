@@ -7,10 +7,7 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 ## SFTP Browser
 
 - [ ] **File search**
-  - Search files in current directory
-  - Filter by name, extension, size, date
   - Search by content, regex filters
-  - Hotkey: Ctrl+F to focus search
 
 - [ ] **Batch selection improvements**
   - Select All / Deselect All
