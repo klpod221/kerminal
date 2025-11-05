@@ -20,18 +20,12 @@ jobs:
           - platform: 'macos-latest' # for Intel-based Macs.
             args: '--target x86_64-apple-darwin'
             target: 'x86_64-apple-darwin'
-          - platform: 'ubuntu-latest' # for Linux x86_64.
-            args: '--target x86_64-unknown-linux-gnu'
-            target: 'x86_64-unknown-linux-gnu'
-          - platform: 'ubuntu-latest' # for Linux ARM64.
-            args: '--target aarch64-unknown-linux-gnu'
-            target: 'aarch64-unknown-linux-gnu'
-          - platform: 'windows-latest' # for Windows x86_64.
-            args: '--target x86_64-pc-windows-msvc'
-            target: 'x86_64-pc-windows-msvc'
-          - platform: 'windows-latest' # for Windows ARM64.
-            args: '--target aarch64-pc-windows-msvc'
-            target: 'aarch64-pc-windows-msvc'
+          - platform: 'ubuntu-latest'
+            args: ''
+            target: ''
+          - platform: 'windows-latest'
+            args: ''
+            target: ''
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
@@ -47,7 +41,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (matrix.target != '' && matrix.target) || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -59,38 +53,11 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          if [ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]; then
-            sudo dpkg --add-architecture arm64
-            # Configure sources for arm64 to use archive.ubuntu.com
-            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
-            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
-            sudo apt-get update || true
-            sudo apt-get install -y gcc-aarch64-linux-gnu pkg-config-aarch64-linux-gnu
-            sudo apt-get install -y libwebkit2gtk-4.1-dev:arm64 libappindicator3-dev:arm64 librsvg2-dev:arm64 || true
-          else
-            sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-          fi
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Install dependencies (windows only)
         if: matrix.platform == 'windows-latest'
-        run: |
-          cargo install --force trusted-signing-cli
-          if ("${{ matrix.target }}" -eq "aarch64-pc-windows-msvc") {
-            rustup target add aarch64-pc-windows-msvc
-          }
-        shell: pwsh
-
-      - name: Setup cross-compilation for Linux ARM
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
-        run: |
-          mkdir -p src-tauri/.cargo
-          echo '[target.aarch64-unknown-linux-gnu]' >> src-tauri/.cargo/config.toml
-          echo 'linker = "aarch64-linux-gnu-gcc"' >> src-tauri/.cargo/config.toml
-          echo 'PKG_CONFIG_ALLOW_CROSS = "1"' >> $GITHUB_ENV
-          echo 'PKG_CONFIG = "aarch64-linux-gnu-pkg-config"' >> $GITHUB_ENV
-          echo 'PKG_CONFIG_PATH_aarch64_unknown_linux_gnu = "/usr/lib/aarch64-linux-gnu/pkgconfig"' >> $GITHUB_ENV
+        run: cargo install --force trusted-signing-cli
 
       - name: Install frontend dependencies
         run: npm install
@@ -99,9 +66,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PKG_CONFIG_ALLOW_CROSS: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '1' || '' }}
-          PKG_CONFIG: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && 'aarch64-linux-gnu-pkg-config' || '' }}
-          PKG_CONFIG_PATH_aarch64_unknown_linux_gnu: ${{ matrix.target == 'aarch64-unknown-linux-gnu' && '/usr/lib/aarch64-linux-gnu/pkgconfig' || '' }}
         with:
           tagName: v__VERSION__
           releaseName: 'Kerminal v__VERSION__'
