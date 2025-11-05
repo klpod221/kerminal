@@ -2,6 +2,7 @@
   <ThemeSelectorModal />
   <CustomThemeModal />
   <FontSettingsModal />
+  <KeyboardShortcutsModal />
 </template>
 
 <script setup lang="ts">
@@ -9,6 +10,7 @@ import { onMounted, onBeforeUnmount } from "vue";
 import ThemeSelectorModal from "./ThemeSelectorModal.vue";
 import CustomThemeModal from "./CustomThemeModal.vue";
 import FontSettingsModal from "./FontSettingsModal.vue";
+import KeyboardShortcutsModal from "./KeyboardShortcutsModal.vue";
 import { useSettingsStore } from "../../stores/settings";
 
 const settingsStore = useSettingsStore();

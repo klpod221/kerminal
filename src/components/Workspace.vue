@@ -24,8 +24,12 @@
 import { onMounted, onBeforeUnmount } from "vue";
 import PanelManager from "./ui/PanelManager.vue";
 import { useWorkspaceStore } from "../stores/workspace";
+import { useGlobalShortcuts } from "../composables/useGlobalShortcuts";
 
 const workspaceStore = useWorkspaceStore();
+
+// Initialize global keyboard shortcuts (singleton, safe to call multiple times)
+useGlobalShortcuts();
 
 onMounted(async () => {
   await workspaceStore.initialize();

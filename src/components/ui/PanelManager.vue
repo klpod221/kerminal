@@ -15,7 +15,7 @@
         @duplicate-tab="duplicateTab"
         @move-tab-to-new-panel="moveTabToNewPanel"
         @terminal-ready="terminalReady"
-        @panel-click="setActivePanel"
+        @set-active-panel="setActivePanel"
         @split-panel-by-drop="splitPanelByDrop"
         @clone-tab-and-split="cloneTabAndSplit"
       />

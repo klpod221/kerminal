@@ -141,6 +141,9 @@ pub fn main() {
             commands::sftp::sftp_sync_directory,
             commands::sftp::sftp_read_file,
             commands::sftp::sftp_write_file,
+            commands::history::get_terminal_history,
+            commands::history::search_history,
+            commands::history::export_history,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

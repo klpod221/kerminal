@@ -227,12 +227,14 @@ import Card from "../ui/Card.vue";
 import Input from "../ui/Input.vue";
 import Slider from "../ui/Slider.vue";
 import { useSettingsStore } from "../../stores/settings";
+import { useDebounce } from "../../composables/useDebounce";
 import { message } from "../../utils/message";
 
 const settingsStore = useSettingsStore();
 
 const availableFonts = ref<string[]>([]);
 const searchQuery = ref("");
+const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 const fontSizeValue = ref(settingsStore.fontSize);
 
 const sizePresets = [
@@ -253,11 +255,11 @@ watch(
 );
 
 const filteredFonts = computed(() => {
-  if (!searchQuery.value) {
+  if (!debouncedSearchQuery.value) {
     return availableFonts.value;
   }
 
-  const query = searchQuery.value.toLowerCase();
+  const query = debouncedSearchQuery.value.toLowerCase();
   return availableFonts.value.filter((font) =>
     font.toLowerCase().includes(query),
   );

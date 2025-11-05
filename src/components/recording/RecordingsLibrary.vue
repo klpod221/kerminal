@@ -137,6 +137,7 @@ import EmptyState from "../ui/EmptyState.vue";
 import SkeletonList from "../ui/SkeletonList.vue";
 import { useRecordingStore } from "../../stores/recording";
 import { useOverlay } from "../../composables/useOverlay";
+import { useDebounce } from "../../composables/useDebounce";
 import { message, showConfirm } from "../../utils/message";
 import type { SessionRecording } from "../../types/recording";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -144,10 +145,11 @@ import { save } from "@tauri-apps/plugin-dialog";
 const recordingStore = useRecordingStore();
 const { openOverlay } = useOverlay();
 const searchQuery = ref("");
+const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 
 const filteredRecordings = computed(() => {
-  if (!searchQuery.value) return recordingStore.recordings;
-  const query = searchQuery.value.toLowerCase();
+  if (!debouncedSearchQuery.value) return recordingStore.recordings;
+  const query = debouncedSearchQuery.value.toLowerCase();
   return recordingStore.recordings.filter(
     (r) =>
       r.sessionName.toLowerCase().includes(query) ||

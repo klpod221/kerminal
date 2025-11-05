@@ -1,65 +1,67 @@
 <template>
-  <div
-    class="group relative flex items-center gap-3 p-3.5 bg-[#2a2a2a] hover:bg-[#303030] border border-gray-700 hover:border-gray-600 rounded-lg cursor-pointer transition-all duration-200"
+  <Card
+    :hover="true"
+    no-padding
+    custom-class="p-3 cursor-pointer"
     @click="$emit('connect', profile)"
   >
-    <!-- Color indicator -->
-    <div class="shrink-0">
-      <div
-        class="w-1 h-10 rounded-full transition-all duration-200"
-        :style="{
-          backgroundColor: profile.color || fallbackColor || '#6b7280',
-        }"
-      />
-    </div>
+    <div class="flex items-center gap-3">
+      <!-- Color indicator -->
+      <div class="shrink-0">
+        <div
+          class="w-1 h-10 rounded-full transition-all duration-200"
+          :style="{
+            backgroundColor: profile.color || fallbackColor || '#6b7280',
+          }"
+        />
+      </div>
 
-    <!-- Profile info -->
-    <div class="flex-1 min-w-0 space-y-1">
-      <h4
-        class="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors truncate"
-      >
-        {{ profile.name }}
-      </h4>
-      <div class="flex items-center gap-2 text-xs text-gray-400">
-        <code class="font-mono"
-          >{{ profile.username }}@{{ profile.host }}:{{ profile.port }}</code
-        >
+      <!-- Profile info -->
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2">
+          <h4 class="text-sm font-medium text-white truncate">
+            {{ profile.name }}
+          </h4>
+        </div>
+        <div class="text-xs text-gray-500 mt-0.5">
+          <code class="font-mono"
+            >{{ profile.username }}@{{ profile.host }}:{{ profile.port }}</code
+          >
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="shrink-0 flex items-center gap-1">
+        <!-- Edit button -->
+        <Button
+          variant="ghost"
+          size="sm"
+          :icon="Edit3"
+          title="Edit profile"
+          class="p-1.5! text-gray-400 hover:text-blue-400 hover:bg-blue-600/20"
+          @click.stop="$emit('edit', profile)"
+        />
+
+        <!-- Delete button -->
+        <Button
+          variant="ghost"
+          size="sm"
+          :icon="Trash2"
+          title="Delete profile"
+          class="p-1.5! text-gray-400 hover:text-red-400 hover:bg-red-600/20"
+          @click.stop="handleDelete"
+        />
       </div>
     </div>
-
-    <!-- Action buttons (hover) -->
-    <div
-      class="flex flex-col items-center gap-1 transition-opacity duration-200 shrink-0"
-      :class="isTouch ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'"
-      @click.stop
-    >
-      <Button
-        title="Edit profile"
-        variant="ghost"
-        size="sm"
-        :icon="Edit3"
-        @click="$emit('edit', profile)"
-      />
-      <Button
-        title="Delete profile"
-        variant="ghost"
-        size="sm"
-        :icon="Trash2"
-        class="text-red-400 hover:text-red-300"
-        @click="handleDelete"
-      />
-    </div>
-  </div>
+  </Card>
 </template>
 
 <script setup lang="ts">
 import type { SSHProfile } from "../../types/ssh";
+import Card from "../ui/Card.vue";
 import Button from "../ui/Button.vue";
 import { Edit3, Trash2 } from "lucide-vue-next";
-import { useWindowSize } from "../../composables/useWindowSize";
 import { showConfirm } from "../../utils/message";
-
-const { isTouch } = useWindowSize();
 
 interface Props {
   profile: SSHProfile;

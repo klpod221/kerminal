@@ -92,7 +92,7 @@
         </div>
 
         <!-- Group Profiles -->
-        <div class="space-y-1">
+        <div class="space-y-2">
           <!-- Show message for empty groups -->
           <div
             v-if="groupData.profileCount === 0 && !searchQuery"
@@ -151,7 +151,7 @@
         </div>
       </div>
 
-      <div class="space-y-1">
+      <div class="space-y-2">
         <SSHConfigHostItem
           v-for="host in filteredConfigHosts"
           :key="host.name"
@@ -212,12 +212,14 @@ import {
   FileCode,
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
+import { useDebounce } from "../../composables/useDebounce";
 import { useSSHStore } from "../../stores/ssh";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { caseInsensitiveIncludes } from "../../utils/helpers";
 import { showConfirm } from "../../utils/message";
 
 const searchQuery = ref("");
+const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 
 const { openOverlay, closeOverlay } = useOverlay();
 const sshStore = useSSHStore();
@@ -235,7 +237,7 @@ const filteredGroupsData = computed(() => {
   const groupsWithProfilesData = sshStore.groupsWithProfiles.groupedData;
   const ungroupedData = sshStore.groupsWithProfiles.getUngroupedData();
 
-  if (!searchQuery.value.trim()) {
+  if (!debouncedSearchQuery.value.trim()) {
     const allData = [];
 
     groupsWithProfilesData.forEach((groupData, groupId) => {
@@ -249,7 +251,7 @@ const filteredGroupsData = computed(() => {
     return allData;
   }
 
-  const query = searchQuery.value.trim();
+  const query = debouncedSearchQuery.value.trim();
   const filteredData = [];
 
   groupsWithProfilesData.forEach((groupData, groupId) => {
@@ -295,11 +297,11 @@ const filteredGroupsData = computed(() => {
  * Filter SSH config hosts based on search query
  */
 const filteredConfigHosts = computed(() => {
-  if (!searchQuery.value.trim()) {
+  if (!debouncedSearchQuery.value.trim()) {
     return sshStore.configHosts;
   }
 
-  const query = searchQuery.value.trim();
+  const query = debouncedSearchQuery.value.trim();
   return sshStore.configHosts.filter(
     (host: SSHConfigHost) =>
       caseInsensitiveIncludes(host.name, query) ||

@@ -7,7 +7,7 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 ## SFTP Browser
 
 - [ ] **File search**
-  - Search by content, regex filters
+  - Search by content
 
 - [ ] **Batch selection improvements**
   - Select All / Deselect All
@@ -42,9 +42,7 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 ## Terminal & Editor
 
 - [ ] **Smarter terminal buffer management**
-  - Smartly load only the necessary lines of the terminal buffer
-  - Load only the lines that are visible in the terminal
-  - Load only the lines that are needed
+  - Smartly save and restore terminal buffer
 
 - [ ] **Command palette**
   - Ctrl+P / Ctrl+K to open command palette
@@ -73,21 +71,11 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 - [ ] **Open file with default application**
   - Open file with default application (System file picker)
 
-- [ ] **Split terminal shortcuts**
-  - Keyboard shortcuts to split quickly
-  - Split preset configurations
-  - Quick split templates
-
 - [ ] **Terminal profiles**
   - Save preset terminals
   - Working directory presets
   - Shell configuration presets
   - Environment variables presets
-
-- [ ] **Command history search**
-  - Search in terminal session history
-  - Filter history by command
-  - Export history
 
 - [ ] **Multiple cursor selection**
   - Multi-cursor support for copy/paste
@@ -101,11 +89,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 ---
 
 ## User Experience
-
-- [ ] **Customizable keyboard shortcuts**
-  - Settings page for keyboard shortcuts
-  - Remap shortcuts according to preference
-  - Conflict detection
 
 - [ ] **Auto-save for file editor**
   - Auto-save after delay (configurable)
@@ -213,7 +196,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Script templates
 
 - [ ] **Remote terminal**
-  - Integrated terminal in SFTP view
   - Execute commands on remote server
   - Terminal history per session
 

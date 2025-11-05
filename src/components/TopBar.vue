@@ -197,6 +197,20 @@
           @click="toggleOverlay('theme-selector-modal')"
         />
 
+        <!-- Keyboard Shortcuts -->
+        <Button
+          title="Keyboard Shortcuts"
+          variant="ghost"
+          size="sm"
+          :icon="Keyboard"
+          :class="
+            isOverlayVisible('keyboard-shortcuts-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('keyboard-shortcuts-modal')"
+        />
+
         <!-- Master Password  -->
         <Button
           title="Master Password Settings"
@@ -325,6 +339,7 @@ import {
   LayoutGrid,
   Server,
   Shield,
+  Keyboard,
   Key,
   Route,
   Terminal,

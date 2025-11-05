@@ -140,7 +140,7 @@
         </div>
 
         <!-- Group Commands -->
-        <div class="space-y-1">
+        <div class="space-y-2">
           <!-- Show message for empty groups -->
           <div
             v-if="groupData.commandCount === 0 && !searchQuery"
@@ -224,6 +224,7 @@ import EmptyState from "../ui/EmptyState.vue";
 import SavedCommandItem from "./SavedCommandItem.vue";
 
 import { useOverlay } from "../../composables/useOverlay";
+import { useDebounce } from "../../composables/useDebounce";
 import { useSavedCommandStore } from "../../stores/savedCommand";
 import { message, showConfirm } from "../../utils/message";
 import type {
@@ -236,6 +237,7 @@ const { openOverlay } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
 
 const searchQuery = ref("");
+const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 const activeFilter = ref<"all" | "favorites" | "recent" | "unused">("all");
 const sortBy = ref<"name" | "lastUsed" | "usageCount" | "createdAt">("name");
 
@@ -260,7 +262,7 @@ const sortOrder = computed(() => {
 
 const filteredCommands = computed(() => {
   const searchParams: SavedCommandSearchParams = {
-    query: searchQuery.value,
+    query: debouncedSearchQuery.value,
     filterBy: activeFilter.value,
     sortBy: sortBy.value,
     sortOrder: sortOrder.value,
@@ -297,7 +299,7 @@ const filteredGroupsData = computed(() => {
   };
 
   return savedCommandStore
-    .getGroupedCommandsData(searchQuery.value)
+    .getGroupedCommandsData(debouncedSearchQuery.value)
     .map((groupData) => {
       const filteredGroupCommands = groupData.commands.filter((command) =>
         filteredCommands.value.some((fc) => fc.id === command.id),
@@ -324,7 +326,8 @@ const filteredGroupsData = computed(() => {
     })
     .filter(
       (groupData) =>
-        groupData.commandCount > 0 || (!searchQuery.value && groupData.group),
+        groupData.commandCount > 0 ||
+        (!debouncedSearchQuery.value && groupData.group),
     );
 });
 

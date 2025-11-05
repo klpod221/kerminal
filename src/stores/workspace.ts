@@ -137,6 +137,26 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   };
 
   /**
+   * Collect all panel IDs from layout tree in order (left-to-right, top-to-bottom)
+   * @param layout - The layout to collect from
+   * @returns Array of panel IDs in order
+   */
+  const collectPanelIds = (layout: PanelLayout): string[] => {
+    const panelIds: string[] = [];
+
+    if (layout.type === "panel" && layout.panel) {
+      panelIds.push(layout.panel.id);
+    } else if (layout.type === "split" && layout.children) {
+      // Process children in order (left-to-right for horizontal, top-to-bottom for vertical)
+      for (const child of layout.children) {
+        panelIds.push(...collectPanelIds(child));
+      }
+    }
+
+    return panelIds;
+  };
+
+  /**
    * Auto close panel when it has no tabs left
    * @param panelId - The panel ID to close
    */
@@ -1364,5 +1384,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     findPanelInLayout: (panelId: string) =>
       findPanelInLayout(panelLayout.value, panelId),
+    collectPanelIds: () => collectPanelIds(panelLayout.value),
   };
 });

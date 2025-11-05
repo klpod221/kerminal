@@ -1,20 +1,20 @@
 <template>
-  <div class="inline-flex items-center">
+  <div class="inline-flex items-center gap-1.5">
     <template v-for="(key, index) in keys" :key="index">
       <kbd
-        class="inline-flex items-center justify-center min-w-6 h-6 px-2 text-xs font-medium text-gray-300 bg-gray-800 border border-gray-600 rounded shadow-sm"
+        class="key-badge inline-flex items-center justify-center font-medium text-white transition-all duration-200"
         :class="[
-          size === 'sm' ? 'min-w-5 h-5 text-xs' : 'min-w-6 h-6 text-xs',
-          variant === 'light'
-            ? 'bg-gray-700 border-gray-500 text-gray-200'
-            : 'bg-gray-800 border-gray-600 text-gray-300',
+          size === 'sm'
+            ? 'min-w-[20px] h-5 px-1.5 text-[10px] leading-tight'
+            : 'min-w-[24px] h-6 px-2 text-xs leading-tight',
+          variant === 'light' ? 'key-badge-light' : 'key-badge-default',
         ]"
       >
         {{ formatKey(key) }}
       </kbd>
       <span
         v-if="index < keys.length - 1 && showSeparator"
-        class="text-gray-500 text-xs font-medium mx-1"
+        class="text-gray-400 text-xs font-medium leading-none"
       >
         +
       </span>
@@ -102,34 +102,29 @@ const formatKey = (key: string): string => {
 </script>
 
 <style scoped>
-kbd {
-  box-shadow:
-    0 1px 0 0 rgb(255 255 255 / 0.1) inset,
-    0 1px 2px 0 rgb(0 0 0 / 0.3);
-  background: linear-gradient(180deg, #374151 0%, #1f2937 100%);
+.key-badge {
+  background: #374151;
   border: 1px solid #4b5563;
-  position: relative;
+  border-radius: 0.375rem;
+  user-select: none;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
+    "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+  letter-spacing: 0.025em;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 
-kbd:before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
+/* Light variant */
+.key-badge-light {
+  background: #4b5563;
+  border-color: #6b7280;
 }
 
-/* VSCode-style key styling */
-.variant-light kbd {
-  background: linear-gradient(180deg, #6b7280 0%, #374151 100%);
-  border-color: #9ca3af;
-  color: #f3f4f6;
+/* Smooth transitions */
+.key-badge {
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 </style>

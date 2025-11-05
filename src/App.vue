@@ -44,6 +44,7 @@ import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
 import SettingsManager from "./components/settings/SettingsManager.vue";
 
 import { useOverlay } from "./composables/useOverlay";
+import { useGlobalShortcuts } from "./composables/useGlobalShortcuts";
 
 import { useViewStateStore } from "./stores/viewState";
 import { useAuthStore } from "./stores/auth";
@@ -52,6 +53,9 @@ const viewState = useViewStateStore();
 const authStore = useAuthStore();
 
 const { openOverlay, closeAllOverlays } = useOverlay();
+
+// Initialize global keyboard shortcuts once at app level
+useGlobalShortcuts();
 
 onMounted(async () => {
   try {

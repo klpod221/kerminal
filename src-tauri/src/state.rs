@@ -2,6 +2,7 @@ use crate::core::auth_session_manager::AuthSessionManager;
 use crate::database::{DatabaseService, DatabaseServiceConfig};
 use crate::services::{
     auth::AuthService,
+    history::HistoryManager,
     saved_command::SavedCommandService,
     sftp::{SFTPService, transfer::TransferManager, sync::SyncService as SFTPSyncService},
     ssh::{SSHConnectionPool, SSHKeyService, SSHService},
@@ -22,11 +23,12 @@ pub struct AppState {
     pub tunnel_service: TunnelService,
     pub saved_command_service: SavedCommandService,
     pub sync_service: Arc<SyncService>,
-    pub terminal_manager: TerminalManager,
+    pub terminal_manager: Arc<TerminalManager>,
     pub auth_session_manager: Arc<Mutex<AuthSessionManager>>,
     pub sftp_service: Arc<SFTPService>,
     pub sftp_transfer_manager: Arc<TransferManager>,
     pub sftp_sync_service: Arc<SFTPSyncService>,
+    pub history_manager: HistoryManager,
 }
 
 impl AppState {
@@ -69,6 +71,11 @@ impl AppState {
         ));
         let sftp_transfer_manager = Arc::new(TransferManager::new(sftp_service.clone()));
         let sftp_sync_service = Arc::new(SFTPSyncService::new(sftp_service.clone()));
+        let terminal_manager_arc = Arc::new(terminal_manager);
+        let history_manager = HistoryManager::new(
+            terminal_manager_arc.clone(),
+            ssh_service_arc.clone(),
+        );
 
         Ok(Self {
             database_service: database_service_arc,
@@ -79,11 +86,12 @@ impl AppState {
             tunnel_service,
             saved_command_service,
             sync_service,
-            terminal_manager,
+            terminal_manager: terminal_manager_arc,
             auth_session_manager,
             sftp_service,
             sftp_transfer_manager,
             sftp_sync_service,
+            history_manager,
         })
     }
 }
@@ -123,6 +131,11 @@ impl Default for AppState {
         ));
         let sftp_transfer_manager = Arc::new(TransferManager::new(sftp_service.clone()));
         let sftp_sync_service = Arc::new(SFTPSyncService::new(sftp_service.clone()));
+        let terminal_manager_arc = Arc::new(terminal_manager);
+        let history_manager = HistoryManager::new(
+            terminal_manager_arc.clone(),
+            ssh_service_arc.clone(),
+        );
 
         Self {
             database_service: database_service_arc,
@@ -133,11 +146,12 @@ impl Default for AppState {
             tunnel_service,
             saved_command_service,
             sync_service,
-            terminal_manager,
+            terminal_manager: terminal_manager_arc,
             auth_session_manager,
             sftp_service,
             sftp_transfer_manager,
             sftp_sync_service,
+            history_manager,
         }
     }
 }

@@ -127,6 +127,9 @@
         </div>
       </div>
     </div>
+
+    <!-- History Search Modal -->
+    <HistorySearchModal />
   </div>
 </template>
 
@@ -147,6 +150,7 @@ import { useWorkspaceStore } from "../../stores/workspace";
 import { XCircle, RefreshCw, X } from "lucide-vue-next";
 import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
+import HistorySearchModal from "../history/HistorySearchModal.vue";
 import { getTerminalTheme } from "../../utils/terminalTheme";
 import type { SimpleTerminal } from "../../core";
 import { useSettingsStore } from "../../stores/settings";
@@ -475,6 +479,7 @@ onMounted(async () => {
   });
 
   term.attachCustomKeyEventHandler((arg: KeyboardEvent): boolean => {
+    // Handle Ctrl+Shift+V / Cmd+Shift+V for paste (terminal-specific, always enabled)
     if (
       (arg.ctrlKey || arg.metaKey) &&
       arg.shiftKey &&
@@ -489,6 +494,10 @@ onMounted(async () => {
       })();
       return false;
     }
+
+    // History search is now handled by global shortcuts manager
+    // No need to handle it here anymore
+
     return true;
   });
 

@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod base;
 pub mod buffer;
+pub mod history;
 pub mod recording;
 pub mod saved_command;
 pub mod sftp;

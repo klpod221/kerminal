@@ -82,7 +82,7 @@
       </div>
     </div>
 
-    <div v-if="helper" class="min-h-5">
+    <div v-if="helper" :class="space && 'min-h-5'">
       <!-- Helper text (only show if no error) -->
       <p v-if="helperText && !errorMessage" class="text-xs text-gray-400">
         {{ helperText }}
@@ -130,6 +130,7 @@ interface InputProps {
   autocomplete?: string;
   helper?: boolean;
   autofocus?: boolean;
+  space?: boolean;
 }
 
 const props = withDefaults(defineProps<InputProps>(), {
@@ -138,6 +139,7 @@ const props = withDefaults(defineProps<InputProps>(), {
   disabled: false,
   readonly: false,
   helper: true,
+  space: true,
 });
 
 const emit = defineEmits([
