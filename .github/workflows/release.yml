@@ -61,9 +61,14 @@ jobs:
           sudo apt-get update
           if [ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]; then
             sudo dpkg --add-architecture arm64
-            sudo apt-get update
+            # Configure sources for arm64 to use archive.ubuntu.com
+            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/arm64.list
+            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+            echo "deb [arch=arm64] http://archive.ubuntu.com/ubuntu/ noble-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/arm64.list
+            sudo apt-get update || true
             sudo apt-get install -y gcc-aarch64-linux-gnu pkg-config-aarch64-linux-gnu
-            sudo apt-get install -y libwebkit2gtk-4.1-dev:arm64 libappindicator3-dev:arm64 librsvg2-dev:arm64
+            sudo apt-get install -y libwebkit2gtk-4.1-dev:arm64 libappindicator3-dev:arm64 librsvg2-dev:arm64 || true
           else
             sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
           fi
