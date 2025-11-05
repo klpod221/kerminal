@@ -68,9 +68,10 @@ jobs:
         if: matrix.platform == 'windows-latest'
         run: |
           cargo install --force trusted-signing-cli
-          if [ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]; then
+          if ("${{ matrix.target }}" -eq "aarch64-pc-windows-msvc") {
             rustup target add aarch64-pc-windows-msvc
-          fi
+          }
+        shell: pwsh
 
       - name: Setup cross-compilation for Linux ARM
         if: matrix.target == 'aarch64-unknown-linux-gnu'
