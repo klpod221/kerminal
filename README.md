@@ -68,7 +68,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 
 ### 💾 Saved Commands & Session Recording
 - Command library with groups, usage tracking, favorites, and variable substitution
-- Record sessions in asciicast format with playback controls and export capabilities
+- Record sessions in `asciicast` format with playback controls and export capabilities
 
 ### 🔄 Multi-Device Sync & Security
 - Sync via MySQL/PostgreSQL/MongoDB with AES-256-GCM encryption
