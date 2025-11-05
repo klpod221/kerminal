@@ -20,12 +20,18 @@ jobs:
           - platform: 'macos-latest' # for Intel-based Macs.
             args: '--target x86_64-apple-darwin'
             target: 'x86_64-apple-darwin'
-          - platform: 'ubuntu-latest'
-            args: ''
-            target: ''
-          - platform: 'windows-latest'
-            args: ''
-            target: ''
+          - platform: 'ubuntu-latest' # for Linux x86_64.
+            args: '--target x86_64-unknown-linux-gnu'
+            target: 'x86_64-unknown-linux-gnu'
+          - platform: 'ubuntu-latest' # for Linux ARM64.
+            args: '--target aarch64-unknown-linux-gnu'
+            target: 'aarch64-unknown-linux-gnu'
+          - platform: 'windows-latest' # for Windows x86_64.
+            args: '--target x86_64-pc-windows-msvc'
+            target: 'x86_64-pc-windows-msvc'
+          - platform: 'windows-latest' # for Windows ARM64.
+            args: '--target aarch64-pc-windows-msvc'
+            target: 'aarch64-pc-windows-msvc'
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
@@ -41,7 +47,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (matrix.target != '' && matrix.target) || '' }}
 
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
@@ -54,10 +60,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          if [ "${{ matrix.target }}" == "aarch64-unknown-linux-gnu" ]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
 
       - name: Install dependencies (windows only)
         if: matrix.platform == 'windows-latest'
-        run: cargo install --force trusted-signing-cli
+        run: |
+          cargo install --force trusted-signing-cli
+          if [ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]; then
+            rustup target add aarch64-pc-windows-msvc
+          fi
+
+      - name: Setup cross-compilation for Linux ARM
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          mkdir -p src-tauri/.cargo
+          echo '[target.aarch64-unknown-linux-gnu]' >> src-tauri/.cargo/config.toml
+          echo 'linker = "aarch64-linux-gnu-gcc"' >> src-tauri/.cargo/config.toml
 
       - name: Install frontend dependencies
         run: npm install
@@ -74,118 +94,118 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-  build-android:
-    permissions:
-      contents: write
-    name: Build Android APK
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  # build-android:
+  #   permissions:
+  #     contents: write
+  #   name: Build Android APK
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 60
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '22'
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+  #     - name: Setup Rust
+  #       uses: dtolnay/rust-toolchain@stable
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+  #     - name: Setup Java
+  #       uses: actions/setup-java@v4
+  #       with:
+  #         distribution: 'temurin'
+  #         java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+  #     - name: Setup Android SDK
+  #       uses: android-actions/setup-android@v3
 
-      - name: Install Android NDK
-        run: |
-          yes | sdkmanager --licenses || true
-          sdkmanager --install
+  #     - name: Install Android NDK
+  #       run: |
+  #         yes | sdkmanager --licenses || true
+  #         sdkmanager --install
 
-      - name: Install Rust Android targets
-        run: |
-          rustup target add aarch64-linux-android
-          rustup target add armv7-linux-androideabi
-          rustup target add x86_64-linux-android
-          rustup target add i686-linux-android
+  #     - name: Install Rust Android targets
+  #       run: |
+  #         rustup target add aarch64-linux-android
+  #         rustup target add armv7-linux-androideabi
+  #         rustup target add x86_64-linux-android
+  #         rustup target add i686-linux-android
 
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-          shared-key: 'android'
+  #     - name: Cache Rust dependencies
+  #       uses: Swatinem/rust-cache@v2
+  #       with:
+  #         workspaces: './src-tauri -> target'
+  #         shared-key: 'android'
 
-      - name: Install frontend dependencies
-        run: npm install
+  #     - name: Install frontend dependencies
+  #       run: npm install
 
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli
+  #     - name: Install Tauri CLI
+  #       run: npm install -g @tauri-apps/cli
 
-      - name: Decode and Setup Keystore
-        run: |
-          # Create directory for keystore and properties
-          mkdir -p src-tauri/gen/android/app
+  #     - name: Decode and Setup Keystore
+  #       run: |
+  #         # Create directory for keystore and properties
+  #         mkdir -p src-tauri/gen/android/app
 
-          # Decode the base64 keystore and save it
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > src-tauri/gen/android/app/release.jks
+  #         # Decode the base64 keystore and save it
+  #         echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > src-tauri/gen/android/app/release.jks
 
-          # Create the keystore.properties file
-          echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > src-tauri/gen/android/app/keystore.properties
-          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> src-tauri/gen/android/app/keystore.properties
-          echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> src-tauri/gen/android/app/keystore.properties
-          echo "storeFile=release.jks" >> src-tauri/gen/android/app/keystore.properties
+  #         # Create the keystore.properties file
+  #         echo "storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" > src-tauri/gen/android/app/keystore.properties
+  #         echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" >> src-tauri/gen/android/app/keystore.properties
+  #         echo "keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}" >> src-tauri/gen/android/app/keystore.properties
+  #         echo "storeFile=release.jks" >> src-tauri/gen/android/app/keystore.properties
 
-          echo "Keystore and properties files created successfully."
+  #         echo "Keystore and properties files created successfully."
 
-      - name: Verify Keystore Files
-        run: |
-          echo "--- Verifying created files in src-tauri/gen/android/app/ ---"
-          ls -l src-tauri/gen/android/app/
-          echo "--- Checking content of keystore.properties ---"
-          cat src-tauri/gen/android/app/keystore.properties || echo "!!! keystore.properties file NOT FOUND !!!"
-          echo "---------------------------------------------------------"
+  #     - name: Verify Keystore Files
+  #       run: |
+  #         echo "--- Verifying created files in src-tauri/gen/android/app/ ---"
+  #         ls -l src-tauri/gen/android/app/
+  #         echo "--- Checking content of keystore.properties ---"
+  #         cat src-tauri/gen/android/app/keystore.properties || echo "!!! keystore.properties file NOT FOUND !!!"
+  #         echo "---------------------------------------------------------"
 
-      - name: Build APK
-        run: npm run tauri android build -- --apk true
+  #     - name: Build APK
+  #       run: npm run tauri android build -- --apk true
 
-      - name: Rename APK files
-        run: |
-          VERSION=${{ github.ref_name }}
-          CLEAN_VERSION=${VERSION#v}
+  #     - name: Rename APK files
+  #       run: |
+  #         VERSION=${{ github.ref_name }}
+  #         CLEAN_VERSION=${VERSION#v}
 
-          mkdir -p release-apks
+  #         mkdir -p release-apks
 
-          echo "Searching for signed APKs..."
-          # Find all signed APK files (not containing 'unsigned') located in subdirectories of 'apk'
-          find src-tauri/gen/android/app/build/outputs/apk -type f -name "*-release.apk" -not -name "*-unsigned.apk" | while read apk; do
-            # Get architecture from the name of the directory containing the APK file, e.g., 'arm64-v8a'
-            ARCH=$(basename $(dirname $(dirname "$apk")))
+  #         echo "Searching for signed APKs..."
+  #         # Find all signed APK files (not containing 'unsigned') located in subdirectories of 'apk'
+  #         find src-tauri/gen/android/app/build/outputs/apk -type f -name "*-release.apk" -not -name "*-unsigned.apk" | while read apk; do
+  #           # Get architecture from the name of the directory containing the APK file, e.g., 'arm64-v8a'
+  #           ARCH=$(basename $(dirname $(dirname "$apk")))
 
-            # Create a new filename based on the version and architecture
-            NEW_FILENAME="kerminal-${CLEAN_VERSION}-${ARCH}.apk"
-            cp "$apk" "release-apks/${NEW_FILENAME}"
-            echo "Found and copied signed APK: $apk -> release-apks/${NEW_FILENAME}"
-          done
+  #           # Create a new filename based on the version and architecture
+  #           NEW_FILENAME="kerminal-${CLEAN_VERSION}-${ARCH}.apk"
+  #           cp "$apk" "release-apks/${NEW_FILENAME}"
+  #           echo "Found and copied signed APK: $apk -> release-apks/${NEW_FILENAME}"
+  #         done
 
-          echo "Signed APK files ready for release:"
-          ls -lh release-apks/
+  #         echo "Signed APK files ready for release:"
+  #         ls -lh release-apks/
 
-          # Add a check step to fail the workflow if no APKs are found
-          if [ -z "$(ls -A release-apks)" ]; then
-            echo "::error::No signed APK files were found after the build. Aborting."
-            exit 1
-          fi
+  #         # Add a check step to fail the workflow if no APKs are found
+  #         if [ -z "$(ls -A release-apks)" ]; then
+  #           echo "::error::No signed APK files were found after the build. Aborting."
+  #           exit 1
+  #         fi
 
-      - name: Upload APK to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: release-apks/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #     - name: Upload APK to Release
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         files: release-apks/*.apk
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-aur:
     name: Publish to AUR (${{ matrix.repo }})
