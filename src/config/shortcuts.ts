@@ -106,7 +106,7 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     label: "Open Saved Commands",
     category: "Navigation",
     defaultKey: "c",
-    defaultModifiers: { ctrlKey: true, shiftKey: true }, // Ctrl+Shift on Windows/Linux, Cmd+Shift on Mac
+    defaultModifiers: { ctrlKey: true, altKey: true }, // Ctrl+Alt on Windows/Linux, Cmd+Alt on Mac
     customizable: true,
   },
 ];
