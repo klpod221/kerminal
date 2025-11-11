@@ -33,7 +33,7 @@
           </div>
         </div>
         <div
-          class="w-full p-4 bg-[#0a0a0a] rounded-lg border border-gray-700 shadow-inner overflow-x-auto"
+          class="w-full p-4 bg-bg-quaternary rounded-lg border border-gray-700 shadow-inner overflow-x-auto"
           :style="{
             fontFamily: `'${settingsStore.fontFamily}', monospace`,
             fontSize: `${settingsStore.fontSize}px`,

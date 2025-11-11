@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex flex-col h-full cursor-pointer relative bg-[#0D0D0D] panel"
+    class="flex flex-col h-full cursor-pointer relative bg-bg-primary panel"
     @click="handlePanelClick"
     @dragover="onDragOver"
     @dragenter="onDragEnter"
@@ -11,8 +11,8 @@
     <div
       class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
       :class="{
-        'opacity-100 bg-linear-to-br from-[#141a20] to-[#0D0D0D]': isActive,
-        'opacity-0 bg-[#0D0D0D]': !isActive,
+        'opacity-100 bg-linear-to-br from-slate-900 to-bg-primary': isActive,
+        'opacity-0 bg-bg-primary': !isActive,
       }"
     ></div>
     <!-- Active panel blue tint -->

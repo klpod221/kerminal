@@ -1,7 +1,7 @@
 <template>
   <div
     :class="[
-      'bg-linear-to-br from-[#2a2a2a] to-[#1f1f1f] rounded-xl border border-gray-600',
+      'bg-linear-to-br from-zinc-800 to-border-dark rounded-xl border border-gray-600',
       'transition-all duration-300 relative overflow-hidden',
       {
         'hover:border-gray-500 hover:shadow-lg cursor-pointer hover:-translate-y-0.5 hover:scale-[1.02]':

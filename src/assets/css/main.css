@@ -2,6 +2,25 @@
 @import "./animations.css";
 @import "tailwindcss";
 
+@theme {
+  /* Custom background colors */
+  --color-bg-primary: #0d0d0d;
+  --color-bg-secondary: #171717;
+  --color-bg-tertiary: #1a1a1a;
+  --color-bg-quaternary: #0a0a0a;
+
+  /* Scrollbar colors */
+  --color-scrollbar-thumb: #888888;
+  --color-scrollbar-thumb-hover: #555555;
+  --color-scrollbar-thumb-mobile: #666666;
+
+  /* Accent colors */
+  --color-accent-blue: #74c7ec;
+
+  /* Border colors */
+  --color-border-dark: #1f1f1f;
+}
+
 html,
 body {
   background-color: transparent;
@@ -24,12 +43,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: #888;
+  background-color: var(--color-scrollbar-thumb);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: #555;
+  background-color: var(--color-scrollbar-thumb-hover);
 }
 
 /* Touch-friendly scrollbar for mobile */
@@ -40,7 +59,7 @@ body {
   }
 
   ::-webkit-scrollbar-thumb {
-    background-color: #666;
+    background-color: var(--color-scrollbar-thumb-mobile);
     border-radius: 6px;
   }
 }

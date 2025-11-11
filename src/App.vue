@@ -1,5 +1,5 @@
 <template>
-  <div class="h-screen w-screen flex flex-col bg-[#0D0D0D] overflow-hidden">
+  <div class="h-screen w-screen flex flex-col bg-bg-primary overflow-hidden">
     <TopBar />
 
     <div class="grow overflow-hidden">

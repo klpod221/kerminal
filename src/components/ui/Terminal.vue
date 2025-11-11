@@ -1,12 +1,12 @@
 <template>
   <div
     ref="terminalRef"
-    class="w-full h-full bg-[#171717] terminal-container relative"
+    class="w-full h-full bg-bg-secondary terminal-container relative"
   >
     <!-- SSH Connecting Overlay -->
     <div
       v-if="isConnecting"
-      class="absolute inset-0 bg-[#171717]/95 flex items-center justify-center z-50"
+      class="absolute inset-0 bg-bg-secondary/95 flex items-center justify-center z-50"
     >
       <div class="flex flex-col items-center space-y-4">
         <!-- Large spinning icon -->
@@ -34,7 +34,7 @@
     <!-- Connection Lost Overlay with Reconnect -->
     <div
       v-if="showDisconnectedOverlay"
-      class="absolute inset-0 bg-[#171717]/95 flex items-center justify-center z-50"
+      class="absolute inset-0 bg-bg-secondary/95 flex items-center justify-center z-50"
     >
       <div class="flex flex-col items-center space-y-6 max-w-md px-4">
         <!-- Error icon -->
@@ -80,7 +80,7 @@
     <!-- Error Overlay for SSH Connection Errors -->
     <div
       v-if="showErrorOverlay"
-      class="absolute inset-0 bg-[#171717]/95 flex items-center justify-center z-50"
+      class="absolute inset-0 bg-bg-secondary/95 flex items-center justify-center z-50"
     >
       <div class="flex flex-col items-center space-y-6 max-w-lg px-4">
         <!-- Error icon -->

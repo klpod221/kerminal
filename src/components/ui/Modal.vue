@@ -31,7 +31,7 @@
         :class="isMobile ? 'top-[30px]' : 'top-[30px]'"
       >
         <div
-          class="relative bg-[#1a1a1a] border border-gray-700 shadow-2xl overflow-hidden pointer-events-auto"
+          class="relative bg-bg-tertiary border border-gray-700 shadow-2xl overflow-hidden pointer-events-auto"
           :class="[
             sizeClass,
             isMobile
@@ -97,7 +97,7 @@
           <!-- Footer -->
           <div
             v-if="$slots.footer"
-            class="flex justify-end space-x-3 border-t border-gray-700 bg-[#171717]"
+            class="flex justify-end space-x-3 border-t border-gray-700 bg-bg-secondary"
             :class="isMobile ? 'p-3' : 'p-4'"
           >
             <slot name="footer" />

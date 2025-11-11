@@ -63,7 +63,7 @@
         </div>
 
         <!-- Preview -->
-        <div class="p-3 bg-[#1a1a1a] rounded-lg border border-gray-600">
+        <div class="p-3 bg-bg-tertiary rounded-lg border border-gray-600">
           <h4 class="text-sm font-medium text-gray-300 mb-2">Preview</h4>
           <div class="flex items-center space-x-2">
             <component

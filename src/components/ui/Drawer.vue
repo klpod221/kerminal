@@ -31,7 +31,7 @@
     >
       <div
         v-if="isVisible"
-        class="no-drag fixed z-50 bg-[#1a1a1a] border-gray-700 flex flex-col sm:top-9 h-[calc(100vh-30px)] shadow-2xl"
+        class="no-drag fixed z-50 bg-bg-tertiary border-gray-700 flex flex-col sm:top-9 h-[calc(100vh-30px)] shadow-2xl"
         :class="[
           position === 'left' ? 'left-0 border-r' : 'right-0 border-l',
           widthClass,

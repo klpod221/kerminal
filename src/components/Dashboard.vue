@@ -1,6 +1,6 @@
 <template>
   <div
-    class="h-full bg-[#171717] text-white overflow-y-auto dashboard-container"
+    class="h-full bg-bg-secondary text-white overflow-y-auto dashboard-container"
     :class="isMobile ? 'p-3' : 'p-4'"
   >
     <div class="container mx-auto animate-fade-in">
@@ -12,7 +12,7 @@
           class="mx-auto mb-4"
         />
         <h1
-          class="text-center font-extrabold bg-linear-to-r from-[#74c7ec] to-[#facc15] bg-clip-text text-transparent"
+          class="text-center font-extrabold bg-linear-to-r from-accent-blue to-yellow-400 bg-clip-text text-transparent"
           :class="isMobile ? 'text-3xl' : 'text-5xl md:text-6xl'"
         >
           Kerminal
@@ -322,7 +322,7 @@
           <div class="flex justify-center items-center space-x-2">
             <div
               v-if="loading"
-              class="animate-spin rounded-full h-4 w-4 border-b-2 border-[#74c7ec]"
+              class="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-blue"
             ></div>
             <span class="text-xs text-gray-500">
               {{ loading ? "Updating..." : "Auto-refresh every 5s" }}

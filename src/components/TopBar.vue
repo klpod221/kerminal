@@ -1,6 +1,6 @@
 <template>
   <div
-    class="grid items-center h-[30px] sm:h-9 text-white font-sans select-none bg-[#0D0D0D] border-b border-gray-800 shrink-0 relative z-50 topbar-container"
+    class="grid items-center h-[30px] sm:h-9 text-white font-sans select-none bg-bg-primary border-b border-gray-800 shrink-0 relative z-50 topbar-container"
     :class="isMobile ? 'grid-cols-[auto_1fr_auto]' : 'grid-cols-3'"
   >
     <!-- Overlay when top bar is not active -->
@@ -243,7 +243,7 @@
           @click="showMobileMenu = false"
         >
           <div
-            class="absolute right-0 top-0 bg-[#1a1a1a] border-l border-gray-700 w-64 shadow-xl"
+            class="absolute right-0 top-0 bg-bg-tertiary border-l border-gray-700 w-64 shadow-xl"
             @click.stop
           >
             <div class="p-2 space-y-1">

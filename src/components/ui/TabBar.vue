@@ -1,6 +1,6 @@
 <template>
   <div
-    class="flex items-center border-b border-gray-800 relative bg-[#0D0D0D] sm:h-[30px] sm:min-h-[30px] sm:max-h-[30px]"
+    class="flex items-center border-b border-gray-800 relative bg-bg-primary sm:h-[30px] sm:min-h-[30px] sm:max-h-[30px]"
     :class="
       isMobile ? 'h-9 min-h-9 max-h-9' : 'h-[30px] min-h-[30px] max-h-[30px]'
     "

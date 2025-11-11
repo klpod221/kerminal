@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col bg-[#0D0D0D] relative">
+  <div class="h-full flex flex-col bg-bg-primary relative">
     <!-- Header with connection selector -->
     <div
       class="flex items-center justify-between px-4 py-2 border-b border-gray-800"
@@ -121,7 +121,7 @@
             <!-- Connecting Overlay for Remote Panel -->
             <div
               v-if="sftpStore.connecting"
-              class="absolute inset-0 bg-[#0D0D0D]/95 flex items-center justify-center z-50"
+              class="absolute inset-0 bg-bg-primary/95 flex items-center justify-center z-50"
             >
               <div class="flex flex-col items-center space-y-4">
                 <!-- Large spinning icon -->

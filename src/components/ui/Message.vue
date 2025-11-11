@@ -83,15 +83,15 @@ let timer: number | null = null;
 const messageClasses = computed(() => {
   switch (props.type) {
     case "success":
-      return "bg-[#1a1a1a] border-green-700/50";
+      return "bg-bg-tertiary border-green-700/50";
     case "error":
-      return "bg-[#1a1a1a] border-red-700/50";
+      return "bg-bg-tertiary border-red-700/50";
     case "warning":
-      return "bg-[#1a1a1a] border-yellow-700/50";
+      return "bg-bg-tertiary border-yellow-700/50";
     case "loading":
-      return "bg-[#1a1a1a] border-blue-700/50";
+      return "bg-bg-tertiary border-blue-700/50";
     default:
-      return "bg-[#1a1a1a] border-blue-700/50";
+      return "bg-bg-tertiary border-blue-700/50";
   }
 });
 

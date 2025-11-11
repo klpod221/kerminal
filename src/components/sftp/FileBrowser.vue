@@ -1,5 +1,5 @@
 <template>
-  <div class="h-full flex flex-col bg-[#0D0D0D]">
+  <div class="h-full flex flex-col bg-bg-primary">
     <!-- Combined Path & Search bar -->
     <div class="flex items-center gap-2 px-4 py-2 border-b border-gray-800">
       <Button variant="ghost" size="sm" @click="goUp" :disabled="!canGoUp">

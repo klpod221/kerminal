@@ -3,7 +3,7 @@
     class="no-drag flex items-center h-full border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden touch-manipulation sm:max-h-[30px]"
     :class="[
       {
-        'active-tab bg-[#171717] border-b-2': isActive,
+        'active-tab bg-bg-secondary border-b-2': isActive,
         'border-b-red-500': isActive && isRecording,
         'border-b-blue-500': isActive && !isRecording,
         'hover:bg-gray-800': !isActive,
