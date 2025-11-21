@@ -218,3 +218,38 @@ export async function writeSFTPFile(
 ): Promise<void> {
   return await api.call("sftp_write_file", { sessionId, path, content });
 }
+
+/**
+ * Set transfer priority (0-255, higher = higher priority)
+ */
+export async function setTransferPriority(
+  transferId: string,
+  priority: number,
+): Promise<void> {
+  return await api.call("sftp_set_transfer_priority", { transferId, priority });
+}
+
+/**
+ * Get all transfers with optional status filter
+ */
+export async function getAllTransfers(
+  statusFilter?: string,
+): Promise<TransferProgress[]> {
+  return await api.call("sftp_get_all_transfers", { statusFilter });
+}
+
+/**
+ * Reorder transfer queue
+ */
+export async function reorderQueue(
+  transferIds: string[],
+): Promise<void> {
+  return await api.call("sftp_reorder_queue", { transferIds });
+}
+
+/**
+ * Retry failed transfer
+ */
+export async function retryTransfer(transferId: string): Promise<void> {
+  return await api.call("sftp_retry_transfer", { transferId });
+}

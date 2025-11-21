@@ -28,6 +28,14 @@ pub struct TransferProgress {
     pub started_at: chrono::DateTime<chrono::Utc>,
     /// Timestamp when transfer completed (or None if still in progress)
     pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Transfer priority (0-255, higher = higher priority)
+    pub priority: u8,
+    /// Number of retry attempts made
+    pub retry_count: u32,
+    /// Maximum number of retry attempts allowed
+    pub max_retries: u32,
+    /// Timestamp for next retry attempt (for exponential backoff)
+    pub next_retry_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 /// Transfer status
@@ -67,4 +75,3 @@ impl TransferProgress {
         )
     }
 }
-
