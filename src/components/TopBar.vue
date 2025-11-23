@@ -13,7 +13,7 @@
     <div class="flex items-center justify-start">
       <!-- Dashboard button -->
       <div
-        class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 flex-shrink-0r:bg-gray-800 cursor-pointer touch-manipulation"
+        class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'dashboard' ? 'bg-gray-800' : '',
           isMobile ? 'px-2' : 'px-3',

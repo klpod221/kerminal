@@ -29,7 +29,7 @@
       :is="icon"
       v-if="icon && !iconRight && !loading"
       :size="iconSize"
-      class="flex-shrink-0"
+      class="shrink-0"
       :class="text || $slots.default ? 'mr-2' : ''"
     />
 
@@ -43,7 +43,7 @@
       :is="icon"
       v-if="icon && iconRight && !loading"
       :size="iconSize"
-      class="flex-shrink-0"
+      class="shrink-0"
       :class="text || $slots.default ? 'ml-2' : ''"
     />
   </button>
