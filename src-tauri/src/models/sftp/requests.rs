@@ -164,4 +164,31 @@ pub struct WriteFileRequest {
     pub content: String,
 }
 
+/// Request for setting transfer priority
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetTransferPriorityRequest {
+    pub transfer_id: String,
+    pub priority: u8,
+}
 
+/// Request for reordering transfer queue
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ReorderQueueRequest {
+    pub transfer_ids: Vec<String>,
+}
+
+/// Request for getting all transfers with optional status filter
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetAllTransfersRequest {
+    pub status_filter: Option<String>,
+}
+
+/// Request for retrying a failed transfer
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RetryTransferRequest {
+    pub transfer_id: String,
+}

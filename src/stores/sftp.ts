@@ -667,6 +667,130 @@ export const useSFTPStore = defineStore("sftp", () => {
     }
   }
 
+  /**
+   * Pause transfer with error handling
+   * @param transferId - Transfer ID to pause
+   * @throws Enhanced error if pause fails
+   */
+  async function pauseTransfer(transferId: string): Promise<void> {
+    const context: ErrorContext = {
+      operation: "Pause Transfer",
+      context: { transferId },
+    };
+
+    try {
+      await sftpService.pauseSFTPTransfer(transferId);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Resume transfer with error handling
+   * @param transferId - Transfer ID to resume
+   * @throws Enhanced error if resume fails
+   */
+  async function resumeTransfer(transferId: string): Promise<void> {
+    const context: ErrorContext = {
+      operation: "Resume Transfer",
+      context: { transferId },
+    };
+
+    try {
+      await sftpService.resumeSFTPTransfer(transferId);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Set transfer priority (0-255, higher = higher priority)
+   * @param transferId - Transfer ID
+   * @param priority - Priority value
+   * @throws Enhanced error if operation fails
+   */
+  async function setTransferPriority(
+    transferId: string,
+    priority: number,
+  ): Promise<void> {
+    const context: ErrorContext = {
+      operation: "Set Transfer Priority",
+      context: { transferId, priority },
+    };
+
+    try {
+      await sftpService.setTransferPriority(transferId, priority);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Get all transfers with optional status filter
+   * @param statusFilter - Optional status filter
+   * @returns List of transfers
+   */
+  async function getAllTransfers(statusFilter?: string) {
+    const context: ErrorContext = {
+      operation: "Get All Transfers",
+      context: { statusFilter },
+    };
+
+    try {
+      return await sftpService.getAllTransfers(statusFilter);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Reorder transfer queue
+   * @param transferIds - Array of transfer IDs in desired order
+   * @throws Enhanced error if reorder fails
+   */
+  async function reorderQueue(transferIds: string[]): Promise<void> {
+    const context: ErrorContext = {
+      operation: "Reorder Queue",
+      context: { transferCount: transferIds.length },
+    };
+
+    try {
+      await sftpService.reorderQueue(transferIds);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
+  /**
+   * Retry failed transfer
+   * @param transferId - Transfer ID to retry
+   * @throws Enhanced error if retry fails
+   */
+  async function retryTransfer(transferId: string): Promise<void> {
+    const context: ErrorContext = {
+      operation: "Retry Transfer",
+      context: { transferId },
+    };
+
+    try {
+      await sftpService.retryTransfer(transferId);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
   return {
     // State
     sessions,
@@ -694,5 +818,11 @@ export const useSFTPStore = defineStore("sftp", () => {
     writeFile,
     startRealtime,
     stopRealtime,
+    pauseTransfer,
+    resumeTransfer,
+    setTransferPriority,
+    getAllTransfers,
+    reorderQueue,
+    retryTransfer,
   };
 });

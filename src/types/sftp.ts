@@ -55,6 +55,10 @@ export interface TransferProgress {
   error: string | null;
   startedAt: string; // ISO 8601 datetime
   completedAt: string | null; // ISO 8601 datetime
+  priority: number; // 0-255, higher = higher priority
+  retryCount: number; // Number of retry attempts made
+  maxRetries: number; // Maximum number of retry attempts allowed
+  nextRetryAt: string | null; // ISO 8601 datetime for next retry
 }
 
 /**
