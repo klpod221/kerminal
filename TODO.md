@@ -51,7 +51,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 - [ ] **Connection indicator in terminal tabs**
   - Visual indicator for SSH connection status
-  - Show connection info (host, latency, etc.)
 
 - [ ] **Syntax highlighting improvements**
   - Add more languages
