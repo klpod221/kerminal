@@ -23,6 +23,8 @@
         <SyncManager />
 
         <SettingsManager />
+
+        <CommandPaletteManager />
       </template>
     </div>
   </div>
@@ -42,6 +44,7 @@ import TunnelManager from "./components/tunnels/TunnelManager.vue";
 import SyncManager from "./components/sync/SyncManager.vue";
 import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
 import SettingsManager from "./components/settings/SettingsManager.vue";
+import CommandPaletteManager from "./components/CommandPaletteManager.vue";
 
 import { useOverlay } from "./composables/useOverlay";
 import { useGlobalShortcuts } from "./composables/useGlobalShortcuts";

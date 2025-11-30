@@ -24,6 +24,7 @@ export enum ShortcutAction {
   OpenFileBrowser = "openFileBrowser",
   OpenSSHProfiles = "openSSHProfiles",
   OpenSavedCommands = "openSavedCommands",
+  OpenCommandPalette = "openCommandPalette",
 }
 
 /**

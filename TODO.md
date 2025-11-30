@@ -44,11 +44,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 - [ ] **Smarter terminal buffer management**
   - Smartly save and restore terminal buffer
 
-- [ ] **Command palette**
-  - Ctrl+P / Ctrl+K to open command palette
-  - Quick access to all features and commands
-  - Fuzzy search
-
 - [ ] **Multi-file editing**
   - Tabbed editor interface for multiple files
   - Close tabs, unsaved changes warning
@@ -76,10 +71,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Working directory presets
   - Shell configuration presets
   - Environment variables presets
-
-- [ ] **Multiple cursor selection**
-  - Multi-cursor support for copy/paste
-  - Column selection mode
 
 - [ ] **Compare files**
   - Side-by-side diff view

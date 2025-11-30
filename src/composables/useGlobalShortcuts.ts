@@ -254,6 +254,11 @@ export function useGlobalShortcuts() {
         break;
       }
 
+      case ShortcutAction.OpenCommandPalette: {
+        openOverlay("command-palette");
+        break;
+      }
+
       default:
         console.warn(`Unknown shortcut action: ${action}`);
     }

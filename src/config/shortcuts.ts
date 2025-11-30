@@ -109,6 +109,14 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     defaultModifiers: { ctrlKey: true, altKey: true }, // Ctrl+Alt on Windows/Linux, Cmd+Alt on Mac
     customizable: true,
   },
+  {
+    id: ShortcutAction.OpenCommandPalette,
+    label: "Open Command Palette",
+    category: "Navigation",
+    defaultKey: "p",
+    defaultModifiers: { ctrlKey: true, shiftKey: true }, // Ctrl+Shift+P on Windows/Linux, Cmd+Shift+P on Mac
+    customizable: true,
+  },
 ];
 
 /**
