@@ -111,10 +111,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Multiple tags per profile
   - Tag colors and organization
 
-- [ ] **Recent connections**
-  - Quick access menu with recently used connections
-  - Connection history tracking
-
 - [ ] **SSH config import**
   - Import profiles from `~/.ssh/config`
   - Batch import with conflict resolution

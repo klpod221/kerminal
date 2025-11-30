@@ -243,3 +243,16 @@ export interface UpdateSSHKeyRequest {
   publicKey?: string | null;
   passphrase?: string | null;
 }
+
+/**
+ * Connection History Entry
+ */
+export interface ConnectionHistoryEntry {
+  id: string;
+  type: "profile" | "config-host" | "manual";
+  name: string;
+  username: string;
+  host: string;
+  lastConnected: number;
+  color?: string;
+}

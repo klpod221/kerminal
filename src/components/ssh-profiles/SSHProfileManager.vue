@@ -19,9 +19,11 @@ import SSHKeyManager from "./SSHKeyManager.vue";
 import SSHKeyModal from "./SSHKeyModal.vue";
 import { useSSHStore } from "../../stores/ssh";
 import { useSshKeyStore } from "../../stores/sshKey";
+import { useConnectionHistoryStore } from "../../stores/connectionHistory";
 
 const sshStore = useSSHStore();
 const sshKeyStore = useSshKeyStore();
+const connectionHistoryStore = useConnectionHistoryStore();
 
 /**
  * Initialize SSH profiles feature:
@@ -30,7 +32,11 @@ const sshKeyStore = useSshKeyStore();
  */
 const initialize = async () => {
   try {
-    await Promise.all([sshStore.loadAll(), sshKeyStore.loadKeys()]);
+    await Promise.all([
+      sshStore.loadAll(),
+      sshKeyStore.loadKeys(),
+      connectionHistoryStore.loadHistory()
+    ]);
     await Promise.all([sshStore.startRealtime(), sshKeyStore.startRealtime()]);
   } catch (error) {
     console.error("Failed to initialize SSH data:", error);

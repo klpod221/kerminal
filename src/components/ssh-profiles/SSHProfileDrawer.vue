@@ -33,11 +33,23 @@
     />
 
     <div v-else class="space-y-4 p-4">
-      <!-- Divider -->
-      <div
-        v-if="filteredConfigHosts.length > 0 && filteredGroupsData.length > 0"
-        class="border-t border-gray-700"
-      />
+      <!-- Recent Connections -->
+      <div v-if="!searchQuery && connectionHistoryStore.recentConnections.length > 0">
+        <Collapsible
+          title="Recent Connections"
+          :badge="String(connectionHistoryStore.recentConnections.length)"
+          :default-expanded="true"
+        >
+          <div class="space-y-2">
+            <RecentConnectionItem
+              v-for="entry in connectionHistoryStore.recentConnections"
+              :key="`${entry.type}-${entry.id}`"
+              :entry="entry"
+              @connect="connectToHistoryEntry(entry)"
+            />
+          </div>
+        </Collapsible>
+      </div>
 
       <!-- Grouped Profiles -->
       <div
@@ -45,77 +57,70 @@
         :key="groupData.group?.id || 'ungrouped'"
         class="space-y-2"
       >
-        <!-- Group Header -->
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
+        <Collapsible
+          :title="groupData.group?.name || 'Ungrouped'"
+          :badge="String(groupData.profileCount)"
+          :default-expanded="true"
+        >
+          <template #headerActions>
+            <!-- Actions (only show for real groups) -->
             <div
               v-if="groupData.group"
-              class="w-3 h-3 rounded-full"
-              :style="{ backgroundColor: groupData.group.color || '#6b7280' }"
-            ></div>
-            <h3
-              class="text-sm font-medium"
-              :class="groupData.group ? 'text-white' : 'text-gray-400'"
+              class="flex items-center space-x-1 transition-opacity opacity-0 group-hover:opacity-100"
+              @click.stop
             >
-              {{ groupData.group?.name || "Ungrouped" }}
-            </h3>
-            <span class="text-xs text-gray-400">
-              ({{ groupData.profileCount }})
-            </span>
-          </div>
-          <div
-            v-if="groupData.group"
-            class="flex items-center space-x-1 transition-opacity"
-          >
-            <Button
-              title="Add profile to group"
-              variant="ghost"
-              size="sm"
-              :icon="Plus"
-              @click="addProfileToGroup(groupData.group!.id)"
-            />
-            <Button
-              title="Edit group"
-              variant="ghost"
-              size="sm"
-              :icon="Edit3"
-              @click="editGroup(groupData.group!)"
-            />
-            <Button
-              title="Delete group"
-              variant="ghost"
-              size="sm"
-              :icon="Trash2"
-              @click="confirmDeleteGroup(groupData.group!)"
-            />
-          </div>
-        </div>
+              <Button
+                title="Add profile to group"
+                variant="ghost"
+                size="sm"
+                :icon="Plus"
+                class="w-6 h-6 p-0 text-gray-400 hover:text-white"
+                @click="addProfileToGroup(groupData.group!.id)"
+              />
+              <Button
+                title="Edit group"
+                variant="ghost"
+                size="sm"
+                :icon="Edit3"
+                class="w-6 h-6 p-0 text-gray-400 hover:text-blue-400"
+                @click="editGroup(groupData.group!)"
+              />
+              <Button
+                title="Delete group"
+                variant="ghost"
+                size="sm"
+                :icon="Trash2"
+                class="w-6 h-6 p-0 text-gray-400 hover:text-red-400"
+                @click="confirmDeleteGroup(groupData.group!)"
+              />
+            </div>
+          </template>
 
-        <!-- Group Profiles -->
-        <div class="space-y-2">
-          <!-- Show message for empty groups -->
+          <!-- Empty State -->
           <div
-            v-if="groupData.profileCount === 0 && !searchQuery"
-            class="p-3 text-gray-500 text-sm italic text-center border border-dashed border-gray-600 rounded-lg"
+            v-if="groupData.profiles.length === 0"
+            class="text-xs text-gray-500 italic py-2"
           >
             {{
               groupData.group
-                ? "No profiles in this group. Click the + button above to add one."
+                ? "No profiles in this group."
                 : "No ungrouped profiles available."
             }}
           </div>
 
           <!-- Profiles -->
-          <SSHProfileItem
-            v-for="profile in groupData.profiles"
-            :key="profile.id"
-            :profile="profile"
-            :fallback-color="groupData.group?.color"
-            @connect="connectToProfile"
-            @edit="editProfile"
-            @delete="deleteProfile"
-          />
-        </div>
+          <div class="space-y-2">
+            <SSHProfileItem
+              v-for="profile in groupData.profiles"
+              :key="profile.id"
+              :profile="profile"
+              :fallback-color="groupData.group?.color"
+              @connect="connectToProfile"
+              @edit="editProfile"
+              @delete="deleteProfile"
+            />
+          </div>
+        </Collapsible>
       </div>
 
       <!-- No search results -->
@@ -139,25 +144,21 @@
 
     <!-- SSH Config Hosts Section -->
     <div class="space-y-4 p-4">
-      <div v-if="filteredConfigHosts.length > 0" class="space-y-2">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <component :is="FileCode" class="w-4 h-4 text-blue-400" />
-            <h3 class="text-sm font-medium text-blue-300">From .ssh/config</h3>
-            <span class="text-xs text-gray-400">
-              ({{ filteredConfigHosts.length }})
-            </span>
+      <div v-if="filteredConfigHosts.length > 0">
+        <Collapsible
+          title="From .ssh/config"
+          :badge="String(filteredConfigHosts.length)"
+          :default-expanded="true"
+        >
+          <div class="space-y-2">
+            <SSHConfigHostItem
+              v-for="host in filteredConfigHosts"
+              :key="host.name"
+              :host="host"
+              @connect="connectToConfigHost"
+            />
           </div>
-        </div>
-      </div>
-
-      <div class="space-y-2">
-        <SSHConfigHostItem
-          v-for="host in filteredConfigHosts"
-          :key="host.name"
-          :host="host"
-          @connect="connectToConfigHost"
-        />
+        </Collapsible>
       </div>
     </div>
 
@@ -200,6 +201,7 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import EmptyState from "../ui/EmptyState.vue";
+import Collapsible from "../ui/Collapsible.vue";
 import SSHProfileItem from "./SSHProfileItem.vue";
 import SSHConfigHostItem from "./SSHConfigHostItem.vue";
 import {
@@ -209,7 +211,6 @@ import {
   Plus,
   Edit3,
   Trash2,
-  FileCode,
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useDebounce } from "../../composables/useDebounce";
@@ -217,6 +218,8 @@ import { useSSHStore } from "../../stores/ssh";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { caseInsensitiveIncludes } from "../../utils/helpers";
 import { showConfirm } from "../../utils/message";
+import { useConnectionHistoryStore } from "../../stores/connectionHistory";
+import RecentConnectionItem from "./RecentConnectionItem.vue";
 
 const searchQuery = ref("");
 const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
@@ -224,9 +227,13 @@ const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 const { openOverlay, closeOverlay } = useOverlay();
 const sshStore = useSSHStore();
 const workspaceStore = useWorkspaceStore();
+const connectionHistoryStore = useConnectionHistoryStore();
 
 onMounted(async () => {
-  await sshStore.loadConfigHosts();
+  await Promise.all([
+    sshStore.loadConfigHosts(),
+    connectionHistoryStore.loadHistory()
+  ]);
 });
 
 /**
@@ -321,6 +328,15 @@ const connectToProfile = (profile: SSHProfile) => {
 
   workspaceStore.addSSHTab(activePanelId, profile.id, profile.name);
 
+  connectionHistoryStore.addEntry({
+    id: profile.id,
+    type: "profile",
+    name: profile.name,
+    username: profile.username,
+    host: profile.host,
+    color: profile.color
+  });
+
   closeOverlay("ssh-profile-drawer");
 };
 
@@ -363,6 +379,8 @@ const deleteGroup = async (group: SSHGroup) => {
   }
 };
 
+
+
 const connectToConfigHost = async (host: SSHConfigHost) => {
   try {
     const activePanelId = workspaceStore.activePanelId || "panel-1";
@@ -384,10 +402,40 @@ const connectToConfigHost = async (host: SSHConfigHost) => {
       });
     } else {
       workspaceStore.addSSHConfigTab(activePanelId, host.name, displayName);
+
+      connectionHistoryStore.addEntry({
+        id: host.name,
+        type: "config-host",
+        name: host.name,
+        username: host.user || "unknown",
+        host: host.hostname
+      });
+
       closeOverlay("ssh-profile-drawer");
     }
   } catch (error) {
     console.error("Failed to connect to SSH config host:", error);
+  }
+};
+
+const connectToHistoryEntry = async (entry: any) => {
+  if (entry.type === 'profile') {
+    const profile = sshStore.findProfileById(entry.id);
+    if (profile) {
+      connectToProfile(profile);
+    } else {
+      // Profile might have been deleted, try to connect with cached info or show error
+      // For now, let's just show an error if profile is missing
+      // Ideally we could try to reconstruct a connection request
+      console.error("Profile not found:", entry.id);
+    }
+  } else if (entry.type === 'config-host') {
+    const host = sshStore.configHosts.find(h => h.name === entry.id);
+    if (host) {
+      connectToConfigHost(host);
+    } else {
+      console.error("Config host not found:", entry.id);
+    }
   }
 };
 </script>
