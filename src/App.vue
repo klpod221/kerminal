@@ -24,6 +24,8 @@
 
         <SettingsManager />
 
+        <TerminalProfileManager />
+
         <CommandPaletteManager />
       </template>
     </div>
@@ -44,6 +46,7 @@ import TunnelManager from "./components/tunnels/TunnelManager.vue";
 import SyncManager from "./components/sync/SyncManager.vue";
 import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
 import SettingsManager from "./components/settings/SettingsManager.vue";
+import TerminalProfileManager from "./components/terminal-profiles/TerminalProfileManager.vue";
 import CommandPaletteManager from "./components/CommandPaletteManager.vue";
 
 import { useOverlay } from "./composables/useOverlay";

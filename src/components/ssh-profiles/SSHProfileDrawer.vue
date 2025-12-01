@@ -173,6 +173,13 @@
             text="New Group"
             @click="openOverlay('ssh-group-modal')"
           />
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="Download"
+            title="Import from SSH Config"
+            @click="openOverlay('ssh-import-modal')"
+          />
         </div>
 
         <Button
@@ -211,6 +218,7 @@ import {
   Plus,
   Edit3,
   Trash2,
+  Download,
 } from "lucide-vue-next";
 import { useOverlay } from "../../composables/useOverlay";
 import { useDebounce } from "../../composables/useDebounce";

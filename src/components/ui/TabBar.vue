@@ -72,6 +72,8 @@
               :panel-id="panel.id"
               :is-active="tab.id === panel.activeTabId"
               :is-connecting="getTerminalConnectingState(tab.id)"
+              :is-error="getTerminalErrorState(tab.id)"
+              :disconnect-reason="getTerminalDisconnectReason(tab.id)"
               :backend-terminal-id="getBackendTerminalId(tab.id)"
               :min-width="tabMinWidth"
               :max-width="tabMaxWidth"
@@ -90,12 +92,13 @@
           <Transition name="fade">
             <Button
               v-show="!showScrollButtons"
-              title="Add new tab"
+              title="Add new tab (Right-click for profiles)"
               variant="ghost"
               size="sm"
               :icon="Plus"
               class="add-tab-btn shrink-0 ml-1"
               @click="addTab"
+              @contextmenu="onAddTabContextMenu"
             />
           </Transition>
         </div>
@@ -124,12 +127,13 @@
       <Transition name="fade">
         <Button
           v-show="showScrollButtons && !isMobile"
-          title="Add new tab"
+          title="Add new tab (Right-click for profiles)"
           variant="ghost"
           size="sm"
           :icon="Plus"
           class="add-tab-btn shrink-0"
           @click="addTab"
+          @contextmenu="onAddTabContextMenu"
         />
       </Transition>
     </div>
@@ -168,6 +172,7 @@
         :icon="Plus"
         class="add-tab-btn"
         @click="addTab"
+        @contextmenu="onAddTabContextMenu"
       />
 
       <!-- Close Panel Button -->
@@ -180,6 +185,13 @@
         @click="closePanel"
       />
     </div>
+
+    <!-- Add Tab Context Menu -->
+    <ContextMenu
+      ref="addTabContextMenuRef"
+      :items="addTabContextMenuItems"
+      @item-click="handleAddTabContextMenuAction"
+    />
   </div>
 </template>
 
@@ -199,6 +211,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Terminal,
 } from "lucide-vue-next";
 import Tab from "./Tab.vue";
 import Button from "./Button.vue";
@@ -210,6 +223,9 @@ import type {
   Panel,
   TerminalInstance,
 } from "../../types/panel";
+import ContextMenu, {
+  type ContextMenuItem,
+} from "./ContextMenu.vue";
 
 interface TabBarProps {
   panel: Panel;
@@ -232,6 +248,7 @@ interface TabBarEmits {
   ];
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
+  addTabWithProfile: [panelId: string, profile: any];
 }
 
 const props = withDefaults(defineProps<TabBarProps>(), {
@@ -466,6 +483,16 @@ const getTerminalConnectingState = (tabId: string): boolean => {
   return terminal?.isSSHConnecting || false;
 };
 
+const getTerminalErrorState = (tabId: string): boolean => {
+  const terminal = props.terminals.find((t) => t.id === tabId);
+  return terminal?.hasError || false;
+};
+
+const getTerminalDisconnectReason = (tabId: string): string | undefined => {
+  const terminal = props.terminals.find((t) => t.id === tabId);
+  return terminal?.disconnectReason;
+};
+
 const selectTab = (tabId: string): void => {
   emit("selectTab", props.panel.id, tabId);
 };
@@ -578,6 +605,78 @@ const onPanelDrop = (event: DragEvent): void => {
       if (sourcePanelId && sourcePanelId !== props.panel.id) {
         emit("moveTab", sourcePanelId, props.panel.id, draggedTab.id, "");
       }
+    }
+  }
+};
+
+// Terminal Profiles Context Menu
+import { useTerminalProfileStore } from "../../stores/terminalProfile";
+import { useOverlay } from "../../composables/useOverlay";
+import { Settings } from "lucide-vue-next";
+
+const terminalProfileStore = useTerminalProfileStore();
+const { openOverlay } = useOverlay();
+const addTabContextMenuRef = ref<InstanceType<typeof ContextMenu> | null>(null);
+
+const addTabContextMenuItems = computed<ContextMenuItem[]>(() => {
+  const items: ContextMenuItem[] = [
+    {
+      id: "default",
+      label: "Default Terminal",
+      icon: Plus,
+      action: "default",
+    },
+    {
+      id: "divider-profiles",
+      type: "divider",
+    },
+  ];
+
+  if (terminalProfileStore.profiles.length > 0) {
+    terminalProfileStore.profiles.forEach((profile) => {
+      items.push({
+        id: `profile-${profile.id}`,
+        label: profile.name,
+        icon: Terminal, // You might need to import Terminal icon if not already imported
+        action: "profile",
+        // We can pass the profile object as a custom property if we extend the type,
+        // but for now we'll use the ID to lookup
+      });
+    });
+
+    items.push({
+      id: "divider-manage",
+      type: "divider",
+    });
+  }
+
+  items.push({
+    id: "manage-profiles",
+    label: "Manage Profiles",
+    icon: Settings,
+    action: "manage",
+  });
+
+  return items;
+});
+
+const onAddTabContextMenu = (event: MouseEvent) => {
+  event.preventDefault();
+  if (addTabContextMenuRef.value) {
+    addTabContextMenuRef.value.show(event.clientX, event.clientY);
+  }
+};
+
+const handleAddTabContextMenuAction = (item: ContextMenuItem) => {
+  if (item.action === "default") {
+    addTab();
+  } else if (item.action === "manage") {
+    openOverlay("terminal-profile-modal");
+  } else if (item.action === "profile") {
+    const profileId = item.id.replace("profile-", "");
+    const profile = terminalProfileStore.getProfile(profileId);
+    if (profile) {
+      emit("addTabWithProfile", props.panel.id, profile);
     }
   }
 };

@@ -36,9 +36,16 @@ export interface TerminalInstance {
     | "server-disconnect"
     | "connection-error";
   canReconnect?: boolean;
-  sshProfileId?: string;
+  sshProfileId?: string; // SSH Config
   sshConfigHost?: string;
   sshConfigPassword?: string;
+
+  // Terminal Profile
+  profileId?: string;
+  shell?: string;
+  workingDir?: string;
+  env?: Record<string, string>;
+
   pendingPasswordAuth?: boolean;
   errorMessage?: string;
   hasError?: boolean;

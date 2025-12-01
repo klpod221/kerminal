@@ -17,6 +17,7 @@
     @layout-updated="workspaceStore.updateLayout"
     @split-panel-by-drop="workspaceStore.splitPanelByDrop"
     @clone-tab-and-split="workspaceStore.cloneTabAndSplit"
+    @add-tab-with-profile="workspaceStore.addTerminalProfileTab"
   />
 </template>
 

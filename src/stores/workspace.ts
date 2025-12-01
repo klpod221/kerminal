@@ -273,6 +273,59 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   };
 
   /**
+   * Add a new terminal tab with a specific profile
+   * @param panelId - The panel ID to add the tab to
+   * @param profile - The terminal profile to use
+   */
+  const addTerminalProfileTab = async (
+    panelId: string,
+    profile: any, // Using any to avoid circular dependency or import issues, but ideally should be TerminalProfile
+  ): Promise<void> => {
+    const panel = findPanelInLayout(panelLayout.value, panelId);
+    if (!panel) return;
+
+    const newTabId = tabCounter.toString();
+
+    const newTab: Tab = {
+      id: newTabId,
+      title: profile.name,
+      color: profile.color,
+    };
+
+    const newTerminal: TerminalInstance = {
+      id: newTabId,
+      ready: false,
+      shouldFocusOnReady: true,
+      profileId: profile.id,
+    };
+
+    // We need to pass profile settings to the terminal creation logic
+    // But currently createLocalTerminal only takes shell and workingDir
+    // We might need to store these settings temporarily or pass them when the terminal is ready
+    // For now, let's assume the terminal component will handle it or we pass it via a side channel
+    // Actually, we should probably modify TerminalInstance to hold these settings
+    // or modify createLocalTerminal to accept them.
+
+    // Let's modify TerminalInstance in types/panel.ts to include profile settings?
+    // Or just pass them when creating the terminal.
+    // The actual creation happens in Terminal.vue onMounted -> createTerminal
+
+    // Let's add profile settings to TerminalInstance
+    (newTerminal as any).shell = profile.shell;
+    (newTerminal as any).workingDir = profile.workingDir;
+    (newTerminal as any).env = profile.env;
+
+    panel.tabs.push(newTab);
+    panel.activeTabId = newTabId;
+
+    terminals.value.push(newTerminal);
+
+    viewState.setActiveView("workspace");
+
+    tabCounter++;
+  };
+
+  /**
    * Add a new SSH Config tab from ~/.ssh/config host
    * @param panelId - The panel ID to add the tab to
    * @param hostName - The SSH config host name
@@ -1371,13 +1424,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     moveTabToNewPanel,
     splitPanelByDrop,
     cloneTabAndSplit,
-    terminalReady,
     updateLayout,
     initialize,
     cleanup,
+    addTerminalProfileTab,
+    terminalReady,
+    reconnectSSH,
     handleSSHConnectionError,
     handleSSHConnectionSuccess,
-    reconnectSSH,
     resizeTerminal: (request: ResizeTerminalRequest) => resizeTerminal(request),
     listenToTerminalOutput: (callback: (data: TerminalData) => void) =>
       listenToTerminalOutput(callback),

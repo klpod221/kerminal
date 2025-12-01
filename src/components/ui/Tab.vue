@@ -30,6 +30,22 @@
         :class="isMobile ? 'h-3.5 w-3.5' : 'h-3 w-3'"
       ></div>
     </div>
+    <div
+      v-else-if="isError && (minWidth >= 80 || isMobile)"
+      class="transition-colors duration-200 shrink-0 text-red-500"
+      :class="isMobile ? 'mr-1.5' : 'mr-2'"
+      title="Connection Error"
+    >
+      <AlertCircle :size="isMobile ? 16 : 14" />
+    </div>
+    <div
+      v-else-if="disconnectReason && (minWidth >= 80 || isMobile)"
+      class="transition-colors duration-200 shrink-0 text-gray-500"
+      :class="isMobile ? 'mr-1.5' : 'mr-2'"
+      :title="`Disconnected: ${disconnectReason}`"
+    >
+      <Unplug :size="isMobile ? 16 : 14" />
+    </div>
     <Terminal
       v-else-if="minWidth >= 80 || isMobile"
       :size="isMobile ? 16 : 14"
@@ -90,6 +106,8 @@ import {
   Trash2,
   ArrowRight,
   Minus,
+  AlertCircle,
+  Unplug,
 } from "lucide-vue-next";
 import ContextMenu from "./ContextMenu.vue";
 import { useRecordingStore } from "../../stores/recording";
@@ -105,6 +123,8 @@ interface TabProps {
   tab: Tab;
   isActive: boolean;
   isConnecting?: boolean;
+  isError?: boolean;
+  disconnectReason?: string;
   minWidth: number;
   maxWidth: number;
   panelId: string;
@@ -124,6 +144,8 @@ interface TabEmits {
 
 const props = withDefaults(defineProps<TabProps>(), {
   isConnecting: false,
+  isError: false,
+  disconnectReason: undefined,
 });
 
 const emit = defineEmits<TabEmits>();

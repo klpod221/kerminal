@@ -18,6 +18,7 @@
         @set-active-panel="setActivePanel"
         @split-panel-by-drop="splitPanelByDrop"
         @clone-tab-and-split="cloneTabAndSplit"
+        @add-tab-with-profile="addTabWithProfile"
       />
     </div>
 
@@ -51,6 +52,7 @@
             @layout-updated="layoutUpdated"
             @split-panel-by-drop="splitPanelByDrop"
             @clone-tab-and-split="cloneTabAndSplit"
+            @add-tab-with-profile="addTabWithProfile"
           />
         </Pane>
       </Splitpanes>
@@ -99,6 +101,7 @@ interface PanelManagerEmits {
     tabId: string,
     panelId: string,
   ];
+  addTabWithProfile: [panelId: string, profile: any];
 }
 
 const props = defineProps<PanelManagerProps>();
@@ -199,6 +202,10 @@ const handlePaneResize = (paneComponents: { size: number }[]): void => {
 };
 
 const onPaneResize = debounce(handlePaneResize, 150);
+
+const addTabWithProfile = (panelId: string, profile: any): void => {
+  emit("addTabWithProfile", panelId, profile);
+};
 </script>
 
 <style scoped>
