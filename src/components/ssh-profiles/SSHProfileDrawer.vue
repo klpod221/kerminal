@@ -34,7 +34,11 @@
 
     <div v-else class="space-y-4 p-4">
       <!-- Recent Connections -->
-      <div v-if="!searchQuery && connectionHistoryStore.recentConnections.length > 0">
+      <div
+        v-if="
+          !searchQuery && connectionHistoryStore.recentConnections.length > 0
+        "
+      >
         <Collapsible
           title="Recent Connections"
           :badge="String(connectionHistoryStore.recentConnections.length)"
@@ -66,7 +70,7 @@
             <!-- Actions (only show for real groups) -->
             <div
               v-if="groupData.group"
-              class="flex items-center space-x-1 transition-opacity opacity-0 group-hover:opacity-100"
+              class="flex items-center space-x-1 transition-opacity"
               @click.stop
             >
               <Button
@@ -148,8 +152,18 @@
         <Collapsible
           title="From .ssh/config"
           :badge="String(filteredConfigHosts.length)"
-          :default-expanded="true"
+          :default-expanded="false"
         >
+          <template #headerActions>
+            <Button
+              variant="ghost"
+              size="sm"
+              :icon="Download"
+              title="Import from SSH Config"
+              @click="openOverlay('ssh-import-modal')"
+            />
+          </template>
+
           <div class="space-y-2">
             <SSHConfigHostItem
               v-for="host in filteredConfigHosts"
@@ -165,22 +179,13 @@
     <!-- Footer -->
     <template #footer>
       <div class="flex justify-between items-center gap-2">
-        <div class="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            :icon="FolderPlus"
-            text="New Group"
-            @click="openOverlay('ssh-group-modal')"
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            :icon="Download"
-            title="Import from SSH Config"
-            @click="openOverlay('ssh-import-modal')"
-          />
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          :icon="FolderPlus"
+          text="New Group"
+          @click="openOverlay('ssh-group-modal')"
+        />
 
         <Button
           variant="warning"
@@ -240,7 +245,7 @@ const connectionHistoryStore = useConnectionHistoryStore();
 onMounted(async () => {
   await Promise.all([
     sshStore.loadConfigHosts(),
-    connectionHistoryStore.loadHistory()
+    connectionHistoryStore.loadHistory(),
   ]);
 });
 
@@ -342,7 +347,7 @@ const connectToProfile = (profile: SSHProfile) => {
     name: profile.name,
     username: profile.username,
     host: profile.host,
-    color: profile.color
+    color: profile.color,
   });
 
   closeOverlay("ssh-profile-drawer");
@@ -387,8 +392,6 @@ const deleteGroup = async (group: SSHGroup) => {
   }
 };
 
-
-
 const connectToConfigHost = async (host: SSHConfigHost) => {
   try {
     const activePanelId = workspaceStore.activePanelId || "panel-1";
@@ -416,7 +419,7 @@ const connectToConfigHost = async (host: SSHConfigHost) => {
         type: "config-host",
         name: host.name,
         username: host.user || "unknown",
-        host: host.hostname
+        host: host.hostname,
       });
 
       closeOverlay("ssh-profile-drawer");
@@ -427,7 +430,7 @@ const connectToConfigHost = async (host: SSHConfigHost) => {
 };
 
 const connectToHistoryEntry = async (entry: any) => {
-  if (entry.type === 'profile') {
+  if (entry.type === "profile") {
     const profile = sshStore.findProfileById(entry.id);
     if (profile) {
       connectToProfile(profile);
@@ -437,8 +440,8 @@ const connectToHistoryEntry = async (entry: any) => {
       // Ideally we could try to reconstruct a connection request
       console.error("Profile not found:", entry.id);
     }
-  } else if (entry.type === 'config-host') {
-    const host = sshStore.configHosts.find(h => h.name === entry.id);
+  } else if (entry.type === "config-host") {
+    const host = sshStore.configHosts.find((h) => h.name === entry.id);
     if (host) {
       connectToConfigHost(host);
     } else {

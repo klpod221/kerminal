@@ -500,7 +500,7 @@ impl TunnelService {
         let bind_address = if remote_host == "localhost" || remote_host == "127.0.0.1" {
             "127.0.0.1"
         } else {
-            ""  // Empty string lets SSH server decide
+            "" // Empty string lets SSH server decide
         };
 
         let forwarded_port = {
@@ -525,8 +525,10 @@ impl TunnelService {
             remote_port
         };
 
-        eprintln!("✅ Remote port forwarding established: {}:{} -> {}:{}",
-                  bind_address, actual_port, local_host, local_port);
+        eprintln!(
+            "✅ Remote port forwarding established: {}:{} -> {}:{}",
+            bind_address, actual_port, local_host, local_port
+        );
 
         let bind_address_clone = bind_address.to_string();
 

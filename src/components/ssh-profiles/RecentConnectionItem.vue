@@ -2,7 +2,7 @@
   <Card
     :hover="true"
     no-padding
-    custom-class="p-3 cursor-pointer"
+    custom-class="p-2 cursor-pointer"
     @click="$emit('connect')"
   >
     <div class="flex items-center gap-3">
@@ -29,12 +29,11 @@
             Config
           </span>
         </div>
-        <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
-          <code class="font-mono truncate">
+        <div class="text-xs text-gray-500 mt-0.5">
+          <code class="font-mono truncate block">
             {{ entry.username }}@{{ entry.host }}
           </code>
-          <span class="text-gray-600">•</span>
-          <span class="flex items-center text-gray-400">
+          <span class="flex items-center text-gray-400 mt-1">
             <Clock class="w-3 h-3 mr-1" />
             {{ formatTimeAgo(entry.lastConnected) }}
           </span>

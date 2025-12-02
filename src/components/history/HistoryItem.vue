@@ -2,7 +2,7 @@
   <Card
     :hover="true"
     no-padding
-    custom-class="p-3 cursor-pointer"
+    custom-class="p-2 cursor-pointer"
     @click="$emit('execute', entry)"
   >
     <div class="flex items-start gap-3">

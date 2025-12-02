@@ -2,7 +2,7 @@
   <Card
     :hover="true"
     no-padding
-    custom-class="p-3 cursor-pointer"
+    custom-class="p-2 cursor-pointer"
     @click="$emit('connect', profile)"
   >
     <div class="flex items-center gap-3">

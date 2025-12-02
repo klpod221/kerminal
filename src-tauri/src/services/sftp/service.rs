@@ -8,13 +8,13 @@ use crate::models::sftp::{error::SFTPError, file_entry::FileEntry, FileType};
 use crate::models::ssh::AuthData;
 use crate::services::ssh::{SSHKeyService, SSHService};
 
+use crate::services::sftp::channel_stream::ChannelStream;
 use anyhow::Result;
 use async_trait::async_trait;
 use chrono::Utc;
 use russh::client::Config;
 use russh_keys::key::PublicKey;
 use russh_sftp::client::SftpSession;
-use crate::services::sftp::channel_stream::ChannelStream;
 
 /// Simple handler for SFTP connections
 #[derive(Clone)]
@@ -47,10 +47,7 @@ pub struct SFTPService {
 
 impl SFTPService {
     /// Create new SFTP service
-    pub fn new(
-        ssh_service: Arc<SSHService>,
-        ssh_key_service: Arc<Mutex<SSHKeyService>>,
-    ) -> Self {
+    pub fn new(ssh_service: Arc<SSHService>, ssh_key_service: Arc<Mutex<SSHKeyService>>) -> Self {
         Self {
             ssh_service,
             ssh_key_service,
@@ -103,12 +100,11 @@ impl SFTPService {
         let handler = SFTPClientHandler;
 
         let mut session = if let Some(proxy_config) = &profile.proxy {
-            let stream =
-                create_proxy_stream(proxy_config, &profile.host, profile.port)
-                    .await
-                    .map_err(|e| SFTPError::SessionFailed {
-                        message: format!("Failed to create proxy connection: {}", e),
-                    })?;
+            let stream = create_proxy_stream(proxy_config, &profile.host, profile.port)
+                .await
+                .map_err(|e| SFTPError::SessionFailed {
+                    message: format!("Failed to create proxy connection: {}", e),
+                })?;
 
             russh::client::connect_stream(config, stream, handler)
                 .await
@@ -119,20 +115,21 @@ impl SFTPService {
             russh::client::connect(config, (&profile.host as &str, profile.port), handler)
                 .await
                 .map_err(|e| SFTPError::SessionFailed {
-                    message: format!("Failed to connect to {}:{}: {}", profile.host, profile.port, e),
+                    message: format!(
+                        "Failed to connect to {}:{}: {}",
+                        profile.host, profile.port, e
+                    ),
                 })?
         };
 
         // Authenticate
         let authenticated = match &profile.auth_data {
-            AuthData::Password { password } => {
-                session
-                    .authenticate_password(&profile.username, password)
-                    .await
-                    .map_err(|e| SFTPError::SessionFailed {
-                        message: format!("Password authentication failed: {}", e),
-                    })?
-            }
+            AuthData::Password { password } => session
+                .authenticate_password(&profile.username, password)
+                .await
+                .map_err(|e| SFTPError::SessionFailed {
+                    message: format!("Password authentication failed: {}", e),
+                })?,
             AuthData::KeyReference { key_id } => {
                 let key_service = self.ssh_key_service.lock().await;
                 let resolved_key = key_service
@@ -173,15 +170,17 @@ impl SFTPService {
                 ..
             } => {
                 let key = if Path::new(private_key).exists() {
-                    russh_keys::load_secret_key(private_key, None)
-                        .map_err(|e| SFTPError::SessionFailed {
+                    russh_keys::load_secret_key(private_key, None).map_err(|e| {
+                        SFTPError::SessionFailed {
                             message: format!("Failed to load certificate key: {}", e),
-                        })?
+                        }
+                    })?
                 } else {
-                    russh_keys::decode_secret_key(private_key, None)
-                        .map_err(|e| SFTPError::SessionFailed {
+                    russh_keys::decode_secret_key(private_key, None).map_err(|e| {
+                        SFTPError::SessionFailed {
                             message: format!("Failed to parse certificate key: {}", e),
-                        })?
+                        }
+                    })?
                 };
 
                 session
@@ -200,12 +199,13 @@ impl SFTPService {
         }
 
         // Open SFTP channel
-        let channel = session
-            .channel_open_session()
-            .await
-            .map_err(|e| SFTPError::SessionFailed {
-                message: format!("Failed to open SSH channel: {}", e),
-            })?;
+        let channel =
+            session
+                .channel_open_session()
+                .await
+                .map_err(|e| SFTPError::SessionFailed {
+                    message: format!("Failed to open SSH channel: {}", e),
+                })?;
 
         // Request SFTP subsystem
         channel
@@ -217,7 +217,8 @@ impl SFTPService {
 
         // Create SFTP session from channel stream
         let stream = ChannelStream::new(channel);
-        let sftp = SftpSession::new(stream).await
+        let sftp = SftpSession::new(stream)
+            .await
             .map_err(|e| SFTPError::SessionFailed {
                 message: format!("Failed to initialize SFTP session: {}", e),
             })?;
@@ -298,10 +299,7 @@ impl SFTPService {
             };
 
             let symlink_target = if matches!(file_type, FileType::Symlink) {
-                data.sftp
-                    .read_link(&full_path)
-                    .await
-                    .ok()
+                data.sftp.read_link(&full_path).await.ok()
             } else {
                 None
             };
@@ -312,16 +310,16 @@ impl SFTPService {
                 file_type,
                 size: attrs.size,
                 permissions: attrs.permissions.unwrap_or(0o644),
-                modified: attrs.mtime
+                modified: attrs
+                    .mtime
                     .map(|t| {
                         chrono::DateTime::<Utc>::from_timestamp(t as i64, 0)
                             .unwrap_or_else(|| Utc::now())
                     })
                     .unwrap_or_else(|| Utc::now()),
-                accessed: attrs.atime
-                    .map(|t| {
-                        chrono::DateTime::<Utc>::from_timestamp(t as i64, 0)
-                    })
+                accessed: attrs
+                    .atime
+                    .map(|t| chrono::DateTime::<Utc>::from_timestamp(t as i64, 0))
                     .flatten(),
                 symlink_target,
                 uid: attrs.uid,
@@ -338,19 +336,15 @@ impl SFTPService {
         let mut data = session_data.lock().await;
         data.last_used = Utc::now();
 
-        let attrs = data
-            .sftp
-            .metadata(&path)
-            .await
-            .map_err(|e| {
-                if e.to_string().contains("not found") || e.to_string().contains("No such file") {
-                    SFTPError::FileNotFound { path: path.clone() }
-                } else {
-                    SFTPError::Other {
-                        message: format!("Failed to get metadata for {}: {}", path, e),
-                    }
+        let attrs = data.sftp.metadata(&path).await.map_err(|e| {
+            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
+                SFTPError::FileNotFound { path: path.clone() }
+            } else {
+                SFTPError::Other {
+                    message: format!("Failed to get metadata for {}: {}", path, e),
                 }
-            })?;
+            }
+        })?;
 
         let file_type = match attrs.file_type() {
             russh_sftp::protocol::FileType::Dir => FileType::Directory,
@@ -369,24 +363,20 @@ impl SFTPService {
 
         let permissions = attrs.permissions.unwrap_or(0o644);
 
-        let modified = attrs.mtime
+        let modified = attrs
+            .mtime
             .map(|t| {
-                chrono::DateTime::<Utc>::from_timestamp(t as i64, 0)
-                    .unwrap_or_else(|| Utc::now())
+                chrono::DateTime::<Utc>::from_timestamp(t as i64, 0).unwrap_or_else(|| Utc::now())
             })
             .unwrap_or_else(|| Utc::now());
 
-        let accessed = attrs.atime
-            .map(|t| {
-                chrono::DateTime::<Utc>::from_timestamp(t as i64, 0)
-            })
+        let accessed = attrs
+            .atime
+            .map(|t| chrono::DateTime::<Utc>::from_timestamp(t as i64, 0))
             .flatten();
 
         let symlink_target = if file_type == FileType::Symlink {
-            data.sftp
-                .read_link(&path)
-                .await
-                .ok()
+            data.sftp.read_link(&path).await.ok()
         } else {
             None
         };
@@ -415,18 +405,15 @@ impl SFTPService {
         let mut data = session_data.lock().await;
         data.last_used = Utc::now();
 
-        data.sftp
-            .create_dir(&path)
-            .await
-            .map_err(|e| {
-                if e.to_string().contains("already exists") {
-                    SFTPError::FileExists { path }
-                } else {
-                    SFTPError::Other {
-                        message: format!("Failed to create directory: {}", e),
-                    }
+        data.sftp.create_dir(&path).await.map_err(|e| {
+            if e.to_string().contains("already exists") {
+                SFTPError::FileExists { path }
+            } else {
+                SFTPError::Other {
+                    message: format!("Failed to create directory: {}", e),
                 }
-            })?;
+            }
+        })?;
 
         Ok(())
     }
@@ -465,29 +452,25 @@ impl SFTPService {
 
         if recursive {
             // For directories, we need to delete recursively
-            let attrs = data
-                .sftp
-                .metadata(&path)
-                .await
-                .map_err(|e| {
-                    if e.to_string().contains("not found") {
-                        SFTPError::FileNotFound { path: path.clone() }
-                    } else {
-                        SFTPError::Other {
-                            message: format!("Failed to get metadata for {}: {}", path, e),
-                        }
+            let attrs = data.sftp.metadata(&path).await.map_err(|e| {
+                if e.to_string().contains("not found") {
+                    SFTPError::FileNotFound { path: path.clone() }
+                } else {
+                    SFTPError::Other {
+                        message: format!("Failed to get metadata for {}: {}", path, e),
                     }
-                })?;
+                }
+            })?;
 
             if attrs.file_type() == russh_sftp::protocol::FileType::Dir {
                 // List and delete contents
-                let mut read_dir = data
-                    .sftp
-                    .read_dir(&path)
-                    .await
-                    .map_err(|e| SFTPError::Other {
-                        message: format!("Failed to read directory {}: {}", path, e),
-                    })?;
+                let mut read_dir =
+                    data.sftp
+                        .read_dir(&path)
+                        .await
+                        .map_err(|e| SFTPError::Other {
+                            message: format!("Failed to read directory {}: {}", path, e),
+                        })?;
 
                 while let Some(dir_entry) = read_dir.next() {
                     let name = dir_entry.file_name();
@@ -518,19 +501,17 @@ impl SFTPService {
         path: &str,
         is_recursive_call: bool,
     ) -> Result<(), SFTPError> {
-        let attrs = data
-            .sftp
-            .metadata(path)
-            .await
-            .map_err(|e| {
-                if e.to_string().contains("not found") && !is_recursive_call {
-                    SFTPError::FileNotFound { path: path.to_string() }
-                } else {
-                    SFTPError::Other {
-                        message: format!("Failed to get metadata for {}: {}", path, e),
-                    }
+        let attrs = data.sftp.metadata(path).await.map_err(|e| {
+            if e.to_string().contains("not found") && !is_recursive_call {
+                SFTPError::FileNotFound {
+                    path: path.to_string(),
                 }
-            })?;
+            } else {
+                SFTPError::Other {
+                    message: format!("Failed to get metadata for {}: {}", path, e),
+                }
+            }
+        })?;
 
         match attrs.file_type() {
             russh_sftp::protocol::FileType::Dir => {
@@ -570,27 +551,23 @@ impl SFTPService {
         let mut data = session_data.lock().await;
         data.last_used = Utc::now();
 
-        let mut attrs = data
-            .sftp
-            .metadata(&path)
-            .await
-            .map_err(|e| {
-                if e.to_string().contains("not found") || e.to_string().contains("No such file") {
-                    SFTPError::FileNotFound { path: path.clone() }
-                } else {
-                    SFTPError::Other {
-                        message: format!("Failed to get metadata for {}: {}", path, e),
-                    }
+        let mut attrs = data.sftp.metadata(&path).await.map_err(|e| {
+            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
+                SFTPError::FileNotFound { path: path.clone() }
+            } else {
+                SFTPError::Other {
+                    message: format!("Failed to get metadata for {}: {}", path, e),
                 }
-            })?;
+            }
+        })?;
 
         // Mask mode to only include permission bits (0o777)
         // This ensures we don't accidentally set file type bits
         let permission_mode = mode & 0o777;
-        
+
         // Only update permissions, preserve all other attributes
         attrs.permissions = Some(permission_mode);
-        
+
         data.sftp
             .set_metadata(&path, attrs)
             .await
@@ -616,7 +593,10 @@ impl SFTPService {
             .symlink(&link_path, &target)
             .await
             .map_err(|e| SFTPError::Other {
-                message: format!("Failed to create symlink {} -> {}: {}", link_path, target, e),
+                message: format!(
+                    "Failed to create symlink {} -> {}: {}",
+                    link_path, target, e
+                ),
             })?;
 
         Ok(())
@@ -632,47 +612,35 @@ impl SFTPService {
         let mut data = session_data.lock().await;
         data.last_used = Utc::now();
 
-        let target = data
-            .sftp
-            .read_link(&path)
-            .await
-            .map_err(|e| {
-                if e.to_string().contains("not found") {
-                    SFTPError::FileNotFound { path: path.clone() }
-                } else {
-                    SFTPError::Other {
-                        message: format!("Failed to read symlink {}: {}", path, e),
-                    }
+        let target = data.sftp.read_link(&path).await.map_err(|e| {
+            if e.to_string().contains("not found") {
+                SFTPError::FileNotFound { path: path.clone() }
+            } else {
+                SFTPError::Other {
+                    message: format!("Failed to read symlink {}: {}", path, e),
                 }
-            })?;
+            }
+        })?;
 
         Ok(target)
     }
 
     /// Read file content as text
-    pub async fn read_file(
-        &self,
-        session_id: String,
-        path: String,
-    ) -> Result<String, SFTPError> {
+    pub async fn read_file(&self, session_id: String, path: String) -> Result<String, SFTPError> {
         let session_data = self.get_session(&session_id).await?;
         let mut data = session_data.lock().await;
         data.last_used = Utc::now();
 
         // Check if file exists and is a regular file
-        let attrs = data
-            .sftp
-            .metadata(&path)
-            .await
-            .map_err(|e| {
-                if e.to_string().contains("not found") || e.to_string().contains("No such file") {
-                    SFTPError::FileNotFound { path: path.clone() }
-                } else {
-                    SFTPError::Other {
-                        message: format!("Failed to get metadata for {}: {}", path, e),
-                    }
+        let attrs = data.sftp.metadata(&path).await.map_err(|e| {
+            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
+                SFTPError::FileNotFound { path: path.clone() }
+            } else {
+                SFTPError::Other {
+                    message: format!("Failed to get metadata for {}: {}", path, e),
                 }
-            })?;
+            }
+        })?;
 
         if attrs.file_type() != russh_sftp::protocol::FileType::File {
             return Err(SFTPError::Other {
@@ -684,18 +652,17 @@ impl SFTPService {
         let file_size = attrs.size.unwrap_or(0);
         if file_size > 10 * 1024 * 1024 {
             return Err(SFTPError::Other {
-                message: format!("File too large to edit ({} bytes). Maximum size is 10MB", file_size),
+                message: format!(
+                    "File too large to edit ({} bytes). Maximum size is 10MB",
+                    file_size
+                ),
             });
         }
 
         // Open and read file
-        let mut remote_file = data
-            .sftp
-            .open(&path)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to open file {}: {}", path, e),
-            })?;
+        let mut remote_file = data.sftp.open(&path).await.map_err(|e| SFTPError::Other {
+            message: format!("Failed to open file {}: {}", path, e),
+        })?;
 
         use tokio::io::AsyncReadExt;
         let mut buffer = Vec::with_capacity(file_size as usize);
@@ -729,7 +696,10 @@ impl SFTPService {
         // Open file for writing (create if not exists, truncate if exists)
         let mut remote_file = data
             .sftp
-            .open_with_flags(&path, OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE)
+            .open_with_flags(
+                &path,
+                OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE,
+            )
             .await
             .map_err(|e| SFTPError::Other {
                 message: format!("Failed to open file for writing {}: {}", path, e),
@@ -744,14 +714,10 @@ impl SFTPService {
             })?;
 
         // Flush to ensure data is written
-        remote_file
-            .flush()
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to flush file {}: {}", path, e),
-            })?;
+        remote_file.flush().await.map_err(|e| SFTPError::Other {
+            message: format!("Failed to flush file {}: {}", path, e),
+        })?;
 
         Ok(())
     }
 }
-

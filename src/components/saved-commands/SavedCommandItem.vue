@@ -2,7 +2,7 @@
   <Card
     :hover="true"
     no-padding
-    custom-class="p-3 cursor-pointer"
+    custom-class="p-2 cursor-pointer"
     @click="$emit('execute', command)"
   >
     <div class="flex items-start gap-3">
@@ -85,7 +85,16 @@
       </div>
 
       <!-- Actions -->
-      <div class="shrink-0 flex items-center gap-1">
+      <div class="shrink-0 flex flex-col items-center">
+        <Button
+          title="Run command"
+          variant="ghost"
+          size="sm"
+          :icon="Play"
+          class="p-1.5! text-gray-400 hover:text-blue-400 hover:bg-blue-600/20"
+          @click.stop="$emit('execute', command)"
+        />
+
         <!-- Copy button -->
         <Button
           title="Copy command"
@@ -123,7 +132,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { SavedCommand } from "../../types/savedCommand";
-import { Copy, Star, Edit3, Trash2, Clock } from "lucide-vue-next";
+import { Copy, Star, Edit3, Trash2, Clock, Play } from "lucide-vue-next";
 import Card from "../ui/Card.vue";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";

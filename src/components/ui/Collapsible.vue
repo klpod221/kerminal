@@ -22,14 +22,14 @@
         </span>
       </div>
       <div class="flex items-center gap-2 shrink-0">
+        <div @click.stop>
+          <slot name="headerActions" />
+        </div>
         <div
           v-if="badge"
           class="px-1.5 py-0.5 text-[11px] bg-gray-700/50 text-gray-400 rounded-md font-medium"
         >
           {{ badge }}
-        </div>
-        <div @click.stop>
-          <slot name="headerActions" />
         </div>
       </div>
     </button>
@@ -110,7 +110,7 @@ defineExpose({
 
 <style scoped>
 .collapsible-content {
-  overflow: hidden;
+  overflow-x: visible;
 }
 
 /* Transition classes */

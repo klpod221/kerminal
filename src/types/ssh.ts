@@ -54,7 +54,6 @@ export type AuthMethod =
   | "PrivateKey"
   | "PrivateKeyWithPassphrase"
   | "KeyReference"
-  | "Agent"
   | "Certificate"
   | "Kerberos"
   | "PKCS11";
@@ -89,7 +88,6 @@ export type AuthData =
       };
     }
   | { KeyReference: { keyId: string } }
-  | { Agent: { publicKey?: string } }
   | {
       Certificate: {
         certificate: string;

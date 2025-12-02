@@ -1,8 +1,8 @@
 use crate::core::proxy::create_proxy_stream;
 use crate::error::AppError;
 use crate::models::history::{
-    CommandHistoryEntry, GetTerminalHistoryRequest, SearchHistoryRequest,
-    SearchHistoryResponse, ExportHistoryRequest,
+    CommandHistoryEntry, ExportHistoryRequest, GetTerminalHistoryRequest, SearchHistoryRequest,
+    SearchHistoryResponse,
 };
 use crate::models::ssh::{AuthData, SSHProfile};
 use crate::models::terminal::TerminalType;
@@ -28,10 +28,7 @@ pub struct HistoryManager {
 
 impl HistoryManager {
     /// Create a new history manager
-    pub fn new(
-        terminal_manager: Arc<TerminalManager>,
-        ssh_service: Arc<SSHService>,
-    ) -> Self {
+    pub fn new(terminal_manager: Arc<TerminalManager>, ssh_service: Arc<SSHService>) -> Self {
         Self {
             history_cache: Arc::new(RwLock::new(HashMap::new())),
             terminal_manager,
@@ -118,15 +115,24 @@ impl HistoryManager {
         // Get SSH profile based on terminal type
         match terminal_info.config.terminal_type {
             TerminalType::SSH => {
-                let profile_id = terminal_info.config.ssh_profile_id.as_ref().ok_or_else(|| {
-                    AppError::invalid_config("SSH profile ID not found".to_string())
-                })?;
+                let profile_id = terminal_info
+                    .config
+                    .ssh_profile_id
+                    .as_ref()
+                    .ok_or_else(|| {
+                        AppError::invalid_config("SSH profile ID not found".to_string())
+                    })?;
                 self.load_remote_history_from_profile_id(profile_id).await
             }
             TerminalType::SSHConfig => {
-                let ssh_config_host = terminal_info.config.ssh_config_host.as_ref().ok_or_else(|| {
-                    AppError::invalid_config("SSH config host not found".to_string())
-                })?;
+                let ssh_config_host =
+                    terminal_info
+                        .config
+                        .ssh_config_host
+                        .as_ref()
+                        .ok_or_else(|| {
+                            AppError::invalid_config("SSH config host not found".to_string())
+                        })?;
 
                 let password = terminal_info.config.ssh_config_password.clone();
                 let temp_profile = ssh_config_host
@@ -135,11 +141,9 @@ impl HistoryManager {
 
                 self.load_remote_history_from_profile(&temp_profile).await
             }
-            _ => {
-                Err(AppError::invalid_config(
-                    "Terminal is not an SSH terminal".to_string(),
-                ))
-            }
+            _ => Err(AppError::invalid_config(
+                "Terminal is not an SSH terminal".to_string(),
+            )),
         }
     }
 
@@ -305,10 +309,7 @@ impl HistoryManager {
     }
 
     /// Export history to file
-    pub async fn export_history(
-        &self,
-        request: ExportHistoryRequest,
-    ) -> Result<String, AppError> {
+    pub async fn export_history(&self, request: ExportHistoryRequest) -> Result<String, AppError> {
         let history = if let Some(query) = &request.query {
             // Filter by query first
             let search_result = self
@@ -329,22 +330,18 @@ impl HistoryManager {
         };
 
         let content = match request.format.as_str() {
-            "json" => {
-                serde_json::to_string_pretty(&history)
-                    .map_err(|e| AppError::General(format!("Failed to serialize JSON: {}", e)))?
-            }
-            "txt" => {
-                history
-                    .iter()
-                    .map(|entry| {
-                        if let Some(ts) = entry.timestamp {
-                            format!("[{}] {}\n", ts.format("%Y-%m-%d %H:%M:%S"), entry.command)
-                        } else {
-                            format!("{}\n", entry.command)
-                        }
-                    })
-                    .collect::<String>()
-            }
+            "json" => serde_json::to_string_pretty(&history)
+                .map_err(|e| AppError::General(format!("Failed to serialize JSON: {}", e)))?,
+            "txt" => history
+                .iter()
+                .map(|entry| {
+                    if let Some(ts) = entry.timestamp {
+                        format!("[{}] {}\n", ts.format("%Y-%m-%d %H:%M:%S"), entry.command)
+                    } else {
+                        format!("{}\n", entry.command)
+                    }
+                })
+                .collect::<String>(),
             _ => {
                 return Err(AppError::Validation(format!(
                     "Unsupported export format: {}",
@@ -390,17 +387,19 @@ impl HistoryManager {
         let mut session = if let Some(proxy_config) = &profile.proxy {
             let stream = create_proxy_stream(proxy_config, &profile.host, profile.port)
                 .await
-                .map_err(|e| AppError::connection_failed(format!(
-                    "Failed to create proxy connection: {}", e
-                )))?;
+                .map_err(|e| {
+                    AppError::connection_failed(format!("Failed to create proxy connection: {}", e))
+                })?;
             russh::client::connect_stream(config, stream, handler).await
         } else {
             russh::client::connect(config, (&profile.host as &str, profile.port), handler).await
         }
-        .map_err(|e| AppError::connection_failed(format!(
-            "Failed to connect to SSH server {}:{}: {}",
-            profile.host, profile.port, e
-        )))?;
+        .map_err(|e| {
+            AppError::connection_failed(format!(
+                "Failed to connect to SSH server {}:{}: {}",
+                profile.host, profile.port, e
+            ))
+        })?;
 
         // Authenticate
         match &profile.auth_data {
@@ -408,11 +407,16 @@ impl HistoryManager {
                 let authenticated = session
                     .authenticate_password(&profile.username, password)
                     .await
-                    .map_err(|e| AppError::authentication_failed(format!(
-                        "Password authentication failed: {}", e
-                    )))?;
+                    .map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Password authentication failed: {}",
+                            e
+                        ))
+                    })?;
                 if !authenticated {
-                    let _ = session.disconnect(russh::Disconnect::ByApplication, "", "en").await;
+                    let _ = session
+                        .disconnect(russh::Disconnect::ByApplication, "", "en")
+                        .await;
                     return Err(AppError::authentication_failed(
                         "Password authentication failed".to_string(),
                     ));
@@ -421,12 +425,16 @@ impl HistoryManager {
             AuthData::KeyReference { .. } => {
                 // Key-based auth requires SSH key service which we don't have direct access to
                 // For now, return empty - can be enhanced later
-                let _ = session.disconnect(russh::Disconnect::ByApplication, "", "en").await;
+                let _ = session
+                    .disconnect(russh::Disconnect::ByApplication, "", "en")
+                    .await;
                 return Ok(Vec::new());
             }
             AuthData::Certificate { .. } => {
                 // Certificate auth not implemented yet
-                let _ = session.disconnect(russh::Disconnect::ByApplication, "", "en").await;
+                let _ = session
+                    .disconnect(russh::Disconnect::ByApplication, "", "en")
+                    .await;
                 return Ok(Vec::new());
             }
         }
@@ -435,15 +443,15 @@ impl HistoryManager {
         // Try to detect shell and read appropriate history file
         let command = "test -f ~/.zsh_history && cat ~/.zsh_history 2>/dev/null || (test -f ~/.bash_history && cat ~/.bash_history 2>/dev/null || echo '')";
 
-        let mut channel = session.channel_open_session().await
-            .map_err(|e| AppError::terminal_error(format!(
-                "Failed to open SSH channel: {}", e
-            )))?;
+        let mut channel = session
+            .channel_open_session()
+            .await
+            .map_err(|e| AppError::terminal_error(format!("Failed to open SSH channel: {}", e)))?;
 
-        channel.exec(true, command).await
-            .map_err(|e| AppError::terminal_error(format!(
-                "Failed to execute command: {}", e
-            )))?;
+        channel
+            .exec(true, command)
+            .await
+            .map_err(|e| AppError::terminal_error(format!("Failed to execute command: {}", e)))?;
 
         // Collect output from channel
         let mut output_bytes = Vec::new();
@@ -467,7 +475,9 @@ impl HistoryManager {
 
         // Close channel and session
         let _ = channel.close().await;
-        let _ = session.disconnect(russh::Disconnect::ByApplication, "", "en").await;
+        let _ = session
+            .disconnect(russh::Disconnect::ByApplication, "", "en")
+            .await;
 
         // Parse output
         let content = String::from_utf8_lossy(&output_bytes);
