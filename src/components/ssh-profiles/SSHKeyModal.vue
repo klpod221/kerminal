@@ -106,7 +106,7 @@ import Input from "../ui/Input.vue";
 import Textarea from "../ui/Textarea.vue";
 import Button from "../ui/Button.vue";
 import { Save, Upload } from "lucide-vue-next";
-import { useSshKeyStore } from "../../stores/sshKey";
+import { useSSHKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
 import type { UpdateSSHKeyRequest } from "../../types/ssh";
@@ -115,7 +115,7 @@ const props = defineProps<{
   keyId?: string | null;
 }>();
 
-const sshKeyStore = useSshKeyStore();
+const sshKeyStore = useSSHKeyStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
 
 const keyId = getOverlayProp("ssh-key-modal", "keyId", props.keyId, null);

@@ -96,8 +96,11 @@ import { ref, computed, watch } from "vue";
 import { Download } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
+import { invoke } from "@tauri-apps/api/core";
+import type { SSHKey } from "../../types/ssh";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
+import { useSSHKeyStore } from "../../stores/sshKey";
 import { message } from "../../utils/message";
 
 const { closeOverlay, isOverlayVisible } = useOverlay();
@@ -158,17 +161,44 @@ const handleImport = async () => {
         continue;
       }
 
+      let authMethod = host.identityFile ? "KeyReference" : "Password";
+      let authData = host.identityFile
+        ? { KeyReference: { keyId: "" } }
+        : { Password: { password: "" } };
+
+      if (host.identityFile) {
+        try {
+          const keyName = `Imported: ${host.name}`;
+          const key = await invoke<SSHKey>("import_ssh_key_from_file", {
+            name: keyName,
+            filePath: host.identityFile,
+            passphrase: null,
+            description: `Imported from SSH config for host ${host.name}`,
+          });
+          authData = { KeyReference: { keyId: key.id } };
+        } catch (err: any) {
+          console.error(`Failed to import key for ${host.name}:`, err);
+          message.warning(
+            `Could not import key for ${host.name}: ${err.message || err}. Please select key manually.`,
+          );
+        }
+      }
+
       await sshStore.createProfile({
         name: host.name,
         host: host.hostname,
         port: host.port || 22,
         username: host.user || "root",
-        authMethod: host.identityFile ? "KeyReference" : "Password",
-        authData: host.identityFile
-          ? { KeyReference: { keyId: "" } }
-          : { Password: { password: "" } },
+        authMethod: authMethod as any,
+        authData: authData as any,
       });
       importedCount++;
+    }
+
+    if (importedCount > 0) {
+      // Reload keys to show newly imported ones
+      const sshKeyStore = useSSHKeyStore();
+      await sshKeyStore.loadKeys();
     }
 
     message.success(`Imported ${importedCount} profiles`);

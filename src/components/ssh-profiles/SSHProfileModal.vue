@@ -285,7 +285,7 @@ import Collapsible from "../ui/Collapsible.vue";
 import { message } from "../../utils/message";
 import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
-import { useSshKeyStore } from "../../stores/sshKey";
+import { useSSHKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import * as sshService from "../../services/sshProfile";
 import type {
@@ -302,7 +302,7 @@ const props = defineProps<{
 }>();
 
 const sshStore = useSSHStore();
-const sshKeyStore = useSshKeyStore();
+const sshKeyStore = useSSHKeyStore();
 const { closeOverlay, getOverlayProp, openOverlay } = useOverlay();
 
 const sshProfileId = getOverlayProp(

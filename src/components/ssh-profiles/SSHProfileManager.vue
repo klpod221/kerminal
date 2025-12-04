@@ -20,11 +20,11 @@ import SSHImportModal from "./SSHImportModal.vue";
 import SSHKeyManager from "./SSHKeyManager.vue";
 import SSHKeyModal from "./SSHKeyModal.vue";
 import { useSSHStore } from "../../stores/ssh";
-import { useSshKeyStore } from "../../stores/sshKey";
+import { useSSHKeyStore } from "../../stores/sshKey";
 import { useConnectionHistoryStore } from "../../stores/connectionHistory";
 
 const sshStore = useSSHStore();
-const sshKeyStore = useSshKeyStore();
+const sshKeyStore = useSSHKeyStore();
 const connectionHistoryStore = useConnectionHistoryStore();
 
 /**
@@ -37,7 +37,7 @@ const initialize = async () => {
     await Promise.all([
       sshStore.loadAll(),
       sshKeyStore.loadKeys(),
-      connectionHistoryStore.loadHistory()
+      connectionHistoryStore.loadHistory(),
     ]);
     await Promise.all([sshStore.startRealtime(), sshKeyStore.startRealtime()]);
   } catch (error) {

@@ -202,14 +202,14 @@ import { message } from "../../utils/message";
 import { formatDateOrNever } from "../../utils/formatter";
 import { useSyncStore } from "../../stores/sync";
 import { useSSHStore } from "../../stores/ssh";
-import { useSshKeyStore } from "../../stores/sshKey";
+import { useSSHKeyStore } from "../../stores/sshKey";
 import { useSavedCommandStore } from "../../stores/savedCommand";
 import { useTunnelStore } from "../../stores/tunnel";
 import type { SyncLogStatus } from "../../types/sync";
 
 const syncStore = useSyncStore();
 const sshStore = useSSHStore();
-const sshKeyStore = useSshKeyStore();
+const sshKeyStore = useSSHKeyStore();
 const savedCommandStore = useSavedCommandStore();
 const tunnelStore = useTunnelStore();
 const isSyncing = ref(false);

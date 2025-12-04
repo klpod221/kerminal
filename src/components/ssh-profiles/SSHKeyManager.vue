@@ -124,12 +124,12 @@ import Button from "../ui/Button.vue";
 import EmptyState from "../ui/EmptyState.vue";
 import SkeletonList from "../ui/SkeletonList.vue";
 import { Key, Plus, Edit3, Trash2 } from "lucide-vue-next";
-import { useSshKeyStore } from "../../stores/sshKey";
+import { useSSHKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
 import type { SSHKey } from "../../types/ssh";
 import { showConfirm } from "../../utils/message";
 
-const sshKeyStore = useSshKeyStore();
+const sshKeyStore = useSSHKeyStore();
 const { openOverlay, isOverlayVisible } = useOverlay();
 
 const openKeyModal = (key?: SSHKey) => {

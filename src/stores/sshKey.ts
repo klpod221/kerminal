@@ -10,7 +10,7 @@ import { api } from "../services/api";
 import { message } from "../utils/message";
 import { handleError, type ErrorContext } from "../utils/errorHandler";
 
-export const useSshKeyStore = defineStore("sshKey", () => {
+export const useSSHKeyStore = defineStore("sshKey", () => {
   const keys = ref<SSHKey[]>([]);
   const isLoading = ref(false);
 

@@ -93,9 +93,21 @@ impl SSHKeyService {
         passphrase: Option<String>,
         description: Option<String>,
     ) -> DatabaseResult<SSHKey> {
-        let private_key = std::fs::read_to_string(file_path).map_err(|e| {
+        let expanded_path = if file_path.starts_with("~/") {
+            let home = std::env::var("HOME").map_err(|_| {
+                crate::database::error::DatabaseError::Internal(anyhow::anyhow!(
+                    "Cannot determine HOME directory"
+                ))
+            })?;
+            file_path.replacen("~", &home, 1)
+        } else {
+            file_path.to_string()
+        };
+
+        let private_key = std::fs::read_to_string(&expanded_path).map_err(|e| {
             crate::database::error::DatabaseError::Internal(anyhow::anyhow!(
-                "Failed to read key file: {}",
+                "Failed to read key file '{}': {}",
+                expanded_path,
                 e
             ))
         })?;
