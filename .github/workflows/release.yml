@@ -74,7 +74,7 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-    publish-aur:
+  publish-aur:
     name: Publish to AUR (${{ matrix.repo }})
     needs: build-tauri
     runs-on: ubuntu-latest
