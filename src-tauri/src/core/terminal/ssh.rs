@@ -163,7 +163,7 @@ pub struct SSHTerminal {
     config: TerminalConfig,
     ssh_profile: SSHProfile,
     state: TerminalState,
-    session: Option<Handle<ClientHandler>>,
+    session: Option<Arc<Handle<ClientHandler>>>,
     channel: Option<Channel<Msg>>,
     handler: Arc<ClientHandler>,
     database_service: Option<Arc<tokio::sync::Mutex<crate::database::service::DatabaseService>>>,
@@ -279,9 +279,42 @@ impl SSHTerminal {
             )
             .await;
 
-        let _ = channel.request_shell(false).await;
+        // Handle command, working directory, and environment variables
+        let mut command_parts: Vec<String> = Vec::new();
 
-        self.session = Some(session);
+        // Inject environment variables via export commands
+        if let Some(env) = &self.ssh_profile.env {
+            for (key, value) in env {
+                // Escape single quotes in value
+                let escaped_value = value.replace("'", "'\\''");
+                command_parts.push(format!("export {}='{}'", key, escaped_value));
+            }
+        }
+
+        if let Some(wd) = &self.ssh_profile.working_dir {
+            if !wd.is_empty() {
+                command_parts.push(format!("cd \"{}\"", wd));
+            }
+        }
+
+        if let Some(cmd) = &self.ssh_profile.command {
+            if !cmd.is_empty() {
+                command_parts.push(cmd.clone());
+            }
+        }
+
+        if !command_parts.is_empty() {
+            // Join parts with && to ensure sequence
+            let mut full_command = command_parts.join(" && ");
+            // Append shell execution to keep session open
+            full_command.push_str("; exec ${SHELL:-bash} -l");
+
+            let _ = channel.exec(false, full_command.as_bytes()).await;
+        } else {
+            let _ = channel.request_shell(false).await;
+        }
+
+        self.session = Some(Arc::new(session));
         self.channel = Some(channel);
         self.state = TerminalState::Connected;
 
@@ -499,11 +532,48 @@ impl SSHTerminal {
         sender: mpsc::UnboundedSender<Vec<u8>>,
         _title_sender: Option<mpsc::UnboundedSender<String>>,
         exit_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalExited>>,
+        latency_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalLatency>>,
     ) -> Result<(), AppError> {
         self.handler.set_output_sender(sender).await;
         if let Some(exit_sender) = exit_sender {
             self.handler.set_exit_sender(exit_sender).await;
         }
+
+        // Spawn latency measurement task
+        if let Some(latency_sender) = latency_sender {
+            if let Some(session) = &self.session {
+                let session_handle = session.clone();
+                let terminal_id = self.handler.terminal_id.lock().await.clone();
+
+                tokio::spawn(async move {
+                    let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+                    loop {
+                        interval.tick().await;
+
+                        let start = std::time::Instant::now();
+                        // Use channel_open_session as a ping mechanism
+                        // It involves a round-trip to the server
+                        match session_handle.channel_open_session().await {
+                            Ok(channel) => {
+                                let latency = start.elapsed().as_millis() as u64;
+                                // Close the channel immediately
+                                let _ = channel.close().await;
+
+                                let event = crate::models::terminal::TerminalLatency {
+                                    terminal_id: terminal_id.clone(),
+                                    latency_ms: latency,
+                                };
+                                if latency_sender.send(event).is_err() {
+                                    break;
+                                }
+                            }
+                            Err(_) => {}
+                        }
+                    }
+                });
+            }
+        }
+
         Ok(())
     }
 }

@@ -46,10 +46,9 @@
     >
       <Unplug :size="isMobile ? 16 : 14" />
     </div>
-    <Terminal
+    <div
       v-else-if="minWidth >= 80 || isMobile"
-      :size="isMobile ? 16 : 14"
-      class="transition-colors duration-200 shrink-0"
+      class="transition-colors duration-200 shrink-0 relative"
       :class="[
         isActive && !isRecording
           ? 'text-blue-400'
@@ -58,7 +57,15 @@
             : 'text-gray-400',
         isMobile ? 'mr-1.5' : 'mr-2',
       ]"
-    />
+    >
+      <Terminal :size="isMobile ? 16 : 14" />
+      <!-- Connected Indicator -->
+      <div
+        v-if="isConnected"
+        class="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border-2 border-bg-primary"
+        title="Connected"
+      ></div>
+    </div>
     <div
       v-if="tab.color && (minWidth >= 60 || isMobile)"
       class="rounded-full shrink-0"
@@ -123,12 +130,14 @@ interface TabProps {
   tab: Tab;
   isActive: boolean;
   isConnecting?: boolean;
+  isConnected?: boolean;
   isError?: boolean;
   disconnectReason?: string;
   minWidth: number;
   maxWidth: number;
   panelId: string;
   backendTerminalId?: string;
+  latency?: number;
 }
 
 interface TabEmits {
@@ -144,8 +153,10 @@ interface TabEmits {
 
 const props = withDefaults(defineProps<TabProps>(), {
   isConnecting: false,
+  isConnected: false,
   isError: false,
   disconnectReason: undefined,
+  latency: undefined,
 });
 
 const emit = defineEmits<TabEmits>();

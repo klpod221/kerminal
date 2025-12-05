@@ -19,6 +19,7 @@ pub struct LocalConfig {
     pub shell: Option<String>,
     pub working_dir: Option<String>,
     pub env_vars: Option<HashMap<String, String>>,
+    pub command: Option<String>,
 }
 
 /// Terminal configuration that can be either Local or SSH with profile ID
@@ -28,6 +29,7 @@ pub struct TerminalConfig {
     pub terminal_type: TerminalType,
     pub local_config: Option<LocalConfig>,
     pub ssh_profile_id: Option<String>,
+    pub terminal_profile_id: Option<String>,
     pub ssh_config_host: Option<SSHConfigHost>,
     pub ssh_config_password: Option<String>,
 }
@@ -113,4 +115,11 @@ pub struct TerminalExited {
     pub exit_code: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalLatency {
+    pub terminal_id: String,
+    pub latency_ms: u64,
 }

@@ -7,3 +7,4 @@ pub mod recording;
 pub mod sftp;
 pub mod system;
 pub mod terminal;
+pub mod terminal_profile;

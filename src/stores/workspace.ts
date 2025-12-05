@@ -18,12 +18,15 @@ import {
   listenToTerminalExit,
   resizeTerminal,
   listenToTerminalOutput,
+  listenToTerminalLatency,
 } from "../services/terminal";
-import type { ResizeTerminalRequest, TerminalData } from "../types/panel";
+import { invoke } from "@tauri-apps/api/core";
+import type { ResizeTerminalRequest, TerminalData, CreateTerminalResponse } from "../types/panel";
 import { api } from "../services/api";
 import type {
   TerminalTitleChanged,
   TerminalExited,
+  TerminalLatency,
   PanelLayout,
   TerminalInstance,
   Panel,
@@ -55,7 +58,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
   let unlistenTitleChanges: (() => void) | null = null;
   let unlistenTerminalExits: (() => void) | null = null;
-  let unlistenSSHConnected: (() => void) | null = null; /**
+  let unlistenSSHConnected: (() => void) | null = null;
+  let unlistenTerminalLatency: (() => void) | null = null; /**
    * Find a panel in the layout tree by ID
    * @param layout - The layout to search in
    * @param panelId - The panel ID to find
@@ -314,6 +318,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     (newTerminal as any).shell = profile.shell;
     (newTerminal as any).workingDir = profile.workingDir;
     (newTerminal as any).env = profile.env;
+    (newTerminal as any).command = profile.command;
 
     panel.tabs.push(newTab);
     panel.activeTabId = newTabId;
@@ -381,6 +386,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const terminal = terminals.value.find((t) => t.id === terminalId);
     if (terminal) {
       terminal.isSSHConnecting = false;
+      terminal.isConnected = false;
       terminal.hasError = true;
       terminal.errorMessage = error;
       terminal.canReconnect = true;
@@ -418,6 +424,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const terminal = terminals.value.find((t) => t.id === terminalId);
     if (terminal) {
       terminal.isSSHConnecting = false;
+      terminal.isConnected = true;
       terminal.disconnectReason = undefined;
       terminal.hasError = false;
       terminal.errorMessage = undefined;
@@ -440,6 +447,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     terminal.hasError = false;
     terminal.errorMessage = undefined;
     terminal.isSSHConnecting = true;
+    terminal.isConnected = false;
     terminal.backendTerminalId = undefined;
 
     const context: ErrorContext = {
@@ -1216,12 +1224,28 @@ export const useWorkspaceStore = defineStore("workspace", () => {
             );
           } else if (profileId) {
             response = await withRetry(
-              () => createSSHTerminal(profileId),
+              () => createSSHTerminal(profileId!),
               { maxRetries: 2, retryDelay: 1000 },
               context,
             );
+          } else if (terminal.profileId) {
+            // Use generic create_terminal for Terminal Profile
+            // The backend expects CreateLocalTerminalRequest which has flat fields
+            response = await invoke<CreateTerminalResponse>("create_terminal", {
+              request: {
+                shell: terminal.shell,
+                workingDir: terminal.workingDir,
+                title,
+                terminalProfileId: terminal.profileId,
+                command: terminal.command,
+              },
+            });
           } else {
-            response = await createLocalTerminal(undefined, undefined, title);
+            response = await createLocalTerminal(
+              terminal.shell,
+              terminal.workingDir,
+              title,
+            );
           }
 
           terminal.backendTerminalId = response.terminalId;
@@ -1333,10 +1357,26 @@ export const useWorkspaceStore = defineStore("workspace", () => {
                   | "connection-lost"
                   | "server-disconnect"
                   | "connection-error";
+                terminal.disconnectReason = reason as
+                  | "connection-lost"
+                  | "server-disconnect"
+                  | "connection-error";
                 terminal.isSSHConnecting = false;
+                terminal.isConnected = false;
                 terminal.backendTerminalId = undefined;
               }
             }
+          }
+        },
+      );
+
+      unlistenTerminalLatency = await listenToTerminalLatency(
+        (latencyEvent: TerminalLatency) => {
+          const terminal = terminals.value.find(
+            (t) => t.backendTerminalId === latencyEvent.terminalId,
+          );
+          if (terminal) {
+            terminal.latency = latencyEvent.latencyMs;
           }
         },
       );
@@ -1360,6 +1400,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
             if (terminal) {
               terminal.isSSHConnecting = false;
+              terminal.isConnected = true;
               handleSSHConnectionSuccess(terminal.id);
             }
           },
@@ -1402,6 +1443,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (unlistenSSHConnected) {
       unlistenSSHConnected();
       unlistenSSHConnected = null;
+    }
+    if (unlistenTerminalLatency) {
+      unlistenTerminalLatency();
+      unlistenTerminalLatency = null;
     }
   };
 

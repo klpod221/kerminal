@@ -5,27 +5,15 @@ import type {
   CreateTerminalProfileRequest,
   UpdateTerminalProfileRequest,
 } from "../types/terminalProfile";
-import { v4 as uuidv4 } from "uuid";
-import { Store } from "@tauri-apps/plugin-store";
+import { invoke } from "@tauri-apps/api/core";
 import { message } from "../utils/message";
 import { handleError, type ErrorContext } from "../utils/errorHandler";
-
-// Tauri store instance
-let store: Store | null = null;
-
-// Initialize Tauri store
-const initStore = async () => {
-  if (!store) {
-    store = await Store.load("terminal-profiles.json");
-  }
-  return store;
-};
 
 export const useTerminalProfileStore = defineStore("terminalProfile", () => {
   const profiles = ref<TerminalProfile[]>([]);
   const isLoading = ref(false);
 
-  // Load from Tauri store
+  // Load from Backend
   const loadProfiles = async () => {
     isLoading.value = true;
     const context: ErrorContext = {
@@ -33,32 +21,13 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      const storeInstance = await initStore();
-      const stored = await storeInstance.get<TerminalProfile[]>("profiles");
-      if (stored) {
-        profiles.value = stored;
-      }
+      const stored = await invoke<TerminalProfile[]>("list_terminal_profiles");
+      profiles.value = stored;
     } catch (error) {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
     } finally {
       isLoading.value = false;
-    }
-  };
-
-  // Save to Tauri store
-  const saveProfiles = async () => {
-    const context: ErrorContext = {
-      operation: "Save Terminal Profiles",
-    };
-
-    try {
-      const storeInstance = await initStore();
-      await storeInstance.set("profiles", profiles.value);
-      await storeInstance.save();
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
     }
   };
 
@@ -74,14 +43,8 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      const newProfile: TerminalProfile = {
-        id: uuidv4(),
-        ...request,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
+      const newProfile = await invoke<TerminalProfile>("create_terminal_profile", { request });
       profiles.value.push(newProfile);
-      await saveProfiles();
       return newProfile;
     } catch (error) {
       const errorMessage = handleError(error, context);
@@ -100,17 +63,15 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
+      const updatedProfile = await invoke<TerminalProfile>("update_terminal_profile", { id, request });
       const index = profiles.value.findIndex((p) => p.id === id);
       if (index !== -1) {
-        profiles.value[index] = {
-          ...profiles.value[index],
-          ...request,
-          updatedAt: Date.now(),
-        };
-        await saveProfiles();
-        return profiles.value[index];
+        profiles.value[index] = updatedProfile;
+        return updatedProfile;
       }
-      return undefined;
+      // If not found in local list but updated successfully, reload list
+      await loadProfiles();
+      return updatedProfile;
     } catch (error) {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
@@ -125,13 +86,12 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
+      await invoke("delete_terminal_profile", { id });
       const index = profiles.value.findIndex((p) => p.id === id);
       if (index !== -1) {
         profiles.value.splice(index, 1);
-        await saveProfiles();
-        return true;
       }
-      return false;
+      return true;
     } catch (error) {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
@@ -153,3 +113,4 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     loadProfiles,
   };
 });
+

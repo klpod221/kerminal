@@ -92,6 +92,26 @@
           "
         />
       </div>
+
+      <!-- Terminal Profiles button -->
+      <div
+        class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
+        :class="[
+          isOverlayVisible('terminal-profile-drawer') ? 'bg-gray-800' : '',
+          isMobile ? 'px-2' : 'px-3',
+        ]"
+        @click="toggleOverlay('terminal-profile-drawer')"
+      >
+        <Terminal
+          :size="isMobile ? 18 : 16"
+          class="transition-opacity duration-200"
+          :class="
+            isOverlayVisible('terminal-profile-drawer')
+              ? 'opacity-100'
+              : 'opacity-60 hover:opacity-100'
+          "
+        />
+      </div>
     </div>
 
     <!-- Center content -->
@@ -118,7 +138,7 @@
           title="Saved Commands"
           variant="ghost"
           size="sm"
-          :icon="Terminal"
+          :icon="FileCode"
           :class="
             isOverlayVisible('saved-command-drawer')
               ? 'bg-gray-800 text-gray-400 hover:text-white'
@@ -254,7 +274,7 @@
                 "
                 @click="handleMobileMenuClick('saved-command-drawer')"
               >
-                <Terminal :size="18" />
+                <FileCode :size="18" />
                 <span>Saved Commands</span>
               </button>
 
@@ -348,6 +368,7 @@ import {
   Palette,
   Video,
   FolderOpen,
+  FileCode,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

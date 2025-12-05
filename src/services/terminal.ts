@@ -8,11 +8,13 @@ import type {
   ResizeTerminalRequest,
   TerminalInfo,
   TerminalData,
+  TerminalLatency,
 } from "../types/panel";
 
 let outputUnlisten: (() => void) | null = null;
 let titleUnlisten: (() => void) | null = null;
 let exitUnlisten: (() => void) | null = null;
+let latencyUnlisten: (() => void) | null = null;
 
 /**
  * Create a new local terminal
@@ -212,6 +214,19 @@ export async function listenToTerminalExit(
 }
 
 /**
+ * Listen to terminal latency events
+ */
+export async function listenToTerminalLatency(
+  callback: (data: TerminalLatency) => void,
+): Promise<() => void> {
+  latencyUnlisten = await api.listen<TerminalLatency>(
+    "terminal-latency",
+    callback,
+  );
+  return latencyUnlisten;
+}
+
+/**
  * Cleanup all terminal listeners
  */
 export const cleanupTerminalListeners = (): void => {
@@ -226,5 +241,9 @@ export const cleanupTerminalListeners = (): void => {
   if (exitUnlisten) {
     exitUnlisten();
     exitUnlisten = null;
+  }
+  if (latencyUnlisten) {
+    latencyUnlisten();
+    latencyUnlisten = null;
   }
 };

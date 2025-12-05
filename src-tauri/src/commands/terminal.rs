@@ -21,10 +21,12 @@ pub async fn create_terminal(
             shell: request.shell,
             working_dir: request.working_dir,
             env_vars: None,
+            command: request.command,
         }),
         ssh_profile_id: None,
         ssh_config_host: None,
         ssh_config_password: None,
+        terminal_profile_id: request.terminal_profile_id,
     };
 
     let create_request = CreateTerminalRequest {
@@ -56,6 +58,7 @@ pub async fn create_ssh_terminal(
         ssh_profile_id: Some(request.profile_id),
         ssh_config_host: None,
         ssh_config_password: None,
+        terminal_profile_id: None,
     };
 
     let terminal_request = CreateTerminalRequest {
@@ -105,6 +108,7 @@ pub async fn create_ssh_config_terminal(
         ssh_profile_id: None,
         ssh_config_host: Some(host.clone()),
         ssh_config_password: request.password,
+        terminal_profile_id: None,
     };
 
     let title = request.title.unwrap_or_else(|| {

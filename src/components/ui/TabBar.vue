@@ -72,9 +72,11 @@
               :panel-id="panel.id"
               :is-active="tab.id === panel.activeTabId"
               :is-connecting="getTerminalConnectingState(tab.id)"
+              :is-connected="getTerminalConnectedState(tab.id)"
               :is-error="getTerminalErrorState(tab.id)"
               :disconnect-reason="getTerminalDisconnectReason(tab.id)"
               :backend-terminal-id="getBackendTerminalId(tab.id)"
+              :latency="getTerminalLatency(tab.id)"
               :min-width="tabMinWidth"
               :max-width="tabMaxWidth"
               @select="selectTab(tab.id)"
@@ -223,9 +225,7 @@ import type {
   Panel,
   TerminalInstance,
 } from "../../types/panel";
-import ContextMenu, {
-  type ContextMenuItem,
-} from "./ContextMenu.vue";
+import ContextMenu, { type ContextMenuItem } from "./ContextMenu.vue";
 
 interface TabBarProps {
   panel: Panel;
@@ -483,6 +483,11 @@ const getTerminalConnectingState = (tabId: string): boolean => {
   return terminal?.isSSHConnecting || false;
 };
 
+const getTerminalConnectedState = (tabId: string): boolean => {
+  const terminal = props.terminals.find((t) => t.id === tabId);
+  return terminal?.isConnected || false;
+};
+
 const getTerminalErrorState = (tabId: string): boolean => {
   const terminal = props.terminals.find((t) => t.id === tabId);
   return terminal?.hasError || false;
@@ -491,6 +496,11 @@ const getTerminalErrorState = (tabId: string): boolean => {
 const getTerminalDisconnectReason = (tabId: string): string | undefined => {
   const terminal = props.terminals.find((t) => t.id === tabId);
   return terminal?.disconnectReason;
+};
+
+const getTerminalLatency = (tabId: string): number | undefined => {
+  const terminal = props.terminals.find((t) => t.id === tabId);
+  return terminal?.latency;
 };
 
 const selectTab = (tabId: string): void => {

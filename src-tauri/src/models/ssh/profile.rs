@@ -43,6 +43,11 @@ pub struct SSHProfile {
 
     /// Notes
     pub description: Option<String>,
+
+    /// Terminal settings
+    pub command: Option<String>,
+    pub working_dir: Option<String>,
+    pub env: Option<std::collections::HashMap<String, String>>,
 }
 
 /// Authentication methods supported
@@ -152,6 +157,9 @@ impl SSHProfile {
             proxy: None,
             color: None,
             description: None,
+            command: None,
+            working_dir: None,
+            env: None,
         }
     }
 
@@ -312,6 +320,9 @@ pub struct CreateSSHProfileRequest {
     pub proxy: Option<ProxyConfig>,
     pub color: Option<String>,
     pub description: Option<String>,
+    pub command: Option<String>,
+    pub working_dir: Option<String>,
+    pub env: Option<std::collections::HashMap<String, String>>,
 }
 
 impl CreateSSHProfileRequest {
@@ -332,6 +343,9 @@ impl CreateSSHProfileRequest {
         profile.compression = self.compression.unwrap_or(false);
         profile.color = self.color;
         profile.description = self.description;
+        profile.command = self.command;
+        profile.working_dir = self.working_dir;
+        profile.env = self.env;
 
         profile
     }
@@ -353,6 +367,9 @@ pub struct UpdateSSHProfileRequest {
     pub compression: Option<bool>,
     pub color: Option<Option<String>>,
     pub description: Option<Option<String>>,
+    pub command: Option<Option<String>>,
+    pub working_dir: Option<Option<String>>,
+    pub env: Option<Option<std::collections::HashMap<String, String>>>,
 }
 
 /// Request to test SSH connection (minimal required fields)
@@ -388,6 +405,9 @@ impl TestSSHConnectionRequest {
             proxy: self.proxy,
             color: None,
             description: None,
+            command: None,
+            working_dir: None,
+            env: None,
         }
     }
 }
@@ -429,6 +449,15 @@ impl UpdateSSHProfileRequest {
         }
         if let Some(description) = self.description {
             profile.description = description;
+        }
+        if let Some(command) = self.command {
+            profile.command = command;
+        }
+        if let Some(working_dir) = self.working_dir {
+            profile.working_dir = working_dir;
+        }
+        if let Some(env) = self.env {
+            profile.env = env;
         }
 
         profile.base.touch();

@@ -86,10 +86,8 @@
           databaseId ? 'Leave empty to keep current password' : 'Enter password'
         "
         :rules="databaseId ? '' : 'required'"
+        helper-text="Leave empty to keep the current password. Enter a new password to change it."
       />
-      <div v-if="databaseId" class="text-xs text-gray-400 -mt-2">
-        Leave empty to keep the current password
-      </div>
 
       <Input
         id="db-database"

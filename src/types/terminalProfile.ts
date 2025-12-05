@@ -6,8 +6,7 @@ export interface TerminalProfile {
   env?: Record<string, string>;
   icon?: string;
   color?: string;
-  createdAt: number;
-  updatedAt: number;
+  command?: string;
 }
 
 export interface CreateTerminalProfileRequest {
@@ -17,6 +16,7 @@ export interface CreateTerminalProfileRequest {
   env?: Record<string, string>;
   icon?: string;
   color?: string;
+  command?: string;
 }
 
 export interface UpdateTerminalProfileRequest {
@@ -26,4 +26,5 @@ export interface UpdateTerminalProfileRequest {
   env?: Record<string, string>;
   icon?: string;
   color?: string;
+  command?: string;
 }

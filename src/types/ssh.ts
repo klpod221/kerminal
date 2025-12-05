@@ -132,6 +132,9 @@ export interface SSHProfile extends BaseModel {
   proxy?: ProxyConfig;
   color?: string;
   description?: string;
+  command?: string;
+  workingDir?: string;
+  env?: Record<string, string>;
 }
 
 /**
@@ -188,6 +191,9 @@ export interface CreateSSHProfileRequest {
   color?: string;
   icon?: string;
   description?: string;
+  command?: string;
+  workingDir?: string;
+  env?: Record<string, string>;
 }
 
 /**
@@ -208,6 +214,9 @@ export interface UpdateSSHProfileRequest {
   color?: string | null;
   icon?: string | null;
   description?: string | null;
+  command?: string | null;
+  workingDir?: string | null;
+  env?: Record<string, string> | null;
 }
 
 /**

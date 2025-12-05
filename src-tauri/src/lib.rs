@@ -148,6 +148,11 @@ pub fn main() {
             commands::history::get_terminal_history,
             commands::history::search_history,
             commands::history::export_history,
+            commands::terminal_profile::create_terminal_profile,
+            commands::terminal_profile::get_terminal_profile,
+            commands::terminal_profile::list_terminal_profiles,
+            commands::terminal_profile::update_terminal_profile,
+            commands::terminal_profile::delete_terminal_profile,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

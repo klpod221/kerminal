@@ -29,41 +29,14 @@
         placeholder="/home/user/projects"
       />
 
-      <Collapsible
-        title="Environment Variables"
-        subtitle="Set custom environment variables"
-        :default-expanded="false"
-      >
-        <div v-for="(_item, index) in envVars" :key="index" class="flex gap-2 mb-2">
-          <Input
-            :id="`env-key-${index}`"
-            v-model="envVars[index].key"
-            placeholder="KEY"
-            class="flex-1"
-          />
-          <Input
-            :id="`env-val-${index}`"
-            v-model="envVars[index].value"
-            placeholder="VALUE"
-            class="flex-1"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            :icon="Trash2"
-            @click="removeEnvVar(index)"
-          />
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          :icon="Plus"
-          @click="addEnvVar"
-        >
-          Add Variable
-        </Button>
-      </Collapsible>
+      <CodeEditor
+        id="profile-command"
+        v-model="profile.command"
+        label="Startup Command (Optional)"
+        language="shell"
+        height="100px"
+        helper-text="e.g. neofetch or ./start.sh"
+      />
 
       <ColorPicker
         id="profile-color"
@@ -71,6 +44,14 @@
         label="Profile Color"
         placeholder="Pick a color for the tab"
       />
+
+      <Collapsible
+        title="Environment Variables"
+        subtitle="Set custom environment variables"
+        :default-expanded="false"
+      >
+        <EnvVarEditor v-model="env" />
+      </Collapsible>
     </Form>
 
     <template #footer>
@@ -102,12 +83,17 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
+import CodeEditor from "../ui/CodeEditor.vue";
 import ColorPicker from "../ui/ColorPicker.vue";
+import EnvVarEditor from "../ui/EnvVarEditor.vue";
 import { message } from "../../utils/message";
-import { Save, Plus, Trash2 } from "lucide-vue-next";
+import { Save } from "lucide-vue-next";
 import { useTerminalProfileStore } from "../../stores/terminalProfile";
 import { useOverlay } from "../../composables/useOverlay";
-import type { CreateTerminalProfileRequest, UpdateTerminalProfileRequest } from "../../types/terminalProfile";
+import type {
+  CreateTerminalProfileRequest,
+  UpdateTerminalProfileRequest,
+} from "../../types/terminalProfile";
 
 const props = defineProps<{
   profileId?: string | null;
@@ -116,7 +102,12 @@ const props = defineProps<{
 const store = useTerminalProfileStore();
 const { closeOverlay, getOverlayProp } = useOverlay();
 
-const profileId = getOverlayProp("terminal-profile-modal", "profileId", props.profileId, null);
+const profileId = getOverlayProp(
+  "terminal-profile-modal",
+  "profileId",
+  props.profileId,
+  null,
+);
 
 const profileForm = ref<InstanceType<typeof Form> | null>(null);
 
@@ -125,9 +116,10 @@ const profile = ref({
   shell: "",
   workingDir: "",
   color: "#3b82f6",
+  command: "",
 });
 
-const envVars = ref<{ key: string; value: string }[]>([]);
+const env = ref<Record<string, string>>({});
 
 const loadProfile = () => {
   if (!profileId.value) return;
@@ -139,42 +131,28 @@ const loadProfile = () => {
       shell: existing.shell,
       workingDir: existing.workingDir || "",
       color: existing.color || "#3b82f6",
+      command: existing.command || "",
     };
-    if (existing.env) {
-      envVars.value = Object.entries(existing.env).map(([key, value]) => ({ key, value }));
-    } else {
-      envVars.value = [];
-    }
+    env.value = existing.env || {};
   }
-};
-
-const addEnvVar = () => {
-  envVars.value.push({ key: "", value: "" });
-};
-
-const removeEnvVar = (index: number) => {
-  envVars.value.splice(index, 1);
 };
 
 const handleSubmit = async () => {
   const isValid = await profileForm.value?.validate();
   if (!isValid) return;
 
-  const env: Record<string, string> = {};
-  envVars.value.forEach((item) => {
-    if (item.key) {
-      env[item.key] = item.value;
-    }
-  });
-
   const request = {
     ...profile.value,
-    env: Object.keys(env).length > 0 ? env : undefined,
-    workingDir: profile.value.workingDir || undefined,
+    env: Object.keys(env.value).length > 0 ? env.value : undefined,
+    workingDir: profile.value.workingDir,
+    command: profile.value.command,
   };
 
   if (profileId.value) {
-    store.updateProfile(profileId.value, request as UpdateTerminalProfileRequest);
+    store.updateProfile(
+      profileId.value,
+      request as UpdateTerminalProfileRequest,
+    );
     message.success("Terminal profile updated");
   } else {
     store.createProfile(request as CreateTerminalProfileRequest);
@@ -195,10 +173,11 @@ watch(
         shell: "/bin/bash",
         workingDir: "",
         color: "#3b82f6",
+        command: "",
       };
-      envVars.value = [];
+      env.value = {};
     }
   },
-  { immediate: true }
+  { immediate: true, deep: true },
 );
 </script>

@@ -169,6 +169,7 @@ impl SSHService {
             ssh_profile_id: Some(profile.base.id.clone()),
             ssh_config_host: None,
             ssh_config_password: None,
+            terminal_profile_id: None,
         };
 
         let mut ssh_terminal = SSHTerminal::new(

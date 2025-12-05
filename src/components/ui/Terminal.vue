@@ -3,6 +3,25 @@
     ref="terminalRef"
     class="w-full h-full bg-bg-secondary terminal-container relative"
   >
+    <!-- Latency Badge -->
+    <div
+      v-if="
+        currentTerminal?.latency !== undefined &&
+        !isConnecting &&
+        !showDisconnectedOverlay &&
+        !showErrorOverlay
+      "
+      class="absolute top-2 right-2 z-10 bg-black/50 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-1.5 border border-white/10 transition-all duration-300 hover:bg-black/70 group select-none"
+    >
+      <Wifi :size="14" :class="getLatencyColor(currentTerminal.latency)" />
+      <span
+        class="text-xs font-mono font-medium"
+        :class="getLatencyColor(currentTerminal.latency)"
+      >
+        {{ currentTerminal.latency }}ms
+      </span>
+    </div>
+
     <!-- SSH Connecting Overlay -->
     <div
       v-if="isConnecting"
@@ -147,7 +166,7 @@ import { extractErrorMessage } from "../../utils/errorHandler";
 import { TerminalBufferManager, InputBatcher } from "../../core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
-import { XCircle, RefreshCw, X } from "lucide-vue-next";
+import { XCircle, RefreshCw, X, Wifi } from "lucide-vue-next";
 import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
 import HistorySearchModal from "../history/HistorySearchModal.vue";
@@ -240,6 +259,12 @@ const canReconnect = computed(
   () =>
     currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId,
 );
+
+const getLatencyColor = (latency: number) => {
+  if (latency < 100) return "text-green-400";
+  if (latency < 300) return "text-yellow-400";
+  return "text-red-400";
+};
 
 const handleReconnect = () => {
   if (currentTerminal.value?.sshProfileId) {

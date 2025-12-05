@@ -27,6 +27,7 @@ export interface TerminalInstance {
   id: string;
   ready: boolean;
   isSSHConnecting?: boolean;
+  isConnected?: boolean;
   backendTerminalId?: string;
   shouldFocusOnReady?: boolean;
   isClosing?: boolean;
@@ -45,10 +46,12 @@ export interface TerminalInstance {
   shell?: string;
   workingDir?: string;
   env?: Record<string, string>;
+  command?: string;
 
   pendingPasswordAuth?: boolean;
   errorMessage?: string;
   hasError?: boolean;
+  latency?: number;
 }
 
 export type TerminalType = "Local" | "SSH";
@@ -123,4 +126,9 @@ export interface TerminalExited {
   terminalId: string;
   exitCode?: number;
   reason?: "user-closed" | "connection-lost" | "error";
+}
+
+export interface TerminalLatency {
+  terminalId: string;
+  latencyMs: number;
 }

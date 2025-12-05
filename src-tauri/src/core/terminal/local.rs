@@ -79,8 +79,23 @@ impl LocalTerminal {
             cmd.arg("-l");
         }
 
+        if let Some(command) = &self.local_config.command {
+            if !command.is_empty() {
+                if shell.contains("zsh") || shell.contains("bash") || shell.ends_with("/sh") {
+                    let new_cmd = format!("{}; exec {} -l", command, shell);
+                    cmd.arg("-c");
+                    cmd.arg(&new_cmd);
+                } else {
+                    cmd.arg("-c");
+                    cmd.arg(command);
+                }
+            }
+        }
+
         if let Some(working_dir) = &self.local_config.working_dir {
-            cmd.cwd(working_dir);
+            if !working_dir.is_empty() {
+                cmd.cwd(working_dir);
+            }
         }
 
         cmd.env("TERM", "xterm-256color");
@@ -182,6 +197,7 @@ impl LocalTerminal {
         sender: mpsc::UnboundedSender<Vec<u8>>,
         title_sender: Option<mpsc::UnboundedSender<String>>,
         exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>,
+        _latency_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalLatency>>,
     ) -> Result<(), AppError> {
         if let Some((pty_master, _)) = &mut self.pty_pair {
             let mut reader = pty_master

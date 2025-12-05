@@ -49,9 +49,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Close tabs, unsaved changes warning
   - Tab switching shortcuts
 
-- [ ] **Connection indicator in terminal tabs**
-  - Visual indicator for SSH connection status
-
 - [ ] **Syntax highlighting improvements**
   - Add more languages
   - Custom syntax themes
@@ -64,12 +61,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 - [ ] **Open file with default application**
   - Open file with default application (System file picker)
-
-- [ ] **Terminal profiles**
-  - Save preset terminals
-  - Working directory presets
-  - Shell configuration presets
-  - Environment variables presets
 
 - [ ] **Compare files**
   - Side-by-side diff view
@@ -105,25 +96,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 ## SSH Management
 
-- [ ] **Connection groups with tags**
-  - Tag-based filtering instead of just groups
-  - Multiple tags per profile
-  - Tag colors and organization
-
-- [ ] **SSH config import**
-  - Import profiles from `~/.ssh/config`
-  - Batch import with conflict resolution
-
-- [ ] **Connection health monitoring**
-  - Periodic connection testing
-  - Connection status indicators
-  - Auto-reconnect on failure
-
-- [ ] **Connection templates**
-  - Create SSH profiles from templates
-  - Template library
-  - Share templates
-
 - [ ] **More SSH Authentication Methods**
   - Additional authentication methods support
   - Enhanced security options
@@ -147,20 +119,10 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Import backup
   - Scheduled backups
 
-- [ ] **Cloud backup integration**
-  - Cloud storage providers integration
-  - Automatic cloud backups
-  - Cloud sync options
-
 - [ ] **Session timeout warnings**
   - Warning before auto-lock
   - Extend session option
   - Configurable timeout duration
-
-- [ ] **Two-factor authentication**
-  - 2FA for master password
-  - TOTP support
-  - Backup codes
 
 - [ ] **Password strength indicator**
   - Real-time password strength checking
@@ -236,10 +198,5 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Full keyboard navigation
   - Focus indicators
   - Tab order optimization
-
-- [ ] **Font size adjustments**
-  - Configurable font sizes
-  - Zoom levels
-  - Per-component font scaling
 
 ---

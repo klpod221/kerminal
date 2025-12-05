@@ -3,7 +3,7 @@ use crate::database::service::DatabaseService;
 use crate::error::AppError;
 use crate::models::terminal::{
     CreateTerminalRequest, CreateTerminalResponse, ResizeTerminalRequest, TerminalData,
-    TerminalExited, TerminalInfo, TerminalTitleChanged, WriteTerminalRequest,
+    TerminalExited, TerminalInfo, TerminalLatency, TerminalTitleChanged, WriteTerminalRequest,
 };
 use crate::services::buffer_manager::TerminalBufferManager;
 use crate::services::recording::SessionRecorder;
@@ -24,6 +24,7 @@ pub struct TerminalManager {
     database_service: Arc<Mutex<DatabaseService>>,
     ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
     pub recorders: Arc<RwLock<HashMap<String, Arc<SessionRecorder>>>>,
+    titles: Arc<RwLock<HashMap<String, String>>>,
 }
 
 impl TerminalManager {
@@ -42,6 +43,7 @@ impl TerminalManager {
             database_service,
             ssh_key_service: Some(ssh_key_service),
             recorders: Arc::new(RwLock::new(HashMap::new())),
+            titles: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -52,9 +54,46 @@ impl TerminalManager {
     ) -> Result<CreateTerminalResponse, AppError> {
         let terminal_id = Uuid::new_v4().to_string();
 
+        let mut config = request.config.clone();
+
+        // Apply terminal profile if specified
+        if let Some(profile_id) = &config.terminal_profile_id {
+            let db_service = self.database_service.lock().await;
+            if let Ok(profile) = db_service.get_terminal_profile(profile_id).await {
+                if matches!(
+                    config.terminal_type,
+                    crate::models::terminal::TerminalType::Local
+                ) {
+                    let mut local_config = config.local_config.unwrap_or_default();
+
+                    if local_config.shell.is_none() {
+                        local_config.shell = Some(profile.shell);
+                    }
+
+                    if local_config.working_dir.is_none() && profile.working_dir.is_some() {
+                        local_config.working_dir = profile.working_dir;
+                    }
+
+                    if let Some(profile_env) = profile.env {
+                        let mut env = local_config.env_vars.unwrap_or_default();
+                        for (k, v) in profile_env {
+                            env.entry(k).or_insert(v);
+                        }
+                        local_config.env_vars = Some(env);
+                    }
+
+                    if local_config.command.is_none() && profile.command.is_some() {
+                        local_config.command = profile.command;
+                    }
+
+                    config.local_config = Some(local_config);
+                }
+            }
+        }
+
         let mut terminal = TerminalFactory::create_terminal(
             terminal_id.clone(),
-            request.config.clone(),
+            config.clone(),
             Some(self.database_service.clone()),
         )
         .await?;
@@ -130,6 +169,7 @@ impl TerminalManager {
         let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
         let (title_tx, mut title_rx) = mpsc::unbounded_channel::<String>();
         let (exit_tx, mut exit_rx) = mpsc::unbounded_channel::<TerminalExited>();
+        let (latency_tx, mut latency_rx) = mpsc::unbounded_channel::<TerminalLatency>();
 
         {
             let mut senders = self.output_senders.write().await;
@@ -137,7 +177,7 @@ impl TerminalManager {
         }
 
         terminal
-            .start_read_loop(tx, Some(title_tx), Some(exit_tx))
+            .start_read_loop(tx, Some(title_tx), Some(exit_tx), Some(latency_tx))
             .await?;
 
         let terminal_id_clone = terminal_id.clone();
@@ -175,8 +215,20 @@ impl TerminalManager {
 
         let terminal_id_clone = terminal_id.clone();
         let app_handle_clone = app_handle.clone();
+        let titles_clone = self.titles.clone();
+        let should_lock_title = request.config.terminal_profile_id.is_some();
+
         tokio::spawn(async move {
             while let Some(new_title) = title_rx.recv().await {
+                if should_lock_title {
+                    continue;
+                }
+
+                {
+                    let mut titles = titles_clone.write().await;
+                    titles.insert(terminal_id_clone.clone(), new_title.clone());
+                }
+
                 let title_event = TerminalTitleChanged {
                     terminal_id: terminal_id_clone.clone(),
                     title: new_title,
@@ -196,6 +248,15 @@ impl TerminalManager {
                 }
             }
         });
+
+        let app_handle_clone = app_handle.clone();
+        tokio::spawn(async move {
+            while let Some(latency_event) = latency_rx.recv().await {
+                if let Some(handle) = &app_handle_clone {
+                    let _ = handle.emit("terminal-latency", &latency_event);
+                }
+            }
+        });
         let terminal_info = TerminalInfo {
             id: terminal_id.clone(),
             config: request.config,
@@ -207,6 +268,11 @@ impl TerminalManager {
         {
             let mut terminals = self.terminals.write().await;
             terminals.insert(terminal_id.clone(), Arc::new(Mutex::new(terminal)));
+        }
+
+        if let Some(title) = &terminal_info.title {
+            let mut titles = self.titles.write().await;
+            titles.insert(terminal_id.clone(), title.clone());
         }
 
         Ok(CreateTerminalResponse {
@@ -250,6 +316,11 @@ impl TerminalManager {
             senders.remove(&terminal_id);
         }
 
+        {
+            let mut titles = self.titles.write().await;
+            titles.remove(&terminal_id);
+        }
+
         self.buffer_manager.remove_buffer(&terminal_id).await;
 
         if let Some(terminal) = terminal {
@@ -265,12 +336,15 @@ impl TerminalManager {
 
         if let Some(terminal) = terminals.get(&terminal_id) {
             let terminal_guard = terminal.lock().await;
+            let titles = self.titles.read().await;
+            let title = titles.get(&terminal_id).cloned();
+
             Ok(TerminalInfo {
                 id: terminal_id,
                 config: terminal_guard.get_config().clone(),
                 state: terminal_guard.get_state(),
                 created_at: chrono::Utc::now(),
-                title: None,
+                title,
             })
         } else {
             Err(AppError::TerminalNotFound(terminal_id))
@@ -283,12 +357,15 @@ impl TerminalManager {
 
         for (terminal_id, terminal) in terminals.iter() {
             let terminal_guard = terminal.lock().await;
+            let titles = self.titles.read().await;
+            let title = titles.get(terminal_id).cloned();
+
             terminal_infos.push(TerminalInfo {
                 id: terminal_id.clone(),
                 config: terminal_guard.get_config().clone(),
                 state: terminal_guard.get_state(),
                 created_at: chrono::Utc::now(),
-                title: None,
+                title,
             });
         }
 

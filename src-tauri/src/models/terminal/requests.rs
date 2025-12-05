@@ -23,6 +23,8 @@ pub struct CreateLocalTerminalRequest {
     pub shell: Option<String>,
     pub working_dir: Option<String>,
     pub title: Option<String>,
+    pub terminal_profile_id: Option<String>,
+    pub command: Option<String>,
 }
 
 /// Request for closing a terminal

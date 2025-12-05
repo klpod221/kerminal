@@ -106,11 +106,9 @@
               : 'Enter password'
           "
           :rules="sshProfileId ? '' : 'required'"
+          helper-text="Leave empty to keep the current password. Enter a new password to
+          change it"
         />
-        <div v-if="sshProfileId" class="text-xs text-gray-400">
-          Leave empty to keep the current password. Enter a new password to
-          change it.
-        </div>
       </div>
 
       <!-- SSH Key Reference -->
@@ -140,37 +138,73 @@
       <!-- Advanced Settings -->
       <Collapsible
         title="Advanced Settings"
-        subtitle="Optional configuration"
+        subtitle="Connection & appearance options"
+        :default-expanded="false"
+      >
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            id="profile-timeout"
+            v-model.number="sshProfile.timeout"
+            label="Connection Timeout (s)"
+            type="number"
+            placeholder="30"
+            :min="1"
+            :max="300"
+          />
+
+          <ColorPicker
+            id="profile-color"
+            v-model="sshProfile.color"
+            label="Tab Color"
+            placeholder="Pick a color"
+          />
+        </div>
+
+        <div class="flex flex-wrap gap-6 mt-4">
+          <Checkbox
+            id="profile-keep-alive"
+            v-model="sshProfile.keepAlive"
+            label="Keep Alive"
+          />
+
+          <Checkbox
+            id="profile-compression"
+            v-model="sshProfile.compression"
+            label="Enable Compression"
+          />
+        </div>
+      </Collapsible>
+
+      <!-- Terminal Settings -->
+      <Collapsible
+        title="Terminal Settings"
+        subtitle="Startup behavior & environment"
         :default-expanded="false"
       >
         <Input
-          id="profile-timeout"
-          v-model.number="sshProfile.timeout"
-          label="Timeout (s)"
-          type="number"
-          placeholder="30"
-          :min="1"
-          :max="300"
+          id="profile-working-dir"
+          v-model="sshProfile.workingDir"
+          label="Working Directory"
+          placeholder="/home/user/projects"
+          helper-text="The directory to start in after connecting"
         />
 
-        <ColorPicker
-          id="profile-color"
-          v-model="sshProfile.color"
-          label="Profile Color"
-          placeholder="Pick a color for the profile"
+        <CodeEditor
+          id="profile-command"
+          v-model="sshProfile.command"
+          label="Startup Command"
+          language="shell"
+          height="100px"
+          helper-text="Commands to run after connecting (e.g. neofetch, source ~/.bashrc)"
+          class="mt-4"
         />
 
-        <Checkbox
-          id="profile-keep-alive"
-          v-model="sshProfile.keepAlive"
-          label="Keep Alive"
-        />
-
-        <Checkbox
-          id="profile-compression"
-          v-model="sshProfile.compression"
-          label="Enable Compression"
-        />
+        <div class="mt-4">
+          <label class="block text-sm font-medium text-gray-300 mb-2"
+            >Environment Variables</label
+          >
+          <EnvVarEditor v-model="sshProfile.env" />
+        </div>
       </Collapsible>
 
       <!-- Proxy Configuration -->
@@ -282,6 +316,8 @@ import ColorPicker from "../ui/ColorPicker.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
+import CodeEditor from "../ui/CodeEditor.vue";
+import EnvVarEditor from "../ui/EnvVarEditor.vue";
 import { message } from "../../utils/message";
 import { Save } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
@@ -322,7 +358,24 @@ const sshProfileForm = ref<InstanceType<typeof Form> | null>(null);
 const isTesting = ref(false);
 const isLoadingProfile = ref(false);
 
-const sshProfile = ref({
+const sshProfile = ref<{
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  groupId: string;
+  authMethod: AuthMethod;
+  authData?: AuthData;
+  timeout: number;
+  keepAlive: boolean;
+  compression: boolean;
+  color: string;
+  description: string;
+  command: string;
+  workingDir: string;
+  env: Record<string, string>;
+  proxy?: SSHProfile["proxy"];
+}>({
   name: "",
   host: "",
   port: 22,
@@ -334,7 +387,10 @@ const sshProfile = ref({
   compression: false,
   color: "#3b82f6",
   description: "",
-} as Partial<SSHProfile>);
+  command: "",
+  workingDir: "",
+  env: {},
+});
 
 const authPassword = ref("");
 const authKeyId = ref("");
@@ -385,7 +441,24 @@ const loadProfile = async () => {
   try {
     const profile = await sshStore.findProfileById(sshProfileId.value);
     if (profile) {
-      sshProfile.value = { ...profile };
+      sshProfile.value = {
+        name: profile.name,
+        host: profile.host,
+        port: profile.port,
+        username: profile.username,
+        groupId: profile.groupId || "",
+        authMethod: profile.authMethod,
+        authData: profile.authData,
+        timeout: profile.timeout || 30,
+        keepAlive: profile.keepAlive,
+        compression: profile.compression,
+        color: profile.color || "#3b82f6",
+        description: profile.description || "",
+        command: profile.command || "",
+        workingDir: profile.workingDir || "",
+        env: profile.env || {},
+        proxy: profile.proxy,
+      };
 
       if (profile.authData) {
         if ("Password" in profile.authData) {
@@ -414,6 +487,10 @@ const loadProfile = async () => {
           password: "",
         };
       }
+
+      sshProfile.value.command = profile.command || "";
+      sshProfile.value.workingDir = profile.workingDir || "";
+      sshProfile.value.env = profile.env || {};
     }
   } catch (error) {
     console.error("Error loading SSH profile:", error);
@@ -554,6 +631,9 @@ const handleSubmit = async () => {
             password: proxyConfig.value.password || null,
           }
         : null,
+      command: sshProfile.value.command,
+      workingDir: sshProfile.value.workingDir,
+      env: sshProfile.value.env,
     };
 
     if (sshProfileId.value) {
@@ -586,7 +666,10 @@ const closeModal = () => {
     compression: false,
     color: "#3b82f6",
     description: "",
-  } as Partial<SSHProfile>;
+    command: "",
+    workingDir: "",
+    env: {},
+  };
   authPassword.value = "";
   authKeyId.value = "";
 
@@ -620,6 +703,9 @@ watch(
         compression: false,
         color: "#3b82f6",
         description: "",
+        command: "",
+        workingDir: "",
+        env: {},
       };
       authPassword.value = "";
       authKeyId.value = "";

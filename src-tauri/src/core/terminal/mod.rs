@@ -81,16 +81,17 @@ impl TerminalWrapper {
         sender: mpsc::UnboundedSender<Vec<u8>>,
         title_sender: Option<mpsc::UnboundedSender<String>>,
         exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>,
+        latency_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalLatency>>,
     ) -> Result<(), AppError> {
         match self {
             TerminalWrapper::Local(terminal) => {
                 terminal
-                    .start_read_loop(sender, title_sender, exit_sender)
+                    .start_read_loop(sender, title_sender, exit_sender, latency_sender)
                     .await
             }
             TerminalWrapper::Ssh(terminal) => {
                 terminal
-                    .start_read_loop(sender, title_sender, exit_sender)
+                    .start_read_loop(sender, title_sender, exit_sender, latency_sender)
                     .await
             }
         }

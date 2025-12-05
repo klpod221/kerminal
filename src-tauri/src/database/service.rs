@@ -1134,6 +1134,101 @@ impl Default for DatabaseServiceConfig {
 }
 
 impl DatabaseService {
+    // Terminal Profile operations
+    pub async fn create_terminal_profile(
+        &self,
+        request: crate::models::terminal::profile::CreateTerminalProfileRequest,
+    ) -> DatabaseResult<crate::models::terminal::profile::TerminalProfile> {
+        let profile = crate::models::terminal::profile::TerminalProfile {
+            id: uuid::Uuid::new_v4().to_string(),
+            name: request.name,
+            shell: request.shell,
+            working_dir: request.working_dir.filter(|s| !s.is_empty()),
+            env: request.env,
+            icon: request.icon,
+            color: request.color,
+            command: request.command.filter(|s| !s.is_empty()),
+            created_at: Utc::now().timestamp_millis(),
+            updated_at: Utc::now().timestamp_millis(),
+        };
+
+        let local_db = self.local_db.read().await;
+        local_db.save_terminal_profile(&profile).await?;
+
+        Ok(profile)
+    }
+
+    pub async fn get_terminal_profile(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<crate::models::terminal::profile::TerminalProfile> {
+        let local_db = self.local_db.read().await;
+        local_db
+            .find_terminal_profile_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Terminal profile {} not found", id)))
+    }
+
+    pub async fn list_terminal_profiles(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::terminal::profile::TerminalProfile>> {
+        let local_db = self.local_db.read().await;
+        local_db.find_all_terminal_profiles().await
+    }
+
+    pub async fn update_terminal_profile(
+        &self,
+        id: &str,
+        request: crate::models::terminal::profile::UpdateTerminalProfileRequest,
+    ) -> DatabaseResult<crate::models::terminal::profile::TerminalProfile> {
+        let local_db = self.local_db.read().await;
+        let mut profile = local_db
+            .find_terminal_profile_by_id(id)
+            .await?
+            .ok_or_else(|| DatabaseError::NotFound(format!("Terminal profile {} not found", id)))?;
+
+        if let Some(name) = request.name {
+            profile.name = name;
+        }
+        if let Some(shell) = request.shell {
+            profile.shell = shell;
+        }
+        if let Some(working_dir) = request.working_dir {
+            profile.working_dir = if working_dir.is_empty() {
+                None
+            } else {
+                Some(working_dir)
+            };
+        }
+        if let Some(env) = request.env {
+            profile.env = Some(env);
+        }
+        if let Some(icon) = request.icon {
+            profile.icon = Some(icon);
+        }
+        if let Some(color) = request.color {
+            profile.color = Some(color);
+        }
+        if let Some(command) = request.command {
+            profile.command = if command.is_empty() {
+                None
+            } else {
+                Some(command)
+            };
+        }
+
+        profile.updated_at = Utc::now().timestamp_millis();
+
+        local_db.save_terminal_profile(&profile).await?;
+
+        Ok(profile)
+    }
+
+    pub async fn delete_terminal_profile(&self, id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        local_db.delete_terminal_profile(id).await
+    }
+
     pub async fn save_external_database(
         &self,
         config: &crate::models::sync::ExternalDatabaseConfig,

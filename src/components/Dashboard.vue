@@ -12,7 +12,7 @@
           class="mx-auto mb-4"
         />
         <h1
-          class="text-center font-extrabold bg-linear-to-r from-accent-blue to-yellow-400 bg-clip-text text-transparent"
+          class="text-center font-extrabold bg-linear-to-br from-cyan-500 to-purple-500 bg-clip-text text-transparent"
           :class="isMobile ? 'text-3xl' : 'text-5xl md:text-6xl'"
         >
           Kerminal

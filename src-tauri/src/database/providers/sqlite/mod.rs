@@ -2,6 +2,7 @@ mod auth;
 mod command;
 mod ssh;
 pub mod sync_ops;
+mod terminal;
 mod tunnel;
 
 use async_trait::async_trait;
@@ -79,7 +80,11 @@ impl Database for SQLiteProvider {
                 color TEXT,
                 timeout INTEGER,
                 keep_alive BOOLEAN NOT NULL DEFAULT true,
+                keep_alive BOOLEAN NOT NULL DEFAULT true,
                 compression BOOLEAN NOT NULL DEFAULT false,
+                command TEXT,
+                working_dir TEXT,
+                env TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 device_id TEXT NOT NULL,
@@ -392,6 +397,46 @@ impl Database for SQLiteProvider {
         .await
         .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
 
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS terminal_profiles (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                shell TEXT NOT NULL,
+                working_dir TEXT,
+                env TEXT,
+                icon TEXT,
+                color TEXT,
+                command TEXT,
+                created_at INTEGER NOT NULL,
+                updated_at INTEGER NOT NULL
+            )
+            "#,
+        )
+        .execute(&*pool)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        // Add command column if it doesn't exist (migration)
+        sqlx::query("ALTER TABLE terminal_profiles ADD COLUMN command TEXT")
+            .execute(&*pool)
+            .await
+            .ok(); // Ignore error if column already exists
+
+        // Add SSH profile columns migration
+        sqlx::query("ALTER TABLE ssh_profiles ADD COLUMN command TEXT")
+            .execute(&*pool)
+            .await
+            .ok();
+        sqlx::query("ALTER TABLE ssh_profiles ADD COLUMN working_dir TEXT")
+            .execute(&*pool)
+            .await
+            .ok();
+        sqlx::query("ALTER TABLE ssh_profiles ADD COLUMN env TEXT")
+            .execute(&*pool)
+            .await
+            .ok();
+
         Ok(())
     }
 
@@ -660,6 +705,30 @@ impl Database for SQLiteProvider {
 }
 
 impl SQLiteProvider {
+    pub async fn save_terminal_profile(
+        &self,
+        profile: &crate::models::terminal::profile::TerminalProfile,
+    ) -> DatabaseResult<()> {
+        terminal::save_terminal_profile(self, profile).await
+    }
+
+    pub async fn find_terminal_profile_by_id(
+        &self,
+        id: &str,
+    ) -> DatabaseResult<Option<crate::models::terminal::profile::TerminalProfile>> {
+        terminal::find_terminal_profile_by_id(self, id).await
+    }
+
+    pub async fn find_all_terminal_profiles(
+        &self,
+    ) -> DatabaseResult<Vec<crate::models::terminal::profile::TerminalProfile>> {
+        terminal::find_all_terminal_profiles(self).await
+    }
+
+    pub async fn delete_terminal_profile(&self, id: &str) -> DatabaseResult<()> {
+        terminal::delete_terminal_profile(self, id).await
+    }
+
     pub async fn get_all_external_databases(
         &self,
     ) -> DatabaseResult<Vec<crate::models::sync::external_db::ExternalDatabaseConfig>> {
