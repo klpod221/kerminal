@@ -30,6 +30,24 @@ body {
   font-family: "FiraCode Nerd Font", "JetBrains Mono", monospace;
 }
 
+:root {
+  --ui-zoom: 1;
+}
+
+@media (min-resolution: 144dpi), (-webkit-min-device-pixel-ratio: 1.5) {
+  :root {
+    --ui-zoom: 1.2;
+  }
+
+  html {
+    zoom: var(--ui-zoom);
+  }
+
+  .terminal-container {
+    zoom: calc(1 / var(--ui-zoom));
+  }
+}
+
 /* Custom backdrop blur for overlay */
 .backdrop-blur {
   backdrop-filter: blur(4px);
