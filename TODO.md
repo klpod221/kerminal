@@ -9,28 +9,12 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 - [ ] **File search**
   - Search by content
 
-- [ ] **Batch selection improvements**
-  - Select All / Deselect All
-  - Invert Selection
-  - Filter selection (select all files, select all directories)
-  - Keyboard shortcuts for selection
-
-- [ ] **Quick actions toolbar**
-  - Quick download/upload buttons for selected files
-  - Context menu improvements with more actions
-  - Bulk operations (rename, delete, move multiple files)
-
 - [ ] **Transfer queue management**
   - Pause/Resume individual transfers
   - Retry failed transfers
   - Priority queue (prioritize certain transfers)
   - Queue reordering
   - Auto-retry with exponential backoff
-
-- [ ] **File history/Bookmarks**
-  - Bookmark frequently used folders
-  - Recent paths history
-  - Quick navigation sidebar
 
 - [ ] **Image preview improvements**
   - Zoom, pan for images
@@ -40,14 +24,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 ---
 
 ## Terminal & Editor
-
-- [ ] **Smarter terminal buffer management**
-  - Smartly save and restore terminal buffer
-
-- [ ] **Multi-file editing**
-  - Tabbed editor interface for multiple files
-  - Close tabs, unsaved changes warning
-  - Tab switching shortcuts
 
 - [ ] **Syntax highlighting improvements**
   - Add more languages
@@ -118,11 +94,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Export encrypted data
   - Import backup
   - Scheduled backups
-
-- [ ] **Session timeout warnings**
-  - Warning before auto-lock
-  - Extend session option
-  - Configurable timeout duration
 
 - [ ] **Password strength indicator**
   - Real-time password strength checking

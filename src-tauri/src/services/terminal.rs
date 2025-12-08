@@ -185,6 +185,10 @@ impl TerminalManager {
         let app_handle_clone = app_handle.clone();
         let buffer_manager_clone = self.buffer_manager.clone();
         let recorders_clone = self.recorders.clone();
+
+        // Track alt screen state for this terminal
+        let alt_screen_filter = Arc::new(Mutex::new(AltScreenFilter::new()));
+
         tokio::spawn(async move {
             while let Some(data) = rx.recv().await {
                 let terminal_data = TerminalData {
@@ -192,15 +196,21 @@ impl TerminalManager {
                     data: data.clone(),
                 };
 
-                // Record output if recording is active
+                // Record output if recording is active (always record raw output)
                 if let Some(recorder) = recorders_clone.read().await.get(&terminal_id_clone) {
                     let _ = recorder.record_output(&data).await;
                 }
 
-                if let Ok(data_str) = String::from_utf8(data) {
-                    buffer_manager_clone
-                        .save_data(&terminal_id_clone, &data_str)
-                        .await;
+                // Process buffer saving with smart filtering
+                if let Ok(data_str) = String::from_utf8(data.clone()) {
+                    let mut filter = alt_screen_filter.lock().await;
+                    let filtered_data = filter.process(&data_str);
+
+                    if !filtered_data.is_empty() {
+                        buffer_manager_clone
+                            .save_data(&terminal_id_clone, &filtered_data)
+                            .await;
+                    }
                 }
 
                 if let Some(handle) = &app_handle_clone {
@@ -374,5 +384,102 @@ impl TerminalManager {
 
     pub fn get_buffer_manager(&self) -> Arc<TerminalBufferManager> {
         self.buffer_manager.clone()
+    }
+}
+
+// Helper struct to track alternate screen state
+struct AltScreenFilter {
+    in_alt_screen: bool,
+}
+
+impl AltScreenFilter {
+    fn new() -> Self {
+        Self {
+            in_alt_screen: false,
+        }
+    }
+
+    fn process(&mut self, data: &str) -> String {
+        let mut result = String::new();
+        let mut current_pos = 0;
+        let enter_seq = "\x1b[?1049h";
+        let exit_seq = "\x1b[?1049l";
+
+        while current_pos < data.len() {
+            let remaining = &data[current_pos..];
+
+            if self.in_alt_screen {
+                // Look for exit sequence
+                if let Some(idx) = remaining.find(exit_seq) {
+                    self.in_alt_screen = false;
+                    // Skip everything strictly before the exit sequence (it's alt screen content)
+                    // But we DO want to capture content AFTER the exit sequence
+                    current_pos += idx + exit_seq.len();
+                } else {
+                    // No exit sequence found, everything remaining is alt screen
+                    break;
+                }
+            } else {
+                // Look for enter sequence
+                if let Some(idx) = remaining.find(enter_seq) {
+                    // Capture everything up to the enter sequence
+                    result.push_str(&remaining[..idx]);
+                    self.in_alt_screen = true;
+                    current_pos += idx + enter_seq.len();
+                } else {
+                    // No enter sequence, everything remaining is normal buffer
+                    result.push_str(remaining);
+                    break;
+                }
+            }
+        }
+
+        result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normal_output() {
+        let mut filter = AltScreenFilter::new();
+        assert_eq!(filter.process("hello world\n"), "hello world\n");
+    }
+
+    #[test]
+    fn test_enter_alt_screen() {
+        let mut filter = AltScreenFilter::new();
+        // "before" saved, sequence triggers state change, "after" dropped
+        assert_eq!(filter.process("before\x1b[?1049h after"), "before");
+        assert!(filter.in_alt_screen);
+        // Subsequent output dropped
+        assert_eq!(filter.process("more alt screen content"), "");
+    }
+
+    #[test]
+    fn test_exit_alt_screen() {
+        let mut filter = AltScreenFilter::new();
+        filter.in_alt_screen = true;
+        // "alt content" dropped, sequence triggers state change, "after" saved
+        assert_eq!(filter.process("alt content\x1b[?1049l after"), " after");
+        assert!(!filter.in_alt_screen);
+    }
+
+    #[test]
+    fn test_toggle_in_single_chunk() {
+        let mut filter = AltScreenFilter::new();
+        let input = "start \x1b[?1049h inside alt \x1b[?1049l end";
+        assert_eq!(filter.process(input), "start  end");
+        assert!(!filter.in_alt_screen);
+    }
+
+    #[test]
+    fn test_multiple_toggles() {
+        let mut filter = AltScreenFilter::new();
+        let input = "1\x1b[?1049h(hide)\x1b[?1049l2\x1b[?1049h(hide again)";
+        assert_eq!(filter.process(input), "12");
+        assert!(filter.in_alt_screen);
     }
 }

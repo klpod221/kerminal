@@ -72,7 +72,11 @@ impl DatabaseService {
         {
             MasterPasswordConfig {
                 auto_unlock: entry.auto_unlock,
-                session_timeout_minutes: config.master_password_config.session_timeout_minutes,
+                session_timeout_minutes: if entry.auto_lock_timeout == Some(0) {
+                    None
+                } else {
+                    entry.auto_lock_timeout
+                },
                 require_on_startup: !entry.auto_unlock,
                 use_keychain: config.master_password_config.use_keychain,
             }
