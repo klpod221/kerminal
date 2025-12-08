@@ -230,6 +230,19 @@
           "
           @click="toggleOverlay('keyboard-shortcuts-modal')"
         />
+        <!-- Main Settings / Backup -->
+        <Button
+          title="Backup & Restore"
+          variant="ghost"
+          size="sm"
+          :icon="Archive"
+          :class="
+            isOverlayVisible('backup-restore-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('backup-restore-modal')"
+        />
 
         <!-- Master Password  -->
         <Button
@@ -369,6 +382,7 @@ import {
   Video,
   FolderOpen,
   FileCode,
+  Archive,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

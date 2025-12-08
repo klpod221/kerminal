@@ -154,6 +154,8 @@ pub fn main() {
             commands::terminal_profile::list_terminal_profiles,
             commands::terminal_profile::update_terminal_profile,
             commands::terminal_profile::delete_terminal_profile,
+            commands::database::backup::export_backup,
+            commands::database::backup::import_backup,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

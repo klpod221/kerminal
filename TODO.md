@@ -61,11 +61,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 ## Sync & Security
 
-- [ ] **Sync history**
-  - Log all sync operations
-  - View sync conflicts history
-  - Export sync log
-
 - [ ] **Backup/Restore**
   - Export encrypted data
   - Import backup

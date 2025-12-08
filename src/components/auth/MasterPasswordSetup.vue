@@ -54,6 +54,7 @@
           rules="required|password"
           :disabled="authStore.isLoading"
         />
+        <PasswordStrength :password="setupForm.password" class="mt-2 mb-4" />
 
         <Input
           id="confirm-password"
@@ -115,6 +116,7 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
+import PasswordStrength from "../ui/PasswordStrength.vue";
 
 const { closeOverlay } = useOverlay();
 const authStore = useAuthStore();

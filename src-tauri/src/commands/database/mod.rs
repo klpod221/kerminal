@@ -18,3 +18,6 @@ pub mod external_db;
 
 /// Sync operations and conflict management commands
 pub mod sync;
+
+/// Backup and Restore commands
+pub mod backup;
