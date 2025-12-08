@@ -45,7 +45,175 @@ impl TransferManager {
         }
     }
 
-    /// Upload file from local to remote
+    /// Start processing the transfer queue
+    pub fn start_queue_processor(&self, app_handle: tauri::AppHandle) {
+        let manager = self.clone();
+        tokio::spawn(async move {
+            loop {
+                manager.process_queue(app_handle.clone()).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            }
+        });
+    }
+
+    /// Process the transfer queue
+    async fn process_queue(&self, app_handle: tauri::AppHandle) {
+        let max_concurrent = 2; // Move to config later
+
+        // 1. Check active transfers
+        let active_count = {
+            let transfers = self.active_transfers.read().await;
+            transfers
+                .values()
+                .filter(|t| t.status == TransferStatus::InProgress)
+                .count()
+        };
+
+        if active_count >= max_concurrent {
+            return;
+        }
+
+        // 2. Find next transfer to run
+        let next_transfer_id = {
+            let mut transfers = self.active_transfers.write().await;
+            let now = Utc::now();
+
+            // Check for retries first
+            let mut retry_candidate = None;
+            for transfer in transfers.values_mut() {
+                if transfer.status == TransferStatus::Failed
+                    && transfer.retry_count < transfer.max_retries
+                {
+                    if let Some(next_retry) = transfer.next_retry_at {
+                        if now >= next_retry {
+                            // Ready to retry
+                            transfer.status = TransferStatus::Queued;
+                            retry_candidate = Some(transfer.transfer_id.clone());
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if let Some(id) = retry_candidate {
+                Some(id)
+            } else {
+                // Find highest priority queued transfer
+                let mut candidates: Vec<_> = transfers
+                    .values()
+                    .filter(|t| t.status == TransferStatus::Queued)
+                    .collect();
+
+                // Sort by priority (desc) then created_at (asc)
+                candidates.sort_by(|a, b| {
+                    b.priority
+                        .cmp(&a.priority)
+                        .then(a.started_at.cmp(&b.started_at))
+                });
+
+                candidates.first().map(|t| t.transfer_id.clone())
+            }
+        };
+
+        // 3. Start the transfer
+        if let Some(id) = next_transfer_id {
+            if let Some(metadata) = self.transfer_metadata.read().await.get(&id).cloned() {
+                // Create new cancellation token
+                let cancel_token = CancellationToken::new();
+                {
+                    let mut tokens = self.cancellation_tokens.write().await;
+                    tokens.insert(id.clone(), cancel_token.clone());
+                }
+
+                let manager = self.clone();
+                let app_handle_clone = app_handle.clone();
+
+                tokio::spawn(async move {
+                    let result = match metadata.direction {
+                        TransferDirection::Upload => {
+                            manager
+                                .execute_upload(
+                                    metadata.session_id,
+                                    metadata.local_path,
+                                    metadata.remote_path,
+                                    id.clone(),
+                                    app_handle_clone.clone(),
+                                    cancel_token,
+                                )
+                                .await
+                        }
+                        TransferDirection::Download => {
+                            manager
+                                .execute_download(
+                                    metadata.session_id,
+                                    metadata.remote_path,
+                                    metadata.local_path,
+                                    id.clone(),
+                                    app_handle_clone.clone(),
+                                    cancel_token,
+                                )
+                                .await
+                        }
+                    };
+
+                    // Handle result
+                    if let Err(e) = result {
+                        let mut transfers = manager.active_transfers.write().await;
+                        if let Some(progress) = transfers.get_mut(&id) {
+                            match progress.status {
+                                TransferStatus::Paused | TransferStatus::Cancelled => {
+                                    // Status already set
+                                }
+                                _ => {
+                                    // Handle failure and schedule retry
+                                    let error_msg = e.to_string();
+                                    if error_msg.contains("paused") {
+                                        progress.status = TransferStatus::Paused;
+                                    } else if error_msg.contains("cancelled") {
+                                        progress.status = TransferStatus::Cancelled;
+                                        progress.completed_at = Some(Utc::now());
+                                    } else {
+                                        progress.status = TransferStatus::Failed;
+                                        progress.error = Some(error_msg.clone());
+                                        progress.retry_count += 1;
+
+                                        if progress.retry_count < progress.max_retries {
+                                            // Exponential backoff: 2s, 4s, 8s...
+                                            let delay = 2u64.pow(progress.retry_count as u32);
+                                            progress.next_retry_at = Some(
+                                                Utc::now()
+                                                    + chrono::Duration::seconds(delay as i64),
+                                            );
+
+                                            // Emit retry scheduled event
+                                            let _ = app_handle_clone.emit(
+                                                "sftp_transfer_error",
+                                                &serde_json::json!({
+                                                    "transferId": id,
+                                                    "error": format!("{} (Retrying in {}s)", error_msg, delay),
+                                                }),
+                                            );
+                                        } else {
+                                            progress.completed_at = Some(Utc::now());
+                                            let _ = app_handle_clone.emit(
+                                                "sftp_transfer_error",
+                                                &serde_json::json!({
+                                                    "transferId": id,
+                                                    "error": error_msg,
+                                                }),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    /// Upload file from local to remote (Queued)
     pub async fn upload_file(
         &self,
         session_id: String,
@@ -87,7 +255,7 @@ impl TransferManager {
             completed_at: None,
             priority: 0,
             retry_count: 0,
-            max_retries: 3,
+            max_retries: 5, // Increased retries
             next_retry_at: None,
         };
 
@@ -109,65 +277,8 @@ impl TransferManager {
             metadata_map.insert(transfer_id.clone(), metadata_entry);
         }
 
-        // Create cancellation token for this transfer
-        let cancel_token = CancellationToken::new();
-        {
-            let mut tokens = self.cancellation_tokens.write().await;
-            tokens.insert(transfer_id.clone(), cancel_token.clone());
-        }
-
-        // Start transfer in background
-        let transfer_manager = self.clone();
-        let transfer_id_clone = transfer_id.clone();
-        let app_handle_clone = app_handle.clone();
-        tokio::spawn(async move {
-            if let Err(e) = transfer_manager
-                .execute_upload(
-                    session_id,
-                    local_path,
-                    remote_path,
-                    transfer_id_clone.clone(),
-                    app_handle_clone.clone(),
-                    cancel_token,
-                )
-                .await
-            {
-                let mut transfers = transfer_manager.active_transfers.write().await;
-                if let Some(progress) = transfers.get_mut(&transfer_id_clone) {
-                    // Check current status - if already paused/cancelled, don't change
-                    match progress.status {
-                        TransferStatus::Paused | TransferStatus::Cancelled => {
-                            // Status already set, don't change
-                        }
-                        TransferStatus::InProgress => {
-                            // Check error message to see if it was paused or cancelled
-                            let error_msg = e.to_string();
-                            if error_msg.contains("paused") {
-                                progress.status = TransferStatus::Paused;
-                            } else if error_msg.contains("cancelled") {
-                                progress.status = TransferStatus::Cancelled;
-                                progress.completed_at = Some(Utc::now());
-                            } else {
-                                progress.status = TransferStatus::Failed;
-                                progress.error = Some(error_msg.clone());
-                                progress.completed_at = Some(Utc::now());
-
-                                let _ = app_handle_clone.emit(
-                                    "sftp_transfer_error",
-                                    &serde_json::json!({
-                                        "transferId": transfer_id_clone,
-                                        "error": error_msg,
-                                    }),
-                                );
-                            }
-                        }
-                        _ => {
-                            // Other status, don't change
-                        }
-                    }
-                }
-            }
-        });
+        // Trigger queue processing
+        self.process_queue(app_handle).await;
 
         Ok(transfer_id)
     }
@@ -450,7 +561,7 @@ impl TransferManager {
             completed_at: None,
             priority: 0,
             retry_count: 0,
-            max_retries: 3,
+            max_retries: 5,
             next_retry_at: None,
         };
 
@@ -472,65 +583,8 @@ impl TransferManager {
             metadata_map.insert(transfer_id.clone(), metadata_entry);
         }
 
-        // Create cancellation token for this transfer
-        let cancel_token = CancellationToken::new();
-        {
-            let mut tokens = self.cancellation_tokens.write().await;
-            tokens.insert(transfer_id.clone(), cancel_token.clone());
-        }
-
-        // Start transfer in background
-        let transfer_manager = self.clone();
-        let transfer_id_clone = transfer_id.clone();
-        let app_handle_clone = app_handle.clone();
-        tokio::spawn(async move {
-            if let Err(e) = transfer_manager
-                .execute_download(
-                    session_id,
-                    remote_path,
-                    local_path,
-                    transfer_id_clone.clone(),
-                    app_handle_clone.clone(),
-                    cancel_token,
-                )
-                .await
-            {
-                let mut transfers = transfer_manager.active_transfers.write().await;
-                if let Some(progress) = transfers.get_mut(&transfer_id_clone) {
-                    // Check current status - if already paused/cancelled, don't change
-                    match progress.status {
-                        TransferStatus::Paused | TransferStatus::Cancelled => {
-                            // Status already set, don't change
-                        }
-                        TransferStatus::InProgress => {
-                            // Check error message to see if it was paused or cancelled
-                            let error_msg = e.to_string();
-                            if error_msg.contains("paused") {
-                                progress.status = TransferStatus::Paused;
-                            } else if error_msg.contains("cancelled") {
-                                progress.status = TransferStatus::Cancelled;
-                                progress.completed_at = Some(Utc::now());
-                            } else {
-                                progress.status = TransferStatus::Failed;
-                                progress.error = Some(error_msg.clone());
-                                progress.completed_at = Some(Utc::now());
-
-                                let _ = app_handle_clone.emit(
-                                    "sftp_transfer_error",
-                                    &serde_json::json!({
-                                        "transferId": transfer_id_clone,
-                                        "error": error_msg,
-                                    }),
-                                );
-                            }
-                        }
-                        _ => {
-                            // Other status, don't change
-                        }
-                    }
-                }
-            }
-        });
+        // Trigger queue processing
+        self.process_queue(app_handle).await;
 
         Ok(transfer_id)
     }

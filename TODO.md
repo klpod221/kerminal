@@ -4,25 +4,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 ---
 
-## SFTP Browser
-
-- [ ] **File search**
-  - Search by content
-
-- [ ] **Transfer queue management**
-  - Pause/Resume individual transfers
-  - Retry failed transfers
-  - Priority queue (prioritize certain transfers)
-  - Queue reordering
-  - Auto-retry with exponential backoff
-
-- [ ] **Image preview improvements**
-  - Zoom, pan for images
-  - Image gallery view (next/previous)
-  - Fullscreen mode
-
----
-
 ## Terminal & Editor
 
 - [ ] **Syntax highlighting improvements**
@@ -80,11 +61,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 ## Sync & Security
 
-- [ ] **Sync filters**
-  - Choose sync by profile/group
-  - Include/exclude specific data types
-  - Sync scheduling
-
 - [ ] **Sync history**
   - Log all sync operations
   - View sync conflicts history
@@ -104,11 +80,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
 
 ## Advanced Features
 
-- [ ] **File synchronization (rsync-like)**
-  - Sync specific folders automatically
-  - Two-way sync with conflict resolution
-  - Sync scheduling and rules
-
 - [ ] **Script execution**
   - Run shell scripts on remote servers
   - Script library
@@ -122,11 +93,6 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - View log of all operations
   - Filter log by type, date
   - Export log
-
-- [ ] **Export reports**
-  - Transfer reports
-  - Sync reports
-  - Usage statistics
 
 ---
 
@@ -155,19 +121,3 @@ This is a list of todos for the Kerminal application. Please check the [README.m
   - Mobile application for iOS/Android
   - Sync with desktop version
   - Mobile-optimized UI
-
----
-
-## Accessibility
-
-- [ ] **Screen reader support**
-  - ARIA labels
-  - Keyboard navigation improvements
-  - Screen reader testing
-
-- [ ] **Keyboard-only navigation**
-  - Full keyboard navigation
-  - Focus indicators
-  - Tab order optimization
-
----

@@ -5,9 +5,10 @@ use crate::models::sftp::requests::{
     CreateSymlinkRequest, DeleteRequest, DisconnectSFTPRequest, DownloadFileRequest,
     GetAllTransfersRequest, GetTransferProgressRequest, ListDirectoryRequest, PauseTransferRequest,
     ReadFileRequest, ReadSymlinkRequest, RenameRequest, ReorderQueueRequest, ResumeTransferRequest,
-    RetryTransferRequest, SetPermissionsRequest, SetTransferPriorityRequest, StatRequest,
-    SyncDirectoriesRequest, UploadFileRequest, WriteFileRequest,
+    RetryTransferRequest, SearchRequest, SetPermissionsRequest, SetTransferPriorityRequest,
+    StatRequest, SyncDirectoriesRequest, UploadFileRequest, WriteFileRequest,
 };
+use crate::models::sftp::search::SearchResult;
 use crate::models::sftp::sync::DiffEntry;
 use crate::models::sftp::transfer::TransferProgress;
 use crate::state::AppState;
@@ -372,6 +373,19 @@ pub async fn sftp_retry_transfer(
         state
             .sftp_transfer_manager
             .retry_transfer(request.transfer_id, app_handle)
+            .await
+    )
+}
+/// Search for text in files
+#[tauri::command]
+pub async fn sftp_search(
+    state: State<'_, AppState>,
+    request: SearchRequest,
+) -> Result<Vec<SearchResult>, String> {
+    sftp_result!(
+        state
+            .sftp_service
+            .search(request.session_id, request.path, request.query)
             .await
     )
 }

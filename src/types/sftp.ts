@@ -153,3 +153,12 @@ export interface FileBrowserDragData {
   files: Partial<FileEntry>[];
   isRemote: boolean;
 }
+
+/**
+ * Search result from backend
+ */
+export interface SearchResult {
+  filePath: string;
+  lineNumber: number;
+  content: string;
+}

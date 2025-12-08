@@ -23,6 +23,7 @@
         :height="'600px'"
         :minimap="true"
         :line-numbers="true"
+        @mount="handleEditorMount"
       />
     </div>
 
@@ -52,6 +53,8 @@ import { useSFTPStore } from "../../stores/sftp";
 import type { FileEntry } from "../../types/sftp";
 import { readFile, writeFile } from "@tauri-apps/plugin-fs";
 
+import type { editor } from "monaco-editor";
+
 const { closeOverlay, getOverlayProp } = useOverlay();
 const sftpStore = useSFTPStore();
 
@@ -59,12 +62,20 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref<string | null>(null);
 const content = ref("");
+const editorInstance = ref<editor.IStandaloneCodeEditor | null>(null);
 
 const file = getOverlayProp<FileEntry | null>(
   "sftp-file-editor-modal",
   "file",
   null,
   null,
+);
+
+const initialLine = getOverlayProp<number | undefined>(
+  "sftp-file-editor-modal",
+  "line",
+  undefined,
+  undefined,
 );
 
 const isLocal = getOverlayProp<boolean>(
@@ -154,6 +165,21 @@ async function loadFileContent() {
         file.value.path,
       );
     }
+
+    // Scroll to line if specified
+    if (initialLine.value && editorInstance.value) {
+      // Small delay to ensure editor has updated model
+      setTimeout(() => {
+        if (editorInstance.value && initialLine.value) {
+          editorInstance.value.revealLineInCenter(initialLine.value);
+          editorInstance.value.setPosition({
+            lineNumber: initialLine.value,
+            column: 1,
+          });
+          editorInstance.value.focus();
+        }
+      }, 100);
+    }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     console.error("Failed to load file:", errorMessage);
@@ -227,6 +253,10 @@ function closeModal() {
   content.value = "";
   error.value = null;
   closeOverlay("sftp-file-editor-modal");
+}
+
+function handleEditorMount(editor: editor.IStandaloneCodeEditor) {
+  editorInstance.value = editor;
 }
 
 watch(

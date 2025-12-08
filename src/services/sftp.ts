@@ -4,6 +4,7 @@ import type {
   TransferProgress,
   SyncOperation,
   DiffEntry,
+  SearchResult,
 } from "../types/sftp";
 
 /**
@@ -252,4 +253,15 @@ export async function reorderQueue(
  */
 export async function retryTransfer(transferId: string): Promise<void> {
   return await api.call("sftp_retry_transfer", { transferId });
+}
+
+/**
+ * Search for text in files
+ */
+export async function searchSFTP(
+  sessionId: string,
+  path: string,
+  query: string,
+): Promise<SearchResult[]> {
+  return await api.call("sftp_search", { sessionId, path, query });
 }

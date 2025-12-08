@@ -5,8 +5,21 @@
     :icon="previewIcon"
     icon-background="bg-purple-500/20"
     icon-color="text-purple-400"
-    size="6xl"
+    :size="isFullscreen ? 'full' : '6xl'"
   >
+    <!-- Header Controls -->
+    <template #header-actions>
+      <div class="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          :icon="isFullscreen ? Minimize2 : Maximize2"
+          @click="toggleFullscreen"
+          :title="isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'"
+        />
+      </div>
+    </template>
+
     <div v-if="loading" class="flex items-center justify-center py-12">
       <div class="text-gray-400">Loading preview...</div>
     </div>
@@ -14,37 +27,102 @@
       <div class="text-red-400 text-sm mb-4">{{ error }}</div>
       <Button variant="primary" @click="loadPreview">Retry</Button>
     </div>
-    <div v-else class="flex flex-col gap-4">
-      <!-- File Info -->
-      <div class="text-xs text-gray-500 border-b border-gray-700 pb-2">
-        <div class="flex items-center justify-between">
-          <span
-            >Previewing:
-            <span class="font-mono text-gray-400">{{ file?.path }}</span></span
-          >
+    <div v-else class="flex flex-col gap-4 h-full">
+      <!-- File Info & Navigation -->
+      <div
+        class="flex items-center justify-between border-b border-gray-700 pb-2"
+      >
+        <div class="flex items-center gap-4 text-xs text-gray-500">
+          <span>
+            <span class="font-mono text-gray-400">{{ file?.path }}</span>
+          </span>
           <span class="text-gray-600">{{
             formatFileSize(file?.size || 0)
           }}</span>
+        </div>
+
+        <!-- Gallery Navigation -->
+        <div class="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="ChevronLeft"
+            :disabled="!hasPrev"
+            @click="navigate('prev')"
+          />
+          <span class="text-xs text-gray-500 w-16 text-center">
+            {{ currentFileIndex + 1 }} / {{ previewableFiles.length }}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="ChevronRight"
+            :disabled="!hasNext"
+            @click="navigate('next')"
+          />
         </div>
       </div>
 
       <!-- Image Preview -->
       <div
         v-if="previewType === 'image'"
-        class="flex items-center justify-center bg-gray-900 rounded-lg p-4"
+        class="flex-1 flex flex-col min-h-0 bg-gray-900 rounded-lg overflow-hidden relative group"
+        @wheel="handleWheel"
       >
-        <img
-          :src="previewUrl"
-          :alt="file?.name"
-          class="max-w-full max-h-[70vh] object-contain rounded"
-          @error="handleImageError"
-        />
+        <!-- Image Toolbar -->
+        <div
+          class="absolute top-4 right-4 z-10 flex items-center gap-1 bg-gray-800/80 p-1 rounded backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity"
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="ZoomIn"
+            @click="handleZoomIn"
+            title="Zoom In"
+          />
+          <div class="text-xs text-gray-300 w-12 text-center">
+            {{ Math.round(zoomLevel * 100) }}%
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="ZoomOut"
+            @click="handleZoomOut"
+            title="Zoom Out"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="RotateCcw"
+            @click="resetZoom"
+            title="Reset"
+          />
+        </div>
+
+        <div
+          class="flex-1 w-full h-full overflow-hidden flex items-center justify-center"
+          :class="{ 'cursor-move': zoomLevel > 1 }"
+          @mousedown="startPan"
+        >
+          <img
+            :src="previewUrl"
+            :alt="file?.name"
+            class="max-w-none transition-transform duration-100 ease-out select-none"
+            :style="{
+              transform: `scale(${zoomLevel}) translate(${panX / zoomLevel}px, ${panY / zoomLevel}px)`,
+              maxWidth: zoomLevel <= 1 ? '100%' : 'none',
+              maxHeight: zoomLevel <= 1 ? '100%' : 'none',
+            }"
+            @error="handleImageError"
+            draggable="false"
+          />
+        </div>
       </div>
 
       <!-- Video Preview - Show as document info -->
       <div
         v-else-if="previewType === 'video'"
-        class="flex flex-col items-center justify-center py-12 gap-4"
+        class="flex flex-col items-center justify-center py-12 gap-4 flex-1"
       >
         <component :is="Video" :size="64" class="text-gray-500" />
         <div class="text-center">
@@ -59,7 +137,10 @@
       </div>
 
       <!-- HTML Preview -->
-      <div v-else-if="previewType === 'html'" class="flex flex-col gap-2">
+      <div
+        v-else-if="previewType === 'html'"
+        class="flex flex-col gap-2 flex-1 min-h-0"
+      >
         <div class="flex gap-2 border-b border-gray-700 pb-2">
           <Button
             :variant="viewMode === 'rendered' ? 'primary' : 'ghost'"
@@ -78,8 +159,7 @@
         </div>
         <div
           v-if="viewMode === 'rendered'"
-          class="bg-gray-900 rounded-lg overflow-hidden"
-          style="height: 70vh"
+          class="bg-gray-900 rounded-lg overflow-hidden flex-1"
         >
           <iframe
             :srcdoc="htmlContent"
@@ -89,20 +169,19 @@
         </div>
         <div
           v-else
-          class="bg-gray-900 rounded-lg p-4 overflow-auto"
-          style="max-height: 70vh"
+          class="bg-gray-900 rounded-lg p-4 overflow-auto flex-1 text-xs text-gray-300 font-mono"
         >
-          <pre class="text-xs text-gray-300 whitespace-pre-wrap font-mono">{{
-            htmlContent
-          }}</pre>
+          <pre class="whitespace-pre-wrap">{{ htmlContent }}</pre>
         </div>
       </div>
 
       <!-- Text Preview -->
-      <div v-else-if="previewType === 'text'" class="flex flex-col gap-2">
+      <div
+        v-else-if="previewType === 'text'"
+        class="flex flex-col gap-2 flex-1 min-h-0"
+      >
         <div
-          class="bg-gray-900 rounded-lg p-4 overflow-auto border border-gray-700"
-          style="max-height: 70vh"
+          class="bg-gray-900 rounded-lg p-4 overflow-auto border border-gray-700 flex-1"
         >
           <pre class="text-xs text-gray-300 whitespace-pre-wrap font-mono">{{
             textContent
@@ -111,7 +190,10 @@
       </div>
 
       <!-- Markdown Preview -->
-      <div v-else-if="previewType === 'markdown'" class="flex flex-col gap-2">
+      <div
+        v-else-if="previewType === 'markdown'"
+        class="flex flex-col gap-2 flex-1 min-h-0"
+      >
         <div class="flex gap-2 border-b border-gray-700 pb-2">
           <Button
             :variant="viewMode === 'rendered' ? 'primary' : 'ghost'"
@@ -130,16 +212,11 @@
         </div>
         <div
           v-if="viewMode === 'rendered'"
-          class="bg-gray-900 rounded-lg p-6 overflow-auto prose prose-invert prose-sm max-w-none"
-          style="max-height: 70vh"
+          class="bg-gray-900 rounded-lg p-6 overflow-auto prose prose-invert prose-sm max-w-none flex-1"
         >
           <div v-html="renderedMarkdown" />
         </div>
-        <div
-          v-else
-          class="bg-gray-900 rounded-lg p-4 overflow-auto"
-          style="max-height: 70vh"
-        >
+        <div v-else class="bg-gray-900 rounded-lg p-4 overflow-auto flex-1">
           <pre class="text-xs text-gray-300 whitespace-pre-wrap font-mono">{{
             markdownContent
           }}</pre>
@@ -149,8 +226,7 @@
       <!-- PDF Preview -->
       <div
         v-else-if="previewType === 'pdf'"
-        class="bg-gray-900 rounded-lg overflow-hidden"
-        style="height: 70vh"
+        class="bg-gray-900 rounded-lg overflow-hidden flex-1"
       >
         <iframe
           :src="previewUrl"
@@ -173,7 +249,7 @@
       <!-- Office Documents Info -->
       <div
         v-else-if="previewType === 'office'"
-        class="flex flex-col items-center justify-center py-12 gap-4"
+        class="flex flex-col items-center justify-center py-12 gap-4 flex-1"
       >
         <component :is="FileText" :size="64" class="text-gray-500" />
         <div class="text-center">
@@ -190,7 +266,10 @@
       </div>
 
       <!-- Unknown/Unsupported -->
-      <div v-else class="flex flex-col items-center justify-center py-12 gap-4">
+      <div
+        v-else
+        class="flex flex-col items-center justify-center py-12 gap-4 flex-1"
+      >
         <component :is="FileQuestion" :size="64" class="text-gray-500" />
         <div class="text-center">
           <p class="text-gray-300 mb-2">
@@ -258,11 +337,18 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import {
   FileText,
-  Image,
+  Image as ImageIcon,
   Video,
   FileQuestion,
   FileCode,
   File,
+  Maximize2,
+  Minimize2,
+  ChevronLeft,
+  ChevronRight,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
@@ -274,7 +360,7 @@ import { readFile, remove } from "@tauri-apps/plugin-fs";
 import { tempDir, join } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
 
-const { closeOverlay, getOverlayProp } = useOverlay();
+const { closeOverlay, getOverlayProp, updateOverlayProp } = useOverlay();
 const sftpStore = useSFTPStore();
 
 const loading = ref(false);
@@ -286,6 +372,16 @@ const renderedMarkdown = ref<string>("");
 const textContent = ref<string>("");
 const viewMode = ref<"rendered" | "source">("rendered");
 const tempFilePath = ref<string | null>(null);
+
+const isFullscreen = ref(false);
+
+// Zoom & Pan state
+const zoomLevel = ref(1);
+const panX = ref(0);
+const panY = ref(0);
+const isPanning = ref(false);
+const startPanX = ref(0);
+const startPanY = ref(0);
 
 const file = getOverlayProp<FileEntry | null>(
   "sftp-file-preview-modal",
@@ -299,6 +395,13 @@ const isLocal = getOverlayProp<boolean>(
   "isLocal",
   false,
   false,
+);
+
+const allFiles = getOverlayProp<FileEntry[]>(
+  "sftp-file-preview-modal",
+  "files",
+  [],
+  [],
 );
 
 // Detect file type
@@ -425,7 +528,7 @@ const previewType = computed(() => {
 const previewIcon = computed(() => {
   switch (previewType.value) {
     case "image":
-      return Image;
+      return ImageIcon;
     case "video":
     case "office":
       return File;
@@ -443,6 +546,88 @@ const previewIcon = computed(() => {
 const canEdit = computed(() => {
   return ["html", "markdown", "text"].includes(previewType.value);
 });
+
+// Gallery Navigation logic
+const previewableFiles = computed(() => {
+  if (!allFiles.value.length) return [];
+  return allFiles.value.filter((f: FileEntry) => f.fileType === "file");
+});
+
+const currentFileIndex = computed(() => {
+  if (!file.value || !previewableFiles.value.length) return -1;
+  return previewableFiles.value.findIndex(
+    (f: FileEntry) => f.path === file.value?.path,
+  );
+});
+
+const hasNext = computed(
+  () =>
+    currentFileIndex.value !== -1 &&
+    currentFileIndex.value < previewableFiles.value.length - 1,
+);
+const hasPrev = computed(() => currentFileIndex.value > 0);
+
+function navigate(direction: "next" | "prev") {
+  if (currentFileIndex.value === -1) return;
+
+  let newIndex =
+    direction === "next"
+      ? currentFileIndex.value + 1
+      : currentFileIndex.value - 1;
+  if (newIndex >= 0 && newIndex < previewableFiles.value.length) {
+    const nextFile = previewableFiles.value[newIndex];
+    updateOverlayProp("sftp-file-preview-modal", "file", nextFile);
+  }
+}
+
+// Zoom / Pan Logic
+function resetZoom() {
+  zoomLevel.value = 1;
+  panX.value = 0;
+  panY.value = 0;
+}
+
+function handleZoomIn() {
+  zoomLevel.value = Math.min(zoomLevel.value + 0.25, 5);
+}
+
+function handleZoomOut() {
+  zoomLevel.value = Math.max(zoomLevel.value - 0.25, 0.5);
+}
+
+function handleWheel(e: WheelEvent) {
+  // Allow normal scrolling if not holding Ctrl key, unless we want to map scroll to zoom always.
+  // Standard pattern: Ctrl+Scroll to zoom, Scroll to pan (if zoomed) or ignored.
+  // But here we might want simple zoom on scroll for image viewer.
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.25 : 0.25;
+    const newZoom = Math.max(0.5, Math.min(5, zoomLevel.value + delta));
+    zoomLevel.value = newZoom;
+  }
+}
+
+function startPan(e: MouseEvent) {
+  if (zoomLevel.value <= 1) return;
+  isPanning.value = true;
+  startPanX.value = e.clientX - panX.value;
+  startPanY.value = e.clientY - panY.value;
+  document.addEventListener("mousemove", handlePan);
+  document.addEventListener("mouseup", endPan);
+}
+
+function handlePan(e: MouseEvent) {
+  if (!isPanning.value) return;
+  e.preventDefault();
+  panX.value = e.clientX - startPanX.value;
+  panY.value = e.clientY - startPanY.value;
+}
+
+function endPan() {
+  isPanning.value = false;
+  document.removeEventListener("mousemove", handlePan);
+  document.removeEventListener("mouseup", endPan);
+}
 
 function renderMarkdown(md: string): string {
   let html = md
@@ -466,6 +651,9 @@ function renderMarkdown(md: string): string {
 }
 
 async function loadPreview() {
+  // Reset zoom on file change
+  resetZoom();
+
   if (!file.value) return;
 
   loading.value = true;
@@ -726,7 +914,26 @@ async function closeModal() {
   renderedMarkdown.value = "";
   error.value = null;
   viewMode.value = "rendered";
+  isFullscreen.value = false;
+  resetZoom();
   closeOverlay("sftp-file-preview-modal");
+}
+
+function toggleFullscreen() {
+  isFullscreen.value = !isFullscreen.value;
+}
+
+// Keyboard navigation
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === "ArrowRight") {
+    navigate("next");
+  } else if (e.key === "ArrowLeft") {
+    navigate("prev");
+  } else if (e.key === "Escape") {
+    if (isFullscreen.value) {
+      isFullscreen.value = false;
+    }
+  }
 }
 
 watch(
@@ -743,9 +950,11 @@ onMounted(() => {
   if (file.value) {
     loadPreview();
   }
+  window.addEventListener("keydown", handleKeydown);
 });
 
 onUnmounted(async () => {
+  window.removeEventListener("keydown", handleKeydown);
   await cleanupTempFile();
 
   if (previewUrl.value && previewUrl.value.startsWith("blob:")) {
@@ -800,27 +1009,37 @@ onUnmounted(async () => {
   margin: 1rem 0;
 }
 
-:deep(.prose pre code) {
-  background-color: transparent;
-  color: #e5e7eb;
-  padding: 0;
-}
-
 :deep(.prose a) {
   color: #60a5fa;
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 :deep(.prose a:hover) {
-  color: #93c5fd;
+  text-decoration: underline;
 }
 
-:deep(.prose strong) {
-  font-weight: 700;
-  color: #f3f4f6;
+:deep(.prose p) {
+  margin-bottom: 1em;
+  line-height: 1.6;
 }
 
-:deep(.prose em) {
+:deep(.prose ul) {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+:deep(.prose ol) {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin-bottom: 1em;
+}
+
+:deep(.prose blockquote) {
+  border-left: 4px solid #4b5563;
+  padding-left: 1rem;
   font-style: italic;
+  color: #9ca3af;
+  margin-bottom: 1em;
 }
 </style>

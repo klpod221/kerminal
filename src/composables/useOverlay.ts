@@ -146,6 +146,16 @@ export function useOverlay() {
 
     activeOverlay: overlayStore.activeOverlay,
     hasActiveOverlay: overlayStore.hasActiveOverlay,
+
+    updateOverlayProp: (overlayId: string, propName: string, value: any) => {
+        const overlay = overlayStore.getOverlayById(overlayId);
+        if (overlay) {
+            if (!overlay.config.props) {
+                overlay.config.props = {};
+            }
+            overlay.config.props[propName] = value;
+        }
+    }
   };
 }
 

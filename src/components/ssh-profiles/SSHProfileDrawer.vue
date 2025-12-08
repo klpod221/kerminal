@@ -41,12 +41,17 @@
       >
         <Collapsible
           title="Recent Connections"
-          :badge="String(connectionHistoryStore.recentConnections.length)"
+          :badge="
+            String(Math.min(connectionHistoryStore.recentConnections.length, 3))
+          "
           :default-expanded="true"
         >
           <div class="space-y-2">
             <RecentConnectionItem
-              v-for="entry in connectionHistoryStore.recentConnections"
+              v-for="entry in connectionHistoryStore.recentConnections.slice(
+                0,
+                3,
+              )"
               :key="`${entry.type}-${entry.id}`"
               :entry="entry"
               @connect="connectToHistoryEntry(entry)"

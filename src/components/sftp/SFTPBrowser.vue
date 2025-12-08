@@ -38,6 +38,18 @@
           Sync
         </Button>
 
+        <!-- Search button -->
+        <Button
+          v-if="sftpStore.activeSessionId"
+          variant="ghost"
+          size="sm"
+          :icon="Search"
+          @click="openOverlay('sftp-file-search-modal')"
+          title="Search in files"
+        >
+          Search
+        </Button>
+
         <!-- Transfer button -->
         <Button
           variant="ghost"
@@ -181,6 +193,7 @@
     <SyncCompareModal />
     <FileEditorModal />
     <FilePreviewModal />
+    <FileSearchModal />
   </div>
 </template>
 
@@ -188,7 +201,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
-import { Activity, GitCompare } from "lucide-vue-next";
+import { Activity, GitCompare, Search } from "lucide-vue-next";
 import { useSFTPStore } from "../../stores/sftp";
 import { useSSHStore } from "../../stores/ssh";
 import { message } from "../../utils/message";
@@ -203,6 +216,7 @@ import CreateFileModal from "./CreateFileModal.vue";
 import SyncCompareModal from "./SyncCompareModal.vue";
 import FileEditorModal from "./FileEditorModal.vue";
 import FilePreviewModal from "./FilePreviewModal.vue";
+import FileSearchModal from "./FileSearchModal.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import type { FileEntry } from "../../types/sftp";
@@ -662,6 +676,7 @@ async function handleLocalOpen(file: FileEntry) {
     openOverlay("sftp-file-preview-modal", {
       file,
       isLocal: true,
+      files: sftpStore.browserState.localFiles,
     });
   } else {
     await openPath(file.path);
@@ -1087,6 +1102,7 @@ function handleRemoteOpen(file: FileEntry) {
     openOverlay("sftp-file-preview-modal", {
       file,
       isLocal: false,
+      files: sftpStore.browserState.remoteFiles,
     });
   } else {
     message.info("Please download the file to open it");

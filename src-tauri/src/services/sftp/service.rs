@@ -4,6 +4,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
 use crate::core::proxy::create_proxy_stream;
+use crate::models::sftp::search::SearchResult;
 use crate::models::sftp::{error::SFTPError, file_entry::FileEntry, FileType};
 use crate::models::ssh::AuthData;
 use crate::services::ssh::{SSHKeyService, SSHService};
@@ -18,7 +19,7 @@ use russh_sftp::client::SftpSession;
 
 /// Simple handler for SFTP connections
 #[derive(Clone)]
-struct SFTPClientHandler;
+pub struct SFTPClientHandler;
 
 #[async_trait]
 impl russh::client::Handler for SFTPClientHandler {
@@ -35,6 +36,7 @@ impl russh::client::Handler for SFTPClientHandler {
 /// Internal SFTP session data
 pub struct SFTPSessionData {
     pub sftp: SftpSession,
+    pub client: Arc<russh::client::Handle<SFTPClientHandler>>,
     last_used: chrono::DateTime<Utc>,
 }
 
@@ -226,6 +228,7 @@ impl SFTPService {
         let now = Utc::now();
         let session_data = SFTPSessionData {
             sftp,
+            client: Arc::new(session),
             last_used: now,
         };
 
@@ -677,6 +680,81 @@ impl SFTPService {
         String::from_utf8(buffer).map_err(|e| SFTPError::Other {
             message: format!("File {} is not valid UTF-8: {}", path, e),
         })
+    }
+
+    /// Search for files containing text using grep
+    pub async fn search(
+        &self,
+        session_id: String,
+        path: String,
+        query: String,
+    ) -> Result<Vec<SearchResult>, SFTPError> {
+        let session_data = self.get_session(&session_id).await?;
+
+        // Clone client handle to avoid holding lock during search
+        let client = {
+            let mut data = session_data.lock().await;
+            data.last_used = Utc::now();
+            data.client.clone()
+        };
+
+        // Open a new channel for the search command
+        let mut channel = client
+            .channel_open_session()
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to open channel for search: {}", e),
+            })?;
+
+        // Escape query to prevent command injection
+        // This is a basic escaping, ideally we'd use a robust shell escaping library
+        let escaped_query = query.replace("\"", "\\\"");
+        let command = format!("grep -rInH \"{}\" \"{}\"", escaped_query, path);
+
+        channel
+            .exec(true, command)
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to execute search command: {}", e),
+            })?;
+
+        // Read stdout
+        let output = {
+            let mut stdout = channel.make_reader();
+            use tokio::io::AsyncReadExt;
+            let mut buffer = Vec::new();
+            stdout
+                .read_to_end(&mut buffer)
+                .await
+                .map_err(|e| SFTPError::Other {
+                    message: format!("Failed to read search output: {}", e),
+                })?;
+            String::from_utf8_lossy(&buffer).to_string()
+        };
+
+        let mut results = Vec::new();
+        for line in output.lines() {
+            // Grep output format: filename:line:content
+            // Note: filename might contain colons, so we should look for the first two colons carefully
+            // But standard grep output puts filename first.
+            // Split by colon, limit 3 parts? No, content might have colons.
+
+            let parts: Vec<&str> = line.splitn(3, ':').collect();
+            if parts.len() >= 3 {
+                let file_path = parts[0].to_string();
+                if let Ok(line_number) = parts[1].parse::<u64>() {
+                    // content is rest
+                    let content = parts[2].to_string();
+                    results.push(SearchResult {
+                        file_path,
+                        line_number,
+                        content,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
     }
 
     /// Write file content as text

@@ -6,6 +6,7 @@ import type {
   SFTPBrowserState,
   SyncOperation,
   DiffEntry,
+  SearchResult,
 } from "../types/sftp";
 import * as sftpService from "../services/sftp";
 import { api } from "../services/api";
@@ -791,6 +792,32 @@ export const useSFTPStore = defineStore("sftp", () => {
     }
   }
 
+  /**
+   * Search for text in files
+   * @param sessionId - SFTP session ID
+   * @param path - Path to search in
+   * @param query - Search query
+   * @returns Search results
+   */
+  async function search(
+    sessionId: string,
+    path: string,
+    query: string,
+  ): Promise<SearchResult[]> {
+    const context: ErrorContext = {
+      operation: "Search SFTP",
+      context: { path, query },
+    };
+
+    try {
+      return await sftpService.searchSFTP(sessionId, path, query);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      console.error("Failed to search:", errorMessage);
+      throw new Error(errorMessage);
+    }
+  }
+
   return {
     // State
     sessions,
@@ -824,5 +851,6 @@ export const useSFTPStore = defineStore("sftp", () => {
     getAllTransfers,
     reorderQueue,
     retryTransfer,
+    search,
   };
 });

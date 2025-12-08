@@ -192,3 +192,12 @@ pub struct GetAllTransfersRequest {
 pub struct RetryTransferRequest {
     pub transfer_id: String,
 }
+
+/// Request for searching content
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchRequest {
+    pub session_id: String,
+    pub path: String,
+    pub query: String,
+}
