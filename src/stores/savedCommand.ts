@@ -33,10 +33,12 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
 
   const recentCommands = computed(() =>
     commands.value
-      .filter((c) => c?.id && c.lastUsedAt)
+      .filter((c): c is SavedCommand & { lastUsedAt: string } => 
+        c?.id !== undefined && c.lastUsedAt !== undefined
+      )
       .sort(
         (a, b) =>
-          new Date(b.lastUsedAt!).getTime() - new Date(a.lastUsedAt!).getTime(),
+          new Date(b.lastUsedAt).getTime() - new Date(a.lastUsedAt).getTime(),
       )
       .slice(0, 10),
   );
