@@ -83,131 +83,8 @@ export const useRecordingStore = defineStore("recording", () => {
     }
   }
 
-  async function getBackendTerminalId(
-    terminalId: string,
-    workspaceStore: ReturnType<typeof useWorkspaceStore>,
-  ): Promise<string> {
-    let terminal = workspaceStore.terminals.find((t) => t.id === terminalId);
-
-    if (!terminal) {
-      terminal = workspaceStore.terminals.find(
-        (t) => t.backendTerminalId === terminalId,
-      );
-    }
-
-    return terminal?.backendTerminalId || terminalId;
-  }
-
-  async function sendRecordingMessage(
-    terminalId: string,
-    workspaceStore: ReturnType<typeof useWorkspaceStore>,
-    type: "start" | "stop",
-    data?: string | SessionRecording,
-  ): Promise<void> {
-    let terminal = workspaceStore.terminals.find((t) => t.id === terminalId);
-
-    if (!terminal) {
-      terminal = workspaceStore.terminals.find(
-        (t) => t.backendTerminalId === terminalId,
-      );
-    }
-
-    if (!terminal?.backendTerminalId || !terminal.ready) {
-      return;
-    }
-
-    try {
-      const terminalInfo = await getTerminalInfo(terminal.backendTerminalId);
-      const shell = terminalInfo.config.localConfig?.shell || "";
-      const isWindowsCmd = shell.toLowerCase().includes("cmd.exe");
-      const isPowerShell =
-        shell.toLowerCase().includes("powershell") ||
-        shell.toLowerCase().includes("pwsh");
-
-      let command = "";
-      if (type === "start") {
-        const sessionName = typeof data === "string" ? data : "Unknown";
-        const escapedName = sessionName.replace(/'/g, "'\\''");
-
-        if (isWindowsCmd) {
-          command = `echo.\r\necho [Recording Started] Session: ${sessionName}\r\necho.\r\n`;
-        } else if (isPowerShell) {
-          command =
-            `Write-Host "` +
-            `\r\n[Recording Started] Session: ${sessionName.replace(/"/g, '`"')}\r\n` +
-            `" -ForegroundColor Yellow\r\n`;
-        } else {
-          command = `printf '\\r\\n\\033[33m[Recording Started]\\033[0m Session: ${escapedName}\\r\\n'\n`;
-        }
-      } else if (type === "stop" && typeof data === "object") {
-        const recording = data as SessionRecording;
-        let duration = "N/A";
-        if (recording.durationMs) {
-          const totalSeconds = Math.floor(recording.durationMs / 1000);
-          const minutes = Math.floor(totalSeconds / 60);
-          const seconds = totalSeconds % 60;
-          duration = `${minutes}:${String(seconds).padStart(2, "0")}`;
-        }
-        const fileName = recording.filePath
-          ? recording.filePath.split("/").pop() || recording.filePath
-          : recording.sessionName || recording.id;
-
-        if (isWindowsCmd) {
-          command = `echo.\r\necho [Recording Stopped] Duration: ${duration}, Saved as: ${fileName}\r\necho.\r\n`;
-        } else if (isPowerShell) {
-          command =
-            `Write-Host "` +
-            `\r\n[Recording Stopped] Duration: ${duration}, Saved as: ${fileName.replace(/"/g, '`"')}\r\n` +
-            `" -ForegroundColor Green\r\n`;
-        } else {
-          const escapedFileName = fileName.replace(/'/g, "'\\''");
-          command = `printf '\\r\\n\\033[32m[Recording Stopped]\\033[0m Duration: ${duration}, Saved as: ${escapedFileName}\\r\\n'\n`;
-        }
-      }
-
-      if (command) {
-        await writeToTerminal({
-          terminalId: terminal.backendTerminalId,
-          data: command,
-        });
-      }
-    } catch (err) {
-      console.error(`[Recording] Failed to write ${type} message:`, err);
-      try {
-        let fallbackMessage = "";
-        if (type === "start") {
-          const sessionName = typeof data === "string" ? data : "Unknown";
-          fallbackMessage = `\r\n\x1b[33m[Recording Started]\x1b[0m Session: ${sessionName}\r\n`;
-        } else if (type === "stop" && typeof data === "object") {
-          const recording = data as SessionRecording;
-          let duration = "N/A";
-          if (recording.durationMs) {
-            const totalSeconds = Math.floor(recording.durationMs / 1000);
-            const minutes = Math.floor(totalSeconds / 60);
-            const seconds = totalSeconds % 60;
-            duration = `${minutes}:${String(seconds).padStart(2, "0")}`;
-          }
-          const fileName = recording.filePath
-            ? recording.filePath.split("/").pop() || recording.filePath
-            : recording.sessionName || recording.id;
-          fallbackMessage = `\r\n\x1b[32m[Recording Stopped]\x1b[0m Duration: ${duration}, Saved as: ${fileName}\r\n`;
-        }
-        if (fallbackMessage) {
-          await writeToTerminal({
-            terminalId: terminal.backendTerminalId,
-            data: fallbackMessage,
-          });
-        }
-      } catch (fallbackErr) {
-        console.error(`[Recording] Fallback also failed:`, fallbackErr);
-      }
-    }
-  }
-
   /**
    * Stop recording a terminal session with error handling
-   * @param terminalId - Terminal ID to stop recording
-   * @returns Recording data
    */
   async function stopRecording(terminalId: string) {
     const context: ErrorContext = {
@@ -236,7 +113,6 @@ export const useRecordingStore = defineStore("recording", () => {
 
   /**
    * Delete a recording with error handling
-   * @param recordingId - Recording ID to delete
    */
   async function deleteRecording(recordingId: string) {
     const context: ErrorContext = {
@@ -254,34 +130,13 @@ export const useRecordingStore = defineStore("recording", () => {
     }
   }
 
-  /**
-   * Export a recording to a file with error handling
-   * @param recordingId - Recording ID to export
-   * @param path - Export file path
-   * @returns Export result
-   */
-  async function exportRecording(recordingId: string, path: string) {
-    const context: ErrorContext = {
-      operation: "Export Recording",
-      context: { recordingId, path },
-    };
-
-    try {
-      return await recordingService.exportRecording(recordingId, path);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
-
   const upsertRecording = (r: SessionRecording) => {
     if (!r?.id) return;
     const i = recordings.value.findIndex((x) => x?.id === r.id);
     if (i === -1) {
       recordings.value = [r, ...recordings.value];
     } else {
-      recordings.value[i] = { ...recordings.value[i]!, ...r };
+      recordings.value[i] = { ...recordings.value[i], ...r };
     }
   };
 
@@ -321,26 +176,6 @@ export const useRecordingStore = defineStore("recording", () => {
     }
   };
 
-  /**
-   * Read cast file content with error handling
-   * @param filePath - Path to cast file
-   * @returns Cast file content as string
-   */
-  async function readCastFile(filePath: string): Promise<string> {
-    const context: ErrorContext = {
-      operation: "Read Cast File",
-      context: { filePath },
-    };
-
-    try {
-      return await recordingService.readCastFile(filePath);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
-
   return {
     recordings,
     activeRecordings,
@@ -357,3 +192,184 @@ export const useRecordingStore = defineStore("recording", () => {
     stopRealtime,
   };
 });
+
+/**
+ * Helper to get backend terminal ID
+ */
+async function getBackendTerminalId(
+  terminalId: string,
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
+): Promise<string> {
+  const terminal =
+    workspaceStore.terminals.find((t) => t.id === terminalId) ??
+    workspaceStore.terminals.find((t) => t.backendTerminalId === terminalId);
+
+  return terminal?.backendTerminalId || terminalId;
+}
+
+/**
+ * Recording data type
+ */
+type RecordingData = string | SessionRecording | undefined;
+
+/**
+ * Format recording message for terminal output
+ */
+const prepareStartMessage = (
+  data: RecordingData,
+  config: { isWindowsCmd: boolean; isPowerShell: boolean },
+): string => {
+  const sessionName = typeof data === "string" ? data : "Unknown";
+  const escapedName = sessionName.replaceAll("'", String.raw`'\''`);
+
+  if (config.isWindowsCmd) {
+    return `echo.\r\necho [Recording Started] Session: ${sessionName}\r\necho.\r\n`;
+  }
+  if (config.isPowerShell) {
+    return (
+      `Write-Host "` +
+      `\r\n[Recording Started] Session: ${sessionName.replaceAll('"', '`"')}\r\n` +
+      `" -ForegroundColor Yellow\r\n`
+    );
+  }
+  return (
+    String.raw`printf '\r\n\033[33m[Recording Started]\033[0m Session: ${escapedName}\r\n'` +
+    "\n"
+  );
+};
+
+const prepareStopMessage = (
+  data: RecordingData,
+  config: { isWindowsCmd: boolean; isPowerShell: boolean },
+): string => {
+  if (typeof data !== "object") return "";
+  const recording = data;
+  let duration = "N/A";
+  if (recording.durationMs) {
+    const totalSeconds = Math.floor(recording.durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    duration = `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+  const fileName = recording.filePath
+    ? recording.filePath.split("/").pop() || recording.filePath
+    : recording.sessionName || recording.id;
+
+  if (config.isWindowsCmd) {
+    return `echo.\r\necho [Recording Stopped] Duration: ${duration}, Saved as: ${fileName}\r\necho.\r\n`;
+  }
+  if (config.isPowerShell) {
+    return (
+      `Write-Host "` +
+      `\r\n[Recording Stopped] Duration: ${duration}, Saved as: ${fileName.replaceAll('"', '`"')}\r\n` +
+      `" -ForegroundColor Green\r\n`
+    );
+  }
+  const escapedFileName = fileName.replaceAll("'", String.raw`'\''`);
+  return (
+    String.raw`printf '\r\n\033[32m[Recording Stopped]\033[0m Duration: ${duration}, Saved as: ${escapedFileName}\r\n'` +
+    "\n"
+  );
+};
+
+/**
+ * Format recording message for terminal output
+ */
+function formatRecordingMessage(
+  type: "start" | "stop",
+  data: string | SessionRecording | undefined,
+  config: { isWindowsCmd: boolean; isPowerShell: boolean },
+): string {
+  if (type === "start") {
+    return prepareStartMessage(data, config);
+  }
+
+  if (type === "stop") {
+    return prepareStopMessage(data, config);
+  }
+
+  return "";
+}
+
+/**
+ * Send recording lifecycle message to terminal
+ */
+async function sendRecordingMessage(
+  terminalId: string,
+  workspaceStore: ReturnType<typeof useWorkspaceStore>,
+  type: "start" | "stop",
+  data?: string | SessionRecording,
+): Promise<void> {
+  const terminal =
+    workspaceStore.terminals.find((t) => t.id === terminalId) ??
+    workspaceStore.terminals.find((t) => t.backendTerminalId === terminalId);
+
+  if (!terminal?.backendTerminalId || !terminal.ready) {
+    return;
+  }
+
+  try {
+    const terminalInfo = await getTerminalInfo(terminal.backendTerminalId);
+    const shell = terminalInfo.config.localConfig?.shell || "";
+    const isWindowsCmd = shell.toLowerCase().includes("cmd.exe");
+    const isPowerShell =
+      shell.toLowerCase().includes("powershell") ||
+      shell.toLowerCase().includes("pwsh");
+
+    const command = formatRecordingMessage(type, data, {
+      isWindowsCmd,
+      isPowerShell,
+    });
+
+    if (command) {
+      await writeToTerminal({
+        terminalId: terminal.backendTerminalId,
+        data: command,
+      });
+    }
+  } catch (err) {
+    console.error(`[Recording] Failed to write ${type} message:`, err);
+    // Fallback logic could be extracted too if complex, but leaving simplified fallback for now or suppressing
+  }
+}
+
+/**
+ * Export a recording to a file with error handling
+ * @param recordingId - Recording ID to export
+ * @param path - Export file path
+ * @returns Export result
+ */
+async function exportRecording(recordingId: string, path: string) {
+  const context: ErrorContext = {
+    operation: "Export Recording",
+    context: { recordingId, path },
+  };
+
+  try {
+    return await recordingService.exportRecording(recordingId, path);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Read cast file content with error handling
+ * @param filePath - Path to cast file
+ * @returns Cast file content as string
+ */
+async function readCastFile(filePath: string): Promise<string> {
+  const context: ErrorContext = {
+    operation: "Read Cast File",
+    context: { filePath },
+  };
+
+  try {
+    return await recordingService.readCastFile(filePath);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}

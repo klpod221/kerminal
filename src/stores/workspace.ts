@@ -21,9 +21,11 @@ import {
   listenToTerminalLatency,
 } from "../services/terminal";
 import { invoke } from "@tauri-apps/api/core";
-import type { ResizeTerminalRequest, TerminalData, CreateTerminalResponse } from "../types/panel";
 import { api } from "../services/api";
 import type {
+  ResizeTerminalRequest,
+  TerminalData,
+  CreateTerminalResponse,
   TerminalTitleChanged,
   TerminalExited,
   TerminalLatency,
@@ -37,6 +39,16 @@ import type {
  * Workspace Store
  * Manages panel layouts, terminals, and workspace state
  */
+const waitForRender = async () => {
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setTimeout(resolve, 200);
+      });
+    });
+  });
+};
+
 export const useWorkspaceStore = defineStore("workspace", () => {
   const viewState = useViewStateStore();
 
@@ -303,18 +315,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       profileId: profile.id,
     };
 
-    // We need to pass profile settings to the terminal creation logic
-    // But currently createLocalTerminal only takes shell and workingDir
-    // We might need to store these settings temporarily or pass them when the terminal is ready
-    // For now, let's assume the terminal component will handle it or we pass it via a side channel
-    // Actually, we should probably modify TerminalInstance to hold these settings
-    // or modify createLocalTerminal to accept them.
-
-    // Let's modify TerminalInstance in types/panel.ts to include profile settings?
-    // Or just pass them when creating the terminal.
-    // The actual creation happens in Terminal.vue onMounted -> createTerminal
-
-    // Let's add profile settings to TerminalInstance
     (newTerminal as any).shell = profile.shell;
     (newTerminal as any).workingDir = profile.workingDir;
     (newTerminal as any).env = profile.env;
@@ -713,7 +713,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
 
-    const tabIds = [...panel.tabs.map((tab) => tab.id)];
+    const tabIds = panel.tabs.map((tab) => tab.id);
 
     for (const tabId of tabIds) {
       const terminalIndex = terminals.value.findIndex(
@@ -988,8 +988,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const swapChildrenInLayout = (layout: PanelLayout): boolean => {
           if (
             layout.type === "split" &&
-            layout.children &&
-            layout.children.length === 2
+            layout.children?.length === 2
           ) {
             const hasNewPanel = layout.children.some(
               (child) =>
@@ -1090,8 +1089,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const swapChildrenInLayout = (layout: PanelLayout): boolean => {
           if (
             layout.type === "split" &&
-            layout.children &&
-            layout.children.length === 2
+            layout.children?.length === 2
           ) {
             const hasNewPanel = layout.children.some(
               (child) =>
@@ -1169,95 +1167,122 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    * Handle terminal ready event
    * @param terminalId - The terminal ID that is ready
    */
+  const getTerminalTabInfo = (
+    terminalId: string,
+  ): { title: string; profileId?: string; tab?: Tab } => {
+    let title = "Terminal";
+    let profileId: string | undefined;
+
+    const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
+      if (layout.type === "panel" && layout.panel) {
+        return layout.panel.tabs.find((t: Tab) => t.id === terminalId);
+      } else if (
+        layout.type === "split" &&
+        layout.children &&
+        layout.children.length > 0
+      ) {
+        for (const child of layout.children) {
+          const found = findTabInLayout(child);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+
+    const tab = findTabInLayout(panelLayout.value);
+    if (tab) {
+      title = tab.title;
+      profileId = tab.profileId;
+    }
+
+    return { title, profileId, tab };
+  };
+
+  const createTerminalInstance = async (
+    terminal: TerminalInstance,
+    tab: Tab | undefined,
+    title: string,
+    profileId: string | undefined,
+    context: ErrorContext,
+  ): Promise<CreateTerminalResponse> => {
+    if (tab?.sshConfigHost) {
+      return withRetry(
+        () =>
+          createSSHConfigTerminal(
+            tab.sshConfigHost!,
+            title,
+            terminal.sshConfigPassword,
+          ),
+        { maxRetries: 2, retryDelay: 1000 },
+        context,
+      );
+    } else if (profileId) {
+      return withRetry(
+        () => createSSHTerminal(profileId), // assertion removed
+        { maxRetries: 2, retryDelay: 1000 },
+        context,
+      );
+    } else if (terminal.profileId) {
+      return invoke<CreateTerminalResponse>("create_terminal", {
+        request: {
+          shell: terminal.shell,
+          workingDir: terminal.workingDir,
+          title,
+          terminalProfileId: terminal.profileId,
+          command: terminal.command,
+        },
+      });
+    } else {
+      return createLocalTerminal(
+        terminal.shell,
+        terminal.workingDir,
+        title,
+      );
+    }
+  };
+
+  /**
+   * Handle terminal ready event
+   * @param terminalId - The terminal ID that is ready
+   */
   const terminalReady = async (terminalId: string): Promise<void> => {
     const terminal = terminals.value.find((t) => t.id === terminalId);
-    if (terminal) {
-      terminal.ready = true;
+    if (!terminal) return;
 
-      if (terminal.shouldFocusOnReady) {
-        terminal.shouldFocusOnReady = false;
-      }
+    terminal.ready = true;
+    if (terminal.shouldFocusOnReady) {
+      terminal.shouldFocusOnReady = false;
+    }
 
-      if (!terminal.backendTerminalId) {
-        let title = "Terminal";
-        let profileId: string | undefined;
+    if (terminal.backendTerminalId) return;
 
-        const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
-          if (layout.type === "panel" && layout.panel) {
-            return layout.panel.tabs.find((t: Tab) => t.id === terminalId);
-          } else if (layout.type === "split" && layout.children) {
-            for (const child of layout.children) {
-              const found = findTabInLayout(child);
-              if (found) return found;
-            }
-          }
-          return undefined;
-        };
+    const { title, profileId, tab } = getTerminalTabInfo(terminalId);
 
-        const tab = findTabInLayout(panelLayout.value);
-        if (tab) {
-          title = tab.title;
-          profileId = tab.profileId;
-        }
+    const context: ErrorContext = {
+      operation: "Create Terminal",
+      context: {
+        terminalId,
+        profileId,
+        hasSSHConfig: !!tab?.sshConfigHost,
+      },
+    };
 
-        const context: ErrorContext = {
-          operation: "Create Terminal",
-          context: {
-            terminalId,
-            profileId,
-            hasSSHConfig: !!tab?.sshConfigHost,
-          },
-        };
-
-        try {
-          let response;
-          if (tab?.sshConfigHost) {
-            response = await withRetry(
-              () =>
-                createSSHConfigTerminal(
-                  tab.sshConfigHost!,
-                  title,
-                  terminal.sshConfigPassword,
-                ),
-              { maxRetries: 2, retryDelay: 1000 },
-              context,
-            );
-          } else if (profileId) {
-            response = await withRetry(
-              () => createSSHTerminal(profileId!),
-              { maxRetries: 2, retryDelay: 1000 },
-              context,
-            );
-          } else if (terminal.profileId) {
-            // Use generic create_terminal for Terminal Profile
-            // The backend expects CreateLocalTerminalRequest which has flat fields
-            response = await invoke<CreateTerminalResponse>("create_terminal", {
-              request: {
-                shell: terminal.shell,
-                workingDir: terminal.workingDir,
-                title,
-                terminalProfileId: terminal.profileId,
-                command: terminal.command,
-              },
-            });
-          } else {
-            response = await createLocalTerminal(
-              terminal.shell,
-              terminal.workingDir,
-              title,
-            );
-          }
-
-          terminal.backendTerminalId = response.terminalId;
-        } catch (error) {
-          const errorMessage = handleError(error, context);
-          message.error(errorMessage);
-          if (terminal.isSSHConnecting && profileId) {
-            await handleSSHConnectionError(terminalId, errorMessage);
-          } else if (terminal.isSSHConnecting) {
-            terminal.isSSHConnecting = false;
-          }
-        }
+    try {
+      const response = await createTerminalInstance(
+        terminal,
+        tab,
+        title,
+        profileId,
+        context,
+      );
+      terminal.backendTerminalId = response.terminalId;
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      if (terminal.isSSHConnecting && profileId) {
+        await handleSSHConnectionError(terminalId, errorMessage);
+      } else if (terminal.isSSHConnecting) {
+        terminal.isSSHConnecting = false;
       }
     }
   };
@@ -1268,7 +1293,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const triggerTerminalResize = debounce((): void => {
     nextTick(() => {
       setTimeout(() => {
-        window.dispatchEvent(new Event("resize"));
+        globalThis.dispatchEvent(new Event("resize"));
       }, 50);
     });
   }, 150);
@@ -1282,143 +1307,156 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     triggerTerminalResize();
   };
 
+
+  /*
+   * Helper to find tab for title change
+   */
+  const findTabForTitleChange = (
+    layout: PanelLayout,
+    terminalId: string,
+  ): Tab | undefined => {
+    if (layout.type === "panel" && layout.panel) {
+      return layout.panel.tabs.find((t: Tab) => {
+        const terminal = terminals.value.find((term) => term.id === t.id);
+        return terminal?.backendTerminalId === terminalId;
+      });
+    } else if (layout.type === "split" && layout.children) {
+      for (const child of layout.children) {
+        const found = findTabForTitleChange(child, terminalId);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  /*
+   * Helper to find tab for exit
+   */
+  const findTabForExit = (
+    layout: PanelLayout,
+    terminalId: string,
+  ): { panel: Panel; tab: Tab } | undefined => {
+    if (layout.type === "panel" && layout.panel) {
+      for (const tab of layout.panel.tabs) {
+        const terminal = terminals.value.find((term) => term.id === tab.id);
+        if (terminal?.backendTerminalId === terminalId) {
+          return { panel: layout.panel, tab };
+        }
+      }
+    } else if (layout.type === "split" && layout.children) {
+      for (const child of layout.children) {
+        const found = findTabForExit(child, terminalId);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  };
+
+  const handleTerminalTitleChange = (titleChange: TerminalTitleChanged) => {
+    const tab = findTabForTitleChange(
+      panelLayout.value,
+      titleChange.terminalId,
+    );
+    if (tab) {
+      tab.title = titleChange.title;
+    }
+  };
+
+  const handleTerminalExit = (exitEvent: TerminalExited) => {
+    const result = findTabForExit(
+      panelLayout.value,
+      exitEvent.terminalId,
+    );
+
+    if (result) {
+      const terminal = terminals.value.find(
+        (term) => term.id === result.tab.id,
+      );
+      if (terminal?.isClosing) {
+        return; // Already being closed, skip
+      }
+
+      if (
+        exitEvent.reason === "user-closed" ||
+        terminal?.disconnectReason === "user-closed"
+      ) {
+        closeTab(result.panel.id, result.tab.id);
+      } else {
+        const reason = exitEvent.reason || "connection-lost";
+        if (terminal) {
+          terminal.disconnectReason = reason as any;
+          terminal.isSSHConnecting = false;
+          terminal.isConnected = false;
+          terminal.backendTerminalId = undefined;
+        }
+      }
+    }
+  };
+
+
+
+
+
+  const handleTerminalLatency = (latencyEvent: TerminalLatency) => {
+    const terminal = terminals.value.find(
+      (t) => t.backendTerminalId === latencyEvent.terminalId,
+    );
+    if (terminal) {
+      terminal.latency = latencyEvent.latencyMs;
+    }
+  };
+
+  const handleSSHConnected = (data: { terminalId: string }) => {
+    let terminal = terminals.value.find(
+      (t) => t.backendTerminalId === data.terminalId,
+    );
+
+    if (!terminal) {
+      terminal = terminals.value.find(
+        (t) => t.isSSHConnecting && !t.backendTerminalId,
+      );
+      if (terminal) {
+        terminal.backendTerminalId = data.terminalId;
+      }
+    }
+
+    if (terminal) {
+      terminal.isSSHConnecting = false;
+      terminal.isConnected = true;
+      handleSSHConnectionSuccess(terminal.id);
+    }
+  };
+
   /**
    * Initialize the workspace store
    */
   const initialize = async (): Promise<void> => {
     try {
       unlistenTitleChanges = await listenToTerminalTitleChanged(
-        (titleChange: TerminalTitleChanged) => {
-          const findTabInLayout = (layout: PanelLayout): Tab | undefined => {
-            if (layout.type === "panel" && layout.panel) {
-              return layout.panel.tabs.find((t: Tab) => {
-                const terminal = terminals.value.find(
-                  (term) => term.id === t.id,
-                );
-                return terminal?.backendTerminalId === titleChange.terminalId;
-              });
-            } else if (layout.type === "split" && layout.children) {
-              for (const child of layout.children) {
-                const found = findTabInLayout(child);
-                if (found) return found;
-              }
-            }
-            return undefined;
-          };
-
-          const tab = findTabInLayout(panelLayout.value);
-          if (tab) {
-            tab.title = titleChange.title;
-          }
-        },
+        handleTerminalTitleChange,
       );
 
       unlistenTerminalExits = await listenToTerminalExit(
-        (exitEvent: TerminalExited) => {
-          const findTabByBackendId = (
-            layout: PanelLayout,
-          ): { panel: Panel; tab: Tab } | undefined => {
-            if (layout.type === "panel" && layout.panel) {
-              for (const tab of layout.panel.tabs) {
-                const terminal = terminals.value.find(
-                  (term) => term.id === tab.id,
-                );
-                if (terminal?.backendTerminalId === exitEvent.terminalId) {
-                  return { panel: layout.panel, tab };
-                }
-              }
-            } else if (layout.type === "split" && layout.children) {
-              for (const child of layout.children) {
-                const found = findTabByBackendId(child);
-                if (found) return found;
-              }
-            }
-            return undefined;
-          };
-
-          const result = findTabByBackendId(panelLayout.value);
-          if (result) {
-            const terminal = terminals.value.find(
-              (term) => term.id === result.tab.id,
-            );
-            if (terminal?.isClosing) {
-              return; // Already being closed, skip
-            }
-
-            if (
-              exitEvent.reason === "user-closed" ||
-              terminal?.disconnectReason === "user-closed"
-            ) {
-              closeTab(result.panel.id, result.tab.id);
-            } else {
-              const reason = exitEvent.reason || "connection-lost";
-              if (terminal) {
-                terminal.disconnectReason = reason as
-                  | "connection-lost"
-                  | "server-disconnect"
-                  | "connection-error";
-                terminal.disconnectReason = reason as
-                  | "connection-lost"
-                  | "server-disconnect"
-                  | "connection-error";
-                terminal.isSSHConnecting = false;
-                terminal.isConnected = false;
-                terminal.backendTerminalId = undefined;
-              }
-            }
-          }
-        },
+        handleTerminalExit,
       );
 
       unlistenTerminalLatency = await listenToTerminalLatency(
-        (latencyEvent: TerminalLatency) => {
-          const terminal = terminals.value.find(
-            (t) => t.backendTerminalId === latencyEvent.terminalId,
-          );
-          if (terminal) {
-            terminal.latency = latencyEvent.latencyMs;
-          }
-        },
+        handleTerminalLatency,
       );
 
       try {
         unlistenSSHConnected = await api.listen<{ terminalId: string }>(
           "ssh-connected",
-          (data: { terminalId: string }) => {
-            let terminal = terminals.value.find(
-              (t) => t.backendTerminalId === data.terminalId,
-            );
-
-            if (!terminal) {
-              terminal = terminals.value.find(
-                (t) => t.isSSHConnecting && !t.backendTerminalId,
-              );
-              if (terminal) {
-                terminal.backendTerminalId = data.terminalId;
-              }
-            }
-
-            if (terminal) {
-              terminal.isSSHConnecting = false;
-              terminal.isConnected = true;
-              handleSSHConnectionSuccess(terminal.id);
-            }
-          },
+          handleSSHConnected,
         );
       } catch (error) {
         console.error("Failed to setup SSH connected listener:", error);
       }
     } catch (error) {
-      console.error("Failed to setup title change listener:", error);
+      console.error("Failed to setup listeners:", error);
     }
 
-    await new Promise((resolve) => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setTimeout(resolve, 200);
-        });
-      });
-    });
+    await waitForRender();
 
     if (terminals.value.length === 0) {
       const firstPanel = findFirstPanel(panelLayout.value);

@@ -17,9 +17,7 @@ let store: Store | null = null;
 
 // Initialize Tauri store
 const initStore = async () => {
-  if (!store) {
-    store = await Store.load("settings.json");
-  }
+  store ??= await Store.load("settings.json");
   return store;
 };
 
@@ -55,6 +53,41 @@ export const useKeyboardShortcutsStore = defineStore(
     };
 
     /**
+     * Normalize modifiers based on platform and custom data
+     */
+    const normalizeModifiers = (
+      customModifiers: ShortcutModifiers,
+    ): ShortcutModifiers => {
+      // Normalize modifiers: only keep one of Ctrl or Meta
+      const isMac = navigator.userAgent.includes("Mac");
+      return {
+        ctrlKey: isMac ? false : (customModifiers.ctrlKey ?? false),
+        altKey: customModifiers.altKey ?? false,
+        shiftKey: customModifiers.shiftKey ?? false,
+        metaKey: isMac ? (customModifiers.metaKey ?? false) : false,
+      };
+    };
+
+    /**
+     * Apply custom shortcuts from storage
+     */
+    const applyCustomShortcuts = (savedShortcuts: CustomShortcutsData) => {
+      for (const [actionId, customData] of Object.entries(savedShortcuts)) {
+        const action = actionId as ShortcutAction;
+        const shortcut = shortcuts.value.get(action);
+
+        if (shortcut && customData) {
+          if (customData.key) {
+            shortcut.customKey = customData.key;
+          }
+          if (customData.modifiers) {
+            shortcut.customModifiers = normalizeModifiers(customData.modifiers);
+          }
+        }
+      }
+    };
+
+    /**
      * Load shortcuts from Tauri store
      */
     const loadShortcuts = async () => {
@@ -73,32 +106,7 @@ export const useKeyboardShortcutsStore = defineStore(
           await storeInstance.get<CustomShortcutsData>("keyboard-shortcuts");
 
         if (savedShortcuts) {
-          // Apply custom shortcuts
-          for (const [actionId, customData] of Object.entries(savedShortcuts)) {
-            const action = actionId as ShortcutAction;
-            const shortcut = shortcuts.value.get(action);
-
-            if (shortcut && customData) {
-              if (customData.key) {
-                shortcut.customKey = customData.key;
-              }
-              if (customData.modifiers) {
-                // Normalize modifiers: only keep one of Ctrl or Meta
-                const isMac = navigator.platform.includes("Mac");
-                const normalizedModifiers: ShortcutModifiers = {
-                  ctrlKey: isMac
-                    ? false
-                    : (customData.modifiers.ctrlKey ?? false),
-                  altKey: customData.modifiers.altKey ?? false,
-                  shiftKey: customData.modifiers.shiftKey ?? false,
-                  metaKey: isMac
-                    ? (customData.modifiers.metaKey ?? false)
-                    : false,
-                };
-                shortcut.customModifiers = normalizedModifiers;
-              }
-            }
-          }
+          applyCustomShortcuts(savedShortcuts);
         }
 
         // Detect conflicts after loading
@@ -185,7 +193,7 @@ export const useKeyboardShortcutsStore = defineStore(
       modifiers: ShortcutModifiers,
     ) => {
       const shortcut = shortcuts.value.get(action);
-      if (!shortcut || !shortcut.customizable) {
+      if (!shortcut?.customizable) {
         return;
       }
 

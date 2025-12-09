@@ -200,9 +200,9 @@
         />
 
         <div class="mt-4">
-          <label class="block text-sm font-medium text-gray-300 mb-2"
-            >Environment Variables</label
-          >
+          <div class="block text-sm font-medium text-gray-300 mb-2">
+            Environment Variables
+          </div>
           <EnvVarEditor v-model="sshProfile.env" />
         </div>
       </Collapsible>
@@ -515,78 +515,80 @@ const buildAuthData = (): AuthData | null => {
   }
 };
 
+const buildTestRequest = async () => {
+  if (sshProfileId.value) {
+    let authData;
+
+    const formAuthData = buildAuthData();
+    if (formAuthData) {
+      // User entered password in form, use it
+      authData = formAuthData;
+    } else {
+      // Password is empty (or other auth method), get from database with decrypted password
+      // Use getSSHProfile() which decrypts password, not findProfileById() from store
+      const existingProfile = await sshService.getSSHProfile(
+        sshProfileId.value,
+      );
+      if (!existingProfile) {
+        throw new Error("Profile not found");
+      }
+      authData = existingProfile.authData;
+    }
+
+    return {
+      host: sshProfile.value.host,
+      port: sshProfile.value.port,
+      username: sshProfile.value.username,
+      authMethod: sshProfile.value.authMethod,
+      authData: authData,
+      timeout: sshProfile.value.timeout || 30,
+      keepAlive: sshProfile.value.keepAlive ?? true,
+      compression: sshProfile.value.compression ?? false,
+      proxy: enableProxy.value
+        ? {
+            proxyType: proxyConfig.value.proxyType,
+            host: proxyConfig.value.host,
+            port: proxyConfig.value.port,
+            username: proxyConfig.value.username || null,
+            password: proxyConfig.value.password || null,
+          }
+        : null,
+    };
+  } else {
+    const authData = buildAuthData();
+    if (!authData) {
+      throw new Error("Cannot test connection without authentication data");
+    }
+
+    return {
+      host: sshProfile.value.host,
+      port: sshProfile.value.port,
+      username: sshProfile.value.username,
+      authMethod: sshProfile.value.authMethod,
+      authData: authData,
+      timeout: sshProfile.value.timeout || 5,
+      keepAlive: sshProfile.value.keepAlive ?? true,
+      compression: sshProfile.value.compression ?? false,
+      proxy: enableProxy.value
+        ? {
+            proxyType: proxyConfig.value.proxyType,
+            host: proxyConfig.value.host,
+            port: proxyConfig.value.port,
+            username: proxyConfig.value.username || null,
+            password: proxyConfig.value.password || null,
+          }
+        : null,
+    };
+  }
+};
+
 const testConnection = async () => {
   const isValid = await sshProfileForm.value?.validate();
   if (!isValid || !sshProfile.value) return;
 
   isTesting.value = true;
   try {
-    let testRequest;
-
-    if (sshProfileId.value) {
-      let authData;
-
-      const formAuthData = buildAuthData();
-      if (formAuthData) {
-        // User entered password in form, use it
-        authData = formAuthData;
-      } else {
-        // Password is empty (or other auth method), get from database with decrypted password
-        // Use getSSHProfile() which decrypts password, not findProfileById() from store
-        const existingProfile = await sshService.getSSHProfile(
-          sshProfileId.value,
-        );
-        if (!existingProfile) {
-          throw new Error("Profile not found");
-        }
-        authData = existingProfile.authData;
-      }
-
-      testRequest = {
-        host: sshProfile.value.host,
-        port: sshProfile.value.port,
-        username: sshProfile.value.username,
-        authMethod: sshProfile.value.authMethod,
-        authData: authData,
-        timeout: sshProfile.value.timeout || 30,
-        keepAlive: sshProfile.value.keepAlive ?? true,
-        compression: sshProfile.value.compression ?? false,
-        proxy: enableProxy.value
-          ? {
-              proxyType: proxyConfig.value.proxyType,
-              host: proxyConfig.value.host,
-              port: proxyConfig.value.port,
-              username: proxyConfig.value.username || null,
-              password: proxyConfig.value.password || null,
-            }
-          : null,
-      };
-    } else {
-      const authData = buildAuthData();
-      if (!authData) {
-        throw new Error("Cannot test connection without authentication data");
-      }
-
-      testRequest = {
-        host: sshProfile.value.host,
-        port: sshProfile.value.port,
-        username: sshProfile.value.username,
-        authMethod: sshProfile.value.authMethod,
-        authData: authData,
-        timeout: sshProfile.value.timeout || 5,
-        keepAlive: sshProfile.value.keepAlive ?? true,
-        compression: sshProfile.value.compression ?? false,
-        proxy: enableProxy.value
-          ? {
-              proxyType: proxyConfig.value.proxyType,
-              host: proxyConfig.value.host,
-              port: proxyConfig.value.port,
-              username: proxyConfig.value.username || null,
-              password: proxyConfig.value.password || null,
-            }
-          : null,
-      };
-    }
+    const testRequest = await buildTestRequest();
 
     if (!testRequest.host || !testRequest.username || !testRequest.authMethod) {
       throw new Error("Missing required fields for connection test");
@@ -604,9 +606,6 @@ const testConnection = async () => {
       proxy: testRequest.proxy,
     });
     message.success("SSH connection test successful!");
-  } catch (error) {
-    // Error is handled by the store's testConnection method
-    throw error;
   } finally {
     isTesting.value = false;
   }
@@ -649,7 +648,7 @@ const handleSubmit = async () => {
 
     closeModal();
   } catch (error) {
-    // Error is handled by the store
+    console.error("Failed to save SSH profile:", error);
   }
 };
 

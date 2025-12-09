@@ -6,7 +6,7 @@
 
 set -e
 
-if [ -z "$1" ]; then
+if [[ -z "$1" ]]; then
     echo "Usage: $0 <tag-name>"
     echo "Example: $0 v2.1.3"
     exit 1
@@ -18,7 +18,7 @@ TAG="$1"
 if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     echo "⚠️  Warning: Tag should follow format vX.Y.Z (e.g., v2.1.3)"
     read -p "Continue anyway? (y/n): " CONTINUE
-    if [ "$CONTINUE" != "y" ]; then
+    if [[ "$CONTINUE" != "y" ]]; then
         exit 0
     fi
 fi

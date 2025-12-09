@@ -73,20 +73,8 @@ export const useOverlayStore = defineStore("overlay", () => {
       return;
     }
 
-    try {
-      overlay.transitioning = true;
-
-      if (overlay.config.onBeforeOpen) {
-        await overlay.config.onBeforeOpen();
-      }
-
-      overlay.config.props = {};
-
-      if (props) {
-        overlay.config.props = { ...props };
-      }
-
-      if (activeOverlayId.value && activeOverlayId.value !== id) {
+    const switchActiveOverlay = (newId: string) => {
+      if (activeOverlayId.value && activeOverlayId.value !== newId) {
         const currentOverlay = overlays.value.get(activeOverlayId.value);
         if (currentOverlay) {
           currentOverlay.visible = false;
@@ -95,6 +83,18 @@ export const useOverlayStore = defineStore("overlay", () => {
           }
         }
       }
+    };
+
+    try {
+      overlay.transitioning = true;
+
+      if (overlay.config.onBeforeOpen) {
+        await overlay.config.onBeforeOpen();
+      }
+
+      overlay.config.props = props ? { ...props } : {};
+
+      switchActiveOverlay(id);
 
       overlay.visible = true;
       overlay.lastAccessedAt = Date.now();
@@ -146,25 +146,33 @@ export const useOverlayStore = defineStore("overlay", () => {
 
       overlay.visible = false;
 
+      const handleParentOverlay = (parentId: string) => {
+        const parentOverlay = overlays.value.get(parentId)!;
+        parentOverlay.visible = true;
+        activeOverlayId.value = parentId;
+      };
+
+      const handleHistoryOverlay = () => {
+        let nextId: string | undefined;
+        do {
+          nextId = history.value.pop();
+        } while (nextId && !overlays.value.has(nextId));
+
+        if (nextId) {
+          const nextOverlay = overlays.value.get(nextId)!;
+          nextOverlay.visible = true;
+          activeOverlayId.value = nextId;
+        }
+      };
+
       if (activeOverlayId.value === targetId) {
         activeOverlayId.value = null;
 
         const parentId = overlay.config.parentId;
         if (parentId && overlays.value.has(parentId)) {
-          const parentOverlay = overlays.value.get(parentId)!;
-          parentOverlay.visible = true;
-          activeOverlayId.value = parentId;
+          handleParentOverlay(parentId);
         } else {
-          let nextId: string | undefined;
-          do {
-            nextId = history.value.pop();
-          } while (nextId && !overlays.value.has(nextId));
-
-          if (nextId) {
-            const nextOverlay = overlays.value.get(nextId)!;
-            nextOverlay.visible = true;
-            activeOverlayId.value = nextId;
-          }
+          handleHistoryOverlay();
         }
       }
 

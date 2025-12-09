@@ -56,6 +56,48 @@ export class IncrementalBufferLoader {
    * @param options - Load options
    * @returns Promise resolving to success status
    */
+  /**
+   * Process a single chunk of buffer data
+   */
+  private processBufferChunk(
+    terminal: SimpleTerminal,
+    chunk: TerminalBufferChunk,
+    currentLine: number,
+  ): void {
+    if (chunk.data.length > 0) {
+      const dataToWrite =
+        currentLine > 0 && !chunk.data.startsWith("\n")
+          ? "\n" + chunk.data
+          : chunk.data;
+
+      terminal.write(dataToWrite);
+    }
+  }
+
+  /**
+   * Report progress callback
+   */
+  private reportProgress(
+    onProgress: LoadProgressCallback | undefined,
+    chunk: TerminalBufferChunk,
+    totalLines: number,
+    currentChunk: number,
+    chunkSize: number,
+  ): void {
+    if (!onProgress) return;
+
+    const loadedLines = chunk.endLine;
+    const estimatedTotalChunks = Math.ceil(totalLines / chunkSize);
+
+    onProgress({
+      loadedLines,
+      totalLines,
+      percentage: totalLines > 0 ? (loadedLines / totalLines) * 100 : 0,
+      currentChunk,
+      totalChunks: estimatedTotalChunks,
+    });
+  }
+
   async loadBuffer(
     terminalId: string,
     terminal: SimpleTerminal,
@@ -97,29 +139,15 @@ export class IncrementalBufferLoader {
           break;
         }
 
-        if (chunk.data.length > 0) {
-          const dataToWrite =
-            currentLine > 0 && !chunk.data.startsWith("\n")
-              ? "\n" + chunk.data
-              : chunk.data;
-
-          terminal.write(dataToWrite);
-        }
-
+        this.processBufferChunk(terminal, chunk, currentLine);
         currentChunk++;
-        const loadedLines = chunk.endLine;
-        const estimatedTotalChunks = Math.ceil(totalLines / chunkSize);
-
-        if (onProgress) {
-          onProgress({
-            loadedLines,
-            totalLines,
-            percentage: totalLines > 0 ? (loadedLines / totalLines) * 100 : 0,
-            currentChunk,
-            totalChunks: estimatedTotalChunks,
-          });
-        }
-
+        this.reportProgress(
+          onProgress,
+          chunk,
+          totalLines,
+          currentChunk,
+          chunkSize,
+        );
         currentLine = chunk.endLine;
 
         if (!chunk.hasMore) {

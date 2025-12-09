@@ -195,32 +195,53 @@ const onDragLeave = (event: DragEvent): void => {
 };
 
 /**
+ * Parse drag data from event
+ * @param {DragEvent} event - The drop event
+ * @returns {object|null} Parsed drag data or null
+ */
+const parseDragData = (
+  event: DragEvent,
+): { tab: Tab; sourcePanelId: string } | null => {
+  if (!event.dataTransfer) return null;
+
+  const draggedTabData = event.dataTransfer.getData("application/json");
+  if (!draggedTabData) return null;
+
+  return safeJsonParse<{
+    tab: Tab;
+    sourcePanelId: string;
+  } | null>(draggedTabData, null);
+};
+
+/**
+ * Handle drop action based on active zone
+ * @param {object} dragData - The parsed drag data
+ */
+const handleDropAction = (dragData: {
+  tab: Tab;
+  sourcePanelId: string;
+}): void => {
+  const { tab: draggedTab, sourcePanelId } = dragData;
+
+  if (activeZone.value && activeZone.value !== "center") {
+    emit("splitPanel", activeZone.value, draggedTab, sourcePanelId);
+  } else if (activeZone.value === "center") {
+    if (sourcePanelId !== props.panelId) {
+      emit("moveTab", draggedTab, sourcePanelId);
+    }
+  }
+};
+
+/**
  * Handle drop event
  * @param {DragEvent} event - The drop event
  */
 const onDrop = (event: DragEvent): void => {
   event.preventDefault();
 
-  if (event.dataTransfer) {
-    const draggedTabData = event.dataTransfer.getData("application/json");
-    if (draggedTabData) {
-      const dragData = safeJsonParse<{
-        tab: Tab;
-        sourcePanelId: string;
-      } | null>(draggedTabData, null);
-      if (!dragData) return;
-
-      const draggedTab = dragData.tab;
-      const sourcePanelId = dragData.sourcePanelId;
-
-      if (activeZone.value && activeZone.value !== "center") {
-        emit("splitPanel", activeZone.value, draggedTab, sourcePanelId);
-      } else if (activeZone.value === "center") {
-        if (sourcePanelId !== props.panelId) {
-          emit("moveTab", draggedTab, sourcePanelId);
-        }
-      }
-    }
+  const dragData = parseDragData(event);
+  if (dragData) {
+    handleDropAction(dragData);
   }
 
   if (hideActiveZoneTimeout) {

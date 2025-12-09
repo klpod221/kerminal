@@ -11,10 +11,10 @@ echo ""
 
 KEYSTORE_FILE=".android/kerminal-release.keystore"
 
-if [ -f "$KEYSTORE_FILE" ]; then
+if [[ -f "$KEYSTORE_FILE" ]]; then
     echo "⚠️  Keystore already exists at: $KEYSTORE_FILE"
     read -p "Do you want to overwrite it? (yes/no): " OVERWRITE
-    if [ "$OVERWRITE" != "yes" ]; then
+    if [[ "$OVERWRITE" != "yes" ]]; then
         echo "Aborted."
         exit 0
     fi
@@ -39,7 +39,7 @@ keytool -genkey -v -keystore "$KEYSTORE_FILE" \
     -storepass "$STORE_PASS" \
     -keypass "$KEY_PASS"
 
-if [ $? -eq 0 ]; then
+if [[ $? -eq 0 ]]; then
     echo ""
     echo "✅ Keystore created successfully at: $KEYSTORE_FILE"
     echo ""

@@ -165,6 +165,7 @@
             :srcdoc="htmlContent"
             class="w-full h-full border-0"
             sandbox="allow-same-origin allow-scripts"
+            title="HTML Preview"
           />
         </div>
         <div
@@ -232,6 +233,7 @@
           :src="previewUrl"
           class="w-full h-full border-0"
           type="application/pdf"
+          title="PDF Preview"
         />
         <div
           v-if="!previewUrl"
@@ -631,24 +633,52 @@ function endPan() {
 
 function renderMarkdown(md: string): string {
   let html = md
-    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
-    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-    .replace(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
-    .replace(/__(.*?)__/gim, "<strong>$1</strong>")
-    .replace(/\*(.*?)\*/gim, "<em>$1</em>")
-    .replace(/_(.*?)_/gim, "<em>$1</em>")
-    .replace(/```([\s\S]*?)```/gim, "<pre><code>$1</code></pre>")
-    .replace(/`(.*?)`/gim, "<code>$1</code>")
-    .replace(
+    .replaceAll(/^### (.*$)/gim, "<h3>$1</h3>")
+    .replaceAll(/^## (.*$)/gim, "<h2>$1</h2>")
+    .replaceAll(/^# (.*$)/gim, "<h1>$1</h1>")
+    .replaceAll(/\*\*(.*?)\*\*/gim, "<strong>$1</strong>")
+    .replaceAll(/__(.*?)__/gim, "<strong>$1</strong>")
+    .replaceAll(/\*(.*?)\*/gim, "<em>$1</em>")
+    .replaceAll(/_(.*?)_/gim, "<em>$1</em>")
+    .replaceAll(/```([\s\S]*?)```/gim, "<pre><code>$1</code></pre>")
+    .replaceAll(/`(.*?)`/gim, "<code>$1</code>")
+    .replaceAll(
       /\[([^\]]+)\]\(([^)]+)\)/gim,
       '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">$1</a>',
     )
-    .replace(/\n\n/gim, "</p><p>")
-    .replace(/\n/gim, "<br>");
+    .replaceAll(/\n\n/gim, "</p><p>")
+    .replaceAll(/\n/gim, "<br>");
 
   return `<p>${html}</p>`;
 }
+
+// ... (skipping unchanged parts)
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+// ...
+
+onMounted(() => {
+  if (file.value) {
+    loadPreview();
+  }
+  globalThis.addEventListener("keydown", handleKeydown);
+});
+
+onUnmounted(async () => {
+  globalThis.removeEventListener("keydown", handleKeydown);
+  await cleanupTempFile();
+
+  if (previewUrl.value && previewUrl.value.startsWith("blob:")) {
+    URL.revokeObjectURL(previewUrl.value);
+  }
+});
 
 async function loadPreview() {
   // Reset zoom on file change
@@ -674,16 +704,14 @@ async function loadPreview() {
   }
 }
 
-async function loadLocalPreview() {
-  if (!file.value) return;
-
+async function processPreviewFile(filePath: string) {
   if (previewType.value === "video" || previewType.value === "office") {
     return;
   }
 
   if (previewType.value === "image" || previewType.value === "pdf") {
     try {
-      const fileContent = await readFile(file.value.path);
+      const fileContent = await readFile(filePath);
       const mimeType = getMimeType(fileType.value);
       const blob = new Blob([fileContent], { type: mimeType });
       previewUrl.value = URL.createObjectURL(blob);
@@ -693,19 +721,63 @@ async function loadLocalPreview() {
       throw new Error(`Failed to load file: ${errorMessage}`);
     }
   } else if (previewType.value === "html") {
-    const fileContent = await readFile(file.value.path);
+    const fileContent = await readFile(filePath);
     const decoder = new TextDecoder();
     htmlContent.value = decoder.decode(fileContent);
   } else if (previewType.value === "markdown") {
-    const fileContent = await readFile(file.value.path);
+    const fileContent = await readFile(filePath);
     const decoder = new TextDecoder();
     markdownContent.value = decoder.decode(fileContent);
     renderedMarkdown.value = renderMarkdown(markdownContent.value);
   } else if (previewType.value === "text") {
-    const fileContent = await readFile(file.value.path);
+    const fileContent = await readFile(filePath);
     const decoder = new TextDecoder();
     textContent.value = decoder.decode(fileContent);
   }
+}
+
+async function loadLocalPreview() {
+  if (!file.value) return;
+  await processPreviewFile(file.value.path);
+}
+
+function checkTransferStatus(transferId: string): boolean {
+  const transfers = sftpStore.activeTransfers;
+  const progress = transfers.find((t) => t.transferId === transferId);
+
+  if (progress && progress.status === "completed") {
+    return true;
+  }
+
+  if (progress && progress.status === "failed") {
+    throw new Error(progress.error || "Download failed");
+  }
+
+  return false;
+}
+
+async function waitForDownload(transferId: string) {
+  let attempts = 0;
+  const maxAttempts = 60; // 30 seconds max wait time
+  while (attempts < maxAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    try {
+      if (checkTransferStatus(transferId)) {
+        return;
+      }
+    } catch (err) {
+      // Re-throw if it's our "Download failed" error, otherwise ignore likely transient issues
+      if (err instanceof Error && err.message === "Download failed") throw err;
+      if (err instanceof Error && err.message.includes("Download failed"))
+        throw err;
+      // If we couldn't find the transfer, it might have been cleared or not started yet?
+      // We'll continue waiting unless it's a specific error.
+    }
+
+    attempts++;
+  }
+  throw new Error("Download timed out");
 }
 
 async function loadRemotePreview() {
@@ -739,67 +811,19 @@ async function loadRemotePreview() {
       tempFile,
     );
 
-    let attempts = 0;
-    const maxAttempts = 60; // 30 seconds max wait time
-    while (attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    await waitForDownload(transferId);
 
-      try {
-        const transfers = sftpStore.activeTransfers;
-        const progress = transfers.find((t) => t.transferId === transferId);
-
-        if (progress && progress.status === "completed") {
-          break;
-        }
-
-        if (progress && progress.status === "failed") {
-          throw new Error(progress.error || "Download failed");
-        }
-      } catch (err) {}
-
-      attempts++;
-    }
-
+    // Short delay to ensure file system is ready
     try {
       await readFile(tempFile);
     } catch (err) {
+      // Ignore initial read error, file might not be ready yet
+      console.debug("Initial preview read failed, retrying...", err);
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 
     tempFilePath.value = tempFile;
-
-    if (previewType.value === "video" || previewType.value === "office") {
-      return;
-    }
-
-    if (previewType.value === "image" || previewType.value === "pdf") {
-      try {
-        const fileContent = await readFile(tempFile);
-        const mimeType = getMimeType(fileType.value);
-        const blob = new Blob([fileContent], { type: mimeType });
-        previewUrl.value = URL.createObjectURL(blob);
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        console.error(
-          "Failed to create blob URL for remote file:",
-          errorMessage,
-        );
-        throw new Error(`Failed to load file: ${errorMessage}`);
-      }
-    } else if (previewType.value === "html") {
-      const fileContent = await readFile(tempFile);
-      const decoder = new TextDecoder();
-      htmlContent.value = decoder.decode(fileContent);
-    } else if (previewType.value === "markdown") {
-      const fileContent = await readFile(tempFile);
-      const decoder = new TextDecoder();
-      markdownContent.value = decoder.decode(fileContent);
-      renderedMarkdown.value = renderMarkdown(markdownContent.value);
-    } else if (previewType.value === "text") {
-      const fileContent = await readFile(tempFile);
-      const decoder = new TextDecoder();
-      textContent.value = decoder.decode(fileContent);
-    }
+    await processPreviewFile(tempFile);
   } catch (err) {
     await cleanupTempFile();
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -893,14 +917,6 @@ function openInEditor() {
   }, 100);
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-}
-
 async function closeModal() {
   if (previewUrl.value && previewUrl.value.startsWith("blob:")) {
     URL.revokeObjectURL(previewUrl.value);
@@ -945,22 +961,6 @@ watch(
   },
   { immediate: true },
 );
-
-onMounted(() => {
-  if (file.value) {
-    loadPreview();
-  }
-  window.addEventListener("keydown", handleKeydown);
-});
-
-onUnmounted(async () => {
-  window.removeEventListener("keydown", handleKeydown);
-  await cleanupTempFile();
-
-  if (previewUrl.value && previewUrl.value.startsWith("blob:")) {
-    URL.revokeObjectURL(previewUrl.value);
-  }
-});
 </script>
 
 <style scoped>

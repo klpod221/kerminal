@@ -109,21 +109,21 @@ export function formatShortcut(
   const parts: string[] = [];
 
   if (modifiers.ctrlKey) {
-    parts.push(navigator.platform.includes("Mac") ? "⌃" : "Ctrl");
+    parts.push(navigator.userAgent.includes("Mac") ? "⌃" : "Ctrl");
   }
   if (modifiers.altKey) {
-    parts.push(navigator.platform.includes("Mac") ? "⌥" : "Alt");
+    parts.push(navigator.userAgent.includes("Mac") ? "⌥" : "Alt");
   }
   if (modifiers.shiftKey) {
-    parts.push(navigator.platform.includes("Mac") ? "⇧" : "Shift");
+    parts.push(navigator.userAgent.includes("Mac") ? "⇧" : "Shift");
   }
   if (modifiers.metaKey) {
-    parts.push(navigator.platform.includes("Mac") ? "⌘" : "Win");
+    parts.push(navigator.userAgent.includes("Mac") ? "⌘" : "Win");
   }
 
   parts.push(key.toUpperCase());
 
-  return parts.join(navigator.platform.includes("Mac") ? "" : "+");
+  return parts.join(navigator.userAgent.includes("Mac") ? "" : "+");
 }
 
 /**

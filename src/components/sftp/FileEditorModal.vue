@@ -194,7 +194,45 @@ function formatFileSize(bytes: number): string {
   const k = 1024;
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+  return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+
+/**
+ * Save file content with error handling
+ * Supports both local and remote file saving
+ */
+async function saveLocalFile() {
+  if (!file.value || !content.value) return;
+
+  const encoder = new TextEncoder();
+  const fileContent = encoder.encode(content.value);
+  await writeFile(file.value.path, fileContent);
+  message.success("File saved successfully");
+
+  if (sftpStore.browserState.localPath) {
+    await sftpStore.listLocalDirectory(sftpStore.browserState.localPath);
+  }
+}
+
+async function saveRemoteFile() {
+  if (!file.value || !content.value) return;
+  if (!sftpStore.activeSessionId) {
+    throw new Error("No active SFTP session");
+  }
+
+  await sftpStore.writeFile(
+    sftpStore.activeSessionId,
+    file.value.path,
+    content.value,
+  );
+  message.success("File saved successfully");
+
+  if (sftpStore.activeSessionId && sftpStore.browserState.remotePath) {
+    await sftpStore.listRemoteDirectory(
+      sftpStore.activeSessionId,
+      sftpStore.browserState.remotePath,
+    );
+  }
 }
 
 /**
@@ -208,31 +246,9 @@ async function handleSave() {
 
   try {
     if (isLocal.value) {
-      const encoder = new TextEncoder();
-      const fileContent = encoder.encode(content.value);
-      await writeFile(file.value.path, fileContent);
-      message.success("File saved successfully");
-
-      if (sftpStore.browserState.localPath) {
-        await sftpStore.listLocalDirectory(sftpStore.browserState.localPath);
-      }
+      await saveLocalFile();
     } else {
-      if (!sftpStore.activeSessionId) {
-        throw new Error("No active SFTP session");
-      }
-      await sftpStore.writeFile(
-        sftpStore.activeSessionId,
-        file.value.path,
-        content.value,
-      );
-      message.success("File saved successfully");
-
-      if (sftpStore.activeSessionId && sftpStore.browserState.remotePath) {
-        await sftpStore.listRemoteDirectory(
-          sftpStore.activeSessionId,
-          sftpStore.browserState.remotePath,
-        );
-      }
+      await saveRemoteFile();
     }
 
     closeModal();
