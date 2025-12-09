@@ -6,6 +6,8 @@
 
 set -e
 
+SEPARATOR="=========================================="
+
 if [[ -z "$1" ]]; then
     echo "Usage: $0 <tag-name>"
     echo "Example: $0 v2.1.3"
@@ -23,9 +25,9 @@ if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     fi
 fi
 
-echo "=========================================="
+echo "$SEPARATOR"
 echo "  Update Version to match Tag: $TAG"
-echo "=========================================="
+echo "$SEPARATOR"
 echo ""
 
 VERSION="${TAG:1}"  # Remove the 'v' prefix
@@ -46,9 +48,9 @@ rm package.json.bak src-tauri/Cargo.toml.bak src-tauri/tauri.conf.json.bak
 npm install --package-lock-only
 cd src-tauri && cargo check && cd ..
 
-echo "=========================================="
+echo "$SEPARATOR"
 echo "  Committing Version Update"
-echo "=========================================="
+echo "$SEPARATOR"
 echo ""
 
 git add .
@@ -64,9 +66,9 @@ else
     echo "✅ Changes committed and pushed successfully."
 fi
 
-echo "=========================================="
+echo "$SEPARATOR"
 echo "  Recreating Git Tag: $TAG"
-echo "=========================================="
+echo "$SEPARATOR"
 echo ""
 
 # Check if tag exists locally

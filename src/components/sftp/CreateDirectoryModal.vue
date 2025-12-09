@@ -88,7 +88,7 @@ async function handleSubmit() {
       isLocal: isLocal.value,
     },
   });
-  window.dispatchEvent(event);
+  globalThis.dispatchEvent(event);
   closeModal();
   loading.value = false;
 }

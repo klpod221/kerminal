@@ -105,9 +105,7 @@ withDefaults(defineProps<CardProps>(), {
   center: false,
 });
 
-const emit = defineEmits<{
-  (e: "click", event: MouseEvent): void;
-}>();
+const emit = defineEmits<(e: "click", event: MouseEvent) => void>();
 
 /**
  * Handle click event

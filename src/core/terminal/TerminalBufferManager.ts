@@ -38,7 +38,9 @@ export class TerminalBufferManager {
       buffer.push(...lines);
 
       this.trimLocalBuffer(buffer);
-    } catch (error) {}
+    } catch (error) {
+      console.error(`Failed to save to local buffer for terminal ${terminalId}:`, error);
+    }
   }
 
   /**
@@ -50,6 +52,7 @@ export class TerminalBufferManager {
     try {
       return await bufferService.getTerminalBuffer(terminalId);
     } catch (error) {
+      console.error(`Failed to get buffer from backend for terminal ${terminalId}:`, error);
       return "";
     }
   }
@@ -79,6 +82,7 @@ export class TerminalBufferManager {
     try {
       return await bufferService.getBufferStats();
     } catch (error) {
+      console.error("Failed to get buffer stats:", error);
       return { totalTerminals: 0, totalLines: 0, memoryUsage: 0 };
     }
   }

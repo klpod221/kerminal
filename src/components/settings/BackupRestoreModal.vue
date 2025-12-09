@@ -133,7 +133,7 @@ const handleImport = async () => {
 
       // Optional: prompt reload
       setTimeout(() => {
-        window.location.reload();
+        globalThis.location.reload();
       }, 1500);
     }
   } catch (error) {

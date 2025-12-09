@@ -42,7 +42,7 @@ const score = computed(() => {
 
   // Complexity check
   if (/[A-Z]/.test(pwd)) s += 0.5;
-  if (/[0-9]/.test(pwd)) s += 0.5;
+  if (/\d/.test(pwd)) s += 0.5;
   if (/[^A-Za-z0-9]/.test(pwd)) s += 1;
 
   return Math.min(4, Math.floor(s));

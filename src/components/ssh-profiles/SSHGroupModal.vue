@@ -125,6 +125,7 @@ const handleSubmit = async () => {
     }
     closeModal();
   } catch (error) {
+    console.error("Failed to save SSH group:", error);
     // Error is handled by the store
   }
 };

@@ -169,7 +169,9 @@ function cleanup() {
   if (player) {
     try {
       player.dispose();
-    } catch (e) {}
+    } catch (e) {
+      console.error("Failed to dispose player:", e);
+    }
     player = null;
   }
   currentRecording.value = null;

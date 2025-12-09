@@ -6,10 +6,10 @@ import {
 } from "../config/terminalThemes";
 
 // Re-export type for backward compatibility
-export type { TerminalTheme };
+export type { TerminalTheme } from "../config/terminalThemes";
 
 export function getTerminalTheme(
-  themeName: keyof typeof TERMINAL_THEMES | string = "Default",
+  themeName: keyof typeof TERMINAL_THEMES = "Default",
   customTheme?: TerminalTheme,
 ): TerminalTheme {
   // If custom theme is provided, use it
@@ -18,10 +18,7 @@ export function getTerminalTheme(
   }
 
   // Otherwise, look up in built-in themes
-  return (
-    TERMINAL_THEMES[themeName as keyof typeof TERMINAL_THEMES] ||
-    TERMINAL_THEMES["Default"]
-  );
+  return TERMINAL_THEMES[themeName] || TERMINAL_THEMES["Default"];
 }
 
 export function getAvailableThemes(): (keyof typeof TERMINAL_THEMES)[] {

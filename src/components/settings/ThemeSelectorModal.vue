@@ -271,7 +271,11 @@ const handleDeleteTheme = async (themeName: string) => {
 
 const getThemeColors = (themeName: string) => {
   const customTheme = settingsStore.getCustomTheme(themeName);
-  const theme = customTheme ? customTheme.colors : getTerminalTheme(themeName);
+  const theme = customTheme
+    ? customTheme.colors
+    : getTerminalTheme(
+        themeName as keyof typeof import("../../config/terminalThemes").TERMINAL_THEMES,
+      );
 
   return {
     background: theme.background,
@@ -284,9 +288,13 @@ const getThemeColors = (themeName: string) => {
 
 const getThemeDescription = (themeName: string) => {
   const customTheme = settingsStore.getCustomTheme(themeName);
-  const theme = customTheme ? customTheme.colors : getTerminalTheme(themeName);
+  const theme = customTheme
+    ? customTheme.colors
+    : getTerminalTheme(
+        themeName as keyof typeof import("../../config/terminalThemes").TERMINAL_THEMES,
+      );
 
-  const isDark = parseInt(theme.background.substring(1, 3), 16) < 128;
+  const isDark = Number.parseInt(theme.background.substring(1, 3), 16) < 128;
   return isDark ? "Dark theme" : "Light theme";
 };
 </script>

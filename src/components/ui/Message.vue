@@ -60,9 +60,7 @@ const props = withDefaults(defineProps<MessageProps>(), {
   closable: true,
 });
 
-const emit = defineEmits<{
-  (e: "close"): void;
-}>();
+const emit = defineEmits<(e: "close") => void>();
 
 let timer: number | null = null;
 
@@ -135,7 +133,7 @@ const close = (): void => {
 
 onMounted(() => {
   if (props.duration > 0 && props.type !== "loading") {
-    timer = window.setTimeout(() => {
+    timer = globalThis.setTimeout(() => {
       close();
     }, props.duration);
   }

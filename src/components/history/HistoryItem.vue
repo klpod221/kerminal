@@ -74,6 +74,7 @@ const handleCopy = async () => {
     await writeText(props.entry.command);
     message.success("Command copied to clipboard");
   } catch (error) {
+    console.error("Failed to copy command:", error);
     message.error("Failed to copy command");
   }
 };

@@ -216,7 +216,7 @@ function handlePlay(recording: SessionRecording) {
 
 async function handleExport(recording: SessionRecording) {
   const filePath = await save({
-    defaultPath: `${recording.sessionName.replace(/[^a-z0-9]/gi, "_")}.cast`,
+    defaultPath: `${recording.sessionName.replaceAll(/[^a-z0-9]/gi, "_")}.cast`,
     filters: [
       {
         name: "Asciicast Recording",

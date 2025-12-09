@@ -21,6 +21,7 @@ class ApiClient {
       const params = { request: data };
       return await invoke<T>(command, params);
     } catch (error) {
+      console.error(`API call failed for command '${command}':`, error);
       throw error;
     }
   }
@@ -54,6 +55,7 @@ class ApiClient {
         return await invoke<T>(command, params);
       }
     } catch (error) {
+      console.error(`API raw call failed for command '${command}':`, error);
       throw error;
     }
   }
@@ -137,6 +139,7 @@ class ApiClient {
       });
       return unlisten;
     } catch (error) {
+      console.error(`Failed to listen to event '${eventName}':`, error);
       throw error;
     }
   }

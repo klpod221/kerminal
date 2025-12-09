@@ -145,23 +145,21 @@ const selectKeyFile = () => {
   fileInput.value?.click();
 };
 
-const handleFileSelect = (event: Event) => {
+const handleFileSelect = async (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   if (!file) return;
 
   selectedFileName.value = file.name;
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const content = e.target?.result as string;
+  try {
+    const content = await file.text();
     formData.value.privateKey = content;
-  };
-  reader.onerror = () => {
+  } catch (error) {
+    console.error("Failed to read file:", error);
     message.error("Failed to read file");
     selectedFileName.value = "";
-  };
-  reader.readAsText(file);
+  }
 };
 
 const handleSubmit = async () => {

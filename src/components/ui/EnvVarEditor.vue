@@ -48,9 +48,10 @@ const props = defineProps<{
   modelValue?: Record<string, string>;
 }>();
 
-const emit = defineEmits<{
-  (e: "update:modelValue", value: Record<string, string>): void;
-}>();
+const emit =
+  defineEmits<
+    (e: "update:modelValue", value: Record<string, string>) => void
+  >();
 
 const localVars = ref<{ key: string; value: string }[]>([]);
 

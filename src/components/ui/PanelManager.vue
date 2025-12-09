@@ -72,6 +72,8 @@ interface PanelManagerProps {
   activePanelId: string;
 }
 
+type SplitDirection = "top" | "bottom" | "left" | "right";
+
 interface PanelManagerEmits {
   selectTab: [panelId: string, tabId: string];
   closeTab: [panelId: string, tabId: string];
@@ -91,16 +93,12 @@ interface PanelManagerEmits {
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
   splitPanelByDrop: [
-    direction: "top" | "bottom" | "left" | "right",
+    direction: SplitDirection,
     draggedTab: Tab,
     sourcePanelId: string,
     targetPanelId: string,
   ];
-  cloneTabAndSplit: [
-    direction: "top" | "bottom" | "left" | "right",
-    tabId: string,
-    panelId: string,
-  ];
+  cloneTabAndSplit: [direction: SplitDirection, tabId: string, panelId: string];
   addTabWithProfile: [panelId: string, profile: any];
 }
 
@@ -197,7 +195,7 @@ const handlePaneResize = (paneComponents: { size: number }[]): void => {
   emit("layoutUpdated", updatedLayout);
 
   setTimeout(() => {
-    window.dispatchEvent(new Event("resize"));
+    globalThis.dispatchEvent(new Event("resize"));
   }, 50);
 };
 

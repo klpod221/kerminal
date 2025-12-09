@@ -214,6 +214,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Terminal,
+  Settings,
 } from "lucide-vue-next";
 import Tab from "./Tab.vue";
 import Button from "./Button.vue";
@@ -351,7 +352,7 @@ const scrollRight = (): void => {
 const onWheel = (event: WheelEvent): void => {
   if (maxScrollOffset.value === 0) return;
 
-  const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
+  const delta = event.deltaX || event.deltaY;
   const scrollAmount = delta > 0 ? -120 : 120;
   const newOffset = scrollOffset.value + scrollAmount;
 
@@ -622,7 +623,6 @@ const onPanelDrop = (event: DragEvent): void => {
 // Terminal Profiles Context Menu
 import { useTerminalProfileStore } from "../../stores/terminalProfile";
 import { useOverlay } from "../../composables/useOverlay";
-import { Settings } from "lucide-vue-next";
 
 const terminalProfileStore = useTerminalProfileStore();
 const { openOverlay } = useOverlay();

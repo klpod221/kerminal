@@ -11,7 +11,8 @@
         <div
           class="w-1 h-10 rounded-full transition-all duration-200"
           :style="{
-            backgroundColor: entry.color || (entry.type === 'profile' ? '#6b7280' : '#3b82f6'),
+            backgroundColor:
+              entry.color || (entry.type === 'profile' ? '#6b7280' : '#3b82f6'),
           }"
         />
       </div>
@@ -41,7 +42,9 @@
       </div>
 
       <!-- Actions -->
-      <div class="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div
+        class="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+      >
         <Button
           title="Connect"
           variant="ghost"
@@ -72,7 +75,8 @@ const formatTimeAgo = (timestamp: number) => {
   try {
     return formatDistanceToNow(timestamp, { addSuffix: true });
   } catch (e) {
-    return 'Unknown time';
+    console.error("Failed to format timestamp:", e);
+    return "Unknown time";
   }
 };
 </script>

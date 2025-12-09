@@ -3,7 +3,7 @@ name: Release Kerminal App
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build-tauri:
@@ -14,18 +14,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # for Arm-based Macs (M1 and above).
-            args: '--target aarch64-apple-darwin'
-            target: 'aarch64-apple-darwin'
-          - platform: 'macos-latest' # for Intel-based Macs.
-            args: '--target x86_64-apple-darwin'
-            target: 'x86_64-apple-darwin'
-          - platform: 'ubuntu-latest'
-            args: ''
-            target: ''
-          - platform: 'windows-latest'
-            args: ''
-            target: ''
+          - platform: "macos-latest" # for Arm-based Macs (M1 and above).
+            args: "--target aarch64-apple-darwin"
+            target: "aarch64-apple-darwin"
+          - platform: "macos-latest" # for Intel-based Macs.
+            args: "--target x86_64-apple-darwin"
+            target: "x86_64-apple-darwin"
+          - platform: "ubuntu-latest"
+            args: ""
+            target: ""
+          - platform: "windows-latest"
+            args: ""
+            target: ""
 
     runs-on: ${{ matrix.platform }}
     timeout-minutes: 40
@@ -36,17 +36,17 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1482605bfc5719782e1267fd0c0cc350fe7646b8
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575505cd17f719abb
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
           shared-key: ${{ matrix.platform }}-${{ matrix.args }}
 
       - name: Install dependencies (ubuntu only)
@@ -60,16 +60,16 @@ jobs:
         run: cargo install --force trusted-signing-cli
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm install --ignore-scripts
 
       - name: Build and release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@0b8d3f3ca8c1feb10e87c11bcbbeb7d48e07f0f3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: v__VERSION__
-          releaseName: 'Kerminal v__VERSION__'
-          releaseBody: 'New release of Kerminal App'
+          releaseName: "Kerminal v__VERSION__"
+          releaseBody: "New release of Kerminal App"
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
@@ -79,11 +79,11 @@ jobs:
     needs: build-tauri
     runs-on: ubuntu-latest
     container:
-      image: archlinux:latest
+      image: archlinux:base-20251019.0.436919
     strategy:
       fail-fast: false
       matrix:
-        repo: ['kerminal', 'kerminal-bin']
+        repo: ["kerminal", "kerminal-bin"]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -96,9 +96,11 @@ jobs:
           echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
       - name: Setup SSH
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          echo "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
           chmod 600 ~/.ssh/aur
           git config --global core.sshCommand "ssh -i ~/.ssh/aur -o StrictHostKeyChecking=no"
 
