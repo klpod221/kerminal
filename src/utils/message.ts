@@ -1,5 +1,5 @@
-import { createApp, App as VueApp } from "vue";
-import Message from "../components/ui/Message.vue";
+import { createVNode, render } from "vue";
+import MessageContainer from "../components/ui/MessageContainer.vue";
 import { ask } from "@tauri-apps/plugin-dialog";
 
 export interface MessageOptions {
@@ -10,24 +10,35 @@ export interface MessageOptions {
   closable?: boolean;
 }
 
-class MessageService {
-  private readonly instances: Set<VueApp> = new Set();
+let messageContainer: any = null;
 
+const getMessageContainer = () => {
+  if (messageContainer) return messageContainer;
+
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+
+  const vnode = createVNode(MessageContainer);
+  render(vnode, container);
+
+  messageContainer = vnode.component?.exposed;
+  return messageContainer;
+};
+
+class MessageService {
   private create(options: MessageOptions): Promise<void> {
     return new Promise((resolve) => {
-      const app = createApp(Message, {
-        ...options,
-        onClose: () => {
-          this.instances.delete(app);
-          app.unmount();
-          resolve();
-        },
-      });
-
-      this.instances.add(app);
-      const container = document.createElement("div");
-      document.body.appendChild(container);
-      app.mount(container);
+      const container = getMessageContainer();
+      if (container) {
+        container.add({
+          ...options,
+          onClose: () => {
+            resolve();
+          },
+        });
+      } else {
+        resolve();
+      }
     });
   }
 
@@ -78,10 +89,11 @@ class MessageService {
   }
 
   destroy(): void {
-    this.instances.forEach((app) => {
-      app.unmount();
-    });
-    this.instances.clear();
+    // Current implementation does not support destroying the singleton container
+    // If needed, we could expose a clear method on MessageContainer
+    if (messageContainer) {
+      // For now, do nothing or we could potentially re-render empty
+    }
   }
 }
 

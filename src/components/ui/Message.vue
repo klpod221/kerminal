@@ -1,57 +1,40 @@
 <template>
-  <Teleport to="body">
-    <div
-      v-if="visible"
-      class="fixed top-8 left-1/2 transform -translate-x-1/2 z-50"
-    >
-      <Transition
-        enter-active-class="transition-all duration-300 ease-out"
-        enter-from-class="opacity-0 transform -translate-y-4 scale-95"
-        enter-to-class="opacity-100 transform translate-y-0 scale-100"
-        leave-active-class="transition-all duration-200 ease-in"
-        leave-from-class="opacity-100 transform translate-y-0 scale-100"
-        leave-to-class="opacity-0 transform -translate-y-4 scale-95"
-      >
-        <div
-          v-if="visible"
-          :class="[
-            'flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border backdrop-blur-sm',
-            'min-w-[300px] max-w-[500px]',
-            messageClasses,
-          ]"
-        >
-          <!-- Icon -->
-          <div class="shrink-0">
-            <div class="rounded-lg p-2" :class="iconBackgroundClass">
-              <component :is="iconComponent" :size="16" :class="iconClass" />
-            </div>
-          </div>
-
-          <!-- Content -->
-          <div class="flex-1 min-w-0">
-            <div v-if="title" class="font-semibold text-sm text-white mb-1">
-              {{ title }}
-            </div>
-            <div class="text-sm text-gray-300 leading-5">{{ content }}</div>
-          </div>
-
-          <!-- Close button -->
-          <Button
-            v-if="closable"
-            variant="ghost"
-            size="sm"
-            :icon="X"
-            class="shrink-0 p-1.5!"
-            @click="close"
-          />
-        </div>
-      </Transition>
+  <div
+    :class="[
+      'flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border backdrop-blur-sm',
+      'min-w-[300px] max-w-[500px]',
+      messageClasses,
+    ]"
+  >
+    <!-- Icon -->
+    <div class="shrink-0">
+      <div class="rounded-lg p-2" :class="iconBackgroundClass">
+        <component :is="iconComponent" :size="16" :class="iconClass" />
+      </div>
     </div>
-  </Teleport>
+
+    <!-- Content -->
+    <div class="flex-1 min-w-0">
+      <div v-if="title" class="font-semibold text-sm text-white mb-1">
+        {{ title }}
+      </div>
+      <div class="text-sm text-gray-300 leading-5">{{ content }}</div>
+    </div>
+
+    <!-- Close button -->
+    <Button
+      v-if="closable"
+      variant="ghost"
+      size="sm"
+      :icon="X"
+      class="shrink-0 p-1.5!"
+      @click="close"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import {
   CheckCircle,
   XCircle,
@@ -77,7 +60,10 @@ const props = withDefaults(defineProps<MessageProps>(), {
   closable: true,
 });
 
-const visible = ref(false);
+const emit = defineEmits<{
+  (e: "close"): void;
+}>();
+
 let timer: number | null = null;
 
 const messageClasses = computed(() => {
@@ -144,23 +130,21 @@ const iconComponent = computed(() => {
  * Close the message
  */
 const close = (): void => {
-  visible.value = false;
-  if (timer) {
-    window.clearTimeout(timer);
-    timer = null;
-  }
-  setTimeout(() => {
-    props.onClose?.();
-  }, 200);
+  emit("close");
 };
 
 onMounted(() => {
-  visible.value = true;
-
   if (props.duration > 0 && props.type !== "loading") {
     timer = window.setTimeout(() => {
       close();
     }, props.duration);
+  }
+});
+
+onUnmounted(() => {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
   }
 });
 
