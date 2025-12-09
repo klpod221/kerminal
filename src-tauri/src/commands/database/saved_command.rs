@@ -129,6 +129,9 @@ pub async fn delete_saved_command_group(
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     app_result!(state.saved_command_service.delete_group(&id).await)?;
-    let _ = app_handle.emit("saved_command_group_deleted", &serde_json::json!({ "id": id }));
+    let _ = app_handle.emit(
+        "saved_command_group_deleted",
+        &serde_json::json!({ "id": id }),
+    );
     Ok(())
 }

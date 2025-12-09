@@ -4,7 +4,7 @@ use crate::services::{
     auth::AuthService,
     history::HistoryManager,
     saved_command::SavedCommandService,
-    sftp::{SFTPService, transfer::TransferManager, sync::SyncService as SFTPSyncService},
+    sftp::{sync::SyncService as SFTPSyncService, transfer::TransferManager, SFTPService},
     ssh::{SSHConnectionPool, SSHKeyService, SSHService},
     sync::SyncService,
     terminal::TerminalManager,
@@ -72,10 +72,8 @@ impl AppState {
         let sftp_transfer_manager = Arc::new(TransferManager::new(sftp_service.clone()));
         let sftp_sync_service = Arc::new(SFTPSyncService::new(sftp_service.clone()));
         let terminal_manager_arc = Arc::new(terminal_manager);
-        let history_manager = HistoryManager::new(
-            terminal_manager_arc.clone(),
-            ssh_service_arc.clone(),
-        );
+        let history_manager =
+            HistoryManager::new(terminal_manager_arc.clone(), ssh_service_arc.clone());
 
         Ok(Self {
             database_service: database_service_arc,
@@ -132,10 +130,8 @@ impl Default for AppState {
         let sftp_transfer_manager = Arc::new(TransferManager::new(sftp_service.clone()));
         let sftp_sync_service = Arc::new(SFTPSyncService::new(sftp_service.clone()));
         let terminal_manager_arc = Arc::new(terminal_manager);
-        let history_manager = HistoryManager::new(
-            terminal_manager_arc.clone(),
-            ssh_service_arc.clone(),
-        );
+        let history_manager =
+            HistoryManager::new(terminal_manager_arc.clone(), ssh_service_arc.clone());
 
         Self {
             database_service: database_service_arc,

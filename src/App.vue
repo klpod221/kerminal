@@ -54,9 +54,11 @@ import { useGlobalShortcuts } from "./composables/useGlobalShortcuts";
 
 import { useViewStateStore } from "./stores/viewState";
 import { useAuthStore } from "./stores/auth";
+import { useUpdaterStore } from "./stores/updater";
 
 const viewState = useViewStateStore();
 const authStore = useAuthStore();
+const updaterStore = useUpdaterStore();
 
 const { openOverlay, closeAllOverlays } = useOverlay();
 
@@ -98,6 +100,19 @@ onMounted(async () => {
     // Ignore error during initial auto-unlock attempt
     console.debug("Auto-unlock failed silently:", error);
   }
+
+  // Initialize updater and check for updates after a short delay
+  setTimeout(async () => {
+    if (authStore.isAuthenticated) {
+      updaterStore.initialize();
+      await updaterStore.checkUpdates(true); // Silent check
+
+      // If update is available, show modal
+      if (updaterStore.hasUpdate) {
+        openOverlay("updater-modal");
+      }
+    }
+  }, 30000); // Check for updates 30 seconds after start
 });
 
 watch(

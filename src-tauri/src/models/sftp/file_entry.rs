@@ -47,4 +47,3 @@ impl FileEntry {
         matches!(self.file_type, FileType::Directory)
     }
 }
-

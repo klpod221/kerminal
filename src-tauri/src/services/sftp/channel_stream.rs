@@ -80,13 +80,13 @@ impl AsyncRead for ChannelStream {
             let to_copy = available.len().min(buf.remaining());
             buf.put_slice(&available[..to_copy]);
             self.read_offset += to_copy;
-            
+
             // If buffer is fully consumed, clear it
             if self.read_offset >= self.read_buffer.len() {
                 self.read_buffer.clear();
                 self.read_offset = 0;
             }
-            
+
             return Poll::Ready(Ok(()));
         }
 
@@ -95,19 +95,19 @@ impl AsyncRead for ChannelStream {
             Poll::Ready(Some(Ok(data))) => {
                 let to_copy = data.len().min(buf.remaining());
                 buf.put_slice(&data[..to_copy]);
-                
+
                 // Store remaining data in buffer
                 if to_copy < data.len() {
                     self.read_buffer = data[to_copy..].to_vec();
                     self.read_offset = 0;
                 }
-                
+
                 Poll::Ready(Ok(()))
             }
             Poll::Ready(Some(Err(e))) => Poll::Ready(Err(e)),
             Poll::Ready(None) => Poll::Ready(Err(std::io::Error::new(
                 std::io::ErrorKind::UnexpectedEof,
-                "Channel closed"
+                "Channel closed",
             ))),
             Poll::Pending => Poll::Pending,
         }
@@ -125,22 +125,16 @@ impl AsyncWrite for ChannelStream {
             Ok(_) => Poll::Ready(Ok(buf.len())),
             Err(_) => Poll::Ready(Err(std::io::Error::new(
                 std::io::ErrorKind::BrokenPipe,
-                "Channel write failed"
+                "Channel write failed",
             ))),
         }
     }
 
-    fn poll_flush(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         Poll::Ready(Ok(()))
     }
 
-    fn poll_shutdown(
-        self: Pin<&mut Self>,
-        _cx: &mut Context<'_>,
-    ) -> Poll<std::io::Result<()>> {
+    fn poll_shutdown(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
         Poll::Ready(Ok(()))
     }
 }

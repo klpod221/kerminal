@@ -3,8 +3,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::models::sftp::{
-    sync::{DiffEntry, DiffType, SyncDirection, SyncOperation},
     file_entry::FileEntry,
+    sync::{DiffEntry, DiffType, SyncDirection, SyncOperation},
 };
 use crate::services::sftp::service::SFTPService;
 
@@ -129,12 +129,8 @@ impl SyncService {
         operation: SyncOperation,
     ) -> Result<(), anyhow::Error> {
         match operation.direction {
-            SyncDirection::LocalToRemote => {
-                self.sync_local_to_remote(session_id, operation).await
-            }
-            SyncDirection::RemoteToLocal => {
-                self.sync_remote_to_local(session_id, operation).await
-            }
+            SyncDirection::LocalToRemote => self.sync_local_to_remote(session_id, operation).await,
+            SyncDirection::RemoteToLocal => self.sync_remote_to_local(session_id, operation).await,
             SyncDirection::Bidirectional => {
                 // For bidirectional, sync in both directions with conflict resolution
                 self.sync_bidirectional(session_id, operation).await
@@ -186,7 +182,10 @@ impl SyncService {
 
                 let modified = chrono::DateTime::<chrono::Utc>::from(metadata.modified()?);
 
-                let accessed = metadata.accessed().ok().map(|t| chrono::DateTime::<chrono::Utc>::from(t));
+                let accessed = metadata
+                    .accessed()
+                    .ok()
+                    .map(|t| chrono::DateTime::<chrono::Utc>::from(t));
 
                 let size = if matches!(file_type, crate::models::sftp::file_entry::FileType::File) {
                     Some(metadata.len())
@@ -280,15 +279,22 @@ impl SyncService {
     ) -> Result<(), anyhow::Error> {
         // Compare directories first
         let diffs = self
-            .compare_directories(session_id.clone(), operation.local_path.clone(), operation.remote_path.clone())
+            .compare_directories(
+                session_id.clone(),
+                operation.local_path.clone(),
+                operation.remote_path.clone(),
+            )
             .await?;
 
         // For each diff that needs to be synced, upload files
         for diff in diffs {
-            if matches!(diff.diff_type, DiffType::OnlyLocal | DiffType::SizeDiffers | DiffType::TimeDiffers) {
+            if matches!(
+                diff.diff_type,
+                DiffType::OnlyLocal | DiffType::SizeDiffers | DiffType::TimeDiffers
+            ) {
                 let _local_path = Path::new(&operation.local_path).join(&diff.path);
                 let _remote_path = format!("{}/{}", operation.remote_path, diff.path);
-                
+
                 // Upload file (would use TransferManager in production)
                 // For now, just verify file exists
                 if _local_path.exists() && _local_path.is_file() {
@@ -308,15 +314,22 @@ impl SyncService {
     ) -> Result<(), anyhow::Error> {
         // Compare directories first
         let diffs = self
-            .compare_directories(session_id.clone(), operation.local_path.clone(), operation.remote_path.clone())
+            .compare_directories(
+                session_id.clone(),
+                operation.local_path.clone(),
+                operation.remote_path.clone(),
+            )
             .await?;
 
         // For each diff that needs to be synced, download files
         for diff in diffs {
-            if matches!(diff.diff_type, DiffType::OnlyRemote | DiffType::SizeDiffers | DiffType::TimeDiffers) {
+            if matches!(
+                diff.diff_type,
+                DiffType::OnlyRemote | DiffType::SizeDiffers | DiffType::TimeDiffers
+            ) {
                 let _remote_path = format!("{}/{}", operation.remote_path, diff.path);
                 let local_path = Path::new(&operation.local_path).join(&diff.path);
-                
+
                 // Download file (would use TransferManager in production)
                 // For now, just ensure parent directory exists
                 if let Some(parent) = local_path.parent() {
@@ -336,7 +349,11 @@ impl SyncService {
     ) -> Result<(), anyhow::Error> {
         // Compare directories first
         let diffs = self
-            .compare_directories(session_id.clone(), operation.local_path.clone(), operation.remote_path.clone())
+            .compare_directories(
+                session_id.clone(),
+                operation.local_path.clone(),
+                operation.remote_path.clone(),
+            )
             .await?;
 
         // Sync in both directions
@@ -378,4 +395,3 @@ impl SyncService {
         }
     }
 }
-

@@ -1,9 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tauri::Emitter;
 use tokio::sync::{broadcast, Mutex};
 use tokio::time::{interval, Duration};
-use tauri::Emitter;
 
 use crate::database::{error::DatabaseResult, service::DatabaseService};
 
@@ -137,10 +137,13 @@ impl AuthSessionManager {
                             // Emit Tauri event
                             if let Some(handle) = &app_handle {
                                 let _ = handle.emit("auth_session_locked", &event);
-                                let _ = handle.emit("auth_session_updated", &serde_json::json!({
-                                    "sessionActive": false,
-                                    "sessionExpiresAt": serde_json::Value::Null,
-                                }));
+                                let _ = handle.emit(
+                                    "auth_session_updated",
+                                    &serde_json::json!({
+                                        "sessionActive": false,
+                                        "sessionExpiresAt": serde_json::Value::Null,
+                                    }),
+                                );
                             }
                         }
                     }

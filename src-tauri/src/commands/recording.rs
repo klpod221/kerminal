@@ -167,7 +167,10 @@ pub async fn delete_recording(
         .map_err(|e| format!("Failed to delete recording from database: {}", e))?;
 
     // Emit realtime event
-    let _ = app_handle.emit("recording_deleted", &serde_json::json!({ "id": request.recording_id }));
+    let _ = app_handle.emit(
+        "recording_deleted",
+        &serde_json::json!({ "id": request.recording_id }),
+    );
 
     Ok(())
 }

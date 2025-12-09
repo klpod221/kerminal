@@ -67,4 +67,3 @@ pub enum DiffType {
     /// File exists on both but permissions differ
     PermissionsDiffer,
 }
-

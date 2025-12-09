@@ -21,7 +21,12 @@ pub async fn create_tunnel(
     app_handle: tauri::AppHandle,
 ) -> Result<SSHTunnel, String> {
     let tunnel = app_result!(state.tunnel_service.create_tunnel(request).await)?;
-    let tunnel_with_status = app_result!(state.tunnel_service.get_tunnel_with_status(&tunnel.base.id).await)?;
+    let tunnel_with_status = app_result!(
+        state
+            .tunnel_service
+            .get_tunnel_with_status(&tunnel.base.id)
+            .await
+    )?;
     let _ = app_handle.emit("tunnel_created", &tunnel_with_status);
     Ok(tunnel)
 }
@@ -50,7 +55,12 @@ pub async fn update_tunnel(
     app_handle: tauri::AppHandle,
 ) -> Result<SSHTunnel, String> {
     let tunnel = app_result!(state.tunnel_service.update_tunnel(&id, request).await)?;
-    let tunnel_with_status = app_result!(state.tunnel_service.get_tunnel_with_status(&tunnel.base.id).await)?;
+    let tunnel_with_status = app_result!(
+        state
+            .tunnel_service
+            .get_tunnel_with_status(&tunnel.base.id)
+            .await
+    )?;
     let _ = app_handle.emit("tunnel_updated", &tunnel_with_status);
     Ok(tunnel)
 }

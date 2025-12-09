@@ -4,6 +4,7 @@
   <FontSettingsModal />
   <KeyboardShortcutsModal />
   <BackupRestoreModal />
+  <UpdaterModal />
 </template>
 
 <script setup lang="ts">
@@ -13,6 +14,7 @@ import CustomThemeModal from "./CustomThemeModal.vue";
 import FontSettingsModal from "./FontSettingsModal.vue";
 import KeyboardShortcutsModal from "./KeyboardShortcutsModal.vue";
 import BackupRestoreModal from "./BackupRestoreModal.vue";
+import UpdaterModal from "./UpdaterModal.vue";
 import { useSettingsStore } from "../../stores/settings";
 
 const settingsStore = useSettingsStore();
