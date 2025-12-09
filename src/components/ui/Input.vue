@@ -98,20 +98,11 @@
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  computed,
-  nextTick,
-  inject,
-  onMounted,
-  onUnmounted,
-  toRef,
-} from "vue";
+import { ref, computed, nextTick, type Component } from "vue";
 import { Eye, EyeOff, TriangleAlert } from "lucide-vue-next";
-import { validate as validateFn } from "../../utils/validators";
 import Button from "./Button.vue";
-import type { FormContext } from "../../types/form";
-import type { Component } from "vue";
+import { useFormField } from "../../composables/useFormField";
+import { useFormStyles } from "../../composables/useFormStyles";
 
 interface InputProps {
   id: string;
@@ -150,18 +141,22 @@ const emit = defineEmits([
   "right-icon-click",
 ]);
 
-const errorMessage = ref(props.errorMessage || "");
-const touched = ref(false);
+// Use composables for shared logic
+const {
+  errorMessage,
+  touched,
+  inputId,
+  validate,
+  handleBlur,
+  handleFocus,
+  handleKeydown,
+} = useFormField(props, emit);
+
+const { sizeClasses, stateClasses, iconSize } = useFormStyles(props);
+
+// Component-specific state
 const inputRef = ref<HTMLInputElement>();
 const isPasswordVisible = ref(false);
-
-const formContext = inject<FormContext>("form-context");
-
-const inputId = computed(
-  () =>
-    props.id ||
-    `input-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,
-);
 
 const inputValue = computed({
   get: () => props.modelValue?.toString() ?? "",
@@ -177,71 +172,11 @@ const inputType = computed(() => {
 
 const showPasswordToggle = computed(() => props.type === "password");
 
-const iconSize = computed(() => {
-  switch (props.size) {
-    case "sm":
-      return 16;
-    case "lg":
-      return 20;
-    default:
-      return 18;
-  }
-});
-
-const sizeClasses = computed(() => {
-  switch (props.size) {
-    case "sm":
-      return "text-sm py-2 sm:py-1.5";
-    case "lg":
-      return "text-lg py-3.5 sm:py-3";
-    default:
-      return "text-base py-2.5 sm:py-2";
-  }
-});
-
-const stateClasses = computed(() => {
-  if (props.errorMessage) {
-    return "border-red-500 bg-red-500/5 text-white focus:border-red-400";
-  }
-
-  if (props.disabled) {
-    return "border-gray-600 bg-gray-800 text-gray-400";
-  }
-
-  if (props.readonly) {
-    return "border-gray-600 bg-gray-700 text-gray-300";
-  }
-
-  return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500";
-});
-
-const validate = (): string => {
-  if (!props.rules || props.rules.length === 0) {
-    return "";
-  }
-
-  const allFormValues = formContext?.getAllFieldValues() || {};
-
-  const error = validateFn(props.modelValue, props.rules, allFormValues);
-  errorMessage.value = error;
-  return error;
-};
-
 const togglePasswordVisibility = (): void => {
   isPasswordVisible.value = !isPasswordVisible.value;
   nextTick(() => {
     inputRef.value?.focus();
   });
-};
-
-const handleBlur = (event: FocusEvent): void => {
-  emit("blur", event);
-  touched.value = true;
-  validate();
-};
-
-const handleFocus = (event: FocusEvent): void => {
-  emit("focus", event);
 };
 
 const handleInput = (event: Event): void => {
@@ -252,26 +187,6 @@ const handleInput = (event: Event): void => {
     validate();
   }
 };
-
-const handleKeydown = (event: KeyboardEvent): void => {
-  emit("keydown", event);
-};
-
-onMounted(() => {
-  if (formContext) {
-    formContext.register({
-      id: inputId.value,
-      value: toRef(props, "modelValue"),
-      validate,
-    });
-  }
-});
-
-onUnmounted(() => {
-  if (formContext) {
-    formContext.unregister(inputId.value);
-  }
-});
 
 defineExpose({
   focus: () => inputRef.value?.focus(),

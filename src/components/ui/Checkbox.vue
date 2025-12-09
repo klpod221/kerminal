@@ -52,10 +52,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, onUnmounted, toRef } from "vue";
+import { ref } from "vue";
 import { TriangleAlert } from "lucide-vue-next";
-import { validate as validateFn } from "../../utils/validators";
-import type { FormContext } from "../../types/form";
+import { useFormField } from "../../composables/useFormField";
+import { useFormStyles } from "../../composables/useFormStyles";
 
 interface CheckboxProps {
   id: string;
@@ -79,66 +79,21 @@ const props = withDefaults(defineProps<CheckboxProps>(), {
 
 const emit = defineEmits(["update:modelValue", "blur", "focus", "keydown"]);
 
-const errorMessage = ref(props.errorMessage || "");
-const touched = ref(false);
+// Use composables for shared logic
+const {
+  errorMessage,
+  touched,
+  inputId,
+  validate,
+  handleBlur,
+  handleFocus,
+  handleKeydown,
+} = useFormField(props, emit);
+
+const { sizeClasses, stateClasses } = useFormStyles(props);
+
+// Component-specific state
 const inputRef = ref<HTMLInputElement>();
-
-const formContext = inject<FormContext>("form-context");
-
-const inputId = computed(
-  () =>
-    props.id ||
-    `input-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,
-);
-
-const sizeClasses = computed(() => {
-  switch (props.size) {
-    case "sm":
-      return "text-sm py-1.5";
-    case "lg":
-      return "text-lg py-3";
-    default:
-      return "text-base py-2";
-  }
-});
-
-const stateClasses = computed(() => {
-  if (props.errorMessage) {
-    return "border-red-500 bg-red-500/5 text-white focus:border-red-400";
-  }
-
-  if (props.disabled) {
-    return "border-gray-600 bg-gray-800 text-gray-400";
-  }
-
-  if (props.readonly) {
-    return "border-gray-600 bg-gray-700 text-gray-300";
-  }
-
-  return "border-gray-600 bg-gray-800 text-white placeholder-gray-400 hover:border-gray-500 focus:border-blue-500 focus:ring-blue-500";
-});
-
-const validate = (): string => {
-  if (!props.rules || props.rules.length === 0) {
-    return "";
-  }
-
-  const allFormValues = formContext?.getAllFieldValues() || {};
-
-  const error = validateFn(props.modelValue, props.rules, allFormValues);
-  errorMessage.value = error;
-  return error;
-};
-
-const handleBlur = (event: FocusEvent): void => {
-  emit("blur", event);
-  touched.value = true;
-  validate();
-};
-
-const handleFocus = (event: FocusEvent): void => {
-  emit("focus", event);
-};
 
 const handleChange = (event: Event): void => {
   const target = event.target as HTMLInputElement;
@@ -148,26 +103,6 @@ const handleChange = (event: Event): void => {
     validate();
   }
 };
-
-const handleKeydown = (event: KeyboardEvent): void => {
-  emit("keydown", event);
-};
-
-onMounted(() => {
-  if (formContext) {
-    formContext.register({
-      id: inputId.value,
-      value: toRef(props, "modelValue"),
-      validate,
-    });
-  }
-});
-
-onUnmounted(() => {
-  if (formContext) {
-    formContext.unregister(inputId.value);
-  }
-});
 
 defineExpose({
   focus: () => inputRef.value?.focus(),

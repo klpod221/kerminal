@@ -13,9 +13,6 @@
       @submit="handleConfirm"
       class="flex flex-col gap-4"
     >
-      <p v-if="message" class="text-sm text-gray-300 mb-2">
-        {{ message }}
-      </p>
       <Input
         id="confirm-password"
         ref="passwordInput"
