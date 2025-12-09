@@ -9,9 +9,7 @@ let store: Store | null = null;
 
 // Initialize Tauri store
 const initStore = async () => {
-  if (!store) {
-    store = await Store.load("recent_connections.json");
-  }
+  store ??= await Store.load("recent_connections.json");
   return store;
 };
 
