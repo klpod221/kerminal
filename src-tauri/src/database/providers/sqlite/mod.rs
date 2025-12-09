@@ -80,7 +80,6 @@ impl Database for SQLiteProvider {
                 color TEXT,
                 timeout INTEGER,
                 keep_alive BOOLEAN NOT NULL DEFAULT true,
-                keep_alive BOOLEAN NOT NULL DEFAULT true,
                 compression BOOLEAN NOT NULL DEFAULT false,
                 command TEXT,
                 working_dir TEXT,

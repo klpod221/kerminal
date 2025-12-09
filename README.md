@@ -222,8 +222,6 @@ If you encounter any issues or have questions:
 - [ ] Web-based version
 - [ ] Mobile app companion
 
-> See [TODO.md](TODO.md) for more details.
-
 ---
 
 <div align="center">

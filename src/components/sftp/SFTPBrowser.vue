@@ -102,6 +102,7 @@
               @upload="handleLocalUpload"
               @drag-files="handleLocalDragFiles"
               @open="handleLocalOpen"
+              @open-system="handleLocalOpenSystem"
               @edit="handleLocalEdit"
               @rename="handleLocalRename"
               @delete="handleLocalDelete"
@@ -173,6 +174,7 @@
               @permissions="handleRemotePermissions"
               @drag-files="handleRemoteDragFiles"
               @open="handleRemoteOpen"
+              @open-system="handleRemoteOpenSystem"
               @edit="handleRemoteEdit"
               @rename="handleRemoteRename"
               @create-directory="handleRemoteCreateDirectory"
@@ -458,8 +460,6 @@ async function handleProfileSelect(profileId: string) {
     const remotePath = profile?.username ? `/home/${profile.username}` : "/";
     await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, remotePath);
   }
-
-  message.success("SFTP connected successfully");
 }
 
 /**
@@ -1106,6 +1106,49 @@ function handleRemoteOpen(file: FileEntry) {
     });
   } else {
     message.info("Please download the file to open it");
+  }
+}
+
+async function handleLocalOpenSystem(file: FileEntry) {
+  try {
+    if (file.fileType === "directory") {
+      handleLocalNavigate(file.path);
+    } else {
+      await openPath(file.path);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    message.error(`Failed to open file: ${errorMessage}`);
+  }
+}
+
+async function handleRemoteOpenSystem(file: FileEntry) {
+  if (file.fileType === "directory") {
+    handleRemoteNavigate(file.path);
+    return;
+  }
+  if (!sftpStore.activeSessionId) return;
+
+  try {
+    const tempDirPath = await tempDir();
+    const uniqueDir = `kerminal_sftp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const uniqueDirPath = await join(tempDirPath, uniqueDir);
+    await mkdir(uniqueDirPath, { recursive: true });
+
+    const localFilePath = await join(uniqueDirPath, file.name);
+
+    message.info(`Downloading ${file.name} to temp...`);
+    await sftpStore.downloadFile(
+      sftpStore.activeSessionId,
+      file.path,
+      localFilePath,
+    );
+
+    await openPath(localFilePath);
+    message.success(`Opened ${file.name}`);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    message.error(`Failed to open remote file: ${errorMessage}`);
   }
 }
 

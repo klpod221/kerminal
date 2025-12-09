@@ -324,6 +324,7 @@ import {
   ChevronDown,
   Search,
   FolderRoot,
+  ExternalLink,
 } from "lucide-vue-next";
 import type { FileEntry, FileBrowserDragData } from "../../types/sftp";
 import Button from "../ui/Button.vue";
@@ -363,6 +364,7 @@ const emit = defineEmits<{
     targetPath: string,
     isSourceRemote: boolean,
   ): void;
+  (e: "open-system", file: FileEntry): void;
 }>();
 
 const fileListRef = ref<HTMLElement>();
@@ -501,6 +503,13 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
       label: "Edit",
       action: "edit",
       icon: Pencil,
+    });
+
+    items.push({
+      id: "open-system",
+      label: "Open with Default App",
+      action: "openSystem",
+      icon: ExternalLink,
     });
   }
 
@@ -966,6 +975,9 @@ function handleContextMenuClick(item: ContextMenuItem) {
         break;
       case "edit":
         emit("edit", selectedFile.value);
+        break;
+      case "openSystem":
+        emit("open-system", selectedFile.value);
         break;
       case "download":
         emit("download", [selectedFile.value]);
