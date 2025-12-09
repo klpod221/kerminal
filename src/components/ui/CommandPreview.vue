@@ -42,6 +42,9 @@ const props = withDefaults(defineProps<Props>(), {
   backdrop-filter: blur(4px);
   overflow-y: auto;
   transition: all 0.2s;
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
 }
 
 .group:hover .command-preview-container {
@@ -78,11 +81,5 @@ const props = withDefaults(defineProps<Props>(), {
   font-size: 0.8125rem;
   line-height: 1.6;
   font-family: "Fira Code", "Monaco", "Menlo", "Ubuntu Mono", monospace;
-}
-
-/* Firefox scrollbar */
-.command-preview-container {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
 }
 </style>

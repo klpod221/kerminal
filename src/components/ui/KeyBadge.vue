@@ -112,19 +112,15 @@ const formatKey = (key: string): string => {
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   letter-spacing: 0.025em;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 /* Light variant */
 .key-badge-light {
   background: #4b5563;
   border-color: #6b7280;
-}
-
-/* Smooth transitions */
-.key-badge {
-  transition:
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
 }
 </style>

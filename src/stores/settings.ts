@@ -17,14 +17,30 @@ export interface CustomTheme {
   updatedAt: string;
 }
 
+/**
+ * Get system fonts with error handling
+ * @returns Array of system font names
+ */
+async function getSystemFonts(): Promise<string[]> {
+  const context: ErrorContext = {
+    operation: "Get System Fonts",
+  };
+
+  try {
+    return await settingsService.getSystemFonts();
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
 // Tauri store instance
 let store: Store | null = null;
 
 // Initialize Tauri store
 const initStore = async () => {
-  if (!store) {
-    store = await Store.load("settings.json");
-  }
+  store ??= await Store.load("settings.json");
   return store;
 };
 
@@ -195,7 +211,7 @@ export const useSettingsStore = defineStore("settings", () => {
     if (i === -1) {
       customThemes.value = [...customThemes.value, theme];
     } else {
-      customThemes.value[i] = { ...customThemes.value[i]!, ...theme };
+      customThemes.value[i] = { ...customThemes.value[i], ...theme };
     }
   };
 
@@ -257,37 +273,13 @@ export const useSettingsStore = defineStore("settings", () => {
    * Get system fonts with error handling
    * @returns Array of system font names
    */
-  async function getSystemFonts(): Promise<string[]> {
-    const context: ErrorContext = {
-      operation: "Get System Fonts",
-    };
 
-    try {
-      return await settingsService.getSystemFonts();
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Get system info with error handling
    * @returns System information
    */
-  async function getSystemInfoFunc(): Promise<any> {
-    const context: ErrorContext = {
-      operation: "Get System Info",
-    };
 
-    try {
-      return await getSystemInfoService();
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   // Initialize settings on store creation
   loadSettings();
@@ -310,7 +302,7 @@ export const useSettingsStore = defineStore("settings", () => {
     getCustomTheme,
     isCustomTheme,
     getSystemFonts,
-    getSystemInfo: getSystemInfoFunc,
+    getSystemInfo: getSystemInfoService,
 
     startRealtime,
     stopRealtime,

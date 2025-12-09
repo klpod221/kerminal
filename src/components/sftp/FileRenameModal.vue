@@ -70,7 +70,10 @@ async function handleSubmit() {
     return;
   }
 
-  const newPath = file.value.path.replace(/[^/]+$/, newName.value);
+  const lastSlashIndex = file.value.path.lastIndexOf("/");
+  const directory =
+    lastSlashIndex >= 0 ? file.value.path.substring(0, lastSlashIndex + 1) : "";
+  const newPath = directory + newName.value;
 
   if (newPath === file.value.path) {
     closeModal();
@@ -89,7 +92,7 @@ async function handleSubmit() {
   const event = new CustomEvent("sftp-rename", {
     detail: { oldPath: file.value.path, newPath, isLocal: isLocal.value },
   });
-  window.dispatchEvent(event);
+  globalThis.dispatchEvent(event);
   closeModal();
   loading.value = false;
 }

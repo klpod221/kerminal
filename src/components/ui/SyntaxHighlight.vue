@@ -22,35 +22,35 @@ const props = withDefaults(defineProps<Props>(), {
 
 const escapeHtml = (text: string): string => {
   return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 };
 
 const highlightShell = (code: string): string => {
   let highlighted = escapeHtml(code);
 
   // Comments
-  highlighted = highlighted.replace(
-    /(#.*)$/gm,
+  highlighted = highlighted.replaceAll(
+    /(#[^\r\n]{0,5000})$/gm,
     '<span class="token-comment">$1</span>',
   );
 
   // Strings (double and single quotes)
-  highlighted = highlighted.replace(
-    /("(?:[^"\\]|\\.)*")/g,
+  highlighted = highlighted.replaceAll(
+    /("(?:[^"\\]|\\.){0,5000}")/g,
     '<span class="token-string">$1</span>',
   );
-  highlighted = highlighted.replace(
-    /('(?:[^'\\]|\\.)*')/g,
+  highlighted = highlighted.replaceAll(
+    /('(?:[^'\\]|\\.){0,5000}')/g,
     '<span class="token-string">$1</span>',
   );
 
   // Variables ($VAR, ${VAR})
-  highlighted = highlighted.replace(
-    /(\$\{[^}]+\}|\$[a-zA-Z_][a-zA-Z0-9_]*)/g,
+  highlighted = highlighted.replaceAll(
+    /(\$\{[^}]{1,500}\}|\$[a-zA-Z_]\w{0,100})/g,
     '<span class="token-variable">$1</span>',
   );
 
@@ -113,28 +113,28 @@ const highlightShell = (code: string): string => {
   ];
 
   keywords.forEach((keyword) => {
-    const regex = new RegExp(`\\b(${keyword})\\b`, "g");
-    highlighted = highlighted.replace(
+    const regex = new RegExp(String.raw`\b(${keyword})\b`, "g");
+    highlighted = highlighted.replaceAll(
       regex,
       '<span class="token-keyword">$1</span>',
     );
   });
 
   // Operators and pipes
-  highlighted = highlighted.replace(
+  highlighted = highlighted.replaceAll(
     /(&amp;&amp;|\|\||&gt;&gt;|&gt;|&lt;|\||;)/g,
     '<span class="token-operator">$1</span>',
   );
 
   // Numbers
-  highlighted = highlighted.replace(
-    /\b(\d+)\b/g,
+  highlighted = highlighted.replaceAll(
+    /\b(\d{1,100})\b/g,
     '<span class="token-number">$1</span>',
   );
 
   // Flags (-flag, --flag)
-  highlighted = highlighted.replace(
-    /(\s)(--?[a-zA-Z0-9-]+)/g,
+  highlighted = highlighted.replaceAll(
+    /(\s)(--?[a-zA-Z0-9-]{1,100})/g,
     '$1<span class="token-flag">$2</span>',
   );
 
@@ -145,23 +145,23 @@ const highlightJson = (code: string): string => {
   let highlighted = escapeHtml(code);
 
   // Strings
-  highlighted = highlighted.replace(
-    /("(?:[^"\\]|\\.)*")(\s*:)/g,
+  highlighted = highlighted.replaceAll(
+    /("(?:[^"\\]|\\.){0,5000}")(\s*:)/g,
     '<span class="token-property">$1</span>$2',
   );
-  highlighted = highlighted.replace(
-    /:\s*("(?:[^"\\]|\\.)*")/g,
+  highlighted = highlighted.replaceAll(
+    /:\s*("(?:[^"\\]|\\.){0,5000}")/g,
     ': <span class="token-string">$1</span>',
   );
 
   // Numbers
-  highlighted = highlighted.replace(
-    /:\s*(-?\d+\.?\d*)/g,
+  highlighted = highlighted.replaceAll(
+    /:\s*(-?\d+\.?\d{0,100})/g,
     ': <span class="token-number">$1</span>',
   );
 
   // Booleans and null
-  highlighted = highlighted.replace(
+  highlighted = highlighted.replaceAll(
     /\b(true|false|null)\b/g,
     '<span class="token-keyword">$1</span>',
   );

@@ -76,7 +76,6 @@ onMounted(async () => {
         if (success && authStore.isAuthenticated) {
           return; // Exit early, don't open any overlays
         }
-      } else {
       }
     }
 
@@ -95,7 +94,10 @@ onMounted(async () => {
       openOverlay("master-password-unlock");
       return;
     }
-  } catch (error) {}
+  } catch (error) {
+    // Ignore error during initial auto-unlock attempt
+    console.debug("Auto-unlock failed silently:", error);
+  }
 });
 
 watch(
@@ -126,11 +128,11 @@ onUnmounted(() => {
 watch(
   () => authStore.isAuthenticated,
   (isAuthenticated) => {
-    if (!isAuthenticated) {
-      viewState.toggleTopBar(false);
-    } else {
+    if (isAuthenticated) {
       closeAllOverlays();
       viewState.toggleTopBar(true);
+    } else {
+      viewState.toggleTopBar(false);
     }
   },
 );

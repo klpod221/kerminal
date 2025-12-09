@@ -98,9 +98,9 @@ export const useAuthStore = defineStore("auth", () => {
     isLoading.value = true;
     try {
       const config = await masterPasswordService.getConfig();
-      if (config && config.sessionTimeoutMinutes !== undefined) {
+      if (config?.sessionTimeoutMinutes !== undefined) {
         securitySettings.value.autoLockTimeout =
-          config.sessionTimeoutMinutes || 0;
+          config.sessionTimeoutMinutes ?? 0;
       }
     } finally {
       isLoading.value = false;

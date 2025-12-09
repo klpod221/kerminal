@@ -34,9 +34,9 @@
 
         <!-- Icon Selection -->
         <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
+          <span class="block text-sm font-medium text-gray-300 mb-2">
             Icon (optional)
-          </label>
+          </span>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="icon in iconOptions"

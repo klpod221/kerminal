@@ -13,6 +13,9 @@ import type {
   SyncSettings,
   Device,
 } from "../types/sync";
+
+type ConflictResolutionSource = "local" | "remote";
+type SyncDirectionOption = "push" | "pull" | "bidirectional";
 import { syncService } from "../services/sync";
 import { api } from "../services/api";
 import {
@@ -26,6 +29,232 @@ import { message } from "../utils/message";
  * External Database Sync Store
  * Manages external database connections, sync operations, and conflict resolution
  */
+
+/**
+ * Get global sync settings
+ * @returns Global sync settings
+ */
+async function getGlobalSyncSettings(): Promise<{
+  selectedDatabaseId?: string;
+  autoSyncEnabled?: boolean;
+  conflictStrategy?: ConflictResolutionStrategy;
+  syncDirection?: SyncDirectionOption;
+  isActive?: boolean;
+  syncIntervalMinutes?: number;
+} | null> {
+  const context: ErrorContext = {
+    operation: "Load Global Sync Settings",
+  };
+
+  try {
+    const result = await withRetry(
+      () => syncService.getGlobalSyncSettings(),
+      { maxRetries: 1 },
+      context,
+    );
+    if (!result) return null;
+    const syncDirectionMap: Record<SyncDirection, SyncDirectionOption> = {
+      Push: "push",
+      Pull: "pull",
+      Both: "bidirectional",
+      Bidirectional: "bidirectional",
+    };
+    return {
+      selectedDatabaseId: result.selectedDatabaseId,
+      autoSyncEnabled: result.autoSyncEnabled,
+      conflictStrategy: result.conflictStrategy,
+      syncDirection: result.syncDirection
+        ? syncDirectionMap[result.syncDirection] || "bidirectional"
+        : undefined,
+      isActive: result.isActive,
+      syncIntervalMinutes: result.syncIntervalMinutes,
+    };
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Update global sync settings
+ * @param settings - Settings to update
+ */
+async function updateGlobalSyncSettings(settings: {
+  selectedDatabaseId?: string;
+  autoSyncEnabled?: boolean;
+  conflictStrategy?: ConflictResolutionStrategy;
+  syncDirection?: SyncDirectionOption;
+}): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Update Global Sync Settings",
+  };
+
+  try {
+    const syncDirectionMap: Record<SyncDirectionOption, SyncDirection> = {
+      push: "Push",
+      pull: "Pull",
+      bidirectional: "Bidirectional",
+    };
+    const convertedSettings: Partial<SyncSettings> = {
+      ...settings,
+      syncDirection: settings.syncDirection
+        ? syncDirectionMap[settings.syncDirection]
+        : undefined,
+    };
+    await withRetry(
+      () => syncService.updateGlobalSyncSettings(convertedSettings),
+      { maxRetries: 1 },
+      context,
+    );
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Get all devices
+ * @returns Array of devices
+ */
+async function getAllDevices(): Promise<
+  Array<{
+    id: string;
+    name: string;
+    deviceType: string;
+    registeredAt: string;
+    lastSeenAt: string;
+  }>
+> {
+  const context: ErrorContext = {
+    operation: "Load All Devices",
+  };
+
+  try {
+    const devices = await withRetry(
+      () => syncService.getAllDevices(),
+      { maxRetries: 1 },
+      context,
+    );
+    return devices.map((device: Device) => ({
+      id: device.deviceId,
+      name: device.deviceName,
+      deviceType: device.deviceType,
+      registeredAt: device.createdAt,
+      lastSeenAt: device.lastSeen,
+    }));
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Get current device
+ * @returns Current device or null
+ */
+async function getCurrentDevice(): Promise<{
+  id: string;
+  name: string;
+  deviceType: string;
+  registeredAt: string;
+  lastSeenAt: string;
+} | null> {
+  const context: ErrorContext = {
+    operation: "Load Current Device",
+  };
+
+  try {
+    const device = await withRetry(
+      () => syncService.getCurrentDevice(),
+      { maxRetries: 1 },
+      context,
+    );
+    if (!device) return null;
+    return {
+      id: device.deviceId,
+      name: device.deviceName,
+      deviceType: device.deviceType,
+      registeredAt: device.createdAt,
+      lastSeenAt: device.lastSeen,
+    };
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Register device
+ * @param deviceName - Device name
+ * @param deviceType - Device type
+ * @returns Registered device
+ */
+async function registerDevice(
+  deviceName: string,
+  deviceType: string,
+): Promise<{
+  id: string;
+  name: string;
+  deviceType: string;
+  registeredAt: string;
+  lastSeenAt: string;
+}> {
+  const context: ErrorContext = {
+    operation: "Register Device",
+    context: { deviceName, deviceType },
+  };
+
+  try {
+    const device = await withRetry(
+      () => syncService.registerDevice(deviceName, deviceType),
+      { maxRetries: 1 },
+      context,
+    );
+    return {
+      id: device.deviceId,
+      name: device.deviceName,
+      deviceType: device.deviceType,
+      registeredAt: device.createdAt,
+      lastSeenAt: device.lastSeen,
+    };
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Resolve conflict resolution (direct service call)
+ * @param id - Conflict ID
+ * @param strategy - Resolution strategy
+ */
+async function resolveConflictResolution(
+  id: string,
+  strategy: ConflictResolutionStrategy,
+): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Resolve Conflict Resolution",
+    context: { conflictId: id, strategy },
+  };
+
+  try {
+    await withRetry(
+      () => syncService.resolveConflictResolution(id, strategy),
+      { maxRetries: 1 },
+      context,
+    );
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
 export const useSyncStore = defineStore("sync", () => {
   const databases = ref<ExternalDatabaseConfig[]>([]);
   const currentDatabaseId = ref<string | null>(null);
@@ -107,7 +336,7 @@ export const useSyncStore = defineStore("sync", () => {
       );
       const syncSettingsStr = result.config?.syncSettings;
       let syncSettings: DatabaseSyncSettings = {
-        autoSync: result.config?.autoSyncEnabled || false,
+        autoSync: result.config?.autoSyncEnabled ?? false,
         syncIntervalMinutes: 60,
         conflictResolutionStrategy: "Manual",
         syncDirection: "Bidirectional",
@@ -294,7 +523,7 @@ export const useSyncStore = defineStore("sync", () => {
    */
   async function sync(
     id: string,
-    direction: "push" | "pull" | "bidirectional",
+    direction: SyncDirectionOption,
   ): Promise<SyncLog> {
     isSyncing.value = true;
     const context: ErrorContext = {
@@ -356,7 +585,7 @@ export const useSyncStore = defineStore("sync", () => {
    */
   async function resolveConflict(
     id: string,
-    resolution: "local" | "remote",
+    resolution: ConflictResolutionSource,
   ): Promise<void> {
     isLoading.value = true;
     try {
@@ -421,7 +650,7 @@ export const useSyncStore = defineStore("sync", () => {
     if (i === -1) {
       databases.value = [...databases.value, db];
     } else {
-      databases.value[i] = { ...databases.value[i]!, ...db };
+      databases.value[i] = { ...databases.value[i], ...db };
     }
   };
 
@@ -529,164 +758,25 @@ export const useSyncStore = defineStore("sync", () => {
    * Get global sync settings
    * @returns Global sync settings
    */
-  async function getGlobalSyncSettings(): Promise<{
-    selectedDatabaseId?: string;
-    autoSyncEnabled?: boolean;
-    conflictStrategy?: ConflictResolutionStrategy;
-    syncDirection?: "push" | "pull" | "bidirectional";
-    isActive?: boolean;
-    syncIntervalMinutes?: number;
-  } | null> {
-    const context: ErrorContext = {
-      operation: "Load Global Sync Settings",
-    };
 
-    try {
-      const result = await withRetry(
-        () => syncService.getGlobalSyncSettings(),
-        { maxRetries: 1 },
-        context,
-      );
-      if (!result) return null;
-      const syncDirectionMap: Record<
-        SyncDirection,
-        "push" | "pull" | "bidirectional"
-      > = {
-        Push: "push",
-        Pull: "pull",
-        Both: "bidirectional",
-        Bidirectional: "bidirectional",
-      };
-      return {
-        selectedDatabaseId: result.selectedDatabaseId,
-        autoSyncEnabled: result.autoSyncEnabled,
-        conflictStrategy: result.conflictStrategy,
-        syncDirection: result.syncDirection
-          ? syncDirectionMap[result.syncDirection] || "bidirectional"
-          : undefined,
-        isActive: result.isActive,
-        syncIntervalMinutes: result.syncIntervalMinutes,
-      };
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Update global sync settings
    * @param settings - Settings to update
    */
-  async function updateGlobalSyncSettings(settings: {
-    selectedDatabaseId?: string;
-    autoSyncEnabled?: boolean;
-    conflictStrategy?: ConflictResolutionStrategy;
-    syncDirection?: "push" | "pull" | "bidirectional";
-  }): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Update Global Sync Settings",
-    };
 
-    try {
-      const syncDirectionMap: Record<
-        "push" | "pull" | "bidirectional",
-        SyncDirection
-      > = {
-        push: "Push",
-        pull: "Pull",
-        bidirectional: "Bidirectional",
-      };
-      const convertedSettings: Partial<SyncSettings> = {
-        ...settings,
-        syncDirection: settings.syncDirection
-          ? syncDirectionMap[settings.syncDirection]
-          : undefined,
-      };
-      await withRetry(
-        () => syncService.updateGlobalSyncSettings(convertedSettings),
-        { maxRetries: 1 },
-        context,
-      );
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Get all devices
    * @returns Array of devices
    */
-  async function getAllDevices(): Promise<
-    Array<{
-      id: string;
-      name: string;
-      deviceType: string;
-      registeredAt: string;
-      lastSeenAt: string;
-    }>
-  > {
-    const context: ErrorContext = {
-      operation: "Load All Devices",
-    };
 
-    try {
-      const devices = await withRetry(
-        () => syncService.getAllDevices(),
-        { maxRetries: 1 },
-        context,
-      );
-      return devices.map((device: Device) => ({
-        id: device.deviceId,
-        name: device.deviceName,
-        deviceType: device.deviceType,
-        registeredAt: device.createdAt,
-        lastSeenAt: device.lastSeen,
-      }));
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Get current device
    * @returns Current device or null
    */
-  async function getCurrentDevice(): Promise<{
-    id: string;
-    name: string;
-    deviceType: string;
-    registeredAt: string;
-    lastSeenAt: string;
-  } | null> {
-    const context: ErrorContext = {
-      operation: "Load Current Device",
-    };
 
-    try {
-      const device = await withRetry(
-        () => syncService.getCurrentDevice(),
-        { maxRetries: 1 },
-        context,
-      );
-      if (!device) return null;
-      return {
-        id: device.deviceId,
-        name: device.deviceName,
-        deviceType: device.deviceType,
-        registeredAt: device.createdAt,
-        lastSeenAt: device.lastSeen,
-      };
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Register current device
@@ -694,67 +784,14 @@ export const useSyncStore = defineStore("sync", () => {
    * @param deviceType - Device type
    * @returns Registered device
    */
-  async function registerDevice(
-    deviceName: string,
-    deviceType: string,
-  ): Promise<{
-    id: string;
-    name: string;
-    deviceType: string;
-    registeredAt: string;
-    lastSeenAt: string;
-  }> {
-    const context: ErrorContext = {
-      operation: "Register Device",
-      context: { deviceName, deviceType },
-    };
 
-    try {
-      const device = await withRetry(
-        () => syncService.registerDevice(deviceName, deviceType),
-        { maxRetries: 1 },
-        context,
-      );
-      return {
-        id: device.deviceId,
-        name: device.deviceName,
-        deviceType: device.deviceType,
-        registeredAt: device.createdAt,
-        lastSeenAt: device.lastSeen,
-      };
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Resolve conflict resolution (direct service call)
    * @param id - Conflict ID
    * @param strategy - Resolution strategy
    */
-  async function resolveConflictResolution(
-    id: string,
-    strategy: ConflictResolutionStrategy,
-  ): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Resolve Conflict Resolution",
-      context: { conflictId: id, strategy },
-    };
 
-    try {
-      await withRetry(
-        () => syncService.resolveConflictResolution(id, strategy),
-        { maxRetries: 1 },
-        context,
-      );
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   return {
     databases,

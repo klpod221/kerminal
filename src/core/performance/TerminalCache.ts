@@ -32,7 +32,7 @@ export interface CacheStats {
 export class TerminalCache {
   private static instance: TerminalCache | null = null;
 
-  private terminalInfoCache = new Map<string, CacheEntry<TerminalInfo>>();
+  private readonly terminalInfoCache = new Map<string, CacheEntry<TerminalInfo>>();
   private bufferStatsCache: CacheEntry<{
     lines: number;
     cols: number;
@@ -43,13 +43,13 @@ export class TerminalCache {
     memoryUsage?: number;
   }> | null = null;
   private terminalListCache: CacheEntry<TerminalInfo[]> | null = null;
-  private bufferHasCache = new Map<string, CacheEntry<boolean>>();
+  private readonly bufferHasCache = new Map<string, CacheEntry<boolean>>();
 
   private readonly DEFAULT_TTL = 5000; // 5 seconds
   private readonly BUFFER_STATS_TTL = 3000; // 3 seconds for stats
   private readonly TERMINAL_LIST_TTL = 2000; // 2 seconds for list
 
-  private stats = {
+  private readonly stats = {
     hits: 0,
     misses: 0,
   };
@@ -58,9 +58,7 @@ export class TerminalCache {
    * Get singleton instance
    */
   static getInstance(): TerminalCache {
-    if (!TerminalCache.instance) {
-      TerminalCache.instance = new TerminalCache();
-    }
+    TerminalCache.instance ??= new TerminalCache();
     return TerminalCache.instance;
   }
 
@@ -80,9 +78,9 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = (await api.call("get_terminal_info", {
+      const data = await api.call<TerminalInfo>("get_terminal_info", {
         terminalId: terminalId,
-      })) as TerminalInfo;
+      });
       this.terminalInfoCache.set(cacheKey, {
         data,
         timestamp: Date.now(),
@@ -117,7 +115,7 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = (await api.call("get_buffer_stats")) as {
+      const data = await api.call<{
         lines: number;
         cols: number;
         cursorRow: number;
@@ -125,7 +123,7 @@ export class TerminalCache {
         totalTerminals?: number;
         totalLines?: number;
         memoryUsage?: number;
-      };
+      }>("get_buffer_stats");
       this.bufferStatsCache = {
         data,
         timestamp: Date.now(),
@@ -152,7 +150,7 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = (await api.call("list_terminals")) as TerminalInfo[];
+      const data = await api.call<TerminalInfo[]>("list_terminals");
       this.terminalListCache = {
         data,
         timestamp: Date.now(),
@@ -181,9 +179,9 @@ export class TerminalCache {
 
     this.stats.misses++;
     try {
-      const data = (await api.call("has_terminal_buffer", {
+      const data = await api.call<boolean>("has_terminal_buffer", {
         terminalId: terminalId,
-      })) as boolean;
+      });
       this.bufferHasCache.set(cacheKey, {
         data,
         timestamp: Date.now(),

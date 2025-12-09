@@ -149,7 +149,9 @@ const inputRef = ref<HTMLInputElement>();
 const formContext = inject<FormContext | undefined>("form-context", undefined);
 
 const inputId = computed(
-  () => props.id || `input-${Math.random().toString(36).substr(2, 9)}`,
+  () =>
+    props.id ||
+    `input-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,
 );
 
 const inputValue = computed({
@@ -265,6 +267,8 @@ select {
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+  /* Ensure background color is applied */
+  background-color: inherit !important;
 }
 
 select::-ms-expand {
@@ -272,7 +276,4 @@ select::-ms-expand {
 }
 
 /* Ensure background color is applied */
-select {
-  background-color: inherit !important;
-}
 </style>

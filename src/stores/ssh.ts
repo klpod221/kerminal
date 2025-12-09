@@ -20,6 +20,40 @@ import {
 import { message } from "../utils/message";
 
 /**
+ * Test SSH connection with error handling
+ * @param request - SSH connection test request
+ * @throws Enhanced error if test fails
+ */
+async function testConnection(request: {
+  host: string;
+  port: number;
+  username: string;
+  authMethod: string;
+  authData: any;
+  timeout?: number;
+  keepAlive?: boolean;
+  compression?: boolean;
+  proxy?: any;
+}): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Test SSH Connection",
+    context: { host: request.host, username: request.username },
+  };
+
+  try {
+    await withRetry(
+      () => sshService.testSSHConnection(request),
+      { maxRetries: 1 },
+      context,
+    );
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
  * SSH Profiles and Groups Store
  * Manages SSH profiles and groups with reactive state management and caching
  */
@@ -75,9 +109,11 @@ export const useSSHStore = defineStore("ssh", () => {
         });
       }
 
-      const groupData = groupedData.get(groupId)!;
-      groupData.profiles.push(profile);
-      groupData.profileCount++;
+      const groupData = groupedData.get(groupId);
+      if (groupData) {
+        groupData.profiles.push(profile);
+        groupData.profileCount++;
+      }
     });
 
     return {
@@ -435,39 +471,7 @@ export const useSSHStore = defineStore("ssh", () => {
     configHostsLoaded.value = false;
   };
 
-  /**
-   * Test SSH connection with error handling
-   * @param request - SSH connection test request
-   * @throws Enhanced error if test fails
-   */
-  async function testConnection(request: {
-    host: string;
-    port: number;
-    username: string;
-    authMethod: string;
-    authData: any;
-    timeout?: number;
-    keepAlive?: boolean;
-    compression?: boolean;
-    proxy?: any;
-  }): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Test SSH Connection",
-      context: { host: request.host, username: request.username },
-    };
 
-    try {
-      await withRetry(
-        () => sshService.testSSHConnection(request),
-        { maxRetries: 1 },
-        context,
-      );
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Load SSH config hosts from ~/.ssh/config with error handling
@@ -508,7 +512,7 @@ export const useSSHStore = defineStore("ssh", () => {
     if (i === -1) {
       profiles.value = [...profiles.value, p];
     } else {
-      profiles.value[i] = { ...profiles.value[i]!, ...p };
+      profiles.value[i] = { ...profiles.value[i], ...p };
     }
   };
 
@@ -522,7 +526,7 @@ export const useSSHStore = defineStore("ssh", () => {
     if (i === -1) {
       groups.value = [...groups.value, g];
     } else {
-      groups.value[i] = { ...groups.value[i]!, ...g };
+      groups.value[i] = { ...groups.value[i], ...g };
     }
   };
 

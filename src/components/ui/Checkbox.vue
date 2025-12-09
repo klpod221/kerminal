@@ -86,7 +86,9 @@ const inputRef = ref<HTMLInputElement>();
 const formContext = inject<FormContext>("form-context");
 
 const inputId = computed(
-  () => props.id || `input-${Math.random().toString(36).substr(2, 9)}`,
+  () =>
+    props.id ||
+    `input-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,
 );
 
 const sizeClasses = computed(() => {

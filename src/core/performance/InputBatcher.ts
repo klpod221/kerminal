@@ -11,17 +11,15 @@ import { writeToTerminal, writeBatchToTerminal } from "../../services/terminal";
 export class InputBatcher {
   private static instance: InputBatcher | null = null;
 
-  private pendingData: Map<string, string> = new Map();
-  private timeouts: Map<string, number> = new Map();
+  private readonly pendingData: Map<string, string> = new Map();
+  private readonly timeouts: Map<string, number> = new Map();
   private readonly BATCH_DELAY = 16; // ~60fps, optimal for human typing
 
   /**
    * Get singleton instance
    */
   static getInstance(): InputBatcher {
-    if (!InputBatcher.instance) {
-      InputBatcher.instance = new InputBatcher();
-    }
+    InputBatcher.instance ??= new InputBatcher();
     return InputBatcher.instance;
   }
 
@@ -41,7 +39,7 @@ export class InputBatcher {
       clearTimeout(existingTimeout);
     }
 
-    const timeout = window.setTimeout(() => {
+    const timeout = globalThis.setTimeout(() => {
       this.flushInput(terminalId);
     }, this.BATCH_DELAY);
 

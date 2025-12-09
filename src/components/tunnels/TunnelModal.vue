@@ -45,9 +45,9 @@
       </h4>
 
       <div class="space-y-1">
-        <label class="block text-sm font-medium text-gray-300 mb-2">
+        <span class="block text-sm font-medium text-gray-300 mb-2">
           Tunnel Type *
-        </label>
+        </span>
         <div class="grid grid-cols-3 gap-2">
           <Card
             v-for="type in tunnelTypes"

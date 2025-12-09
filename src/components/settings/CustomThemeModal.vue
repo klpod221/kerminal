@@ -21,7 +21,7 @@
       <!-- JSON Editor -->
       <div class="space-y-2">
         <div class="flex items-center justify-between mb-2">
-          <label class="text-sm font-medium text-gray-300"> Theme JSON </label>
+          <span class="text-sm font-medium text-gray-300"> Theme JSON </span>
           <button
             class="text-xs text-purple-400 hover:text-purple-300 transition-colors px-2 py-1 rounded hover:bg-purple-500/10"
             @click="copyTemplate"
@@ -174,6 +174,7 @@ const handleJsonInput = () => {
 
     parsedColors.value = parsed as TerminalTheme;
   } catch (error) {
+    console.error("JSON parse error:", error);
     jsonError.value = "Invalid JSON format";
     parsedColors.value = null;
   }

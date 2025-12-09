@@ -21,16 +21,16 @@ export const useTunnelStore = defineStore("tunnel", () => {
 
   const activeTunnels = computed(() =>
     tunnels.value.filter(
-      (t) => t && t.id && (t.status === "running" || t.status === "starting"),
+      (t) => t?.id && (t.status === "running" || t.status === "starting"),
     ),
   );
 
   const stoppedTunnels = computed(() =>
-    tunnels.value.filter((t) => t && t.id && t.status === "stopped"),
+    tunnels.value.filter((t) => t?.id && t.status === "stopped"),
   );
 
   const errorTunnels = computed(() =>
-    tunnels.value.filter((t) => t && t.id && t.status === "error"),
+    tunnels.value.filter((t) => t?.id && t.status === "error"),
   );
 
   const tunnelCount = computed(() => tunnels.value.length);
@@ -53,7 +53,7 @@ export const useTunnelStore = defineStore("tunnel", () => {
         context,
       );
       tunnels.value = (loadedTunnels || []).filter(
-        (tunnel) => tunnel && tunnel.id && typeof tunnel.id === "string",
+        (tunnel) => tunnel?.id && typeof tunnel.id === "string",
       );
     } catch (err) {
       const errorMessage = handleError(err, context);
@@ -248,7 +248,7 @@ export const useTunnelStore = defineStore("tunnel", () => {
     try {
       const updatedTunnels = await tunnelService.getTunnels();
       tunnels.value = (updatedTunnels || []).filter(
-        (tunnel) => tunnel && tunnel.id && typeof tunnel.id === "string",
+        (tunnel) => tunnel?.id && typeof tunnel.id === "string",
       );
     } catch (err) {
       console.error("Failed to refresh tunnel status:", err);
@@ -261,7 +261,7 @@ export const useTunnelStore = defineStore("tunnel", () => {
     if (index === -1) {
       tunnels.value = [...tunnels.value, updated];
     } else if (tunnels.value[index]) {
-      tunnels.value[index] = { ...tunnels.value[index]!, ...updated };
+      tunnels.value[index] = { ...tunnels.value[index], ...updated };
     }
   };
 
@@ -273,7 +273,7 @@ export const useTunnelStore = defineStore("tunnel", () => {
     const index = tunnels.value.findIndex((t) => t?.id === id);
     if (index !== -1 && tunnels.value[index]) {
       tunnels.value[index] = {
-        ...tunnels.value[index]!,
+        ...tunnels.value[index],
         status,
         errorMessage,
       };

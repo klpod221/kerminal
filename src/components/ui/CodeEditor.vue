@@ -1,8 +1,8 @@
 <template>
   <div class="code-editor-wrapper">
-    <label v-if="label" class="block text-sm font-medium text-gray-300 mb-2">
+    <span v-if="label" class="block text-sm font-medium text-gray-300 mb-2">
       {{ label }}
-    </label>
+    </span>
     <div
       class="border border-gray-700 rounded-lg overflow-hidden"
       :class="{ 'border-red-500': error }"

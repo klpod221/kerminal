@@ -1,6 +1,7 @@
 <div align="center">
     <h1>Kerminal: Modern Terminal Emulator & SSH Manager</h1>
     <p>A powerful, feature-rich terminal emulator with advanced SSH management, multi-device sync, and enterprise-grade encryption built with Tauri + Vue 3.</p>
+    <img src="https://sonarcloud.io/api/project_badges/measure?project=klpod221_kerminal&metric=alert_status" alt="SonarCloud">
     <img src="https://img.shields.io/github/last-commit/klpod221/kerminal?style=for-the-badge&color=74c7ec&labelColor=111827" alt="Last Commit">
     <img src="https://img.shields.io/github/stars/klpod221/kerminal?style=for-the-badge&color=facc15&labelColor=111827" alt="GitHub Stars">
     <img src="https://img.shields.io/github/repo-size/klpod221/kerminal?style=for-the-badge&color=a78bfa&labelColor=111827" alt="Repo Size">

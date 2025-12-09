@@ -81,6 +81,8 @@ interface TerminalManagerComponent extends ComponentPublicInstance {
   focusActiveTerminal: () => void;
 }
 
+type SplitDirection = "top" | "bottom" | "left" | "right";
+
 interface PanelProps {
   panel: Panel;
   terminals: TerminalInstance[];
@@ -105,16 +107,12 @@ interface PanelEmits {
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
   splitPanelByDrop: [
-    direction: "top" | "bottom" | "left" | "right",
+    direction: SplitDirection,
     draggedTab: Tab,
     sourcePanelId: string,
     targetPanelId: string,
   ];
-  cloneTabAndSplit: [
-    direction: "top" | "bottom" | "left" | "right",
-    tabId: string,
-    panelId: string,
-  ];
+  cloneTabAndSplit: [direction: SplitDirection, tabId: string, panelId: string];
 }
 
 const props = defineProps<PanelProps>();
@@ -128,8 +126,8 @@ const dragEnterCounter = ref(0);
 let hideDropZonesTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const activeTerminals = computed(() => {
-  const tabIds = props.panel.tabs.map((tab) => tab.id);
-  return props.terminals.filter((terminal) => tabIds.includes(terminal.id));
+  const tabIds = new Set(props.panel.tabs.map((tab) => tab.id));
+  return props.terminals.filter((terminal) => tabIds.has(terminal.id));
 });
 
 watch(
@@ -285,7 +283,7 @@ const resetDropZones = (): void => {
  * @param {string} sourcePanelId - The source panel ID
  */
 const onSplitPanel = (
-  direction: "top" | "bottom" | "left" | "right",
+  direction: SplitDirection,
   draggedTab: Tab,
   sourcePanelId: string,
 ): void => {

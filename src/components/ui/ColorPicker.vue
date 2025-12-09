@@ -127,7 +127,9 @@ const localError = ref("");
 const formContext = inject<FormContext>("form-context");
 
 const pickerId = computed(
-  () => props.id || `color-picker-${Math.random().toString(36).substr(2, 9)}`,
+  () =>
+    props.id ||
+    `color-picker-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`,
 );
 
 const colorValue = computed({

@@ -28,12 +28,12 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
   const isLoading = ref(false);
 
   const favoriteCommands = computed(() =>
-    commands.value.filter((c) => c && c.id && c.isFavorite),
+    commands.value.filter((c) => c?.id && c.isFavorite),
   );
 
   const recentCommands = computed(() =>
     commands.value
-      .filter((c) => c && c.id && c.lastUsedAt)
+      .filter((c) => c?.id && c.lastUsedAt)
       .sort(
         (a, b) =>
           new Date(b.lastUsedAt!).getTime() - new Date(a.lastUsedAt!).getTime(),
@@ -43,7 +43,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
 
   const popularCommands = computed(() =>
     commands.value
-      .filter((c) => c && c.id && c.usageCount > 0)
+      .filter((c) => c?.id && c.usageCount > 0)
       .sort((a, b) => b.usageCount - a.usageCount)
       .slice(0, 10),
   );
@@ -69,7 +69,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     try {
       const loadedCommands = await savedCommandService.getCommands();
       commands.value = (loadedCommands || []).filter(
-        (command) => command && command.id && typeof command.id === "string",
+        (command) => command?.id && typeof command.id === "string",
       );
     } catch (err) {
       const errorMessage = handleError(err, context);
@@ -93,7 +93,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     try {
       const loadedGroups = await savedCommandService.getGroups();
       groups.value = (loadedGroups || []).filter(
-        (group) => group && group.id && typeof group.id === "string",
+        (group) => group?.id && typeof group.id === "string",
       );
     } catch (err) {
       const errorMessage = handleError(err, context);
@@ -408,7 +408,10 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
         // Show empty groups when no search
         result.push({
           group,
-          commands: groupCommands.sort((a, b) => a.name.localeCompare(b.name)),
+          // Sort a copy to avoid mutating the original array
+          commands: [...groupCommands].sort((a, b) =>
+            a.name.localeCompare(b.name),
+          ),
           commandCount: groupCommands.length,
         });
       }
@@ -419,7 +422,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
       (!searchQuery && groups.value.length === 0)
     ) {
       result.push({
-        commands: ungroupedCommands.sort((a, b) =>
+        commands: [...ungroupedCommands].sort((a, b) =>
           a.name.localeCompare(b.name),
         ),
         commandCount: ungroupedCommands.length,
@@ -477,11 +480,12 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
           case "name":
             comparison = a.name.localeCompare(b.name);
             break;
-          case "lastUsed":
+          case "lastUsed": {
             const aDate = a.lastUsedAt ? new Date(a.lastUsedAt).getTime() : 0;
             const bDate = b.lastUsedAt ? new Date(b.lastUsedAt).getTime() : 0;
             comparison = bDate - aDate;
             break;
+          }
           case "usageCount":
             comparison = b.usageCount - a.usageCount;
             break;
@@ -535,7 +539,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     if (i === -1) {
       commands.value = [...commands.value, cmd];
     } else {
-      commands.value[i] = { ...commands.value[i]!, ...cmd };
+      commands.value[i] = { ...commands.value[i], ...cmd };
     }
   };
 
@@ -549,7 +553,7 @@ export const useSavedCommandStore = defineStore("savedCommand", () => {
     if (i === -1) {
       groups.value = [...groups.value, g];
     } else {
-      groups.value[i] = { ...groups.value[i]!, ...g };
+      groups.value[i] = { ...groups.value[i], ...g };
     }
   };
 

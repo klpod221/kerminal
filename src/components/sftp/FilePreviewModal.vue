@@ -643,7 +643,7 @@ function renderMarkdown(md: string): string {
     .replaceAll(/```([\s\S]*?)```/gim, "<pre><code>$1</code></pre>")
     .replaceAll(/`(.*?)`/gim, "<code>$1</code>")
     .replaceAll(
-      /\[([^\]]+)\]\(([^)]+)\)/gim,
+      /\[([^\]]{1,1000})\]\(([^)]{1,1000})\)/gim,
       '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">$1</a>',
     )
     .replaceAll(/\n\n/gim, "</p><p>")
@@ -652,8 +652,6 @@ function renderMarkdown(md: string): string {
   return `<p>${html}</p>`;
 }
 
-// ... (skipping unchanged parts)
-
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -661,8 +659,6 @@ function formatFileSize(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${Number.parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
-
-// ...
 
 onMounted(() => {
   if (file.value) {

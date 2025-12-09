@@ -10,6 +10,26 @@ import { api } from "../services/api";
 import { message } from "../utils/message";
 import { handleError, type ErrorContext } from "../utils/errorHandler";
 
+/**
+ * Count profiles using a key with error handling
+ * @param keyId - Key ID to check
+ * @returns Number of profiles using the key
+ */
+async function countProfilesUsing(keyId: string): Promise<number> {
+  const context: ErrorContext = {
+    operation: "Count Profiles Using Key",
+    context: { keyId },
+  };
+
+  try {
+    return await sshKeyService.countProfilesUsingKey(keyId);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    return 0;
+  }
+}
+
 export const useSSHKeyStore = defineStore("sshKey", () => {
   const keys = ref<SSHKey[]>([]);
   const isLoading = ref(false);
@@ -177,25 +197,7 @@ export const useSSHKeyStore = defineStore("sshKey", () => {
     return keys.value.find((k) => k.id === id);
   }
 
-  /**
-   * Count profiles using a key with error handling
-   * @param keyId - Key ID to check
-   * @returns Number of profiles using the key
-   */
-  async function countProfilesUsing(keyId: string): Promise<number> {
-    const context: ErrorContext = {
-      operation: "Count Profiles Using Key",
-      context: { keyId },
-    };
 
-    try {
-      return await sshKeyService.countProfilesUsingKey(keyId);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      return 0;
-    }
-  }
 
   /**
    * Clear all keys (used on logout)
@@ -210,7 +212,7 @@ export const useSSHKeyStore = defineStore("sshKey", () => {
     if (i === -1) {
       keys.value = [...keys.value, key];
     } else {
-      keys.value[i] = { ...keys.value[i]!, ...key };
+      keys.value[i] = { ...keys.value[i], ...key };
     }
   };
 

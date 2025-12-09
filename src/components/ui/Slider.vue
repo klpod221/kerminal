@@ -124,7 +124,7 @@ const emit = defineEmits<{
 }>();
 
 const internalValue = ref(props.modelValue);
-const sliderId = `slider-${Math.random().toString(36).substr(2, 9)}`;
+const sliderId = `slider-${crypto.getRandomValues(new Uint32Array(1))[0].toString(36)}`;
 
 watch(
   () => props.modelValue,

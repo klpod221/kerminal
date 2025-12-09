@@ -12,12 +12,12 @@
       <!-- Current Font Preview -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
-          <label
+          <div
             class="text-sm font-medium text-gray-300 flex items-center gap-2"
           >
             <component :is="Eye" class="w-4 h-4 text-blue-400" />
             Currently Using
-          </label>
+          </div>
           <div class="flex items-center gap-2">
             <span
               class="text-xs font-medium text-gray-400"
@@ -125,12 +125,12 @@
       <!-- Font Family -->
       <div class="space-y-3">
         <div class="flex items-center justify-between">
-          <label
+          <div
             class="text-sm font-medium text-gray-300 flex items-center gap-2"
           >
             <component :is="Type" class="w-4 h-4 text-blue-400" />
             Font Family
-          </label>
+          </div>
           <span class="text-xs text-gray-500">
             {{ filteredFonts.length }}
             {{ filteredFonts.length === 1 ? "font" : "fonts" }}

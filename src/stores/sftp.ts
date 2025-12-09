@@ -23,6 +23,374 @@ import { message } from "../utils/message";
  * SFTP Store
  * Manages SFTP sessions, file browsing, and transfers
  */
+
+// Helper function to process directory entries
+async function processFileEntry(
+  entry: any,
+  path: string,
+): Promise<FileEntry | null> {
+  const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
+  const entryPath =
+    normalizedPath === "/"
+      ? `/${entry.name}`
+      : `${normalizedPath}/${entry.name}`;
+
+  try {
+    const meta = await stat(entryPath);
+
+    let fileType: FileEntry["fileType"] = "file";
+    if (meta.isDirectory) {
+      fileType = "directory";
+    } else if (entry.isSymlink || meta.isSymlink) {
+      fileType = "symlink";
+    }
+
+    let permissions = 0o644;
+    if (meta.mode) {
+      permissions = meta.mode & 0o777;
+    }
+
+    return {
+      name: entry.name,
+      path: entryPath,
+      fileType,
+      size: fileType === "file" ? meta.size || null : null,
+      permissions,
+      modified: new Date(meta.mtime || Date.now()).toISOString(),
+      accessed: meta.atime ? new Date(meta.atime).toISOString() : null,
+      symlinkTarget: null, // Would need readlink to get this
+      uid: null,
+      gid: null,
+    };
+  } catch (error) {
+    console.warn(`Failed to get metadata for ${entryPath}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Upload file with error handling
+ * @param sessionId - SFTP session ID
+ * @param localPath - Local file path
+ * @param remotePath - Remote file path
+ * @returns Transfer ID
+ * @throws Enhanced error if upload fails
+ */
+async function uploadFile(
+  sessionId: string,
+  localPath: string,
+  remotePath: string,
+): Promise<string> {
+  const context: ErrorContext = {
+    operation: "Upload File",
+    context: { localPath, remotePath },
+  };
+
+  try {
+    const transferId = await sftpService.uploadSFTPFile(
+      sessionId,
+      localPath,
+      remotePath,
+    );
+    return transferId;
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Download file with error handling
+ * @param sessionId - SFTP session ID
+ * @param remotePath - Remote file path
+ * @param localPath - Local file path
+ * @returns Transfer ID
+ * @throws Enhanced error if download fails
+ */
+async function downloadFile(
+  sessionId: string,
+  remotePath: string,
+  localPath: string,
+): Promise<string> {
+  const context: ErrorContext = {
+    operation: "Download File",
+    context: { remotePath, localPath },
+  };
+
+  try {
+    const transferId = await sftpService.downloadSFTPFile(
+      sessionId,
+      remotePath,
+      localPath,
+    );
+    return transferId;
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Compare directories with retry logic
+ * @param sessionId - SFTP session ID
+ * @param localPath - Local directory path
+ * @param remotePath - Remote directory path
+ * @returns Array of differences
+ * @throws Enhanced error if comparison fails
+ */
+async function compareDirectories(
+  sessionId: string,
+  localPath: string,
+  remotePath: string,
+): Promise<DiffEntry[]> {
+  const context: ErrorContext = {
+    operation: "Compare Directories",
+    context: { localPath, remotePath },
+  };
+
+  try {
+    return await withRetry(
+      () =>
+        sftpService.compareSFTPDirectories(sessionId, localPath, remotePath),
+      { maxRetries: 1 },
+      context,
+    );
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    console.error("Failed to compare directories:", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Sync directories with error handling
+ * @param sessionId - SFTP session ID
+ * @param operation - Sync operation configuration
+ * @throws Enhanced error if sync fails
+ */
+async function syncDirectories(
+  sessionId: string,
+  operation: SyncOperation,
+): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Sync Directories",
+    context: {
+      sessionId,
+      direction: operation.direction,
+      localPath: operation.localPath,
+      remotePath: operation.remotePath,
+    },
+  };
+
+  try {
+    await sftpService.syncSFTPDirectories(sessionId, operation);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    console.error("Failed to sync directories:", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Read file content as text (remote) with error handling
+ * @param sessionId - SFTP session ID
+ * @param path - Remote file path
+ * @returns File content as string
+ * @throws Enhanced error if read fails
+ */
+async function readFile(sessionId: string, path: string): Promise<string> {
+  const context: ErrorContext = {
+    operation: "Read File",
+    context: { path },
+  };
+
+  try {
+    return await sftpService.readSFTPFile(sessionId, path);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    console.error("Failed to read file:", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Write file content as text (remote) with error handling
+ * @param sessionId - SFTP session ID
+ * @param path - Remote file path
+ * @param content - File content to write
+ * @throws Enhanced error if write fails
+ */
+async function writeFile(
+  sessionId: string,
+  path: string,
+  content: string,
+): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Write File",
+    context: { path, contentLength: content.length },
+  };
+
+  try {
+    await sftpService.writeSFTPFile(sessionId, path, content);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    console.error("Failed to write file:", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Pause transfer with error handling
+ * @param transferId - Transfer ID to pause
+ * @throws Enhanced error if pause fails
+ */
+async function pauseTransfer(transferId: string): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Pause Transfer",
+    context: { transferId },
+  };
+
+  try {
+    await sftpService.pauseSFTPTransfer(transferId);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Resume transfer with error handling
+ * @param transferId - Transfer ID to resume
+ * @throws Enhanced error if resume fails
+ */
+async function resumeTransfer(transferId: string): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Resume Transfer",
+    context: { transferId },
+  };
+
+  try {
+    await sftpService.resumeSFTPTransfer(transferId);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Set transfer priority (0-255, higher = higher priority)
+ * @param transferId - Transfer ID
+ * @param priority - Priority value
+ * @throws Enhanced error if operation fails
+ */
+async function setTransferPriority(
+  transferId: string,
+  priority: number,
+): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Set Transfer Priority",
+    context: { transferId, priority },
+  };
+
+  try {
+    await sftpService.setTransferPriority(transferId, priority);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Get all transfers with optional status filter
+ * @param statusFilter - Optional status filter
+ * @returns List of transfers
+ */
+async function getAllTransfers(statusFilter?: string) {
+  const context: ErrorContext = {
+    operation: "Get All Transfers",
+    context: { statusFilter },
+  };
+
+  try {
+    return await sftpService.getAllTransfers(statusFilter);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Reorder transfer queue
+ * @param transferIds - Array of transfer IDs in desired order
+ * @throws Enhanced error if reorder fails
+ */
+async function reorderQueue(transferIds: string[]): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Reorder Queue",
+    context: { transferCount: transferIds.length },
+  };
+
+  try {
+    await sftpService.reorderQueue(transferIds);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Retry failed transfer
+ * @param transferId - Transfer ID to retry
+ * @throws Enhanced error if retry fails
+ */
+async function retryTransfer(transferId: string): Promise<void> {
+  const context: ErrorContext = {
+    operation: "Retry Transfer",
+    context: { transferId },
+  };
+
+  try {
+    await sftpService.retryTransfer(transferId);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    message.error(errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
+/**
+ * Search for text in files
+ * @param sessionId - SFTP session ID
+ * @param path - Path to search in
+ * @param query - Search query
+ * @returns Search results
+ */
+async function search(
+  sessionId: string,
+  path: string,
+  query: string,
+): Promise<SearchResult[]> {
+  const context: ErrorContext = {
+    operation: "Search SFTP",
+    context: { path, query },
+  };
+
+  try {
+    return await sftpService.searchSFTP(sessionId, path, query);
+  } catch (error) {
+    const errorMessage = handleError(error, context);
+    console.error("Failed to search:", errorMessage);
+    throw new Error(errorMessage);
+  }
+}
+
 export const useSFTPStore = defineStore("sftp", () => {
   // State
   const sessions = ref<Map<string, SFTPSession>>(new Map());
@@ -154,45 +522,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       const entries = await readDir(path);
 
       const fileResults = await Promise.allSettled(
-        entries.map(async (entry) => {
-          const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
-          const entryPath =
-            normalizedPath === "/"
-              ? `/${entry.name}`
-              : `${normalizedPath}/${entry.name}`;
-
-          try {
-            const meta = await stat(entryPath);
-
-            let fileType: FileEntry["fileType"] = "file";
-            if (meta.isDirectory) {
-              fileType = "directory";
-            } else if (entry.isSymlink || meta.isSymlink) {
-              fileType = "symlink";
-            }
-
-            let permissions = 0o644;
-            if (meta.mode) {
-              permissions = meta.mode & 0o777;
-            }
-
-            return {
-              name: entry.name,
-              path: entryPath,
-              fileType,
-              size: fileType === "file" ? meta.size || null : null,
-              permissions,
-              modified: new Date(meta.mtime || Date.now()).toISOString(),
-              accessed: meta.atime ? new Date(meta.atime).toISOString() : null,
-              symlinkTarget: null, // Would need readlink to get this
-              uid: null,
-              gid: null,
-            };
-          } catch (error) {
-            console.warn(`Failed to get metadata for ${entryPath}:`, error);
-            return null;
-          }
-        }),
+        entries.map((entry) => processFileEntry(entry, path)),
       );
 
       const files: FileEntry[] = [];
@@ -265,29 +595,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @returns Transfer ID
    * @throws Enhanced error if upload fails
    */
-  async function uploadFile(
-    sessionId: string,
-    localPath: string,
-    remotePath: string,
-  ): Promise<string> {
-    const context: ErrorContext = {
-      operation: "Upload File",
-      context: { localPath, remotePath },
-    };
 
-    try {
-      const transferId = await sftpService.uploadSFTPFile(
-        sessionId,
-        localPath,
-        remotePath,
-      );
-      return transferId;
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Download file with error handling
@@ -297,29 +605,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @returns Transfer ID
    * @throws Enhanced error if download fails
    */
-  async function downloadFile(
-    sessionId: string,
-    remotePath: string,
-    localPath: string,
-  ): Promise<string> {
-    const context: ErrorContext = {
-      operation: "Download File",
-      context: { remotePath, localPath },
-    };
 
-    try {
-      const transferId = await sftpService.downloadSFTPFile(
-        sessionId,
-        remotePath,
-        localPath,
-      );
-      return transferId;
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Cancel transfer with error handling
@@ -350,29 +636,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @returns Array of differences
    * @throws Enhanced error if comparison fails
    */
-  async function compareDirectories(
-    sessionId: string,
-    localPath: string,
-    remotePath: string,
-  ): Promise<DiffEntry[]> {
-    const context: ErrorContext = {
-      operation: "Compare Directories",
-      context: { localPath, remotePath },
-    };
 
-    try {
-      return await withRetry(
-        () =>
-          sftpService.compareSFTPDirectories(sessionId, localPath, remotePath),
-        { maxRetries: 1 },
-        context,
-      );
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      console.error("Failed to compare directories:", errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Sync directories with error handling
@@ -380,28 +644,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @param operation - Sync operation configuration
    * @throws Enhanced error if sync fails
    */
-  async function syncDirectories(
-    sessionId: string,
-    operation: SyncOperation,
-  ): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Sync Directories",
-      context: {
-        sessionId,
-        direction: operation.direction,
-        localPath: operation.localPath,
-        remotePath: operation.remotePath,
-      },
-    };
 
-    try {
-      await sftpService.syncSFTPDirectories(sessionId, operation);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      console.error("Failed to sync directories:", errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Rename file or directory with error handling
@@ -524,20 +767,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @returns File content as string
    * @throws Enhanced error if read fails
    */
-  async function readFile(sessionId: string, path: string): Promise<string> {
-    const context: ErrorContext = {
-      operation: "Read File",
-      context: { path },
-    };
 
-    try {
-      return await sftpService.readSFTPFile(sessionId, path);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      console.error("Failed to read file:", errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Write file content as text (remote) with error handling
@@ -546,24 +776,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @param content - File content to write
    * @throws Enhanced error if write fails
    */
-  async function writeFile(
-    sessionId: string,
-    path: string,
-    content: string,
-  ): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Write File",
-      context: { path, contentLength: content.length },
-    };
 
-    try {
-      await sftpService.writeSFTPFile(sessionId, path, content);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      console.error("Failed to write file:", errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   let unsubscribeTransferRealtime: (() => void) | null = null;
 
@@ -673,40 +886,14 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @param transferId - Transfer ID to pause
    * @throws Enhanced error if pause fails
    */
-  async function pauseTransfer(transferId: string): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Pause Transfer",
-      context: { transferId },
-    };
 
-    try {
-      await sftpService.pauseSFTPTransfer(transferId);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Resume transfer with error handling
    * @param transferId - Transfer ID to resume
    * @throws Enhanced error if resume fails
    */
-  async function resumeTransfer(transferId: string): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Resume Transfer",
-      context: { transferId },
-    };
 
-    try {
-      await sftpService.resumeSFTPTransfer(transferId);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Set transfer priority (0-255, higher = higher priority)
@@ -714,83 +901,28 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @param priority - Priority value
    * @throws Enhanced error if operation fails
    */
-  async function setTransferPriority(
-    transferId: string,
-    priority: number,
-  ): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Set Transfer Priority",
-      context: { transferId, priority },
-    };
 
-    try {
-      await sftpService.setTransferPriority(transferId, priority);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Get all transfers with optional status filter
    * @param statusFilter - Optional status filter
    * @returns List of transfers
    */
-  async function getAllTransfers(statusFilter?: string) {
-    const context: ErrorContext = {
-      operation: "Get All Transfers",
-      context: { statusFilter },
-    };
 
-    try {
-      return await sftpService.getAllTransfers(statusFilter);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Reorder transfer queue
    * @param transferIds - Array of transfer IDs in desired order
    * @throws Enhanced error if reorder fails
    */
-  async function reorderQueue(transferIds: string[]): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Reorder Queue",
-      context: { transferCount: transferIds.length },
-    };
 
-    try {
-      await sftpService.reorderQueue(transferIds);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Retry failed transfer
    * @param transferId - Transfer ID to retry
    * @throws Enhanced error if retry fails
    */
-  async function retryTransfer(transferId: string): Promise<void> {
-    const context: ErrorContext = {
-      operation: "Retry Transfer",
-      context: { transferId },
-    };
 
-    try {
-      await sftpService.retryTransfer(transferId);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      message.error(errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   /**
    * Search for text in files
@@ -799,24 +931,7 @@ export const useSFTPStore = defineStore("sftp", () => {
    * @param query - Search query
    * @returns Search results
    */
-  async function search(
-    sessionId: string,
-    path: string,
-    query: string,
-  ): Promise<SearchResult[]> {
-    const context: ErrorContext = {
-      operation: "Search SFTP",
-      context: { path, query },
-    };
 
-    try {
-      return await sftpService.searchSFTP(sessionId, path, query);
-    } catch (error) {
-      const errorMessage = handleError(error, context);
-      console.error("Failed to search:", errorMessage);
-      throw new Error(errorMessage);
-    }
-  }
 
   return {
     // State
