@@ -39,12 +39,12 @@ jobs:
           node-version: "22"
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@1482605bfc5719782e1267fd0c0cc350fe7646b8
+        uses: dtolnay/rust-toolchain@6d9817901c499d6b02debbb57edb38d33daa680b
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575505cd17f719abb
+        uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5
         with:
           workspaces: "./src-tauri -> target"
           shared-key: ${{ matrix.platform }}-${{ matrix.args }}
@@ -63,7 +63,7 @@ jobs:
         run: npm install --ignore-scripts
 
       - name: Build and release
-        uses: tauri-apps/tauri-action@0b8d3f3ca8c1feb10e87c11bcbbeb7d48e07f0f3
+        uses: tauri-apps/tauri-action@51a9f1156b33df106d827c3a78f8f894946c5faa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
