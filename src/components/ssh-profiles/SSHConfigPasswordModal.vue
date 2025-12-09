@@ -76,7 +76,7 @@ const { overlayStore, closeOverlay, getOverlayProp } = useOverlay();
 const password = ref("");
 const errorMessage = ref("");
 const isConnecting = ref(false);
-const passwordForm = ref<InstanceType<typeof Form>>();
+// const passwordForm = ref<InstanceType<typeof Form>>();
 const passwordInput = ref<InstanceType<typeof Input>>();
 
 const host = getOverlayProp<SSHConfigHost | undefined>(

@@ -128,8 +128,8 @@ const { openOverlay } = useOverlay();
 const activeTab = ref("status");
 const selectedDatabaseId = ref<string>("");
 const isConnecting = ref(false);
-const syncSettingsRef = ref<InstanceType<typeof SyncSettings>>();
-const conflictListRef = ref<InstanceType<typeof ConflictList>>();
+// const syncSettingsRef = ref<InstanceType<typeof SyncSettings>>();
+// const conflictListRef = ref<InstanceType<typeof ConflictList>>();
 
 const tabs = [
   { id: "status", label: "Status & Logs", icon: Activity },

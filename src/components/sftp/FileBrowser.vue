@@ -323,8 +323,8 @@ import {
   ChevronUp,
   ChevronDown,
   Search,
-  FolderRoot,
   ExternalLink,
+  FolderRoot,
 } from "lucide-vue-next";
 import type { FileEntry, FileBrowserDragData } from "../../types/sftp";
 import Button from "../ui/Button.vue";
@@ -358,12 +358,7 @@ const emit = defineEmits<{
   (e: "upload", files: FileList): void;
   (e: "createDirectory"): void;
   (e: "createFile"): void;
-  (
-    e: "drag-files",
-    files: FileEntry[],
-    targetPath: string,
-    isSourceRemote: boolean,
-  ): void;
+  (e: "drag-files", payload: any): void;
   (e: "open-system", file: FileEntry): void;
 }>();
 
@@ -504,7 +499,9 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
       action: "edit",
       icon: Pencil,
     });
+  }
 
+  if (selectedFile.value.fileType === "file") {
     items.push({
       id: "open-system",
       label: "Open with Default App",
@@ -979,6 +976,7 @@ function handleContextMenuClick(item: ContextMenuItem) {
       case "openSystem":
         emit("open-system", selectedFile.value);
         break;
+
       case "download":
         emit("download", [selectedFile.value]);
         break;
@@ -1126,7 +1124,11 @@ function handleFileDrop(event: DragEvent, file: FileEntry) {
       gid: null,
     }));
 
-    emit("drag-files", draggedFileEntries, targetPath, data.isRemote);
+    emit("drag-files", {
+      files: draggedFileEntries,
+      targetPath,
+      isSourceRemote: data.isRemote,
+    });
     return;
   }
 
@@ -1205,7 +1207,11 @@ async function onDrop(event: DragEvent) {
         gid: null,
       }));
 
-      emit("drag-files", draggedFileEntries, targetPath, data.isRemote);
+      emit("drag-files", {
+        files: draggedFileEntries,
+        targetPath,
+        isSourceRemote: data.isRemote,
+      });
       return;
     } catch (error) {
       // Ignore parse errors

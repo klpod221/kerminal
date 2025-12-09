@@ -67,7 +67,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const isExpanded = ref(props.defaultExpanded);
-const contentRef = ref<HTMLElement>();
+// const contentRef = ref<HTMLElement>();
 
 const toggle = () => {
   isExpanded.value = !isExpanded.value;

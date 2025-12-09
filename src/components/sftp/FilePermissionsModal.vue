@@ -166,7 +166,6 @@ import type { FileEntry } from "../../types/sftp";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
 
-const permissionsForm = ref<InstanceType<typeof Form> | null>(null);
 const loading = ref(false);
 const octalPermissions = ref("0644");
 

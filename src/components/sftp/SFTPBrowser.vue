@@ -102,13 +102,13 @@
               @upload="handleLocalUpload"
               @drag-files="handleLocalDragFiles"
               @open="handleLocalOpen"
-              @open-system="handleLocalOpenSystem"
               @edit="handleLocalEdit"
               @rename="handleLocalRename"
               @delete="handleLocalDelete"
               @download="handleLocalDownload"
               @create-directory="handleLocalCreateDirectory"
               @create-file="handleLocalCreateFile"
+              @open-system="handleLocalOpenSystem"
             />
           </div>
         </Pane>
@@ -174,11 +174,11 @@
               @permissions="handleRemotePermissions"
               @drag-files="handleRemoteDragFiles"
               @open="handleRemoteOpen"
-              @open-system="handleRemoteOpenSystem"
               @edit="handleRemoteEdit"
               @rename="handleRemoteRename"
               @create-directory="handleRemoteCreateDirectory"
               @create-file="handleRemoteCreateFile"
+              @open-system="handleRemoteOpenSystem"
             />
           </div>
         </Pane>
@@ -829,11 +829,12 @@ async function generateUniqueRemotePath(
   return newPath;
 }
 
-async function handleLocalDragFiles(
-  files: FileEntry[],
-  targetPath: string,
-  isSourceRemote: boolean,
-) {
+async function handleLocalDragFiles(payload: {
+  files: FileEntry[];
+  targetPath: string;
+  isSourceRemote: boolean;
+}) {
+  const { files, targetPath, isSourceRemote } = payload;
   if (!sftpStore.activeSessionId && isSourceRemote) {
     return;
   }
@@ -921,11 +922,12 @@ async function handleLocalDragFiles(
   }
 }
 
-async function handleRemoteDragFiles(
-  files: FileEntry[],
-  targetPath: string,
-  isSourceRemote: boolean,
-) {
+async function handleRemoteDragFiles(payload: {
+  files: FileEntry[];
+  targetPath: string;
+  isSourceRemote: boolean;
+}) {
+  const { files, targetPath, isSourceRemote } = payload;
   if (!sftpStore.activeSessionId) {
     return;
   }
@@ -1421,9 +1423,17 @@ function handlePaneDrop(pane: "local" | "remote", event: DragEvent) {
         }));
 
         if (pane === "local") {
-          handleLocalDragFiles(draggedFileEntries, targetPath, isSourceRemote);
+          handleLocalDragFiles({
+            files: draggedFileEntries,
+            targetPath,
+            isSourceRemote,
+          });
         } else {
-          handleRemoteDragFiles(draggedFileEntries, targetPath, isSourceRemote);
+          handleRemoteDragFiles({
+            files: draggedFileEntries,
+            targetPath,
+            isSourceRemote,
+          });
         }
       }
     } catch (error) {}

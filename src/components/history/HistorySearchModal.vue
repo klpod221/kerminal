@@ -169,6 +169,7 @@ const isSearching = ref(false); // Track if we're currently searching (for debou
 // Lazy loading
 const {
   visibleItems,
+  // @ts-ignore
   sentinelRef,
   hasMore,
   isLoadingMore,
