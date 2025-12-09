@@ -313,22 +313,25 @@ onMounted(async () => {
     () => {},
   );
 
-  window.addEventListener("sftp-rename", handleRenameSubmit);
-  window.addEventListener("sftp-delete", handleDeleteSubmit);
-  window.addEventListener("sftp-permissions", handlePermissionsSubmit);
-  window.addEventListener("sftp-create-directory", handleCreateDirectorySubmit);
-  window.addEventListener("sftp-create-file", handleCreateFileSubmit);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("sftp-rename", handleRenameSubmit);
-  window.removeEventListener("sftp-delete", handleDeleteSubmit);
-  window.removeEventListener("sftp-permissions", handlePermissionsSubmit);
-  window.removeEventListener(
+  globalThis.addEventListener("sftp-rename", handleRenameSubmit);
+  globalThis.addEventListener("sftp-delete", handleDeleteSubmit);
+  globalThis.addEventListener("sftp-permissions", handlePermissionsSubmit);
+  globalThis.addEventListener(
     "sftp-create-directory",
     handleCreateDirectorySubmit,
   );
-  window.removeEventListener("sftp-create-file", handleCreateFileSubmit);
+  globalThis.addEventListener("sftp-create-file", handleCreateFileSubmit);
+});
+
+onUnmounted(() => {
+  globalThis.removeEventListener("sftp-rename", handleRenameSubmit);
+  globalThis.removeEventListener("sftp-delete", handleDeleteSubmit);
+  globalThis.removeEventListener("sftp-permissions", handlePermissionsSubmit);
+  globalThis.removeEventListener(
+    "sftp-create-directory",
+    handleCreateDirectorySubmit,
+  );
+  globalThis.removeEventListener("sftp-create-file", handleCreateFileSubmit);
 });
 
 async function handleRenameSubmit(event: Event) {
@@ -829,6 +832,108 @@ async function generateUniqueRemotePath(
   return newPath;
 }
 
+async function processSingleRemoteToLocal(file: FileEntry, localPath: string) {
+  if (file.fileType === "directory") {
+    try {
+      await downloadDirectoryRecursive(
+        sftpStore.activeSessionId!,
+        file.path,
+        localPath,
+        file.name,
+      );
+      message.success(`Downloading directory ${file.name}...`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      message.error(
+        `Failed to download directory ${file.name}: ${errorMessage}`,
+      );
+    }
+  } else {
+    let localFilePath =
+      localPath === "/"
+        ? await join("/", file.name)
+        : await join(localPath, file.name);
+
+    try {
+      await stat(localFilePath);
+      localFilePath = await generateUniqueLocalPath(localPath, file.name);
+      message.info(
+        `${file.name} already exists, using ${localFilePath.split("/").pop()}`,
+      );
+    } catch {
+      // File doesn't exist, proceed
+    }
+
+    await sftpStore.downloadFile(
+      sftpStore.activeSessionId!,
+      file.path,
+      localFilePath,
+    );
+    message.success(`Downloading ${file.name}...`);
+  }
+}
+
+async function processRemoteToLocalDrop(
+  files: FileEntry[],
+  targetPath: string,
+) {
+  const localPath = targetPath || sftpStore.browserState.localPath || "/";
+  for (const file of files) {
+    await processSingleRemoteToLocal(file, localPath);
+  }
+  await sftpStore.listLocalDirectory(localPath);
+}
+
+async function processSingleLocalMove(
+  file: FileEntry,
+  destinationPath: string,
+) {
+  try {
+    const currentDir = await dirname(file.path);
+    if (currentDir === destinationPath) {
+      message.info(`${file.name} is already in the target directory`);
+      return;
+    }
+
+    let newPath =
+      destinationPath === "/"
+        ? await join("/", file.name)
+        : await join(destinationPath, file.name);
+
+    try {
+      await stat(newPath);
+      newPath = await generateUniqueLocalPath(destinationPath, file.name);
+      message.info(
+        `${file.name} already exists, using ${newPath.split("/").pop()}`,
+      );
+    } catch {
+      // File doesn't exist, proceed
+    }
+
+    await rename(file.path, newPath);
+    message.success(`Moved ${file.name} to ${destinationPath}`);
+
+    // Refresh is done in bulk or by caller?
+    // In original code, it refreshed both dirs for EACH file.
+    // That's inefficient but ensures consistency. For complexity, we keep it here or move it out.
+    // To match original behavior strictly but safely, let's keep it but ideally we should batch refresh.
+    // For now, I'll keep individual refresh to be safe, but note it's slow.
+    await sftpStore.listLocalDirectory(currentDir);
+    await sftpStore.listLocalDirectory(destinationPath);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    message.error(`Failed to move ${file.name}: ${errorMessage}`);
+  }
+}
+
+async function processLocalMoveDrop(files: FileEntry[], targetPath: string) {
+  const destinationPath = targetPath || sftpStore.browserState.localPath || "/";
+  for (const file of files) {
+    await processSingleLocalMove(file, destinationPath);
+  }
+}
+
 async function handleLocalDragFiles(payload: {
   files: FileEntry[];
   targetPath: string;
@@ -840,85 +945,116 @@ async function handleLocalDragFiles(payload: {
   }
 
   if (isSourceRemote) {
-    const localPath = targetPath || sftpStore.browserState.localPath || "/";
-
-    for (const file of files) {
-      if (file.fileType === "directory") {
-        try {
-          await downloadDirectoryRecursive(
-            sftpStore.activeSessionId!,
-            file.path,
-            localPath,
-            file.name,
-          );
-          message.success(`Downloading directory ${file.name}...`);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          message.error(
-            `Failed to download directory ${file.name}: ${errorMessage}`,
-          );
-        }
-      } else {
-        let localFilePath =
-          localPath === "/"
-            ? await join("/", file.name)
-            : await join(localPath, file.name);
-
-        try {
-          await stat(localFilePath);
-          localFilePath = await generateUniqueLocalPath(localPath, file.name);
-          message.info(
-            `${file.name} already exists, using ${localFilePath.split("/").pop()}`,
-          );
-        } catch {}
-
-        await sftpStore.downloadFile(
-          sftpStore.activeSessionId!,
-          file.path,
-          localFilePath,
-        );
-        message.success(`Downloading ${file.name}...`);
-      }
-    }
-
-    await sftpStore.listLocalDirectory(localPath);
+    await processRemoteToLocalDrop(files, targetPath);
   } else {
-    const destinationPath =
-      targetPath || sftpStore.browserState.localPath || "/";
+    await processLocalMoveDrop(files, targetPath);
+  }
+}
 
-    for (const file of files) {
-      try {
-        const currentDir = await dirname(file.path);
-        if (currentDir === destinationPath) {
-          message.info(`${file.name} is already in the target directory`);
-          continue;
-        }
-
-        let newPath =
-          destinationPath === "/"
-            ? await join("/", file.name)
-            : await join(destinationPath, file.name);
-
-        try {
-          await stat(newPath);
-          newPath = await generateUniqueLocalPath(destinationPath, file.name);
-          message.info(
-            `${file.name} already exists, using ${newPath.split("/").pop()}`,
-          );
-        } catch {}
-
-        await rename(file.path, newPath);
-        message.success(`Moved ${file.name} to ${destinationPath}`);
-
-        await sftpStore.listLocalDirectory(currentDir);
-        await sftpStore.listLocalDirectory(destinationPath);
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        message.error(`Failed to move ${file.name}: ${errorMessage}`);
-      }
+async function processSingleLocalToRemote(file: FileEntry, remotePath: string) {
+  if (file.fileType === "directory") {
+    try {
+      await uploadDirectoryRecursive(
+        sftpStore.activeSessionId!,
+        file.path,
+        remotePath,
+        file.name,
+      );
+      message.success(`Uploading directory ${file.name}...`);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      message.error(`Failed to upload directory ${file.name}: ${errorMessage}`);
     }
+  } else {
+    const normalizedRemotePath = remotePath.endsWith("/")
+      ? remotePath.slice(0, -1)
+      : remotePath;
+    let remoteFilePath = `${normalizedRemotePath}/${file.name}`;
+
+    try {
+      await sftpService.statSFTP(sftpStore.activeSessionId!, remoteFilePath);
+      remoteFilePath = await generateUniqueRemotePath(
+        sftpStore.activeSessionId!,
+        normalizedRemotePath,
+        file.name,
+      );
+      message.info(
+        `${file.name} already exists, using ${remoteFilePath.split("/").pop()}`,
+      );
+    } catch {
+      // File doesn't exist, proceed
+    }
+
+    await sftpStore.uploadFile(
+      sftpStore.activeSessionId!,
+      file.path,
+      remoteFilePath,
+    );
+    message.success(`Uploading ${file.name}...`);
+  }
+}
+
+async function processLocalToRemoteDrop(
+  files: FileEntry[],
+  targetPath: string,
+) {
+  const remotePath = targetPath || sftpStore.browserState.remotePath || "/";
+  for (const file of files) {
+    await processSingleLocalToRemote(file, remotePath);
+  }
+}
+
+async function processSingleRemoteMove(
+  file: FileEntry,
+  destinationPath: string,
+) {
+  try {
+    const currentDir =
+      file.path.substring(0, file.path.lastIndexOf("/")) || "/";
+    if (currentDir === destinationPath) {
+      message.info(`${file.name} is already in the target directory`);
+      return;
+    }
+
+    let newPath =
+      destinationPath === "/"
+        ? `/${file.name}`
+        : `${destinationPath}/${file.name}`;
+
+    try {
+      await sftpService.statSFTP(sftpStore.activeSessionId!, newPath);
+      newPath = await generateUniqueRemotePath(
+        sftpStore.activeSessionId!,
+        destinationPath,
+        file.name,
+      );
+      message.info(
+        `${file.name} already exists, using ${newPath.split("/").pop()}`,
+      );
+    } catch {
+      // File doesn't exist, proceed
+    }
+
+    await sftpStore.renameFile(sftpStore.activeSessionId!, file.path, newPath);
+    message.success(`Moved ${file.name} to ${destinationPath}`);
+
+    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId!, currentDir);
+    await sftpStore.listRemoteDirectory(
+      sftpStore.activeSessionId!,
+      destinationPath,
+    );
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    message.error(`Failed to move ${file.name}: ${errorMessage}`);
+  }
+}
+
+async function processRemoteMoveDrop(files: FileEntry[], targetPath: string) {
+  const destinationPath =
+    targetPath || sftpStore.browserState.remotePath || "/";
+  for (const file of files) {
+    await processSingleRemoteMove(file, destinationPath);
   }
 }
 
@@ -932,164 +1068,78 @@ async function handleRemoteDragFiles(payload: {
     return;
   }
 
-  if (!isSourceRemote) {
-    const remotePath = targetPath || sftpStore.browserState.remotePath || "/";
-
-    for (const file of files) {
-      if (file.fileType === "directory") {
-        try {
-          await uploadDirectoryRecursive(
-            sftpStore.activeSessionId,
-            file.path,
-            remotePath,
-            file.name,
-          );
-          message.success(`Uploading directory ${file.name}...`);
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          message.error(
-            `Failed to upload directory ${file.name}: ${errorMessage}`,
-          );
-        }
-      } else {
-        const normalizedRemotePath = remotePath.endsWith("/")
-          ? remotePath.slice(0, -1)
-          : remotePath;
-        let remoteFilePath = `${normalizedRemotePath}/${file.name}`;
-
-        try {
-          await sftpService.statSFTP(sftpStore.activeSessionId, remoteFilePath);
-          remoteFilePath = await generateUniqueRemotePath(
-            sftpStore.activeSessionId,
-            normalizedRemotePath,
-            file.name,
-          );
-          message.info(
-            `${file.name} already exists, using ${remoteFilePath.split("/").pop()}`,
-          );
-        } catch {}
-
-        await sftpStore.uploadFile(
-          sftpStore.activeSessionId,
-          file.path,
-          remoteFilePath,
-        );
-        message.success(`Uploading ${file.name}...`);
-      }
-    }
+  if (isSourceRemote) {
+    await processRemoteMoveDrop(files, targetPath);
   } else {
-    const destinationPath =
-      targetPath || sftpStore.browserState.remotePath || "/";
+    await processLocalToRemoteDrop(files, targetPath);
+  }
+}
 
+async function handleSingleFileDownload(file: FileEntry) {
+  const localPathResult = await save({
+    defaultPath: file.name,
+    filters: [
+      {
+        name: "All Files",
+        extensions: ["*"],
+      },
+    ],
+  });
+
+  if (localPathResult) {
+    await sftpStore.downloadFile(
+      sftpStore.activeSessionId!,
+      file.path,
+      localPathResult,
+    );
+    const downloadDir = await dirname(localPathResult);
+    const currentLocalPath = sftpStore.browserState.localPath || "/";
+    if (downloadDir === currentLocalPath) {
+      await sftpStore.listLocalDirectory(currentLocalPath);
+    }
+    message.success("Download started");
+  }
+}
+
+async function handleMultiFileDownload(files: FileEntry[]) {
+  const selectedDir = await open({
+    directory: true,
+    multiple: false,
+  });
+
+  let targetDir: string | null = null;
+  if (selectedDir && typeof selectedDir === "string") {
+    targetDir = selectedDir;
+  } else if (Array.isArray(selectedDir) && selectedDir.length > 0) {
+    targetDir = selectedDir[0];
+  }
+
+  if (targetDir) {
     for (const file of files) {
-      try {
-        const currentDir =
-          file.path.substring(0, file.path.lastIndexOf("/")) || "/";
-        if (currentDir === destinationPath) {
-          message.info(`${file.name} is already in the target directory`);
-          continue;
-        }
-
-        let newPath =
-          destinationPath === "/"
-            ? `/${file.name}`
-            : `${destinationPath}/${file.name}`;
-
-        try {
-          await sftpService.statSFTP(sftpStore.activeSessionId, newPath);
-          newPath = await generateUniqueRemotePath(
-            sftpStore.activeSessionId,
-            destinationPath,
-            file.name,
-          );
-          message.info(
-            `${file.name} already exists, using ${newPath.split("/").pop()}`,
-          );
-        } catch {}
-
-        await sftpStore.renameFile(
-          sftpStore.activeSessionId,
+      if (file.fileType === "file") {
+        const localFilePath = await join(targetDir, file.name);
+        await sftpStore.downloadFile(
+          sftpStore.activeSessionId!,
           file.path,
-          newPath,
+          localFilePath,
         );
-        message.success(`Moved ${file.name} to ${destinationPath}`);
-
-        await sftpStore.listRemoteDirectory(
-          sftpStore.activeSessionId,
-          currentDir,
-        );
-        await sftpStore.listRemoteDirectory(
-          sftpStore.activeSessionId,
-          destinationPath,
-        );
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
-        message.error(`Failed to move ${file.name}: ${errorMessage}`);
       }
     }
+
+    await sftpStore.listLocalDirectory(targetDir);
+    message.success(
+      `Downloading ${files.length} file${files.length > 1 ? "s" : ""}...`,
+    );
   }
 }
 
 async function handleRemoteDownload(files: FileEntry[]) {
   if (!sftpStore.activeSessionId || files.length === 0) return;
 
-  let targetDir: string | null = null;
-
   if (files.length === 1) {
-    const localPathResult = await save({
-      defaultPath: files[0].name,
-      filters: [
-        {
-          name: "All Files",
-          extensions: ["*"],
-        },
-      ],
-    });
-
-    if (localPathResult) {
-      await sftpStore.downloadFile(
-        sftpStore.activeSessionId,
-        files[0].path,
-        localPathResult,
-      );
-      const downloadDir = await dirname(localPathResult);
-      const currentLocalPath = sftpStore.browserState.localPath || "/";
-      if (downloadDir === currentLocalPath) {
-        await sftpStore.listLocalDirectory(currentLocalPath);
-      }
-      message.success("Download started");
-    }
+    await handleSingleFileDownload(files[0]);
   } else {
-    const selectedDir = await open({
-      directory: true,
-      multiple: false,
-    });
-
-    if (selectedDir && typeof selectedDir === "string") {
-      targetDir = selectedDir;
-    } else if (Array.isArray(selectedDir) && selectedDir.length > 0) {
-      targetDir = selectedDir[0];
-    }
-
-    if (targetDir) {
-      for (const file of files) {
-        if (file.fileType === "file") {
-          const localFilePath = await join(targetDir, file.name);
-          await sftpStore.downloadFile(
-            sftpStore.activeSessionId,
-            file.path,
-            localFilePath,
-          );
-        }
-      }
-
-      await sftpStore.listLocalDirectory(targetDir);
-      message.success(
-        `Downloading ${files.length} file${files.length > 1 ? "s" : ""}...`,
-      );
-    }
+    await handleMultiFileDownload(files);
   }
 }
 
@@ -1133,7 +1183,9 @@ async function handleRemoteOpenSystem(file: FileEntry) {
 
   try {
     const tempDirPath = await tempDir();
-    const uniqueDir = `kerminal_sftp_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    const array = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(array);
+    const uniqueDir = `kerminal_sftp_${Date.now()}_${array[0].toString(36)}`;
     const uniqueDirPath = await join(tempDirPath, uniqueDir);
     await mkdir(uniqueDirPath, { recursive: true });
 
@@ -1436,7 +1488,9 @@ function handlePaneDrop(pane: "local" | "remote", event: DragEvent) {
           });
         }
       }
-    } catch (error) {}
+    } catch (error) {
+      console.debug("Failed to process drop data:", error);
+    }
   }
 }
 
@@ -1526,7 +1580,9 @@ async function uploadDirectoryRecursive(
 
   try {
     await sftpStore.createDirectory(sessionId, remoteDirPath);
-  } catch (error) {}
+  } catch (error) {
+    console.debug("Create directory failed (may already exist):", error);
+  }
 
   const files = await collectLocalDirectoryFiles(localDirPath, localDirPath);
 
@@ -1543,7 +1599,12 @@ async function uploadDirectoryRecursive(
 
     try {
       await sftpStore.createDirectory(sessionId, remoteParentDir);
-    } catch (error) {}
+    } catch (error) {
+      console.debug(
+        "Create parent directory failed (may already exist):",
+        error,
+      );
+    }
 
     await sftpStore.uploadFile(sessionId, file.path, remoteFilePath);
   }
@@ -1561,7 +1622,9 @@ async function downloadDirectoryRecursive(
   const localDirPath = await join(localBasePath, dirName);
   try {
     await mkdir(localDirPath, { recursive: true });
-  } catch (error) {}
+  } catch (error) {
+    console.debug("Make local directory failed (may already exist):", error);
+  }
 
   const files = await collectRemoteDirectoryFiles(
     sessionId,
@@ -1580,7 +1643,12 @@ async function downloadDirectoryRecursive(
 
     try {
       await mkdir(localParentDir, { recursive: true });
-    } catch (error) {}
+    } catch (error) {
+      console.debug(
+        "Make local parent directory failed (may already exist):",
+        error,
+      );
+    }
 
     await sftpStore.downloadFile(sessionId, file.path, localFilePath);
   }

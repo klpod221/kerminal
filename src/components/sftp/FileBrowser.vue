@@ -117,8 +117,6 @@
       @dragenter.prevent="onDragEnter"
       @dragleave="onDragLeave"
       @contextmenu.prevent="showEmptyContextMenu"
-      @keydown="handleKeyDown"
-      tabindex="0"
     >
       <EmptyState
         v-if="filteredFiles.length === 0 && searchQuery && !loading"
@@ -190,100 +188,112 @@
         </div>
 
         <!-- File list with scroll -->
-        <div class="flex-1 overflow-auto">
-          <div class="divide-y divide-gray-800/50">
+        <div
+          class="flex-1 overflow-y-auto outline-none"
+          tabindex="0"
+          role="tree"
+          aria-label="File List"
+          :aria-activedescendant="
+            focusedIndex >= 0 ? `file-item-${focusedIndex}` : undefined
+          "
+          @keydown="handleKeyDown"
+        >
+          <div
+            v-for="(file, index) in filteredFiles"
+            v-bind="{
+              role: 'treeitem',
+              'aria-selected': isSelected(file.path),
+            }"
+            :key="file.path"
+            :id="`file-item-${index}`"
+            :ref="(el) => setFileItemRef(index, el as HTMLElement)"
+            data-file-item
+            draggable="true"
+            class="flex items-center px-4 py-2 hover:bg-gray-800/50 cursor-pointer group transition-colors"
+            :class="{
+              'bg-blue-500/10 border-l-2 border-blue-500': isSelected(
+                file.path,
+              ),
+              'bg-gray-800/30': focusedIndex === index,
+              'opacity-50':
+                isDragging && draggedFiles.some((f) => f.path === file.path),
+              'bg-blue-500/20 border-l-2 border-blue-400':
+                dragOverIndex === index && isDragOver,
+            }"
+            @dragstart="handleDragStart($event, file)"
+            @dragend="handleDragEnd"
+            @dragover.prevent="handleDragOver($event, file, index)"
+            @dragleave="handleDragLeave(index)"
+            @drop.stop.prevent="handleFileDrop($event, file)"
+            @click="handleFileClick($event, file, index)"
+            @dblclick="handleFileDoubleClick(file)"
+            @contextmenu.prevent="showContextMenu($event, file)"
+          >
+            <!-- Selection checkbox -->
             <div
-              v-for="(file, index) in filteredFiles"
-              :key="file.path"
-              :ref="(el) => setFileItemRef(index, el as HTMLElement)"
-              data-file-item
-              draggable="true"
-              class="flex items-center px-4 py-2 hover:bg-gray-800/50 cursor-pointer group transition-colors"
-              :class="{
-                'bg-blue-500/10 border-l-2 border-blue-500': isSelected(
-                  file.path,
-                ),
-                'bg-gray-800/30': focusedIndex === index,
-                'opacity-50':
-                  isDragging && draggedFiles.some((f) => f.path === file.path),
-                'bg-blue-500/20 border-l-2 border-blue-400':
-                  dragOverIndex === index && isDragOver,
-              }"
-              @dragstart="handleDragStart($event, file)"
-              @dragend="handleDragEnd"
-              @dragover.prevent="handleDragOver($event, file, index)"
-              @dragleave="handleDragLeave(index)"
-              @drop.stop.prevent="handleFileDrop($event, file)"
-              @click="handleFileClick($event, file, index)"
-              @dblclick="handleFileDoubleClick(file)"
-              @contextmenu.prevent="showContextMenu($event, file)"
+              class="w-8 shrink-0 flex items-center justify-center"
+              @click.stop="toggleSelection(file.path)"
             >
-              <!-- Selection checkbox -->
-              <div
-                class="w-8 shrink-0 flex items-center justify-center"
+              <input
+                type="checkbox"
+                :checked="isSelected(file.path)"
                 @click.stop="toggleSelection(file.path)"
-              >
-                <input
-                  type="checkbox"
-                  :checked="isSelected(file.path)"
-                  @click.stop="toggleSelection(file.path)"
-                  class="cursor-pointer w-4 h-4"
+                class="cursor-pointer w-4 h-4"
+              />
+            </div>
+
+            <!-- Icon + Name -->
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <div class="shrink-0">
+                <Folder
+                  v-if="file.fileType === 'directory'"
+                  :size="18"
+                  class="text-blue-400"
                 />
+                <File
+                  v-else-if="file.fileType === 'file'"
+                  :size="18"
+                  class="text-gray-400"
+                />
+                <Link
+                  v-else-if="file.fileType === 'symlink'"
+                  :size="18"
+                  class="text-yellow-400"
+                />
+                <FileQuestion v-else :size="18" class="text-gray-500" />
               </div>
 
-              <!-- Icon + Name -->
-              <div class="flex items-center gap-3 flex-1 min-w-0">
-                <div class="shrink-0">
-                  <Folder
-                    v-if="file.fileType === 'directory'"
-                    :size="18"
-                    class="text-blue-400"
-                  />
-                  <File
-                    v-else-if="file.fileType === 'file'"
-                    :size="18"
-                    class="text-gray-400"
-                  />
-                  <Link
-                    v-else-if="file.fileType === 'symlink'"
-                    :size="18"
-                    class="text-yellow-400"
-                  />
-                  <FileQuestion v-else :size="18" class="text-gray-500" />
-                </div>
-
-                <div class="flex-1 min-w-0">
-                  <div
-                    class="text-sm text-gray-200 truncate flex items-center gap-2"
+              <div class="flex-1 min-w-0">
+                <div
+                  class="text-sm text-gray-200 truncate flex items-center gap-2"
+                >
+                  <span>{{ file.name }}</span>
+                  <span
+                    v-if="file.fileType === 'symlink' && file.symlinkTarget"
+                    class="text-gray-500 text-xs"
+                    title="Symlink to: {{ file.symlinkTarget }}"
                   >
-                    <span>{{ file.name }}</span>
-                    <span
-                      v-if="file.fileType === 'symlink' && file.symlinkTarget"
-                      class="text-gray-500 text-xs"
-                      title="Symlink to: {{ file.symlinkTarget }}"
-                    >
-                      → {{ file.symlinkTarget }}
-                    </span>
-                  </div>
+                    → {{ file.symlinkTarget }}
+                  </span>
                 </div>
               </div>
+            </div>
 
-              <!-- Size -->
-              <div class="w-24 shrink-0 text-sm text-gray-400 text-right px-2">
-                <span v-if="file.fileType === 'file' && file.size !== null">
-                  {{ formatBytes(file.size) }}
-                </span>
-                <span v-else-if="file.fileType === 'directory'">—</span>
-                <span v-else>—</span>
-              </div>
+            <!-- Size -->
+            <div class="w-24 shrink-0 text-sm text-gray-400 text-right px-2">
+              <span v-if="file.fileType === 'file' && file.size !== null">
+                {{ formatBytes(file.size) }}
+              </span>
+              <span v-else-if="file.fileType === 'directory'">—</span>
+              <span v-else>—</span>
+            </div>
 
-              <!-- Modified -->
-              <div class="w-32 shrink-0 text-sm text-gray-400 text-right px-2">
-                <span v-if="file.modified">
-                  {{ formatDate(file.modified) }}
-                </span>
-                <span v-else>—</span>
-              </div>
+            <!-- Modified -->
+            <div class="w-32 shrink-0 text-sm text-gray-400 text-right px-2">
+              <span v-if="file.modified">
+                {{ formatDate(file.modified) }}
+              </span>
+              <span v-else>—</span>
             </div>
           </div>
         </div>
@@ -432,13 +442,13 @@ const suggestions = computed(() => {
   const input = pathInput.value.trim();
   if (!input) return [];
 
-  const parts = input.split("/").filter((p) => p);
-  const parentPath =
-    parts.length === 0
-      ? "/"
-      : input.startsWith("/")
-        ? `/${parts.slice(0, -1).join("/")}`
-        : parts.slice(0, -1).join("/");
+  const parts = input.split("/").filter(Boolean);
+
+  let parentPath = "/";
+  if (parts.length > 0) {
+    const joined = parts.slice(0, -1).join("/");
+    parentPath = input.startsWith("/") ? `/${joined}` : joined;
+  }
 
   const directoryNames = props.files
     .filter((f) => f.fileType === "directory")
@@ -490,36 +500,32 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
       action: "open",
       icon: selectedFile.value.fileType === "directory" ? FolderOpen : File,
     },
-  ];
-
-  if (selectedFile.value.fileType === "file") {
-    items.push({
-      id: "edit",
-      label: "Edit",
-      action: "edit",
-      icon: Pencil,
-    });
-  }
-
-  if (selectedFile.value.fileType === "file") {
-    items.push({
-      id: "open-system",
-      label: "Open with Default App",
-      action: "openSystem",
-      icon: ExternalLink,
-    });
-  }
-
-  if (props.isRemote && selectedFile.value.fileType === "file") {
-    items.push({
-      id: "download",
-      label: "Download",
-      action: "download",
-      icon: Download,
-    });
-  }
-
-  items.push(
+    ...(selectedFile.value.fileType === "file"
+      ? [
+          {
+            id: "edit",
+            label: "Edit",
+            action: "edit",
+            icon: Pencil,
+          },
+          {
+            id: "open-system",
+            label: "Open with Default App",
+            action: "openSystem",
+            icon: ExternalLink,
+          },
+        ]
+      : []),
+    ...(props.isRemote && selectedFile.value.fileType === "file"
+      ? [
+          {
+            id: "download",
+            label: "Download",
+            action: "download",
+            icon: Download,
+          },
+        ]
+      : []),
     {
       type: "divider",
       id: "divider-1",
@@ -540,9 +546,6 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
       type: "divider",
       id: "divider-2",
     },
-  );
-
-  items.push(
     {
       id: "rename",
       label: "Rename",
@@ -556,16 +559,17 @@ const contextMenuItems = computed<ContextMenuItem[]>(() => {
       danger: true,
       icon: Trash2,
     },
-  );
-
-  if (props.isRemote) {
-    items.push({
-      id: "permissions",
-      label: "Permissions",
-      action: "permissions",
-      icon: Shield,
-    });
-  }
+    ...(props.isRemote
+      ? [
+          {
+            id: "permissions",
+            label: "Permissions",
+            action: "permissions",
+            icon: Shield,
+          },
+        ]
+      : []),
+  ];
 
   return items;
 });
@@ -592,16 +596,18 @@ const sortedFiles = computed(() => {
       case "name":
         comparison = a.name.localeCompare(b.name);
         break;
-      case "size":
+      case "size": {
         const sizeA = a.size ?? 0;
         const sizeB = b.size ?? 0;
         comparison = sizeA - sizeB;
         break;
-      case "modified":
+      }
+      case "modified": {
         const dateA = a.modified ? new Date(a.modified).getTime() : 0;
         const dateB = b.modified ? new Date(b.modified).getTime() : 0;
         comparison = dateA - dateB;
         break;
+      }
     }
 
     return sortDirection.value === "asc" ? comparison : -comparison;
@@ -622,6 +628,7 @@ const filteredFiles = computed(() => {
     }
   } catch (error) {
     // Invalid regex, fall back to plain text search
+    console.debug("Invalid regex:", error);
     regex = null;
   }
 
@@ -739,7 +746,7 @@ function goUp() {
   if (!canGoUp.value) return;
 
   const isAbsolute = props.currentPath.startsWith("/");
-  const parts = props.currentPath.split("/").filter((p) => p);
+  const parts = props.currentPath.split("/").filter(Boolean);
 
   if (parts.length === 0) {
     emit("navigate", "/");
@@ -747,12 +754,14 @@ function goUp() {
   }
 
   const parentParts = parts.slice(0, -1);
-  const parentPath =
-    parentParts.length === 0
-      ? "/"
-      : isAbsolute
-        ? `/${parentParts.join("/")}`
-        : parentParts.join("/");
+  let parentPath = "/";
+  if (parentParts.length > 0) {
+    if (isAbsolute) {
+      parentPath = `/${parentParts.join("/")}`;
+    } else {
+      parentPath = parentParts.join("/");
+    }
+  }
 
   emit("navigate", parentPath);
 }
@@ -810,7 +819,7 @@ function handleKeyDown(event: KeyboardEvent) {
   if (event.key === "ArrowDown" || event.key === "ArrowUp") {
     event.preventDefault();
     const direction = event.key === "ArrowDown" ? 1 : -1;
-    const currentIndex = focusedIndex.value < 0 ? 0 : focusedIndex.value;
+    const currentIndex = Math.max(0, focusedIndex.value);
     const newIndex = Math.max(
       0,
       Math.min(filteredFiles.value.length - 1, currentIndex + direction),
@@ -819,7 +828,7 @@ function handleKeyDown(event: KeyboardEvent) {
     lastFocusedIndex.value = newIndex;
 
     nextTick(() => {
-      const element = fileItemRefs.value[newIndex];
+      const element = fileItemRefs.value[focusedIndex.value]; // Use focusedIndex.value here
       if (element) {
         element.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
@@ -847,7 +856,6 @@ function handleKeyDown(event: KeyboardEvent) {
         emit("select", file.path);
       }
     });
-    return;
   }
 }
 
@@ -918,18 +926,70 @@ function showEmptyContextMenu(event: MouseEvent) {
   }
 }
 
+function handleEmptyContextMenuAction(action: string) {
+  switch (action) {
+    case "createFile":
+      emit("createFile");
+      break;
+    case "createDirectory":
+      emit("createDirectory");
+      break;
+  }
+}
+
+function handleMultiFileContextMenuAction(action: string, files: FileEntry[]) {
+  switch (action) {
+    case "download":
+      emit("download", files);
+      break;
+    case "delete":
+      emit("delete", files);
+      break;
+    case "permissions":
+      emit("permissions", files);
+      break;
+  }
+}
+
+function handleSingleFileContextMenuAction(action: string) {
+  if (!selectedFile.value) return;
+  switch (action) {
+    case "open":
+      emit("open", selectedFile.value);
+      break;
+    case "edit":
+      emit("edit", selectedFile.value);
+      break;
+    case "openSystem":
+      emit("open-system", selectedFile.value);
+      break;
+
+    case "download":
+      emit("download", [selectedFile.value]);
+      break;
+    case "rename":
+      emit("rename", selectedFile.value);
+      break;
+    case "delete":
+      emit("delete", [selectedFile.value]);
+      break;
+    case "permissions":
+      emit("permissions", [selectedFile.value]);
+      break;
+    case "createFile":
+      emit("createFile");
+      break;
+    case "createDirectory":
+      emit("createDirectory");
+      break;
+  }
+}
+
 function handleContextMenuClick(item: ContextMenuItem) {
   const action = item.action || item.id;
 
   if (isEmptyContextMenu.value) {
-    switch (action) {
-      case "createFile":
-        emit("createFile");
-        break;
-      case "createDirectory":
-        emit("createDirectory");
-        break;
-    }
+    handleEmptyContextMenuAction(action);
     isEmptyContextMenu.value = false;
     return;
   }
@@ -944,58 +1004,15 @@ function handleContextMenuClick(item: ContextMenuItem) {
     props.selectedFiles.size > 1;
 
   if (shouldProcessAll) {
-    // Process all selected files for multi-file actions
     const filesToProcess: FileEntry[] = [];
     for (const file of sortedFiles.value) {
       if (props.selectedFiles.has(file.path)) {
         filesToProcess.push(file);
       }
     }
-
-    // Emit all files at once for multi-file actions
-    switch (action) {
-      case "download":
-        emit("download", filesToProcess);
-        break;
-      case "delete":
-        emit("delete", filesToProcess);
-        break;
-      case "permissions":
-        emit("permissions", filesToProcess);
-        break;
-    }
+    handleMultiFileContextMenuAction(action, filesToProcess);
   } else {
-    // Process only the clicked file
-    switch (action) {
-      case "open":
-        emit("open", selectedFile.value);
-        break;
-      case "edit":
-        emit("edit", selectedFile.value);
-        break;
-      case "openSystem":
-        emit("open-system", selectedFile.value);
-        break;
-
-      case "download":
-        emit("download", [selectedFile.value]);
-        break;
-      case "rename":
-        emit("rename", selectedFile.value);
-        break;
-      case "delete":
-        emit("delete", [selectedFile.value]);
-        break;
-      case "permissions":
-        emit("permissions", [selectedFile.value]);
-        break;
-      case "createFile":
-        emit("createFile");
-        break;
-      case "createDirectory":
-        emit("createDirectory");
-        break;
-    }
+    handleSingleFileContextMenuAction(action);
   }
 
   selectedFile.value = null;
@@ -1051,7 +1068,7 @@ function handleDragStart(event: DragEvent, file: FileEntry) {
     dragImage.style.border = "1px solid #374151"; // border-gray-700
     document.body.appendChild(dragImage);
     event.dataTransfer.setDragImage(dragImage, 0, 0);
-    setTimeout(() => document.body.removeChild(dragImage), 0);
+    setTimeout(() => dragImage.remove(), 0);
   }
 }
 
@@ -1077,14 +1094,12 @@ function handleDragOver(event: DragEvent, file: FileEntry, index: number) {
     } else {
       event.dataTransfer.dropEffect = "copy";
     }
+  } else if (file.fileType === "directory") {
+    dragOverIndex.value = index;
+    event.dataTransfer.dropEffect = "copy";
   } else {
-    if (file.fileType === "directory") {
-      dragOverIndex.value = index;
-      event.dataTransfer.dropEffect = "copy";
-    } else {
-      dragOverIndex.value = -1;
-      event.dataTransfer.dropEffect = "copy";
-    }
+    dragOverIndex.value = -1;
+    event.dataTransfer.dropEffect = "copy";
   }
   isDragOver.value = true;
 }
@@ -1183,7 +1198,7 @@ async function onDrop(event: DragEvent) {
   try {
     dragData = event.dataTransfer.getData("application/x-filebrowser-files");
   } catch (e) {
-    // Ignore
+    console.debug("Failed to get drag data:", e);
   }
 
   // If getData doesn't work, the data might not be available in drop event
@@ -1214,11 +1229,47 @@ async function onDrop(event: DragEvent) {
       });
       return;
     } catch (error) {
-      // Ignore parse errors
+      console.debug("Failed to parse drag data:", error);
     }
   }
 
   handleExternalDrop(event);
+}
+
+// Recursively collect all files from a directory entry
+// Helper to read entries from a directory reader
+function readEntriesBatch(
+  reader: FileSystemDirectoryReader,
+): Promise<FileSystemEntry[]> {
+  return new Promise((resolve, reject) => {
+    reader.readEntries(resolve, reject);
+  });
+}
+
+// Recursively collect all files from a directory entry
+async function processDirectoryEntry(
+  entry: FileSystemEntry,
+  relativePath: string,
+): Promise<File[]> {
+  const files: File[] = [];
+  if (entry.isFile) {
+    const fileEntry = entry as FileSystemFileEntry;
+    const file = await new Promise<File | null>((resolve, reject) =>
+      fileEntry.file(resolve, reject),
+    );
+    if (file) {
+      const fileWithPath = file as File & { path?: string };
+      fileWithPath.path =
+        relativePath === "" ? entry.name : `${relativePath}/${entry.name}`;
+      files.push(file);
+    }
+  } else if (entry.isDirectory) {
+    const dirEntry = entry as FileSystemDirectoryEntry;
+    const newPath =
+      relativePath === "" ? entry.name : `${relativePath}/${entry.name}`;
+    files.push(...(await collectFilesFromDirectory(dirEntry, newPath)));
+  }
+  return files;
 }
 
 // Recursively collect all files from a directory entry
@@ -1229,55 +1280,53 @@ async function collectFilesFromDirectory(
   const files: File[] = [];
   const reader = entry.createReader();
 
-  const readEntries = (): Promise<FileSystemEntry[]> => {
-    return new Promise((resolve, reject) => {
-      reader.readEntries(
-        (entries) => resolve(entries),
-        (error) => reject(error),
-      );
-    });
-  };
-
-  let entries: FileSystemEntry[] = [];
   try {
-    entries = await readEntries();
-
-    // Read all batches (readEntries may return partial results)
+    let entries = await readEntriesBatch(reader);
     while (entries.length > 0) {
-      for (const entry of entries) {
-        if (entry.isFile) {
-          const fileEntry = entry as FileSystemFileEntry;
-          const file = await new Promise<File | null>((resolve, reject) => {
-            fileEntry.file(resolve, reject);
-          });
-          if (file) {
-            // Preserve directory structure by adding path property
-            const fileWithPath = file as File & { path?: string };
-            fileWithPath.path =
-              relativePath === ""
-                ? entry.name
-                : `${relativePath}/${entry.name}`;
-            files.push(file);
-          }
-        } else if (entry.isDirectory) {
-          const dirEntry = entry as FileSystemDirectoryEntry;
-          const newRelativePath =
-            relativePath === "" ? entry.name : `${relativePath}/${entry.name}`;
-          const subFiles = await collectFilesFromDirectory(
-            dirEntry,
-            newRelativePath,
-          );
-          files.push(...subFiles);
-        }
-      }
-      // Try to read more entries
-      const moreEntries = await readEntries();
-      entries = moreEntries;
+      const batchPromises = entries.map((entry) =>
+        processDirectoryEntry(entry, relativePath),
+      );
+      const batchResults = await Promise.all(batchPromises);
+      batchResults.forEach((res) => files.push(...res));
+      entries = await readEntriesBatch(reader);
     }
   } catch (error) {
     console.error("Error reading directory:", error);
   }
 
+  return files;
+}
+
+async function processDropItem(item: DataTransferItem): Promise<File[]> {
+  if (item.kind !== "file") return [];
+
+  const files: File[] = [];
+  const entry = item.webkitGetAsEntry?.();
+
+  if (entry) {
+    if (entry.isFile) {
+      const fileEntry = entry as FileSystemFileEntry;
+      const file = await new Promise<File | null>((resolve, reject) =>
+        fileEntry.file(resolve, reject),
+      );
+      if (file) files.push(file);
+    } else if (entry.isDirectory) {
+      files.push(
+        ...(await collectFilesFromDirectory(entry as FileSystemDirectoryEntry)),
+      );
+    }
+  } else {
+    const file = item.getAsFile();
+    if (file) files.push(file);
+  }
+  return files;
+}
+
+async function processDropItems(items: DataTransferItemList): Promise<File[]> {
+  const files: File[] = [];
+  for (const item of items) {
+    files.push(...(await processDropItem(item)));
+  }
   return files;
 }
 
@@ -1287,41 +1336,17 @@ async function handleExternalDrop(event: DragEvent) {
   const files: File[] = [];
 
   if (event.dataTransfer.items && event.dataTransfer.items.length > 0) {
-    for (let i = 0; i < event.dataTransfer.items.length; i++) {
-      const item = event.dataTransfer.items[i];
-
-      if (item.kind === "file") {
-        const entry = item.webkitGetAsEntry?.();
-        if (entry) {
-          if (entry.isFile) {
-            const fileEntry = entry as FileSystemFileEntry;
-            const file = await new Promise<File | null>((resolve, reject) => {
-              fileEntry.file(resolve, reject);
-            });
-            if (file) {
-              files.push(file);
-            }
-          } else if (entry.isDirectory) {
-            // Handle directory drag & drop
-            const dirEntry = entry as FileSystemDirectoryEntry;
-            const dirFiles = await collectFilesFromDirectory(dirEntry);
-            files.push(...dirFiles);
-          }
-        } else {
-          const file = item.getAsFile();
-          if (file) {
-            files.push(file);
-          }
-        }
-      }
+    files.push(...(await processDropItems(event.dataTransfer.items)));
+  } else if (fileListRef.value) {
+    const inputs = fileListRef.value.querySelectorAll("input");
+    if (inputs.length > 0) {
+      const lastInput = inputs[inputs.length - 1] as HTMLInputElement;
+      lastInput.focus();
+      lastInput.select();
     }
   }
 
-  if (
-    files.length === 0 &&
-    event.dataTransfer.files &&
-    event.dataTransfer.files.length > 0
-  ) {
+  if (files.length === 0 && event.dataTransfer.files?.length > 0) {
     files.push(...Array.from(event.dataTransfer.files));
   }
 

@@ -196,16 +196,13 @@ const handleSearch = async () => {
 
   isSearching.value = true;
   try {
-    // With lazy loading, we can load all history without UI performance issues
-    // Only visible items are rendered, so loading all entries is safe
-    // Backend caches history, so subsequent searches are fast
     await historyStore.searchHistory(
       terminalId.value,
       searchQuery.value,
       undefined, // undefined = load all (no limit)
     );
   } catch (error) {
-    // Error is already handled in store
+    console.debug("Search history error handled by store:", error);
   } finally {
     // Small delay to prevent flickering
     setTimeout(() => {
@@ -256,7 +253,7 @@ const handleExport = async () => {
       searchQuery.value || undefined,
     );
   } catch (error) {
-    // Error is already handled in store
+    console.debug("Export history error handled by store:", error);
   } finally {
     exporting.value = false;
   }

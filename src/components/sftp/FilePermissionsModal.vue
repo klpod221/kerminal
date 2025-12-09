@@ -9,8 +9,11 @@
   >
     <Form ref="permissionsForm" @submit="handleSubmit">
       <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
+        <div class="flex flex-col gap-1">
+          <label
+            for="permissions-octal"
+            class="block text-sm font-medium text-gray-300 mb-2"
+          >
             <span v-if="files.length === 1">
               File:
               <span class="font-medium text-white">{{ files[0]?.name }}</span>
@@ -229,7 +232,7 @@ watch(octalPermissions, (octal) => {
   // Accept 3 or 4 digit octal (with or without leading 0)
   const match = octal.match(/^0?([0-7]{3,4})$/);
   if (match) {
-    let octalValue = parseInt(match[1], 8);
+    let octalValue = Number.parseInt(match[1], 8);
     // Mask to ensure we only have permission bits (0o777)
     octalValue = octalValue & 0o777;
     updatePermissionsFromOctal(octalValue);
@@ -289,7 +292,7 @@ async function handleSubmit() {
     return;
   }
 
-  const mode = parseInt(match[1], 8);
+  const mode = Number.parseInt(match[1], 8);
 
   loading.value = true;
 
@@ -301,7 +304,7 @@ async function handleSubmit() {
       mode,
     },
   });
-  window.dispatchEvent(event);
+  globalThis.dispatchEvent(event);
   closeModal();
   loading.value = false;
 }
