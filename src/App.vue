@@ -33,21 +33,45 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from "vue";
+import { onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
 
 import TopBar from "./components/TopBar.vue";
-import Dashboard from "./components/Dashboard.vue";
-import Workspace from "./components/Workspace.vue";
-import SFTPBrowser from "./components/sftp/SFTPBrowser.vue";
-import SSHProfileManager from "./components/ssh-profiles/SSHProfileManager.vue";
-import SavedCommandManager from "./components/saved-commands/SavedCommandManager.vue";
-import RecordingsManager from "./components/recording/RecordingsManager.vue";
-import TunnelManager from "./components/tunnels/TunnelManager.vue";
-import SyncManager from "./components/sync/SyncManager.vue";
-import MasterPasswordManager from "./components/auth/MasterPasswordManager.vue";
-import SettingsManager from "./components/settings/SettingsManager.vue";
-import TerminalProfileManager from "./components/terminal-profiles/TerminalProfileManager.vue";
-import CommandPaletteManager from "./components/CommandPaletteManager.vue";
+const Dashboard = defineAsyncComponent(
+  () => import("./components/Dashboard.vue"),
+);
+const Workspace = defineAsyncComponent(
+  () => import("./components/Workspace.vue"),
+);
+const SFTPBrowser = defineAsyncComponent(
+  () => import("./components/sftp/SFTPBrowser.vue"),
+);
+const SSHProfileManager = defineAsyncComponent(
+  () => import("./components/ssh-profiles/SSHProfileManager.vue"),
+);
+const SavedCommandManager = defineAsyncComponent(
+  () => import("./components/saved-commands/SavedCommandManager.vue"),
+);
+const RecordingsManager = defineAsyncComponent(
+  () => import("./components/recording/RecordingsManager.vue"),
+);
+const TunnelManager = defineAsyncComponent(
+  () => import("./components/tunnels/TunnelManager.vue"),
+);
+const SyncManager = defineAsyncComponent(
+  () => import("./components/sync/SyncManager.vue"),
+);
+const MasterPasswordManager = defineAsyncComponent(
+  () => import("./components/auth/MasterPasswordManager.vue"),
+);
+const SettingsManager = defineAsyncComponent(
+  () => import("./components/settings/SettingsManager.vue"),
+);
+const TerminalProfileManager = defineAsyncComponent(
+  () => import("./components/terminal-profiles/TerminalProfileManager.vue"),
+);
+const CommandPaletteManager = defineAsyncComponent(
+  () => import("./components/CommandPaletteManager.vue"),
+);
 
 import { useOverlay } from "./composables/useOverlay";
 import { useGlobalShortcuts } from "./composables/useGlobalShortcuts";

@@ -18,8 +18,8 @@
       }
     ],
     "security": {
-      "csp": null,
-      "capabilities": ["default", "clipboard"]
+      "capabilities": ["default", "clipboard"],
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost blob: data:; font-src 'self'; connect-src 'self' https://github.com/klpod221/kerminal/releases/latest/download/latest.json"
     }
   },
   "plugins": {

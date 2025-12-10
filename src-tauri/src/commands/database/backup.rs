@@ -1,10 +1,24 @@
+use crate::database::encryption::aes::AESEncryption;
+use crate::database::traits::Database;
 use crate::models::saved_command::{SavedCommand, SavedCommandGroup};
 use crate::models::ssh::{SSHGroup, SSHKey, SSHProfile, SSHTunnel};
 use crate::state::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::database::traits::Database;
+/// Derive encryption key from password and salt using PBKDF2
+fn derive_key_from_password(password: &str, salt: &[u8; 32]) -> Result<[u8; 32], String> {
+    let mut key = [0u8; 32];
+
+    let _ = pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
+        password.as_bytes(),
+        salt,
+        100_000, // 100k iterations
+        &mut key,
+    );
+
+    Ok(key)
+}
 
 /// Backup data structure
 #[derive(Debug, Serialize, Deserialize)]
@@ -23,7 +37,7 @@ pub struct BackupData {
 #[tauri::command]
 pub async fn export_backup(
     state: State<'_, AppState>,
-    _password: Option<String>,
+    password: Option<String>,
 ) -> Result<String, String> {
     let service = state.database_service.lock().await;
 
@@ -39,12 +53,16 @@ pub async fn export_backup(
 
     let tunnels = service.get_ssh_tunnels().await.map_err(|e| e.to_string())?;
 
-    // In a real implementation we would fetch these too.
-    // For now we assume they are empty or not critical for this specific task scope if methods needed are missing.
-    // However, to be correct, we should try to fetch them if methods exist.
-    // We'll leave them empty for now to avoid compilation errors if methods don't match exactly what I expect.
-    let saved_commands = vec![];
-    let saved_command_groups = vec![];
+    // Fetch saved commands and groups
+    let saved_commands = service
+        .get_saved_commands()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let saved_command_groups = service
+        .get_saved_command_groups()
+        .await
+        .map_err(|e| e.to_string())?;
 
     let data = BackupData {
         version: "1.0".to_string(),
@@ -59,11 +77,25 @@ pub async fn export_backup(
 
     let json = serde_json::to_string_pretty(&data).map_err(|e| e.to_string())?;
 
-    // If password provided, we should encrypt.
-    // For this iteration, we focus on the structure.
-    // TODO: Implement encryption using project utilities.
+    // If password provided, encrypt the backup
+    if let Some(pwd) = password {
+        let salt = AESEncryption::generate_salt();
+        let key = derive_key_from_password(&pwd, &salt)?;
+        let encrypted_data = AESEncryption::encrypt(&key, json.as_bytes())
+            .map_err(|e| format!("Encryption failed: {}", e))?;
 
-    Ok(json)
+        // Combine salt + encrypted data and encode as base64
+        let mut result = Vec::with_capacity(32 + encrypted_data.len());
+        result.extend_from_slice(&salt);
+        result.extend_from_slice(&encrypted_data);
+
+        Ok(base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            result,
+        ))
+    } else {
+        Ok(json)
+    }
 }
 
 /// Import backup command
@@ -71,14 +103,41 @@ pub async fn export_backup(
 pub async fn import_backup(
     state: State<'_, AppState>,
     backup_content: String,
-    _password: Option<String>,
+    password: Option<String>,
 ) -> Result<String, String> {
     let service = state.database_service.lock().await;
     let local_db_lock = service.get_local_database();
     let local_db = local_db_lock.write().await;
 
+    // Decrypt if password is provided
+    let json_content = if let Some(pwd) = password {
+        let encrypted_bytes = base64::Engine::decode(
+            &base64::engine::general_purpose::STANDARD,
+            backup_content.trim(),
+        )
+        .map_err(|e| format!("Invalid base64 encoding: {}", e))?;
+
+        if encrypted_bytes.len() < 32 {
+            return Err("Invalid encrypted backup: too short".to_string());
+        }
+
+        let (salt, encrypted_data) = encrypted_bytes.split_at(32);
+        let salt_array: [u8; 32] = salt
+            .try_into()
+            .map_err(|_| "Invalid salt size".to_string())?;
+        let key = derive_key_from_password(&pwd, &salt_array)?;
+
+        let decrypted_bytes = AESEncryption::decrypt(&key, encrypted_data)
+            .map_err(|e| format!("Decryption failed: {}", e))?;
+
+        String::from_utf8(decrypted_bytes)
+            .map_err(|e| format!("Invalid UTF-8 in decrypted data: {}", e))?
+    } else {
+        backup_content
+    };
+
     let data: BackupData =
-        serde_json::from_str(&backup_content).map_err(|e| format!("Invalid backup file: {}", e))?;
+        serde_json::from_str(&json_content).map_err(|e| format!("Invalid backup file: {}", e))?;
 
     // Import Groups
     for group in data.groups {
@@ -113,7 +172,20 @@ pub async fn import_backup(
     }
 
     // Import Saved Commands
-    // (If we had them)
+    for command in data.saved_commands {
+        local_db
+            .save_saved_command(&command)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    // Import Saved Command Groups
+    for group in data.saved_command_groups {
+        local_db
+            .save_saved_command_group(&group)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
 
     Ok("Backup imported successfully".to_string())
 }
