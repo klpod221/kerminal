@@ -64,6 +64,7 @@ jobs:
 
       - name: Build and release
         uses: tauri-apps/tauri-action@51a9f1156b33df106d827c3a78f8f894946c5faa
+        id: tauri
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -75,6 +76,76 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      # Fix AppImage for Wayland compatibility by removing bundled EGL/OpenGL libraries
+      # that conflict with system libraries and cause EGL_BAD_PARAMETER errors
+      - name: Post-process AppImage for Wayland compatibility
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          # Find the built AppImage
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" -type f | head -1)
+          if [ -z "$APPIMAGE" ]; then
+            echo "No AppImage found, skipping post-processing"
+            exit 0
+          fi
+
+          echo "Processing: $APPIMAGE"
+
+          # Make it executable and extract
+          chmod +x "$APPIMAGE"
+          "$APPIMAGE" --appimage-extract
+
+          # Remove conflicting EGL/OpenGL libraries that cause issues on Wayland
+          echo "Removing conflicting EGL/OpenGL libraries..."
+          cd squashfs-root/usr/lib
+          rm -f libEGL.so* libEGL_mesa.so* 2>/dev/null || true
+          rm -f libGL.so* libGLX.so* libGLX_mesa.so* libGLdispatch.so* 2>/dev/null || true
+          rm -f libwayland-client.so* libwayland-egl.so* libwayland-cursor.so* 2>/dev/null || true
+          rm -f libdrm.so* libgbm.so* 2>/dev/null || true
+          cd -
+
+          # Repack AppImage using appimagetool
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+          chmod +x appimagetool
+
+          # Remove old AppImage and create new one
+          rm "$APPIMAGE"
+          ARCH=x86_64 ./appimagetool squashfs-root "$APPIMAGE"
+
+          # Clean up
+          rm -rf squashfs-root appimagetool
+
+          echo "AppImage post-processing complete: $APPIMAGE"
+
+      # Re-upload the fixed AppImage to GitHub Release
+      - name: Upload fixed AppImage
+        if: matrix.platform == 'ubuntu-latest'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Find AppImage files
+          APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" -type f | head -1)
+          APPIMAGE_SIG="${APPIMAGE}.sig"
+
+          if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ]; then
+            # Get the tag name
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
+            
+            # Delete the old AppImage from release (uploaded by tauri-action)
+            APPIMAGE_NAME=$(basename "$APPIMAGE")
+            gh release delete-asset "$TAG_NAME" "$APPIMAGE_NAME" --yes 2>/dev/null || true
+            
+            # Upload the fixed AppImage
+            gh release upload "$TAG_NAME" "$APPIMAGE" --clobber
+            
+            # Re-sign and upload signature if signing keys are available
+            if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && [ -f "$APPIMAGE_SIG" ]; then
+              gh release delete-asset "$TAG_NAME" "${APPIMAGE_NAME}.sig" --yes 2>/dev/null || true
+              gh release upload "$TAG_NAME" "$APPIMAGE_SIG" --clobber
+            fi
+            
+            echo "Fixed AppImage uploaded successfully"
+          fi
 
   publish-aur:
     name: Publish to AUR (${{ matrix.repo }})
