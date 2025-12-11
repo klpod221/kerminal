@@ -82,6 +82,9 @@ jobs:
       - name: Post-process AppImage for Wayland compatibility
         if: matrix.platform == 'ubuntu-latest'
         run: |
+          # Install libfuse2 for AppImage support
+          sudo apt-get install -y libfuse2
+
           # Find the built AppImage
           APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" -type f | head -1)
           if [ -z "$APPIMAGE" ]; then
