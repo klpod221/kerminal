@@ -14,6 +14,15 @@ export enum ShortcutAction {
   NewTab = "newTab",
   CloseTab = "closeTab",
   NextTab = "nextTab",
+  SwitchToTab1 = "switchToTab1",
+  SwitchToTab2 = "switchToTab2",
+  SwitchToTab3 = "switchToTab3",
+  SwitchToTab4 = "switchToTab4",
+  SwitchToTab5 = "switchToTab5",
+  SwitchToTab6 = "switchToTab6",
+  SwitchToTab7 = "switchToTab7",
+  SwitchToTab8 = "switchToTab8",
+  SwitchToTab9 = "switchToTab9",
 
   // Navigation
   FocusNextPanel = "focusNextPanel",

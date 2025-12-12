@@ -103,15 +103,21 @@ impl SyncScheduler {
             return Ok(());
         }
 
-        let db_service = self.database_service.lock().await;
-        let local_db = db_service.get_local_database();
-        let all_configs = local_db.read().await.get_all_external_databases().await?;
+        // Get all configs first, then release lock before processing
+        let all_configs = {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let guard = local_db.read().await;
+            let configs = guard.get_all_external_databases().await?;
+            configs
+        }; // Lock released here
 
         for config in all_configs {
             if !enabled_databases.contains(&config.base.id) {
                 continue;
             }
 
+            // is_sync_due now doesn't cause deadlock since we released the lock above
             if self.is_sync_due(&config).await? {
                 if let Err(e) = self.execute_scheduled_sync(&config).await {
                     eprintln!("Failed to sync database {}: {}", config.name, e);
@@ -124,14 +130,17 @@ impl SyncScheduler {
 
     /// Check if sync is due for a database
     async fn is_sync_due(&self, config: &ExternalDatabaseConfig) -> DatabaseResult<bool> {
-        let db_service = self.database_service.lock().await;
+        // Get all needed data in a single lock acquisition to avoid deadlock
+        let (logs, sync_settings) = {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let local_guard = local_db.read().await;
 
-        let local_db = db_service.get_local_database();
-        let logs = local_db
-            .read()
-            .await
-            .get_sync_logs(&config.base.id, Some(1))
-            .await?;
+            let logs = local_guard.get_sync_logs(&config.base.id, Some(1)).await?;
+            let sync_settings = local_guard.get_global_sync_settings().await?;
+
+            (logs, sync_settings)
+        }; // Lock released here
 
         let last_sync = match logs.first() {
             Some(log) => log.completed_at,
@@ -143,13 +152,7 @@ impl SyncScheduler {
             _ => return Ok(true), // Last sync didn't complete, retry
         };
 
-        let db_service = self.database_service.lock().await;
-        let local = db_service.get_local_database();
-        let guard = local.read().await;
-        let sync_settings = guard.get_global_sync_settings().await?;
-        drop(guard);
-
-        let interval_minutes = sync_settings.map(|s| s.sync_interval_minutes).unwrap_or(15) as u64; // Default to 15 minutes
+        let interval_minutes = sync_settings.map(|s| s.sync_interval_minutes).unwrap_or(15) as u64;
         let interval_seconds = (interval_minutes * 60) as i64;
         let next_sync = last_sync_time + Duration::seconds(interval_seconds);
 

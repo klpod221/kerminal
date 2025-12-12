@@ -121,6 +121,19 @@ export function useGlobalShortcuts() {
    * Execute action for a shortcut
    */
   /**
+   * Switch to tab by index (0-based)
+   */
+  const switchToTabIndex = (index: number): void => {
+    const activePanelId = workspaceStore.activePanelId;
+    if (activePanelId) {
+      const activePanel = workspaceStore.findPanelInLayout(activePanelId);
+      if (activePanel?.tabs[index]) {
+        workspaceStore.selectTab(activePanel.id, activePanel.tabs[index].id);
+      }
+    }
+  };
+
+  /**
    * Action handlers map
    */
   const actionHandlers: Partial<Record<ShortcutAction, () => void>> = {
@@ -169,6 +182,15 @@ export function useGlobalShortcuts() {
         }
       }
     },
+    [ShortcutAction.SwitchToTab1]: () => switchToTabIndex(0),
+    [ShortcutAction.SwitchToTab2]: () => switchToTabIndex(1),
+    [ShortcutAction.SwitchToTab3]: () => switchToTabIndex(2),
+    [ShortcutAction.SwitchToTab4]: () => switchToTabIndex(3),
+    [ShortcutAction.SwitchToTab5]: () => switchToTabIndex(4),
+    [ShortcutAction.SwitchToTab6]: () => switchToTabIndex(5),
+    [ShortcutAction.SwitchToTab7]: () => switchToTabIndex(6),
+    [ShortcutAction.SwitchToTab8]: () => switchToTabIndex(7),
+    [ShortcutAction.SwitchToTab9]: () => switchToTabIndex(8),
     [ShortcutAction.FocusNextPanel]: () => {
       viewState.setActiveView("workspace");
       const panelIds = workspaceStore.collectPanelIds();

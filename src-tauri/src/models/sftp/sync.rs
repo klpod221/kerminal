@@ -22,6 +22,17 @@ pub struct SyncOperation {
     pub max_file_size: Option<u64>,
     /// File patterns to exclude (glob patterns)
     pub exclude_patterns: Vec<String>,
+    /// Clock skew tolerance in seconds (default: 1)
+    /// Used when comparing file modification times between local and remote
+    #[serde(default)]
+    pub clock_skew_seconds: Option<i64>,
+    /// Whether to verify file integrity using checksums
+    /// When enabled, files with same size/time will be verified by checksum
+    #[serde(default)]
+    pub verify_checksum: bool,
+    /// Checksum algorithm to use: "md5", "sha256" (default: "md5")
+    #[serde(default)]
+    pub checksum_algorithm: Option<String>,
 }
 
 /// Synchronization direction
@@ -66,4 +77,6 @@ pub enum DiffType {
     Identical,
     /// File exists on both but permissions differ
     PermissionsDiffer,
+    /// File exists on both but checksums differ
+    ChecksumDiffers,
 }

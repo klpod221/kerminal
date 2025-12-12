@@ -6,21 +6,42 @@ use crate::models::sftp::{
     file_entry::FileEntry,
     sync::{DiffEntry, DiffType, SyncDirection, SyncOperation},
 };
+use crate::models::sync::SyncProgressEvent;
 use crate::services::sftp::service::SFTPService;
 
 use anyhow::Result;
 use chrono;
+use tauri::Emitter;
 use tokio::fs;
+use tokio::sync::RwLock;
 
 /// Sync Service for comparing and synchronizing directories
 pub struct SyncService {
     sftp_service: Arc<SFTPService>,
+    app_handle: Arc<RwLock<Option<tauri::AppHandle>>>,
 }
 
 impl SyncService {
     /// Create new sync service
     pub fn new(sftp_service: Arc<SFTPService>) -> Self {
-        Self { sftp_service }
+        Self {
+            sftp_service,
+            app_handle: Arc::new(RwLock::new(None)),
+        }
+    }
+
+    /// Set app handle for emitting events
+    #[allow(dead_code)]
+    pub async fn set_app_handle(&self, app_handle: tauri::AppHandle) {
+        let mut handle = self.app_handle.write().await;
+        *handle = Some(app_handle);
+    }
+
+    /// Emit progress event
+    async fn emit_progress(&self, event: SyncProgressEvent) {
+        if let Some(ref app_handle) = *self.app_handle.read().await {
+            let _ = app_handle.emit("sync_progress", event);
+        }
     }
 
     /// Compare local and remote directories
@@ -29,6 +50,7 @@ impl SyncService {
         session_id: String,
         local_path: String,
         remote_path: String,
+        clock_skew_seconds: Option<i64>,
     ) -> Result<Vec<DiffEntry>, anyhow::Error> {
         // Get local file tree
         let local_files = Self::build_local_tree(&local_path).await?;
@@ -83,12 +105,13 @@ impl SyncService {
                     continue;
                 }
 
-                // Check modification time
+                // Check modification time with configurable clock skew tolerance
+                let skew_tolerance = clock_skew_seconds.unwrap_or(1);
                 let time_diff = (local_entry.modified - remote_entry.modified)
                     .num_seconds()
                     .abs();
-                if time_diff > 1 {
-                    // Allow 1 second difference for clock skew
+                if time_diff > skew_tolerance {
+                    // Allow configured difference for clock skew
                     diffs.push(DiffEntry {
                         path: relative_path.clone(),
                         diff_type: DiffType::TimeDiffers,
@@ -278,31 +301,93 @@ impl SyncService {
         operation: SyncOperation,
     ) -> Result<(), anyhow::Error> {
         // Compare directories first
+        self.emit_progress(SyncProgressEvent::sftp_progress("comparing", "", 0, 0))
+            .await;
+
         let diffs = self
             .compare_directories(
                 session_id.clone(),
                 operation.local_path.clone(),
                 operation.remote_path.clone(),
+                operation.clock_skew_seconds,
             )
             .await?;
 
-        // For each diff that needs to be synced, upload files
-        for diff in diffs {
-            if matches!(
-                diff.diff_type,
-                DiffType::OnlyLocal | DiffType::SizeDiffers | DiffType::TimeDiffers
-            ) {
-                let _local_path = Path::new(&operation.local_path).join(&diff.path);
-                let _remote_path = format!("{}/{}", operation.remote_path, diff.path);
+        // Filter diffs to get files that need upload
+        let upload_diffs: Vec<_> = diffs
+            .iter()
+            .filter(|diff| {
+                if self.should_exclude(&diff.path, &operation.exclude_patterns) {
+                    return false;
+                }
+                matches!(
+                    diff.diff_type,
+                    DiffType::OnlyLocal | DiffType::SizeDiffers | DiffType::TimeDiffers
+                )
+            })
+            .collect();
 
-                // Upload file (would use TransferManager in production)
-                // For now, just verify file exists
-                if _local_path.exists() && _local_path.is_file() {
-                    // File would be uploaded here
+        let total = upload_diffs.len() as u32;
+        let mut processed = 0u32;
+
+        // For each diff that needs to be synced, upload files
+        for diff in upload_diffs {
+            // Skip files exceeding max size
+            if let Some(max_size) = operation.max_file_size {
+                if let Some(ref entry) = diff.local_entry {
+                    if entry.size.unwrap_or(0) > max_size {
+                        eprintln!("[SFTP Sync] Skipping large file: {}", diff.path);
+                        continue;
+                    }
+                }
+            }
+
+            let local_path = Path::new(&operation.local_path).join(&diff.path);
+            let remote_path = format!("{}/{}", operation.remote_path, diff.path);
+
+            // Skip directories (handled separately) and symlinks if not preserved
+            if local_path.is_dir() {
+                continue;
+            }
+            if local_path.is_symlink() && !operation.preserve_symlinks {
+                continue;
+            }
+
+            // Emit progress before upload
+            self.emit_progress(SyncProgressEvent::sftp_progress(
+                "uploading",
+                &diff.path,
+                processed,
+                total,
+            ))
+            .await;
+
+            // Upload file
+            if local_path.exists() && local_path.is_file() {
+                match self
+                    .sftp_service
+                    .upload_file_bytes(
+                        session_id.clone(),
+                        local_path.to_string_lossy().to_string(),
+                        remote_path.clone(),
+                    )
+                    .await
+                {
+                    Ok(_) => {
+                        eprintln!("[SFTP Sync] Uploaded: {}", diff.path);
+                        processed += 1;
+                    }
+                    Err(e) => {
+                        eprintln!("[SFTP Sync] Failed to upload {}: {}", diff.path, e);
+                        self.emit_progress(SyncProgressEvent::sftp_error(&e.to_string()))
+                            .await;
+                    }
                 }
             }
         }
 
+        self.emit_progress(SyncProgressEvent::sftp_completed(processed))
+            .await;
         Ok(())
     }
 
@@ -313,31 +398,92 @@ impl SyncService {
         operation: SyncOperation,
     ) -> Result<(), anyhow::Error> {
         // Compare directories first
+        self.emit_progress(SyncProgressEvent::sftp_progress("comparing", "", 0, 0))
+            .await;
+
         let diffs = self
             .compare_directories(
                 session_id.clone(),
                 operation.local_path.clone(),
                 operation.remote_path.clone(),
+                operation.clock_skew_seconds,
             )
             .await?;
 
-        // For each diff that needs to be synced, download files
-        for diff in diffs {
-            if matches!(
-                diff.diff_type,
-                DiffType::OnlyRemote | DiffType::SizeDiffers | DiffType::TimeDiffers
-            ) {
-                let _remote_path = format!("{}/{}", operation.remote_path, diff.path);
-                let local_path = Path::new(&operation.local_path).join(&diff.path);
+        // Filter diffs to get files that need download
+        let download_diffs: Vec<_> = diffs
+            .iter()
+            .filter(|diff| {
+                if self.should_exclude(&diff.path, &operation.exclude_patterns) {
+                    return false;
+                }
+                matches!(
+                    diff.diff_type,
+                    DiffType::OnlyRemote | DiffType::SizeDiffers | DiffType::TimeDiffers
+                )
+            })
+            .collect();
 
-                // Download file (would use TransferManager in production)
-                // For now, just ensure parent directory exists
-                if let Some(parent) = local_path.parent() {
-                    let _ = fs::create_dir_all(parent).await;
+        let total = download_diffs.len() as u32;
+        let mut processed = 0u32;
+
+        // For each diff that needs to be synced, download files
+        for diff in download_diffs {
+            // Skip files exceeding max size
+            if let Some(max_size) = operation.max_file_size {
+                if let Some(ref entry) = diff.remote_entry {
+                    if entry.size.unwrap_or(0) > max_size {
+                        eprintln!("[SFTP Sync] Skipping large file: {}", diff.path);
+                        continue;
+                    }
+                }
+            }
+
+            let remote_path = format!("{}/{}", operation.remote_path, diff.path);
+            let local_path = Path::new(&operation.local_path).join(&diff.path);
+
+            // Skip directories
+            if let Some(ref entry) = diff.remote_entry {
+                if entry.is_directory() {
+                    // Create local directory
+                    let _ = fs::create_dir_all(&local_path).await;
+                    continue;
+                }
+            }
+
+            // Emit progress before download
+            self.emit_progress(SyncProgressEvent::sftp_progress(
+                "downloading",
+                &diff.path,
+                processed,
+                total,
+            ))
+            .await;
+
+            // Download file
+            match self
+                .sftp_service
+                .download_file_bytes(
+                    session_id.clone(),
+                    remote_path.clone(),
+                    local_path.to_string_lossy().to_string(),
+                )
+                .await
+            {
+                Ok(_) => {
+                    eprintln!("[SFTP Sync] Downloaded: {}", diff.path);
+                    processed += 1;
+                }
+                Err(e) => {
+                    eprintln!("[SFTP Sync] Failed to download {}: {}", diff.path, e);
+                    self.emit_progress(SyncProgressEvent::sftp_error(&e.to_string()))
+                        .await;
                 }
             }
         }
 
+        self.emit_progress(SyncProgressEvent::sftp_completed(processed))
+            .await;
         Ok(())
     }
 
@@ -353,37 +499,183 @@ impl SyncService {
                 session_id.clone(),
                 operation.local_path.clone(),
                 operation.remote_path.clone(),
+                operation.clock_skew_seconds,
             )
             .await?;
 
         // Sync in both directions
         // Files only in local -> upload
         // Files only in remote -> download
-        // Different files -> use newer version
+        // Different files -> use newer version (last write wins)
         for diff in diffs {
+            // Skip files matching exclude patterns
+            if self.should_exclude(&diff.path, &operation.exclude_patterns) {
+                continue;
+            }
+
             match diff.diff_type {
                 DiffType::OnlyLocal => {
                     // Upload
                     let local_path = Path::new(&operation.local_path).join(&diff.path);
+                    let remote_path = format!("{}/{}", operation.remote_path, diff.path);
+
                     if local_path.exists() && local_path.is_file() {
-                        // Upload would happen here
+                        match self
+                            .sftp_service
+                            .upload_file_bytes(
+                                session_id.clone(),
+                                local_path.to_string_lossy().to_string(),
+                                remote_path.clone(),
+                            )
+                            .await
+                        {
+                            Ok(_) => {
+                                eprintln!("[SFTP Sync] Uploaded: {}", diff.path);
+                            }
+                            Err(e) => {
+                                eprintln!("[SFTP Sync] Failed to upload {}: {}", diff.path, e);
+                            }
+                        }
                     }
                 }
                 DiffType::OnlyRemote => {
                     // Download
+                    let remote_path = format!("{}/{}", operation.remote_path, diff.path);
                     let local_path = Path::new(&operation.local_path).join(&diff.path);
-                    if let Some(parent) = local_path.parent() {
-                        let _ = fs::create_dir_all(parent).await;
+
+                    // Skip directories
+                    if let Some(ref entry) = diff.remote_entry {
+                        if entry.is_directory() {
+                            let _ = fs::create_dir_all(&local_path).await;
+                            continue;
+                        }
+                    }
+
+                    match self
+                        .sftp_service
+                        .download_file_bytes(
+                            session_id.clone(),
+                            remote_path.clone(),
+                            local_path.to_string_lossy().to_string(),
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            eprintln!("[SFTP Sync] Downloaded: {}", diff.path);
+                        }
+                        Err(e) => {
+                            eprintln!("[SFTP Sync] Failed to download {}: {}", diff.path, e);
+                        }
                     }
                 }
                 DiffType::SizeDiffers | DiffType::TimeDiffers => {
-                    // Conflict - for now, skip. In production would ask user or use newer
+                    // Conflict resolution: use newer version based on modification time
+                    let local_path = Path::new(&operation.local_path).join(&diff.path);
+                    let remote_path = format!("{}/{}", operation.remote_path, diff.path);
+
+                    let local_time = diff.local_entry.as_ref().map(|e| e.modified);
+                    let remote_time = diff.remote_entry.as_ref().map(|e| e.modified);
+
+                    match (local_time, remote_time) {
+                        (Some(local_modified), Some(remote_modified)) => {
+                            if local_modified > remote_modified {
+                                // Local is newer, upload
+                                if local_path.exists() && local_path.is_file() {
+                                    match self
+                                        .sftp_service
+                                        .upload_file_bytes(
+                                            session_id.clone(),
+                                            local_path.to_string_lossy().to_string(),
+                                            remote_path.clone(),
+                                        )
+                                        .await
+                                    {
+                                        Ok(_) => {
+                                            eprintln!(
+                                                "[SFTP Sync] Conflict resolved (local newer): uploaded {}",
+                                                diff.path
+                                            );
+                                        }
+                                        Err(e) => {
+                                            eprintln!(
+                                                "[SFTP Sync] Failed to upload {}: {}",
+                                                diff.path, e
+                                            );
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Remote is newer, download
+                                match self
+                                    .sftp_service
+                                    .download_file_bytes(
+                                        session_id.clone(),
+                                        remote_path.clone(),
+                                        local_path.to_string_lossy().to_string(),
+                                    )
+                                    .await
+                                {
+                                    Ok(_) => {
+                                        eprintln!(
+                                            "[SFTP Sync] Conflict resolved (remote newer): downloaded {}",
+                                            diff.path
+                                        );
+                                    }
+                                    Err(e) => {
+                                        eprintln!(
+                                            "[SFTP Sync] Failed to download {}: {}",
+                                            diff.path, e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            // Cannot determine which is newer, log conflict
+                            eprintln!(
+                                "[SFTP Sync] Conflict: cannot determine newer version for {}",
+                                diff.path
+                            );
+                        }
+                    }
                 }
                 _ => {}
             }
         }
 
         Ok(())
+    }
+
+    /// Check if path matches any exclude patterns
+    fn should_exclude(&self, path: &str, patterns: &[String]) -> bool {
+        for pattern in patterns {
+            // Simple glob matching - support * and **
+            if pattern.contains("**") {
+                // Match any path containing the pattern part
+                let parts: Vec<&str> = pattern.split("**").collect();
+                if parts.len() == 2 {
+                    let (prefix, suffix) = (parts[0], parts[1]);
+                    if (prefix.is_empty() || path.starts_with(prefix))
+                        && (suffix.is_empty() || path.ends_with(suffix))
+                    {
+                        return true;
+                    }
+                }
+            } else if pattern.contains('*') {
+                // Simple wildcard
+                let parts: Vec<&str> = pattern.split('*').collect();
+                if parts.len() == 2 {
+                    let (prefix, suffix) = (parts[0], parts[1]);
+                    if path.starts_with(prefix) && path.ends_with(suffix) {
+                        return true;
+                    }
+                }
+            } else if path.contains(pattern) {
+                // Exact substring match
+                return true;
+            }
+        }
+        false
     }
 
     /// Get relative path from base

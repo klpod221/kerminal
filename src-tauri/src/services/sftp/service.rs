@@ -798,4 +798,155 @@ impl SFTPService {
 
         Ok(())
     }
+
+    /// Upload local file to remote (binary safe)
+    /// Used by sync operations
+    pub async fn upload_file_bytes(
+        &self,
+        session_id: String,
+        local_path: String,
+        remote_path: String,
+    ) -> Result<(), SFTPError> {
+        use russh_sftp::protocol::OpenFlags;
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        // Read local file
+        let mut local_file =
+            tokio::fs::File::open(&local_path)
+                .await
+                .map_err(|e| SFTPError::IoError {
+                    message: format!("Failed to open local file {}: {}", local_path, e),
+                })?;
+
+        let mut buffer = Vec::new();
+        local_file
+            .read_to_end(&mut buffer)
+            .await
+            .map_err(|e| SFTPError::IoError {
+                message: format!("Failed to read local file {}: {}", local_path, e),
+            })?;
+
+        // Get session and write to remote
+        let session_data = self.get_session(&session_id).await?;
+        let mut data = session_data.lock().await;
+        data.last_used = Utc::now();
+
+        // Ensure parent directory exists
+        if let Some(parent) = Path::new(&remote_path).parent() {
+            if let Some(parent_str) = parent.to_str() {
+                if !parent_str.is_empty() && parent_str != "/" {
+                    // Try to create parent, ignore error if exists
+                    let _ = data.sftp.create_dir(parent_str).await;
+                }
+            }
+        }
+
+        // Open remote file for writing
+        let mut remote_file = data
+            .sftp
+            .open_with_flags(
+                &remote_path,
+                OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE,
+            )
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!(
+                    "Failed to open remote file for writing {}: {}",
+                    remote_path, e
+                ),
+            })?;
+
+        // Write content
+        remote_file
+            .write_all(&buffer)
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to write to remote file {}: {}", remote_path, e),
+            })?;
+
+        remote_file.flush().await.map_err(|e| SFTPError::Other {
+            message: format!("Failed to flush remote file {}: {}", remote_path, e),
+        })?;
+
+        Ok(())
+    }
+
+    /// Download remote file to local (binary safe)
+    /// Used by sync operations
+    pub async fn download_file_bytes(
+        &self,
+        session_id: String,
+        remote_path: String,
+        local_path: String,
+    ) -> Result<(), SFTPError> {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        // Get session and read from remote
+        let session_data = self.get_session(&session_id).await?;
+        let mut data = session_data.lock().await;
+        data.last_used = Utc::now();
+
+        // Check if remote file exists
+        let _attrs = data.sftp.metadata(&remote_path).await.map_err(|e| {
+            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
+                SFTPError::FileNotFound {
+                    path: remote_path.clone(),
+                }
+            } else {
+                SFTPError::Other {
+                    message: format!("Failed to get metadata for {}: {}", remote_path, e),
+                }
+            }
+        })?;
+
+        // Open and read remote file
+        let mut remote_file = data
+            .sftp
+            .open(&remote_path)
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to open remote file {}: {}", remote_path, e),
+            })?;
+
+        let mut buffer = Vec::new();
+        remote_file
+            .read_to_end(&mut buffer)
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to read remote file {}: {}", remote_path, e),
+            })?;
+
+        // Release session lock before file I/O
+        drop(data);
+
+        // Ensure local parent directory exists
+        if let Some(parent) = Path::new(&local_path).parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| SFTPError::IoError {
+                    message: format!("Failed to create local directory: {}", e),
+                })?;
+        }
+
+        // Write to local file
+        let mut local_file =
+            tokio::fs::File::create(&local_path)
+                .await
+                .map_err(|e| SFTPError::IoError {
+                    message: format!("Failed to create local file {}: {}", local_path, e),
+                })?;
+
+        local_file
+            .write_all(&buffer)
+            .await
+            .map_err(|e| SFTPError::IoError {
+                message: format!("Failed to write to local file {}: {}", local_path, e),
+            })?;
+
+        local_file.flush().await.map_err(|e| SFTPError::IoError {
+            message: format!("Failed to flush local file {}: {}", local_path, e),
+        })?;
+
+        Ok(())
+    }
 }

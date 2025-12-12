@@ -67,7 +67,12 @@ impl SyncManager {
                 selected_database_id: None,
             };
 
-            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {}
+            if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
+                eprintln!(
+                    "[SyncManager] Warning: Failed to update sync settings after connect: {}",
+                    e
+                );
+            }
         }
 
         Ok(())
@@ -93,7 +98,12 @@ impl SyncManager {
                 selected_database_id: None,
             };
 
-            if let Err(_e) = local_db_guard.update_sync_settings(&update_request).await {}
+            if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
+                eprintln!(
+                    "[SyncManager] Warning: Failed to update sync settings after disconnect: {}",
+                    e
+                );
+            }
         }
 
         Ok(())
@@ -174,12 +184,82 @@ impl SyncManager {
             total_connections: connections.len(),
         }
     }
+
+    /// Perform health check on all active connections
+    /// Returns health status for each connection
+    #[allow(dead_code)]
+    pub async fn health_check_all(&self) -> Vec<HealthCheckResult> {
+        let connections = self.active_connections.read().await;
+        let mut results = Vec::new();
+
+        for (database_id, provider) in connections.iter() {
+            let start_time = std::time::Instant::now();
+            let status = match provider.test_connection().await {
+                Ok(_) => HealthStatus::Healthy,
+                Err(e) => HealthStatus::Unhealthy(e.to_string()),
+            };
+            let latency_ms = start_time.elapsed().as_millis() as u64;
+
+            results.push(HealthCheckResult {
+                database_id: database_id.clone(),
+                status,
+                latency_ms,
+                checked_at: chrono::Utc::now(),
+            });
+        }
+
+        results
+    }
+
+    /// Perform health check on a specific connection
+    #[allow(dead_code)]
+    pub async fn health_check(&self, database_id: &str) -> Option<HealthCheckResult> {
+        let connections = self.active_connections.read().await;
+
+        if let Some(provider) = connections.get(database_id) {
+            let start_time = std::time::Instant::now();
+            let status = match provider.test_connection().await {
+                Ok(_) => HealthStatus::Healthy,
+                Err(e) => HealthStatus::Unhealthy(e.to_string()),
+            };
+            let latency_ms = start_time.elapsed().as_millis() as u64;
+
+            Some(HealthCheckResult {
+                database_id: database_id.to_string(),
+                status,
+                latency_ms,
+                checked_at: chrono::Utc::now(),
+            })
+        } else {
+            None
+        }
+    }
 }
 
 /// Connection statistics
 #[derive(Debug, Clone)]
 pub struct ConnectionStats {
     pub total_connections: usize,
+}
+
+/// Health check result for a single connection
+#[allow(dead_code)]
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HealthCheckResult {
+    pub database_id: String,
+    pub status: HealthStatus,
+    pub latency_ms: u64,
+    pub checked_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Health status of a connection
+#[allow(dead_code)]
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum HealthStatus {
+    Healthy,
+    Unhealthy(String),
 }
 
 impl Drop for SyncManager {

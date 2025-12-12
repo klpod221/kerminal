@@ -408,7 +408,7 @@ watch(
       const customTheme = settingsStore.getCustomTheme(newTheme);
       const theme = customTheme
         ? customTheme.colors
-        : getTerminalTheme(newTheme);
+        : getTerminalTheme(newTheme as any);
       term.options.theme = theme;
     }
   },
@@ -448,7 +448,7 @@ onMounted(async () => {
   const customTheme = settingsStore.getCustomTheme(settingsStore.terminalTheme);
   const theme = customTheme
     ? customTheme.colors
-    : getTerminalTheme(settingsStore.terminalTheme);
+    : getTerminalTheme(settingsStore.terminalTheme as any);
 
   term = new Terminal({
     allowProposedApi: true,
@@ -559,22 +559,6 @@ onBeforeUnmount(async () => {
 </script>
 
 <style scoped>
-.terminal-container {
-  animation: terminalFadeIn 0.5s ease-out;
-}
-
-@keyframes terminalFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* Terminal cursor blink enhancement */
 :deep(.xterm-cursor) {
   animation: terminalCursor 1s infinite;

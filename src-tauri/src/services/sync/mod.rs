@@ -1,11 +1,13 @@
 mod engine;
 mod manager;
+mod queue;
 mod resolver;
 mod scheduler;
 mod serializer;
 
 pub use engine::SyncEngine;
 pub use manager::SyncManager;
+pub use queue::SyncQueue;
 pub use scheduler::SyncScheduler;
 pub use serializer::SyncSerializable;
 
@@ -21,6 +23,7 @@ pub struct SyncService {
     sync_manager: Arc<SyncManager>,
     sync_engine: Arc<SyncEngine>,
     sync_scheduler: Arc<SyncScheduler>,
+    sync_queue: Arc<SyncQueue>,
 }
 
 impl SyncService {
@@ -34,12 +37,14 @@ impl SyncService {
             database_service.clone(),
             sync_engine.clone(),
         ));
+        let sync_queue = Arc::new(SyncQueue::new(1)); // Max 1 concurrent sync
 
         Self {
             database_service,
             sync_manager,
             sync_engine,
             sync_scheduler,
+            sync_queue,
         }
     }
 
@@ -84,6 +89,26 @@ impl SyncService {
                     self.sync_scheduler
                         .enable_database(config.base.id.clone())
                         .await?;
+                }
+            }
+        }
+
+        // Cleanup old sync logs (older than 30 days)
+        {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let local_guard = local_db.read().await;
+            match local_guard.delete_old_sync_logs(30).await {
+                Ok(deleted) => {
+                    if deleted > 0 {
+                        eprintln!("[SyncService] Cleaned up {} old sync logs", deleted);
+                    }
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[SyncService] Warning: Failed to cleanup old sync logs: {}",
+                        e
+                    );
                 }
             }
         }
@@ -141,6 +166,13 @@ impl SyncService {
         database_id: &str,
         direction: SyncDirection,
     ) -> DatabaseResult<SyncLog> {
+        // Acquire sync queue slot to prevent concurrent syncs
+        let _guard = self.sync_queue.acquire(database_id).await.ok_or_else(|| {
+            crate::database::error::DatabaseError::SyncError(
+                "Sync already in progress for this database".to_string(),
+            )
+        })?;
+
         let config = {
             let db_service = self.database_service.lock().await;
             let local_db = db_service.get_local_database();
@@ -173,6 +205,7 @@ impl SyncService {
         }
 
         result
+        // _guard drops here, releasing the sync slot
     }
 
     /// Get sync status for a database

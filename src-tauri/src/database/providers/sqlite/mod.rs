@@ -892,6 +892,29 @@ impl SQLiteProvider {
         Ok(())
     }
 
+    /// Delete sync logs older than specified days
+    pub async fn delete_old_sync_logs(&self, days: i64) -> DatabaseResult<u64> {
+        let pool = self.pool.as_ref().ok_or_else(|| {
+            DatabaseError::ConnectionFailed("Database not initialized".to_string())
+        })?;
+        let pool_guard = pool.read().await;
+
+        let cutoff_date = (chrono::Utc::now() - chrono::Duration::days(days)).to_rfc3339();
+
+        let result = sqlx::query(
+            r#"
+            DELETE FROM sync_logs
+            WHERE started_at < ?
+            "#,
+        )
+        .bind(&cutoff_date)
+        .execute(&*pool_guard)
+        .await
+        .map_err(|e| DatabaseError::QueryFailed(e.to_string()))?;
+
+        Ok(result.rows_affected())
+    }
+
     // Session recording operations
     pub async fn save_session_recording(
         &self,

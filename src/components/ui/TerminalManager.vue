@@ -3,11 +3,12 @@
     <Terminal
       v-for="terminal in terminals"
       :key="terminal.id"
+      v-show="terminal.id === activeTerminalId"
       :ref="(el) => setTerminalRef(terminal.id, el)"
       :terminal-id="terminal.id"
       :backend-terminal-id="terminal.backendTerminalId"
       :is-connecting="terminal.isSSHConnecting || false"
-      :class="{ hidden: terminal.id !== activeTerminalId }"
+      :is-visible="terminal.id === activeTerminalId"
       class="w-full h-full absolute inset-0"
       @terminal-ready="onTerminalReady"
     />

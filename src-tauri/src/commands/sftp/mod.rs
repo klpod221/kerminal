@@ -260,7 +260,12 @@ pub async fn sftp_compare_directories(
     sftp_result!(
         state
             .sftp_sync_service
-            .compare_directories(request.session_id, request.local_path, request.remote_path)
+            .compare_directories(
+                request.session_id,
+                request.local_path,
+                request.remote_path,
+                None
+            )
             .await
     )
 }

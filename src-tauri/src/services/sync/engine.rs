@@ -229,8 +229,6 @@ impl SyncEngine {
         self.sync_manager.ensure_connection(config).await?;
         let remote = self.sync_manager.get_provider(&config.base.id).await?;
 
-        let mut stats = SyncStats::default();
-
         let last_sync = self.get_last_sync_time(&config.base.id).await?;
 
         let strategy = {
@@ -246,29 +244,25 @@ impl SyncEngine {
                 .unwrap_or(ConflictResolutionStrategy::Manual)
         };
 
-        let profile_stats = self
-            .sync_table_bidirectional(&remote, "ssh_profiles", last_sync, strategy)
-            .await?;
+        // Parallel sync: SSH tables can be synced together, command tables can be synced together
+        // Using try_join! to run syncs in parallel and fail fast on first error
+        let (profile_stats, group_stats, key_stats) = tokio::try_join!(
+            self.sync_table_bidirectional(&remote, "ssh_profiles", last_sync, strategy),
+            self.sync_table_bidirectional(&remote, "ssh_groups", last_sync, strategy),
+            self.sync_table_bidirectional(&remote, "ssh_keys", last_sync, strategy),
+        )?;
+
+        let (cmd_group_stats, cmd_stats) = tokio::try_join!(
+            self.sync_table_bidirectional(&remote, "saved_command_groups", last_sync, strategy),
+            self.sync_table_bidirectional(&remote, "saved_commands", last_sync, strategy),
+        )?;
+
+        // Merge all stats
+        let mut stats = SyncStats::default();
         stats.merge(profile_stats);
-
-        let group_stats = self
-            .sync_table_bidirectional(&remote, "ssh_groups", last_sync, strategy)
-            .await?;
         stats.merge(group_stats);
-
-        let key_stats = self
-            .sync_table_bidirectional(&remote, "ssh_keys", last_sync, strategy)
-            .await?;
         stats.merge(key_stats);
-
-        let cmd_group_stats = self
-            .sync_table_bidirectional(&remote, "saved_command_groups", last_sync, strategy)
-            .await?;
         stats.merge(cmd_group_stats);
-
-        let cmd_stats = self
-            .sync_table_bidirectional(&remote, "saved_commands", last_sync, strategy)
-            .await?;
         stats.merge(cmd_stats);
 
         Ok(stats)
@@ -378,9 +372,17 @@ impl SyncEngine {
                                     .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
                                     .map(|dt| dt.with_timezone(&Utc));
 
-                                if local_updated.is_some() {
+                                // For LastWriteWins, we need to compare with remote's updated_at
+                                // Since we're in a conflict (remote_version > local_version),
+                                // but we want to check timestamps, we need remote record
+                                // For now, if local has updated_at and local_version indicates local changes,
+                                // push local. Otherwise defer to remote.
+                                // TODO: Fetch remote record's updated_at for proper comparison
+                                if local_updated.is_some() && local_version > 0 {
+                                    // Local has changes, push it
                                     records_to_push.push(local_record);
                                 }
+                                // If local has no updated_at, remote wins (we do nothing, remote will be pulled)
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::FirstWriteWins => {
@@ -390,7 +392,12 @@ impl SyncEngine {
                                     .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
                                     .map(|dt| dt.with_timezone(&Utc));
 
-                                if local_created.is_some() {
+                                // For FirstWriteWins, the record that was created first should win
+                                // If local was created earlier, push local
+                                // If remote was created earlier, let remote win (do nothing)
+                                // TODO: Fetch remote record's created_at for proper comparison
+                                if local_created.is_some() && local_version > 0 {
+                                    // Assume local is older if it exists, push it
                                     records_to_push.push(local_record);
                                 }
                                 stats.conflicts_resolved += 1;
@@ -442,6 +449,26 @@ impl SyncEngine {
                         "ssh_keys" => {
                             if let Ok(key) = crate::models::ssh::SSHKey::from_json(&remote_record) {
                                 local_guard.save_ssh_key(&key).await?;
+                                stats.total_synced += 1;
+                            }
+                        }
+                        "saved_command_groups" => {
+                            if let Ok(group) =
+                                crate::models::saved_command::SavedCommandGroup::from_json(
+                                    &remote_record,
+                                )
+                            {
+                                local_guard.save_saved_command_group(&group).await?;
+                                stats.total_synced += 1;
+                            }
+                        }
+                        "saved_commands" => {
+                            if let Ok(command) =
+                                crate::models::saved_command::SavedCommand::from_json(
+                                    &remote_record,
+                                )
+                            {
+                                local_guard.save_saved_command(&command).await?;
                                 stats.total_synced += 1;
                             }
                         }

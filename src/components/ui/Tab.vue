@@ -1,6 +1,6 @@
 <template>
   <div
-    class="no-drag flex items-center h-full border-r border-gray-800 cursor-pointer group transition-all duration-300 ease-out flex-1 relative overflow-hidden touch-manipulation sm:max-h-[30px]"
+    class="no-drag flex items-center h-full border-r border-gray-800 cursor-pointer group transition-all duration-100 ease-out flex-1 relative overflow-hidden touch-manipulation sm:max-h-[30px]"
     :class="[
       {
         'active-tab bg-bg-secondary border-b-2': isActive,
@@ -85,7 +85,7 @@
     <X
       v-if="minWidth >= 100 || isTouch"
       :size="isMobile ? 16 : 14"
-      class="text-gray-500 hover:text-red-400 transition-all duration-300 ease-out shrink-0 transform hover:scale-110 cursor-pointer touch-manipulation"
+      class="text-gray-500 hover:text-red-400 transition-all duration-100 ease-out shrink-0 transform hover:scale-110 cursor-pointer touch-manipulation"
       :class="[
         isTouch
           ? 'ml-1 opacity-100'

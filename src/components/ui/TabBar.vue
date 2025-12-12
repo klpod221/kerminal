@@ -777,60 +777,37 @@ const handleAddTabContextMenuAction = (item: ContextMenuItem) => {
   opacity: 1;
 }
 
-/* Tab transition animations */
+/* Tab transition animations - reduced for snappy switching */
 .tab-enter-active {
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all 0.15s ease-out;
 }
 
 .tab-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.6, 1);
+  transition: all 0.1s ease-in;
 }
 
 .tab-enter-from {
   opacity: 0;
-  transform: scaleX(0.3) translateX(-30px);
-  transform-origin: left center;
-  max-width: 0;
+  transform: translateX(-10px);
 }
 
 .tab-enter-to {
   opacity: 1;
-  transform: scaleX(1) translateX(0);
-  transform-origin: left center;
+  transform: translateX(0);
 }
 
 .tab-leave-from {
   opacity: 1;
-  transform: scaleX(1) translateX(0);
-  transform-origin: right center;
+  transform: translateX(0);
 }
 
 .tab-leave-to {
   opacity: 0;
-  transform: scaleX(0.3) translateX(30px);
-  transform-origin: right center;
-  max-width: 0;
+  transform: translateX(10px);
 }
 
 .tab-move {
-  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-/* Stagger effect for multiple tabs */
-.tab-enter-active:nth-child(2) {
-  transition-delay: 0.05s;
-}
-
-.tab-enter-active:nth-child(3) {
-  transition-delay: 0.1s;
-}
-
-.tab-enter-active:nth-child(4) {
-  transition-delay: 0.15s;
-}
-
-.tab-enter-active:nth-child(n + 5) {
-  transition-delay: 0.2s;
+  transition: transform 0.15s ease-out;
 }
 
 /* Add Tab Button Animation */

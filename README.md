@@ -223,8 +223,10 @@ If you encounter any issues or have questions:
 - [x] Syntax highlighting for saved commands
 - [x] Session recording and playback (asciicast format)
 - [x] SFTP file transfer integration
+- [ ] Support graphic protocol
 - [ ] More SSH Authentication Methods
 - [ ] Plugin system for extensions
+- [ ] AI Agent for auto-completion, suggestion, chat and automation tasks
 - [ ] Cloud backup integration
 - [ ] Web-based version
 - [ ] Mobile app companion
