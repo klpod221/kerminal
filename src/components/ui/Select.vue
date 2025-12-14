@@ -192,11 +192,15 @@ select {
   appearance: none;
   /* Ensure background color is applied */
   background-color: inherit !important;
+  color-scheme: dark;
 }
 
 select::-ms-expand {
   display: none;
 }
 
-/* Ensure background color is applied */
+option {
+  background-color: #1a1a1a;
+  color: white;
+}
 </style>
