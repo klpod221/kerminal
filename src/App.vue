@@ -34,8 +34,10 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
+import { message } from "./utils/message";
 
 import TopBar from "./components/TopBar.vue";
+
 const Dashboard = defineAsyncComponent(
   () => import("./components/Dashboard.vue"),
 );
@@ -89,7 +91,27 @@ const { openOverlay, closeAllOverlays } = useOverlay();
 // Initialize global keyboard shortcuts once at app level
 useGlobalShortcuts();
 
+let unlisten: (() => void) | undefined;
+
 onMounted(async () => {
+  // Initialize updater store (detect platform)
+  updaterStore.initialize();
+
+  // Start listening for updates via store
+  await updaterStore.startListening();
+
+  // Watch for update availability to trigger modal
+  watch(
+    () => updaterStore.hasUpdate,
+    (hasUpdate) => {
+      if (hasUpdate) {
+        message.success("Update available!");
+        openOverlay("updater-modal");
+      }
+    },
+    { immediate: true }
+  );
+
   try {
     await authStore.initialize();
 
@@ -124,19 +146,10 @@ onMounted(async () => {
     // Ignore error during initial auto-unlock attempt
     console.debug("Auto-unlock failed silently:", error);
   }
+});
 
-  // Initialize updater and check for updates after a short delay
-  setTimeout(async () => {
-    if (authStore.isAuthenticated) {
-      updaterStore.initialize();
-      await updaterStore.checkUpdates(true); // Silent check
-
-      // If update is available, show modal
-      if (updaterStore.hasUpdate) {
-        openOverlay("updater-modal");
-      }
-    }
-  }, 30000); // Check for updates 30 seconds after start
+onUnmounted(() => {
+  if (unlisten) unlisten();
 });
 
 watch(

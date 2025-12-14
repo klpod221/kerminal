@@ -1,5 +1,7 @@
 import { check, Update } from "@tauri-apps/plugin-updater";
 import { invoke } from "@tauri-apps/api/core";
+import { api } from "./api";
+import { version } from "../../package.json";
 
 export interface UpdateInfo {
   version: string;
@@ -46,7 +48,7 @@ export function getPlatform(): string {
  */
 export async function downloadAndInstall(
   update: Update,
-  onProgress?: (progress: UpdateProgress) => void
+  onProgress?: (progress: UpdateProgress) => void,
 ): Promise<void> {
   let downloaded = 0;
   let total = 0;
@@ -104,7 +106,7 @@ export async function checkLinuxUpdate(): Promise<{
 } | null> {
   try {
     const response = await fetch(
-      "https://api.github.com/repos/klpod221/kerminal/releases/latest"
+      "https://api.github.com/repos/klpod221/kerminal/releases/latest",
     );
     if (!response.ok) return null;
 
@@ -112,9 +114,13 @@ export async function checkLinuxUpdate(): Promise<{
     const latestVersion = latestRelease.tag_name;
 
     // Get current version from package
-    const currentVersion = "v2.5.1"; // This should be dynamically loaded
+    const currentVersion = `v${version}`;
+
+    // console.log("[Updater] Latest version from GitHub:", latestVersion);
+    // console.log("[Updater] Current version:", currentVersion);
 
     if (latestVersion !== currentVersion) {
+      // console.log("[Updater] Update available!");
       return {
         available: true,
         version: latestVersion,
@@ -122,9 +128,27 @@ export async function checkLinuxUpdate(): Promise<{
       };
     }
 
+    // console.log("[Updater] No update available.");
     return { available: false };
   } catch (error) {
     console.error("Failed to check Linux updates:", error);
     return null;
   }
+}
+
+/**
+ * Listen to update available events
+ */
+export async function listenToUpdateEvents(
+  callback: (data: {
+    available: boolean;
+    version?: string;
+    url?: string;
+  }) => void,
+): Promise<() => void> {
+  return await api.listen<{
+    available: boolean;
+    version?: string;
+    url?: string;
+  }>("update-available", callback);
 }

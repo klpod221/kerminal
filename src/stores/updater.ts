@@ -5,6 +5,7 @@ import {
   checkForUpdates,
   getPlatform,
   checkLinuxUpdate,
+  listenToUpdateEvents,
   UpdateProgress,
 } from "../services/updater";
 
@@ -31,8 +32,13 @@ export const useUpdaterStore = defineStore("updater", () => {
   const skippedVersions = ref<string[]>([]);
 
   // Computed
-  const hasUpdate = computed(() => availableUpdate.value !== null);
   const isLinux = computed(() => currentPlatform.value === "linux");
+  const hasUpdate = computed(() => {
+    if (isLinux.value) {
+      return linuxUpdateInfo.value?.available || false;
+    }
+    return availableUpdate.value !== null;
+  });
 
   // Actions
   function initialize() {
@@ -108,6 +114,39 @@ export const useUpdaterStore = defineStore("updater", () => {
     };
   }
 
+  function setLinuxUpdateInfo(info: {
+    available: boolean;
+    version?: string;
+    url?: string;
+  }) {
+    linuxUpdateInfo.value = info;
+  }
+
+  let unlisten: (() => void) | null = null;
+
+  async function startListening() {
+    if (unlisten) return; // Already listening
+
+    unlisten = await listenToUpdateEvents(
+      (data: { available: boolean; version?: string; url?: string }) => {
+        if (isLinux.value) {
+          setLinuxUpdateInfo(data);
+        } else {
+          // Handle other platforms if needed, but for now we focus on Linux
+          // For Windows/macOS, the update object structure might be different
+          // and handled by tauri-plugin-updater
+        }
+      },
+    );
+  }
+
+  function stopListening() {
+    if (unlisten) {
+      unlisten();
+      unlisten = null;
+    }
+  }
+
   return {
     // State
     isChecking,
@@ -133,5 +172,8 @@ export const useUpdaterStore = defineStore("updater", () => {
     updateDownloadProgress,
     setDownloading,
     clearUpdate,
+    setLinuxUpdateInfo,
+    startListening,
+    stopListening,
   };
 });

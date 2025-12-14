@@ -10,6 +10,10 @@ pub fn init(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>
 
     let app_handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
+        // Initialize updater service
+        let updater_service = crate::services::updater::UpdaterService::new(app_handle.clone());
+        updater_service.start_update_check_loop();
+
         match AppState::new().await {
             Ok(app_state) => {
                 let auth_session_manager = app_state.auth_session_manager.clone();

@@ -9,3 +9,4 @@ pub mod ssh_config_parser;
 pub mod sync;
 pub mod terminal;
 pub mod tunnel;
+pub mod updater;

@@ -10,132 +10,110 @@
   >
     <div class="space-y-4">
       <!-- Update Available (Non-Linux) -->
-      <Card
-        v-if="!isLinux && availableUpdate"
-        title="Update Available"
-        :icon="Download"
-        icon-background="bg-green-500/20"
-        icon-color="text-green-400"
-      >
-        <div class="space-y-4">
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-400">Current Version:</span>
-            <span class="text-white font-mono">{{ currentVersion }}</span>
-          </div>
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-400">New Version:</span>
-            <span class="text-green-400 font-mono">{{
-              availableUpdate.version
-            }}</span>
-          </div>
+      <div v-if="!isLinux && availableUpdate" class="space-y-4">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-400">Current Version:</span>
+          <span class="text-white font-mono">{{ currentVersion }}</span>
+        </div>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-400">New Version:</span>
+          <span class="text-green-400 font-mono">{{
+            availableUpdate.version
+          }}</span>
+        </div>
 
-          <!-- Release Notes -->
-          <div v-if="availableUpdate.body" class="mt-4">
-            <div class="text-sm text-gray-400 mb-2">What's New:</div>
-            <div
-              class="bg-dark-700/50 rounded-lg p-3 text-sm text-gray-300 max-h-48 overflow-y-auto"
-            >
-              <pre class="whitespace-pre-wrap">{{ availableUpdate.body }}</pre>
-            </div>
-          </div>
-
-          <!-- Download Progress -->
-          <div v-if="isDownloading" class="mt-4">
-            <div class="flex items-center justify-between text-sm mb-2">
-              <span class="text-gray-400">Downloading...</span>
-              <span class="text-white"
-                >{{ downloadProgress.percentage.toFixed(0) }}%</span
-              >
-            </div>
-            <div class="w-full bg-dark-700 rounded-full h-2">
-              <div
-                class="bg-green-500 h-2 rounded-full transition-all duration-300"
-                :style="{ width: `${downloadProgress.percentage}%` }"
-              ></div>
-            </div>
-            <div class="flex items-center justify-between text-xs mt-1">
-              <span class="text-gray-500">{{
-                formatBytes(downloadProgress.downloaded)
-              }}</span>
-              <span class="text-gray-500">{{
-                formatBytes(downloadProgress.total)
-              }}</span>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex gap-3 mt-4">
-            <Button
-              v-if="!isDownloading"
-              variant="secondary"
-              @click="handleSkip"
-              class="flex-1"
-            >
-              Skip This Version
-            </Button>
-            <Button
-              variant="primary"
-              :icon="Download"
-              :loading="isDownloading"
-              :disabled="isDownloading"
-              @click="handleUpdate"
-              class="flex-1"
-            >
-              {{ isDownloading ? "Downloading..." : "Update Now" }}
-            </Button>
+        <!-- Release Notes -->
+        <div v-if="availableUpdate.body" class="mt-4">
+          <div class="text-sm text-gray-400 mb-2">What's New:</div>
+          <div
+            class="bg-dark-700/50 rounded-lg p-3 text-sm text-gray-300 max-h-48 overflow-y-auto"
+          >
+            <pre class="whitespace-pre-wrap">{{ availableUpdate.body }}</pre>
           </div>
         </div>
-      </Card>
+
+        <!-- Download Progress -->
+        <div v-if="isDownloading" class="mt-4">
+          <div class="flex items-center justify-between text-sm mb-2">
+            <span class="text-gray-400">Downloading...</span>
+            <span class="text-white"
+              >{{ downloadProgress.percentage.toFixed(0) }}%</span
+            >
+          </div>
+          <div class="w-full bg-dark-700 rounded-full h-2">
+            <div
+              class="bg-green-500 h-2 rounded-full transition-all duration-300"
+              :style="{ width: `${downloadProgress.percentage}%` }"
+            ></div>
+          </div>
+          <div class="flex items-center justify-between text-xs mt-1">
+            <span class="text-gray-500">{{
+              formatBytes(downloadProgress.downloaded)
+            }}</span>
+            <span class="text-gray-500">{{
+              formatBytes(downloadProgress.total)
+            }}</span>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3 mt-4">
+          <Button
+            v-if="!isDownloading"
+            variant="secondary"
+            @click="handleSkip"
+            class="flex-1"
+          >
+            Skip This Version
+          </Button>
+          <Button
+            variant="primary"
+            :icon="Download"
+            :loading="isDownloading"
+            :disabled="isDownloading"
+            @click="handleUpdate"
+            class="flex-1"
+          >
+            {{ isDownloading ? "Downloading..." : "Update Now" }}
+          </Button>
+        </div>
+      </div>
 
       <!-- Linux Update Available -->
-      <Card
-        v-if="isLinux && linuxUpdateInfo?.available"
-        title="Update Available"
-        :icon="Download"
-        icon-background="bg-green-500/20"
-        icon-color="text-green-400"
-      >
-        <div class="space-y-4">
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-400">Current Version:</span>
-            <span class="text-white font-mono">{{ currentVersion }}</span>
-          </div>
-          <div class="flex items-center justify-between text-sm">
-            <span class="text-gray-400">New Version:</span>
-            <span class="text-green-400 font-mono">{{
-              linuxUpdateInfo.version
-            }}</span>
-          </div>
-
-          <p class="text-sm text-gray-400">
-            A new version is available. Please update using your package manager
-            or download from GitHub.
-          </p>
-
-          <div class="flex gap-3">
-            <Button variant="secondary" @click="handleClose" class="flex-1">
-              Later
-            </Button>
-            <Button
-              variant="primary"
-              :icon="ExternalLink"
-              @click="handleOpenGitHub"
-              class="flex-1"
-            >
-              Download from GitHub
-            </Button>
-          </div>
+      <div v-if="isLinux && linuxUpdateInfo?.available" class="space-y-4">
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-400">Current Version:</span>
+          <span class="text-white font-mono">{{ currentVersion }}</span>
         </div>
-      </Card>
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-400">New Version:</span>
+          <span class="text-green-400 font-mono">{{
+            linuxUpdateInfo.version
+          }}</span>
+        </div>
+
+        <p class="text-sm text-gray-400">
+          A new version is available. Please update using your package manager
+          or download from GitHub.
+        </p>
+
+        <div class="flex gap-3">
+          <Button variant="secondary" @click="handleClose" class="flex-1">
+            Later
+          </Button>
+          <Button
+            variant="primary"
+            :icon="ExternalLink"
+            @click="handleOpenGitHub"
+            class="flex-1"
+          >
+            Download from GitHub
+          </Button>
+        </div>
+      </div>
 
       <!-- No Updates -->
-      <Card
-        v-if="!hasUpdate && !isChecking"
-        title="You're Up to Date"
-        :icon="CheckCircle"
-        icon-background="bg-green-500/20"
-        icon-color="text-green-400"
-      >
+      <div v-if="!hasUpdate && !isChecking" class="space-y-4">
         <p class="text-sm text-gray-400">
           You are running the latest version of Kerminal.
         </p>
@@ -143,20 +121,13 @@
           <span class="text-gray-400">Current Version:</span>
           <span class="text-white font-mono">{{ currentVersion }}</span>
         </div>
-      </Card>
+      </div>
 
       <!-- Checking -->
-      <Card
-        v-if="isChecking"
-        title="Checking for Updates..."
-        :icon="RefreshCw"
-        icon-background="bg-blue-500/20"
-        icon-color="text-blue-400"
-      >
-        <div class="flex items-center justify-center py-4">
-          <RefreshCw class="w-6 h-6 text-blue-400 animate-spin" />
-        </div>
-      </Card>
+      <div v-if="isChecking" class="flex items-center justify-center py-4">
+        <RefreshCw class="w-6 h-6 text-blue-400 animate-spin" />
+        <span class="ml-3 text-sm text-gray-400">Checking for updates...</span>
+      </div>
     </div>
   </Modal>
 </template>
@@ -165,23 +136,22 @@
 import { computed } from "vue";
 import {
   Download,
-  CheckCircle,
   RefreshCw,
   ExternalLink,
 } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
-import Card from "../ui/Card.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useUpdaterStore } from "../../stores/updater";
 import { restartApp } from "../../services/updater";
 import { message } from "../../utils/message";
+import { version } from "../../../package.json";
 
 const { closeOverlay } = useOverlay();
 const updaterStore = useUpdaterStore();
 
-const currentVersion = "v2.5.1"; // This should be loaded from package.json
+const currentVersion = `v${version}`;
 
 const isChecking = computed(() => updaterStore.isChecking);
 const isDownloading = computed(() => updaterStore.isDownloading);
