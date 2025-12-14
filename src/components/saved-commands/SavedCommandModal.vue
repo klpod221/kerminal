@@ -15,13 +15,14 @@
       />
 
       <!-- Command -->
-      <CodeEditor
+      <SimpleCodeEditor
         id="command-editor"
         v-model="formData.command"
         label="Command"
         language="shell"
         height="150px"
-        :error="commandError"
+        rules="required"
+        :error-message="commandError"
         helper-text="Enter your shell command or script"
       />
 
@@ -78,7 +79,7 @@ import Button from "../ui/Button.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Select from "../ui/Select.vue";
 import TagInput from "../ui/TagInput.vue";
-import CodeEditor from "../ui/CodeEditor.vue";
+import SimpleCodeEditor from "../ui/SimpleCodeEditor.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSavedCommandStore } from "../../stores/savedCommand";
 import { safeJsonParse, safeJsonStringify } from "../../utils/helpers";

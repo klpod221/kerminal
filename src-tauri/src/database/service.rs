@@ -719,7 +719,18 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH key {} not found", id)))?;
 
+        if key.has_encrypted_data() {
+            let mp_manager = self.master_password_manager.read().await;
+            key.decrypt_fields(&*mp_manager)?;
+        }
+
         request.apply_to_key(&mut key);
+
+        // Re-encrypt fields with current master password/device key
+        if key.has_encrypted_data() {
+            let mp_manager = self.master_password_manager.read().await;
+            key.encrypt_fields(&*mp_manager)?;
+        }
 
         local_db.save_ssh_key(&key).await?;
 

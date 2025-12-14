@@ -29,12 +29,13 @@
             Copy Template
           </button>
         </div>
-        <CodeEditor
+        <SimpleCodeEditor
+          id="theme-json-editor"
           v-model="jsonInput"
           language="json"
           height="250px"
-          :error="jsonError"
-          :minimap="false"
+          rules="required"
+          :error-message="jsonError"
           @change="handleJsonInput"
         />
       </div>
@@ -122,7 +123,7 @@ import { Palette, Save } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import Input from "../ui/Input.vue";
-import CodeEditor from "../ui/CodeEditor.vue";
+import SimpleCodeEditor from "../ui/SimpleCodeEditor.vue";
 import Collapsible from "../ui/Collapsible.vue";
 import { useSettingsStore } from "../../stores/settings";
 import { useOverlay } from "../../composables/useOverlay";

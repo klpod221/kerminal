@@ -189,7 +189,7 @@
           helper-text="The directory to start in after connecting"
         />
 
-        <CodeEditor
+        <SimpleCodeEditor
           id="profile-command"
           v-model="sshProfile.command"
           label="Startup Command"
@@ -316,7 +316,7 @@ import ColorPicker from "../ui/ColorPicker.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
-import CodeEditor from "../ui/CodeEditor.vue";
+import SimpleCodeEditor from "../ui/SimpleCodeEditor.vue";
 import EnvVarEditor from "../ui/EnvVarEditor.vue";
 import { message } from "../../utils/message";
 import { Save } from "lucide-vue-next";

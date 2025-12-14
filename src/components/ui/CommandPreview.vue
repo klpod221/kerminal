@@ -1,20 +1,22 @@
 <template>
   <div
-    class="command-preview-container"
-    :class="props.containerClass"
+    class="command-preview-wrapper"
     :style="{ maxHeight: props.maxHeight }"
     @click.stop
   >
-    <SyntaxHighlight
-      :code="props.command"
+    <SimpleCodeEditor
+      id="command-preview-editor"
+      :model-value="props.command"
       language="shell"
-      class="command-preview-code"
+      :fit-content="true"
+      :read-only="true"
+      class="command-preview-editor"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import SyntaxHighlight from "./SyntaxHighlight.vue";
+import SimpleCodeEditor from "./SimpleCodeEditor.vue";
 
 interface Props {
   command: string;
@@ -29,57 +31,40 @@ const props = withDefaults(defineProps<Props>(), {
 </script>
 
 <style scoped>
-.command-preview-container {
-  position: relative;
+.command-preview-wrapper {
+  width: 100%;
+  overflow-y: auto;
   border-radius: 0.5rem;
-  overflow: hidden;
-  border: 1px solid rgba(75, 85, 99, 0.4);
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
+}
+
+.command-preview-wrapper::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.command-preview-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.command-preview-wrapper::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.3);
+  border-radius: 3px;
+  transition: background-color 0.2s;
+}
+
+.command-preview-wrapper::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.5);
+}
+
+:deep(.simple-code-editor) {
   background: linear-gradient(
     135deg,
     rgba(0, 0, 0, 0.4) 0%,
     rgba(0, 0, 0, 0.2) 100%
   );
   backdrop-filter: blur(4px);
-  overflow-y: auto;
-  transition: all 0.2s;
-  /* Firefox scrollbar */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(156, 163, 175, 0.3) transparent;
-}
-
-.group:hover .command-preview-container {
-  border-color: rgba(75, 85, 99, 0.6);
-  background: linear-gradient(
-    135deg,
-    rgba(0, 0, 0, 0.5) 0%,
-    rgba(0, 0, 0, 0.3) 100%
-  );
-}
-
-.command-preview-container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.command-preview-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.command-preview-container::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.3);
-  border-radius: 3px;
-  transition: background-color 0.2s;
-}
-
-.command-preview-container::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(156, 163, 175, 0.5);
-}
-
-.command-preview-code {
-  margin: 0;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  font-family: "Fira Code", "Monaco", "Menlo", "Ubuntu Mono", monospace;
 }
 </style>

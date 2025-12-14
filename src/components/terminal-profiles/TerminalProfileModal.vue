@@ -29,7 +29,7 @@
         placeholder="/home/user/projects"
       />
 
-      <CodeEditor
+      <SimpleCodeEditor
         id="profile-command"
         v-model="profile.command"
         label="Startup Command (Optional)"
@@ -83,7 +83,7 @@ import Form from "../ui/Form.vue";
 import Input from "../ui/Input.vue";
 import Button from "../ui/Button.vue";
 import Collapsible from "../ui/Collapsible.vue";
-import CodeEditor from "../ui/CodeEditor.vue";
+import SimpleCodeEditor from "../ui/SimpleCodeEditor.vue";
 import ColorPicker from "../ui/ColorPicker.vue";
 import EnvVarEditor from "../ui/EnvVarEditor.vue";
 import { message } from "../../utils/message";
