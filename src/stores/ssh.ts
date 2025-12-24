@@ -34,6 +34,7 @@ async function testConnection(request: {
   keepAlive?: boolean;
   compression?: boolean;
   proxy?: any;
+  jumpHosts?: any;
 }): Promise<void> {
   const context: ErrorContext = {
     operation: "Test SSH Connection",

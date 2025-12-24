@@ -115,6 +115,7 @@ impl SSHConfigHost {
             keep_alive: true,
             compression: false,
             proxy: None,
+            jump_hosts: None,
             color: None,
             description: Some(format!("Temporary profile from SSH config: {}", self.name)),
             command: None,

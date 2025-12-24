@@ -14,10 +14,10 @@ pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> 
     sqlx::query(
         r#"
         INSERT INTO ssh_profiles (
-            id, name, host, port, username, group_id, auth_method, auth_data,
+            id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts,
             description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at,
             device_id, version, sync_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             host = excluded.host,
@@ -26,6 +26,7 @@ pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> 
             group_id = excluded.group_id,
             auth_method = excluded.auth_method,
             auth_data = excluded.auth_data,
+            jump_hosts = excluded.jump_hosts,
             description = excluded.description,
             color = excluded.color,
             timeout = excluded.timeout,
@@ -48,6 +49,7 @@ pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> 
     .bind(&model.group_id)
     .bind(serde_json::to_string(&model.auth_method).unwrap_or_default())
     .bind(serde_json::to_string(&model.auth_data).unwrap_or_default())
+    .bind(model.jump_hosts.as_ref().map(|jh| serde_json::to_string(jh).unwrap_or_default()))
     .bind(&model.description)
     .bind(&model.color)
     .bind(model.timeout.map(|t| t as i32))
@@ -76,7 +78,7 @@ pub async fn find_ssh_profile_by_id(
     let pool = pool.read().await;
 
     let row = sqlx::query(
-        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
+        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts, description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
     )
     .bind(id)
     .fetch_optional(&*pool)
@@ -114,12 +116,15 @@ pub async fn find_ssh_profile_by_id(
             timeout: row.get::<Option<i32>, _>("timeout").map(|t| t as u32),
             keep_alive: row.get("keep_alive"),
             compression: row.get("compression"),
+            proxy: None,
+            jump_hosts: row
+                .get::<Option<String>, _>("jump_hosts")
+                .and_then(|s| serde_json::from_str(&s).ok()),
             color: row.get("color"),
             description: row.get("description"),
             command: row.get("command"),
             working_dir: row.get("working_dir"),
             env: serde_json::from_str(&row.get::<String, _>("env")).ok(),
-            proxy: None,
         };
         Ok(Some(profile))
     } else {
@@ -132,7 +137,7 @@ pub async fn find_all_ssh_profiles(provider: &SQLiteProvider) -> DatabaseResult<
     let pool = pool.read().await;
 
     let rows = sqlx::query(
-        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY name"
+        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts, description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY name"
     )
     .fetch_all(&*pool)
     .await
@@ -170,12 +175,15 @@ pub async fn find_all_ssh_profiles(provider: &SQLiteProvider) -> DatabaseResult<
             timeout: row.get::<Option<i32>, _>("timeout").map(|t| t as u32),
             keep_alive: row.get("keep_alive"),
             compression: row.get("compression"),
+            proxy: None,
+            jump_hosts: row
+                .get::<Option<String>, _>("jump_hosts")
+                .and_then(|s| serde_json::from_str(&s).ok()),
             color: row.get("color"),
             description: row.get("description"),
             command: row.get("command"),
             working_dir: row.get("working_dir"),
             env: serde_json::from_str(&row.get::<String, _>("env")).ok(),
-            proxy: None,
         };
         profiles.push(profile);
     }

@@ -270,6 +270,40 @@
           </div>
         </div>
       </Collapsible>
+
+      <!-- Jump Host Configuration -->
+      <Collapsible
+        title="Jump Host Configuration"
+        subtitle="Connect through intermediate servers"
+        :default-expanded="false"
+      >
+        <Checkbox
+          id="enable-jump-host"
+          v-model="enableJumpHost"
+          label="Enable Jump Host"
+        />
+
+        <div v-if="enableJumpHost" class="mt-4">
+          <p class="text-sm text-gray-400 mb-4">
+            Select an SSH profile to use as a jump host. The connection will be
+            forwarded through this server to reach the target.
+          </p>
+
+          <Select
+            id="jump-host-profile"
+            v-model="selectedJumpHostId"
+            label="Jump Host Profile"
+            placeholder="Select a profile to use as jump host"
+            :options="jumpHostOptions"
+            rules="required"
+          />
+
+          <p class="text-xs text-gray-500 mt-2">
+            Tip: You can chain multiple jump hosts by configuring the selected
+            profile with its own jump host.
+          </p>
+        </div>
+      </Collapsible>
     </Form>
 
     <template #footer>
@@ -404,6 +438,21 @@ const proxyConfig = ref({
   password: "",
 });
 
+// Jump Host state
+const enableJumpHost = ref(false);
+const selectedJumpHostId = ref("");
+
+// Jump host options (other profiles that can be used as jump hosts)
+const jumpHostOptions = computed(() => {
+  // Filter out the current profile being edited
+  return sshStore.profiles
+    .filter((p) => p.id !== sshProfileId.value)
+    .map((p) => ({
+      value: p.id,
+      label: `${p.name} (${p.username}@${p.host})`,
+    }));
+});
+
 const authMethodOptions = [
   { value: "Password", label: "Password" },
   { value: "KeyReference", label: "SSH Key" },
@@ -434,64 +483,84 @@ const openKeyManager = () => {
   openOverlay("ssh-key-manager-modal");
 };
 
+// Helper: Load auth data from profile
+const loadAuthDataFromProfile = (profile: SSHProfile) => {
+  if (!profile.authData) return;
+  if ("Password" in profile.authData) {
+    authPassword.value = "";
+  } else if ("KeyReference" in profile.authData) {
+    authKeyId.value = profile.authData.KeyReference.keyId;
+  }
+};
+
+// Helper: Load proxy config from profile
+const loadProxyFromProfile = (profile: SSHProfile) => {
+  if (profile.proxy) {
+    enableProxy.value = true;
+    proxyConfig.value = {
+      proxyType: profile.proxy.proxyType,
+      host: profile.proxy.host,
+      port: profile.proxy.port,
+      username: profile.proxy.username || "",
+      password: profile.proxy.password || "",
+    };
+  } else {
+    enableProxy.value = false;
+    proxyConfig.value = {
+      proxyType: "Http",
+      host: "",
+      port: 8080,
+      username: "",
+      password: "",
+    };
+  }
+};
+
+// Helper: Load jump host config from profile
+const loadJumpHostFromProfile = (profile: SSHProfile) => {
+  if (
+    profile.jumpHosts &&
+    profile.jumpHosts.length > 0 &&
+    profile.jumpHosts[0].profileId
+  ) {
+    enableJumpHost.value = true;
+    selectedJumpHostId.value = profile.jumpHosts[0].profileId;
+  } else {
+    enableJumpHost.value = false;
+    selectedJumpHostId.value = "";
+  }
+};
+
 const loadProfile = async () => {
   if (!sshProfileId.value) return;
 
   isLoadingProfile.value = true;
   try {
     const profile = await sshStore.findProfileById(sshProfileId.value);
-    if (profile) {
-      sshProfile.value = {
-        name: profile.name,
-        host: profile.host,
-        port: profile.port,
-        username: profile.username,
-        groupId: profile.groupId || "",
-        authMethod: profile.authMethod,
-        authData: profile.authData,
-        timeout: profile.timeout || 30,
-        keepAlive: profile.keepAlive,
-        compression: profile.compression,
-        color: profile.color || "#3b82f6",
-        description: profile.description || "",
-        command: profile.command || "",
-        workingDir: profile.workingDir || "",
-        env: profile.env || {},
-        proxy: profile.proxy,
-      };
+    if (!profile) return;
 
-      if (profile.authData) {
-        if ("Password" in profile.authData) {
-          authPassword.value = "";
-        } else if ("KeyReference" in profile.authData) {
-          authKeyId.value = profile.authData.KeyReference.keyId;
-        }
-      }
+    sshProfile.value = {
+      name: profile.name,
+      host: profile.host,
+      port: profile.port,
+      username: profile.username,
+      groupId: profile.groupId || "",
+      authMethod: profile.authMethod,
+      authData: profile.authData,
+      timeout: profile.timeout || 30,
+      keepAlive: profile.keepAlive,
+      compression: profile.compression,
+      color: profile.color || "#3b82f6",
+      description: profile.description || "",
+      command: profile.command || "",
+      workingDir: profile.workingDir || "",
+      env: profile.env || {},
+      proxy: profile.proxy,
+    };
 
-      if (profile.proxy) {
-        enableProxy.value = true;
-        proxyConfig.value = {
-          proxyType: profile.proxy.proxyType,
-          host: profile.proxy.host,
-          port: profile.proxy.port,
-          username: profile.proxy.username || "",
-          password: profile.proxy.password || "",
-        };
-      } else {
-        enableProxy.value = false;
-        proxyConfig.value = {
-          proxyType: "Http",
-          host: "",
-          port: 8080,
-          username: "",
-          password: "",
-        };
-      }
-
-      sshProfile.value.command = profile.command || "";
-      sshProfile.value.workingDir = profile.workingDir || "";
-      sshProfile.value.env = profile.env || {};
-    }
+    loadAuthDataFromProfile(profile);
+    loadProxyFromProfile(profile);
+    loadJumpHostFromProfile(profile);
   } catch (error) {
     console.error("Error loading SSH profile:", error);
   } finally {
@@ -515,71 +584,46 @@ const buildAuthData = (): AuthData | null => {
   }
 };
 
+// Helper: Build proxy config for request
+const buildProxyConfig = () => {
+  if (!enableProxy.value) return null;
+  return {
+    proxyType: proxyConfig.value.proxyType,
+    host: proxyConfig.value.host,
+    port: proxyConfig.value.port,
+    username: proxyConfig.value.username || null,
+    password: proxyConfig.value.password || null,
+  };
+};
+
+// Helper: Build jump hosts config for request
+const buildJumpHostsConfig = () => {
+  if (!enableJumpHost.value || !selectedJumpHostId.value) return null;
+  return [{ profileId: selectedJumpHostId.value }];
+};
+
 const buildTestRequest = async () => {
-  if (sshProfileId.value) {
-    let authData;
+  const authData = sshProfileId.value
+    ? buildAuthData() ||
+      (await sshService.getSSHProfile(sshProfileId.value))?.authData
+    : buildAuthData();
 
-    const formAuthData = buildAuthData();
-    if (formAuthData) {
-      // User entered password in form, use it
-      authData = formAuthData;
-    } else {
-      // Password is empty (or other auth method), get from database with decrypted password
-      // Use getSSHProfile() which decrypts password, not findProfileById() from store
-      const existingProfile = await sshService.getSSHProfile(
-        sshProfileId.value,
-      );
-      if (!existingProfile) {
-        throw new Error("Profile not found");
-      }
-      authData = existingProfile.authData;
-    }
-
-    return {
-      host: sshProfile.value.host,
-      port: sshProfile.value.port,
-      username: sshProfile.value.username,
-      authMethod: sshProfile.value.authMethod,
-      authData: authData,
-      timeout: sshProfile.value.timeout || 30,
-      keepAlive: sshProfile.value.keepAlive ?? true,
-      compression: sshProfile.value.compression ?? false,
-      proxy: enableProxy.value
-        ? {
-            proxyType: proxyConfig.value.proxyType,
-            host: proxyConfig.value.host,
-            port: proxyConfig.value.port,
-            username: proxyConfig.value.username || null,
-            password: proxyConfig.value.password || null,
-          }
-        : null,
-    };
-  } else {
-    const authData = buildAuthData();
-    if (!authData) {
-      throw new Error("Cannot test connection without authentication data");
-    }
-
-    return {
-      host: sshProfile.value.host,
-      port: sshProfile.value.port,
-      username: sshProfile.value.username,
-      authMethod: sshProfile.value.authMethod,
-      authData: authData,
-      timeout: sshProfile.value.timeout || 5,
-      keepAlive: sshProfile.value.keepAlive ?? true,
-      compression: sshProfile.value.compression ?? false,
-      proxy: enableProxy.value
-        ? {
-            proxyType: proxyConfig.value.proxyType,
-            host: proxyConfig.value.host,
-            port: proxyConfig.value.port,
-            username: proxyConfig.value.username || null,
-            password: proxyConfig.value.password || null,
-          }
-        : null,
-    };
+  if (!authData) {
+    throw new Error("Cannot test connection without authentication data");
   }
+
+  return {
+    host: sshProfile.value.host,
+    port: sshProfile.value.port,
+    username: sshProfile.value.username,
+    authMethod: sshProfile.value.authMethod,
+    authData,
+    timeout: sshProfile.value.timeout || (sshProfileId.value ? 30 : 5),
+    keepAlive: sshProfile.value.keepAlive ?? true,
+    compression: sshProfile.value.compression ?? false,
+    proxy: buildProxyConfig(),
+    jumpHosts: buildJumpHostsConfig(),
+  };
 };
 
 const testConnection = async () => {
@@ -604,6 +648,7 @@ const testConnection = async () => {
       keepAlive: testRequest.keepAlive,
       compression: testRequest.compression,
       proxy: testRequest.proxy,
+      jumpHosts: testRequest.jumpHosts,
     });
     message.success("SSH connection test successful!");
   } finally {
@@ -617,9 +662,16 @@ const handleSubmit = async () => {
 
   try {
     const authData = buildAuthData();
+    // Destructure to exclude authData from spread - we only want to send it when explicitly set
+    const {
+      authData: _existingAuthData,
+      proxy: _existingProxy,
+      ...restProfile
+    } = sshProfile.value;
+
     const profileData = {
-      ...sshProfile.value,
-      ...(authData && { authData }), // Only include authData if not null
+      ...restProfile,
+      ...(authData && { authData }), // Only include authData if provided
       groupId: sshProfile.value.groupId || undefined,
       proxy: enableProxy.value
         ? {
@@ -633,6 +685,10 @@ const handleSubmit = async () => {
       command: sshProfile.value.command,
       workingDir: sshProfile.value.workingDir,
       env: sshProfile.value.env,
+      jumpHosts:
+        enableJumpHost.value && selectedJumpHostId.value
+          ? [{ profileId: selectedJumpHostId.value }]
+          : [], // Send empty array to clear, not null
     };
 
     if (sshProfileId.value) {
@@ -684,6 +740,8 @@ const closeModal = () => {
   closeOverlay("ssh-profile-modal");
 };
 
+// Reset jump host state in closeModal function is handled by the watch
+
 watch(
   () => [sshProfileId.value, groupId.value],
   ([newId, newGroupId]) => {
@@ -717,6 +775,8 @@ watch(
         username: "",
         password: "",
       };
+      enableJumpHost.value = false;
+      selectedJumpHostId.value = "";
     }
   },
   { immediate: true },

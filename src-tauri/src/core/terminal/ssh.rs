@@ -227,37 +227,38 @@ impl SSHTerminal {
         let config = Arc::new(config);
 
         let handler = (*self.handler).clone();
-        let mut session = if let Some(proxy_config) = &self.ssh_profile.proxy {
-            let stream =
-                create_proxy_stream(proxy_config, &self.ssh_profile.host, self.ssh_profile.port)
-                    .await
-                    .map_err(|e| {
-                        self.state = TerminalState::Disconnected;
-                        AppError::connection_failed(format!(
-                            "Failed to create proxy connection: {}",
-                            e
-                        ))
-                    })?;
 
-            russh::client::connect_stream(config, stream, handler).await
+        // Clone jump_hosts to avoid borrow checker issues
+        let jump_hosts_cloned = self.ssh_profile.jump_hosts.clone();
+
+        // Check if we need to connect via jump hosts
+        let mut session = if let Some(jump_hosts) = &jump_hosts_cloned {
+            if !jump_hosts.is_empty() {
+                self.connect_via_jump_hosts(
+                    jump_hosts,
+                    config.clone(),
+                    handler,
+                    resolved_key.clone(),
+                )
+                .await?
+            } else {
+                self.connect_direct(config, handler).await?
+            }
         } else {
-            russh::client::connect(
-                config,
-                (self.ssh_profile.host.as_str(), self.ssh_profile.port),
-                handler,
-            )
-            .await
-        }
-        .map_err(|e| {
-            self.state = TerminalState::Disconnected;
-            AppError::connection_failed(format!(
-                "Failed to connect to SSH server {}:{}: {}",
-                self.ssh_profile.host, self.ssh_profile.port, e
-            ))
-        })?;
+            self.connect_direct(config, handler).await?
+        };
 
-        self.authenticate_with_resolved_data(&mut session, resolved_key)
-            .await?;
+        // Authenticate with the final host (only if we didn't go through jump hosts,
+        // as jump host path handles its own authentication)
+        if jump_hosts_cloned.is_none()
+            || jump_hosts_cloned
+                .as_ref()
+                .map(|jh| jh.is_empty())
+                .unwrap_or(true)
+        {
+            self.authenticate_with_resolved_data(&mut session, resolved_key)
+                .await?;
+        }
 
         let channel = session.channel_open_session().await.map_err(|e| {
             self.state = TerminalState::Disconnected;
@@ -450,6 +451,301 @@ impl SSHTerminal {
                     return Err(AppError::authentication_failed(format!(
                         "Certificate authentication failed for user '{}'",
                         username
+                    )));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Connect directly to the target (with optional proxy)
+    async fn connect_direct(
+        &mut self,
+        config: Arc<russh::client::Config>,
+        handler: ClientHandler,
+    ) -> Result<Handle<ClientHandler>, AppError> {
+        if let Some(proxy_config) = &self.ssh_profile.proxy {
+            let stream =
+                create_proxy_stream(proxy_config, &self.ssh_profile.host, self.ssh_profile.port)
+                    .await
+                    .map_err(|e| {
+                        self.state = TerminalState::Disconnected;
+                        AppError::connection_failed(format!(
+                            "Failed to create proxy connection: {}",
+                            e
+                        ))
+                    })?;
+
+            russh::client::connect_stream(config, stream, handler)
+                .await
+                .map_err(|e| {
+                    self.state = TerminalState::Disconnected;
+                    AppError::connection_failed(format!(
+                        "Failed to connect to SSH server {}:{}: {}",
+                        self.ssh_profile.host, self.ssh_profile.port, e
+                    ))
+                })
+        } else {
+            russh::client::connect(
+                config,
+                (self.ssh_profile.host.as_str(), self.ssh_profile.port),
+                handler,
+            )
+            .await
+            .map_err(|e| {
+                self.state = TerminalState::Disconnected;
+                AppError::connection_failed(format!(
+                    "Failed to connect to SSH server {}:{}: {}",
+                    self.ssh_profile.host, self.ssh_profile.port, e
+                ))
+            })
+        }
+    }
+
+    /// Connect to the final target via jump hosts
+    async fn connect_via_jump_hosts(
+        &mut self,
+        jump_hosts: &[crate::models::ssh::profile::JumpHostConfig],
+        config: Arc<russh::client::Config>,
+        handler: ClientHandler,
+        _resolved_key: Option<ResolvedSSHKey>,
+    ) -> Result<Handle<ClientHandler>, AppError> {
+        // We need to chain connections through jump hosts
+        // Support profile_id references and inline config
+
+        let db_service = self.database_service.as_ref().ok_or_else(|| {
+            AppError::Config("Database service required for jump host resolution".to_string())
+        })?;
+
+        // Collect all jump profiles we need
+        let mut jump_profiles = Vec::new();
+        for jh in jump_hosts {
+            if let Some(profile_id) = &jh.profile_id {
+                // Get the profile with decrypted password
+                let profile = {
+                    let db = db_service.lock().await;
+                    db.get_ssh_profile(profile_id).await.map_err(|e| {
+                        AppError::Config(format!(
+                            "Failed to get jump host profile '{}': {}",
+                            profile_id, e
+                        ))
+                    })?
+                }; // Lock released here
+                jump_profiles.push(profile);
+            } else if let (Some(host), Some(port), Some(username)) =
+                (&jh.host, jh.port, &jh.username)
+            {
+                // Create a temporary profile from inline config
+                let mut temp_profile = crate::models::ssh::SSHProfile::new(
+                    "temp".to_string(),
+                    format!("jump-{}", host),
+                    host.clone(),
+                    port,
+                    username.clone(),
+                );
+                if let Some(auth_method) = &jh.auth_method {
+                    temp_profile.auth_method = auth_method.clone();
+                }
+                if let Some(auth_data) = &jh.auth_data {
+                    temp_profile.auth_data = auth_data.clone();
+                }
+                jump_profiles.push(temp_profile);
+            } else {
+                return Err(AppError::Config(
+                    "Invalid jump host config: need either profile_id or inline config".to_string(),
+                ));
+            }
+        }
+
+        if jump_profiles.is_empty() {
+            return self.connect_direct(config, handler).await;
+        }
+
+        // Connect to the first jump host
+        let first_jump = &jump_profiles[0];
+        let jump_handler = ClientHandler::new(format!("jump-{}", first_jump.host));
+
+        let mut current_session: Handle<ClientHandler> = russh::client::connect(
+            config.clone(),
+            (first_jump.host.as_str(), first_jump.port),
+            jump_handler,
+        )
+        .await
+        .map_err(|e| {
+            self.state = TerminalState::Disconnected;
+            AppError::connection_failed(format!(
+                "Failed to connect to first jump host {}:{}: {}",
+                first_jump.host, first_jump.port, e
+            ))
+        })?;
+
+        // Authenticate with first jump host
+        self.authenticate_jump_host(&mut current_session, first_jump)
+            .await?;
+
+        // Chain through remaining jump hosts
+        for i in 1..jump_profiles.len() {
+            let next_jump = &jump_profiles[i];
+            let jump_handler = ClientHandler::new(format!("jump-{}", next_jump.host));
+
+            // Open a direct TCP/IP channel to the next jump host
+            let channel = current_session
+                .channel_open_direct_tcpip(&next_jump.host, next_jump.port as u32, "127.0.0.1", 0)
+                .await
+                .map_err(|e| {
+                    self.state = TerminalState::Disconnected;
+                    AppError::connection_failed(format!(
+                        "Failed to forward to jump host {}:{}: {}",
+                        next_jump.host, next_jump.port, e
+                    ))
+                })?;
+
+            // Connect through the forwarded channel
+            current_session =
+                russh::client::connect_stream(config.clone(), channel.into_stream(), jump_handler)
+                    .await
+                    .map_err(|e| {
+                        self.state = TerminalState::Disconnected;
+                        AppError::connection_failed(format!(
+                            "Failed to establish SSH through channel to {}:{}: {}",
+                            next_jump.host, next_jump.port, e
+                        ))
+                    })?;
+
+            // Authenticate with this jump host
+            self.authenticate_jump_host(&mut current_session, next_jump)
+                .await?;
+        }
+
+        // Now forward to the final target
+        let channel = current_session
+            .channel_open_direct_tcpip(
+                &self.ssh_profile.host,
+                self.ssh_profile.port as u32,
+                "127.0.0.1",
+                0,
+            )
+            .await
+            .map_err(|e| {
+                self.state = TerminalState::Disconnected;
+                AppError::connection_failed(format!(
+                    "Failed to forward to final target {}:{}: {}",
+                    self.ssh_profile.host, self.ssh_profile.port, e
+                ))
+            })?;
+
+        // Connect to final target through the channel
+        let mut final_session =
+            russh::client::connect_stream(config, channel.into_stream(), handler)
+                .await
+                .map_err(|e| {
+                    self.state = TerminalState::Disconnected;
+                    AppError::connection_failed(format!(
+                        "Failed to establish SSH to final target {}:{}: {}",
+                        self.ssh_profile.host, self.ssh_profile.port, e
+                    ))
+                })?;
+
+        // Authenticate with the final target
+        self.authenticate_with_resolved_data(&mut final_session, None)
+            .await?;
+
+        Ok(final_session)
+    }
+
+    /// Authenticate with a jump host
+    async fn authenticate_jump_host(
+        &self,
+        session: &mut Handle<ClientHandler>,
+        profile: &crate::models::ssh::SSHProfile,
+    ) -> Result<(), AppError> {
+        use crate::models::ssh::AuthData;
+
+        let username = &profile.username;
+
+        match &profile.auth_data {
+            AuthData::Password { password } => {
+                let result = session
+                    .authenticate_password(username, password)
+                    .await
+                    .map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Jump host password auth error for '{}@{}': {}",
+                            username, profile.host, e
+                        ))
+                    })?;
+
+                if !result {
+                    return Err(AppError::authentication_failed(format!(
+                        "Jump host password auth failed for '{}@{}'",
+                        username, profile.host
+                    )));
+                }
+            }
+            AuthData::KeyReference { key_id } => {
+                // Resolve the key from database
+                if let Some(db_service) = &self.database_service {
+                    let db = db_service.lock().await;
+                    let key = db.get_ssh_key(key_id).await.map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Failed to get jump host key: {}",
+                            e
+                        ))
+                    })?;
+                    let secret_key =
+                        russh_keys::decode_secret_key(&key.private_key, key.passphrase.as_deref())
+                            .map_err(|e| {
+                                AppError::authentication_failed(format!(
+                                    "Failed to parse jump host key: {}",
+                                    e
+                                ))
+                            })?;
+
+                    let result = session
+                        .authenticate_publickey(username, Arc::new(secret_key))
+                        .await
+                        .map_err(|e| {
+                            AppError::authentication_failed(format!(
+                                "Jump host key auth error for '{}@{}': {}",
+                                username, profile.host, e
+                            ))
+                        })?;
+
+                    if !result {
+                        return Err(AppError::authentication_failed(format!(
+                            "Jump host key auth failed for '{}@{}'",
+                            username, profile.host
+                        )));
+                    }
+                } else {
+                    return Err(AppError::Config(
+                        "Database service required for key auth".to_string(),
+                    ));
+                }
+            }
+            AuthData::Certificate { private_key, .. } => {
+                let secret_key = russh_keys::decode_secret_key(private_key, None).map_err(|e| {
+                    AppError::authentication_failed(format!(
+                        "Failed to parse jump host certificate key: {}",
+                        e
+                    ))
+                })?;
+
+                let result = session
+                    .authenticate_publickey(username, Arc::new(secret_key))
+                    .await
+                    .map_err(|e| {
+                        AppError::authentication_failed(format!(
+                            "Jump host certificate auth error for '{}@{}': {}",
+                            username, profile.host, e
+                        ))
+                    })?;
+
+                if !result {
+                    return Err(AppError::authentication_failed(format!(
+                        "Jump host certificate auth failed for '{}@{}'",
+                        username, profile.host
                     )));
                 }
             }
