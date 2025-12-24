@@ -728,6 +728,7 @@ const closeModal = () => {
     password: "",
   };
 
+  activeTab.value = "basic";
   closeOverlay("ssh-profile-modal");
 };
 
