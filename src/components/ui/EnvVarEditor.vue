@@ -1,15 +1,17 @@
 <template>
-  <div class="space-y-2">
+  <div class="space-y-2 mb-2">
     <div
       v-for="(item, index) in localVars"
       :key="index"
-      class="flex gap-2 mb-2"
+      class="flex items-center gap-2"
     >
       <Input
         :id="`env-key-${index}`"
         v-model="item.key"
         placeholder="KEY"
         class="flex-1"
+        :helper="false"
+        :space="false"
         @update:model-value="emitUpdate"
       />
       <Input
@@ -17,12 +19,16 @@
         v-model="item.value"
         placeholder="VALUE"
         class="flex-1"
+        :helper="false"
+        :space="false"
         @update:model-value="emitUpdate"
       />
       <Button
         type="button"
         variant="ghost"
+        size="sm"
         :icon="Trash2"
+        class="shrink-0"
         @click="removeEnvVar(index)"
       />
     </div>

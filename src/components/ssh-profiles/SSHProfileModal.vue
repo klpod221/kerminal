@@ -2,100 +2,87 @@
   <Modal
     id="ssh-profile-modal"
     :title="sshProfileId ? 'Edit SSH Profile' : 'Create SSH Profile'"
-    size="lg"
+    size="2xl"
   >
     <Form ref="sshProfileForm" @submit="handleSubmit">
-      <!-- Basic Information -->
-      <h4
-        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2"
-      >
-        Basic Information
-      </h4>
+      <!-- Tab Navigation -->
+      <NavigationTabs v-model="activeTab" :tabs="tabs" class="mb-4" />
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Input
-          id="profile-name"
-          v-model="sshProfile.name"
-          label="Profile Name"
-          placeholder="My Server"
-          rules="required|min:3|max:50"
-          :autofocus="true"
-        />
-
-        <Select
-          id="profile-group"
-          v-model="sshProfile.groupId"
-          label="Group (Optional)"
-          placeholder="Select a group"
-          :options="groupOptions"
-        />
-      </div>
-
-      <Textarea
-        id="profile-description"
-        v-model="sshProfile.description"
-        label="Description (Optional)"
-        placeholder="A brief description of the server"
-        :rows="2"
-      />
-
-      <!-- Connection Details -->
-      <h4
-        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2"
-      >
-        Connection Details
-      </h4>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="md:col-span-2">
+      <!-- Tab: Basic -->
+      <div v-show="activeTab === 'basic'">
+        <!-- Profile Info -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
           <Input
-            id="profile-host"
-            v-model="sshProfile.host"
-            label="Host"
-            placeholder="example.com or 192.168.1.100"
-            rules="required"
+            id="profile-name"
+            v-model="sshProfile.name"
+            label="Profile Name"
+            placeholder="My Server"
+            rules="required|min:3|max:50"
+            :autofocus="true"
+          />
+
+          <Select
+            id="profile-group"
+            v-model="sshProfile.groupId"
+            label="Group (Optional)"
+            placeholder="Select a group"
+            :options="groupOptions"
           />
         </div>
 
-        <Input
-          id="profile-port"
-          v-model.number="sshProfile.port"
-          label="Port"
-          type="number"
-          placeholder="22"
-          :min="1"
-          :max="65535"
-          rules="required|min_value:1|max_value:65535"
+        <Textarea
+          id="profile-description"
+          v-model="sshProfile.description"
+          label="Description (Optional)"
+          placeholder="A brief description of the server"
+          :rows="2"
         />
-      </div>
 
-      <Input
-        id="profile-username"
-        v-model="sshProfile.username"
-        label="Username"
-        placeholder="root"
-        rules="required|min:1|max:32"
-      />
+        <!-- Connection -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-x-4">
+          <div class="md:col-span-2">
+            <Input
+              id="profile-host"
+              v-model="sshProfile.host"
+              label="Host"
+              placeholder="example.com or 192.168.1.100"
+              rules="required"
+            />
+          </div>
 
-      <!-- Authentication -->
-      <h4
-        class="text-sm font-medium text-gray-100 border-b border-gray-700 pb-2 mb-2"
-      >
-        Authentication
-      </h4>
+          <Input
+            id="profile-port"
+            v-model.number="sshProfile.port"
+            label="Port"
+            type="number"
+            placeholder="22"
+            :min="1"
+            :max="65535"
+            rules="required|min_value:1|max_value:65535"
+          />
 
-      <Select
-        id="profile-auth-method"
-        v-model="sshProfile.authMethod"
-        label="Authentication Method"
-        placeholder="Select authentication method"
-        :options="authMethodOptions"
-        rules="required"
-      />
+          <Input
+            id="profile-username"
+            v-model="sshProfile.username"
+            label="Username"
+            placeholder="root"
+            rules="required|min:1|max:32"
+          />
+        </div>
 
-      <!-- Password Authentication -->
-      <div v-if="sshProfile.authMethod === 'Password'" class="space-y-4">
+        <!-- Authentication -->
+        <Select
+          id="profile-auth-method"
+          v-model="sshProfile.authMethod"
+          label="Authentication Method"
+          placeholder="Select authentication method"
+          :options="authMethodOptions"
+          rules="required"
+        />
+
+        <!-- Password -->
         <Input
+          v-if="sshProfile.authMethod === 'Password'"
           id="profile-password"
           v-model="authPassword"
           label="Password"
@@ -106,24 +93,20 @@
               : 'Enter password'
           "
           :rules="sshProfileId ? '' : 'required'"
-          helper-text="Leave empty to keep the current password. Enter a new password to
-          change it"
+          helper-text="Leave empty to keep the current password"
         />
-      </div>
 
-      <!-- SSH Key Reference -->
-      <div v-else-if="sshProfile.authMethod === 'KeyReference'" class="mb-2">
-        <Select
-          id="profile-key-reference"
-          v-model="authKeyId"
-          label="Select SSH Key"
-          placeholder="Choose a saved SSH key"
-          :options="sshKeyOptions"
-          rules="required"
-        />
-        <div class="text-sm text-gray-400">
-          <p>
-            Don't have any keys?
+        <!-- SSH Key -->
+        <div v-if="sshProfile.authMethod === 'KeyReference'">
+          <Select
+            id="profile-key-reference"
+            v-model="authKeyId"
+            label="SSH Key"
+            placeholder="Choose a saved SSH key"
+            :options="sshKeyOptions"
+            rules="required"
+          />
+          <p class="text-xs text-gray-500 -mt-4">
             <button
               type="button"
               class="text-blue-400 hover:text-blue-300 underline"
@@ -135,21 +118,15 @@
         </div>
       </div>
 
-      <!-- Advanced Settings -->
-      <Collapsible
-        title="Advanced Settings"
-        subtitle="Connection & appearance options"
-        :default-expanded="false"
-      >
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <!-- Tab: Terminal -->
+      <div v-show="activeTab === 'terminal'">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
           <Input
-            id="profile-timeout"
-            v-model.number="sshProfile.timeout"
-            label="Connection Timeout (s)"
-            type="number"
-            placeholder="30"
-            :min="1"
-            :max="300"
+            id="profile-working-dir"
+            v-model="sshProfile.workingDir"
+            label="Working Directory"
+            placeholder="/home/user/projects"
+            helper-text="Directory to start in after connecting"
           />
 
           <ColorPicker
@@ -160,150 +137,157 @@
           />
         </div>
 
-        <div class="flex flex-wrap gap-6 mt-4">
-          <Checkbox
-            id="profile-keep-alive"
-            v-model="sshProfile.keepAlive"
-            label="Keep Alive"
-          />
-
-          <Checkbox
-            id="profile-compression"
-            v-model="sshProfile.compression"
-            label="Enable Compression"
-          />
-        </div>
-      </Collapsible>
-
-      <!-- Terminal Settings -->
-      <Collapsible
-        title="Terminal Settings"
-        subtitle="Startup behavior & environment"
-        :default-expanded="false"
-      >
-        <Input
-          id="profile-working-dir"
-          v-model="sshProfile.workingDir"
-          label="Working Directory"
-          placeholder="/home/user/projects"
-          helper-text="The directory to start in after connecting"
-        />
-
         <SimpleCodeEditor
           id="profile-command"
           v-model="sshProfile.command"
           label="Startup Command"
           language="shell"
-          height="100px"
-          helper-text="Commands to run after connecting (e.g. neofetch, source ~/.bashrc)"
-          class="mt-4"
+          height="80px"
+          helper-text="Commands to run after connecting"
         />
 
-        <div class="mt-4">
+        <div>
           <div class="block text-sm font-medium text-gray-300 mb-2">
             Environment Variables
           </div>
           <EnvVarEditor v-model="sshProfile.env" />
         </div>
-      </Collapsible>
 
-      <!-- Proxy Configuration -->
-      <Collapsible
-        title="Proxy Configuration"
-        subtitle="Route connection through proxy"
-        :default-expanded="false"
-      >
-        <Checkbox
-          id="enable-proxy"
-          v-model="enableProxy"
-          label="Enable Proxy"
-        />
+        <div class="flex flex-wrap items-start gap-4">
+          <div class="w-48">
+            <Input
+              id="profile-timeout"
+              v-model.number="sshProfile.timeout"
+              label="Connection Timeout (s)"
+              type="number"
+              placeholder="30"
+              :min="1"
+              :max="300"
+              :helper="false"
+            />
+          </div>
 
-        <div v-if="enableProxy">
-          <Select
-            id="proxy-type"
-            v-model="proxyConfig.proxyType"
-            label="Proxy Type"
-            placeholder="Select proxy type"
-            :options="proxyTypeOptions"
-            rules="required"
-          />
+          <div class="flex gap-4 pt-8">
+            <Checkbox
+              id="profile-keep-alive"
+              v-model="sshProfile.keepAlive"
+              label="Keep Alive"
+            />
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div class="md:col-span-2">
+            <Checkbox
+              id="profile-compression"
+              v-model="sshProfile.compression"
+              label="Compression"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Network -->
+      <div v-show="activeTab === 'network'" class="space-y-4">
+        <!-- Proxy -->
+        <div class="rounded-lg border border-gray-700 p-4">
+          <div class="flex items-start gap-3">
+            <Checkbox id="enable-proxy" v-model="enableProxy" />
+            <div class="flex-1">
+              <label
+                for="enable-proxy"
+                class="block text-sm font-medium text-gray-200 cursor-pointer"
+              >
+                Use Proxy
+              </label>
+              <p class="text-xs text-gray-500 mt-0.5">
+                Route SSH connection through a proxy server (SOCKS5, HTTP, etc.)
+              </p>
+            </div>
+          </div>
+
+          <div v-if="enableProxy" class="mt-4 pt-4 border-t border-gray-700">
+            <Select
+              id="proxy-type"
+              v-model="proxyConfig.proxyType"
+              label="Proxy Type"
+              placeholder="Select proxy type"
+              :options="proxyTypeOptions"
+              rules="required"
+            />
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-x-4">
+              <div class="md:col-span-2">
+                <Input
+                  id="proxy-host"
+                  v-model="proxyConfig.host"
+                  label="Host"
+                  placeholder="proxy.example.com"
+                  rules="required"
+                />
+              </div>
+
               <Input
-                id="proxy-host"
-                v-model="proxyConfig.host"
-                label="Proxy Host"
-                placeholder="proxy.example.com"
-                rules="required"
+                id="proxy-port"
+                v-model.number="proxyConfig.port"
+                label="Port"
+                type="number"
+                placeholder="8080"
+                :min="1"
+                :max="65535"
+                rules="required|min_value:1|max_value:65535"
               />
             </div>
 
-            <Input
-              id="proxy-port"
-              v-model.number="proxyConfig.port"
-              label="Proxy Port"
-              type="number"
-              placeholder="8080"
-              :min="1"
-              :max="65535"
-              rules="required|min_value:1|max_value:65535"
-            />
-          </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4">
+              <Input
+                id="proxy-username"
+                v-model="proxyConfig.username"
+                label="Username (Optional)"
+                placeholder="username"
+              />
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              id="proxy-username"
-              v-model="proxyConfig.username"
-              label="Proxy Username (Optional)"
-              placeholder="username"
-            />
-
-            <Input
-              id="proxy-password"
-              v-model="proxyConfig.password"
-              label="Proxy Password (Optional)"
-              type="password"
-              placeholder="password"
-            />
+              <Input
+                id="proxy-password"
+                v-model="proxyConfig.password"
+                label="Password (Optional)"
+                type="password"
+                placeholder="password"
+              />
+            </div>
           </div>
         </div>
-      </Collapsible>
 
-      <!-- Jump Host Configuration -->
-      <Collapsible
-        title="Jump Host Configuration"
-        subtitle="Connect through intermediate servers"
-        :default-expanded="false"
-      >
-        <Checkbox
-          id="enable-jump-host"
-          v-model="enableJumpHost"
-          label="Enable Jump Host"
-        />
+        <!-- Jump Host -->
+        <div class="rounded-lg border border-gray-700 p-4">
+          <div class="flex items-start gap-3">
+            <Checkbox id="enable-jump-host" v-model="enableJumpHost" />
+            <div class="flex-1">
+              <label
+                for="enable-jump-host"
+                class="block text-sm font-medium text-gray-200 cursor-pointer"
+              >
+                Use Jump Host
+              </label>
+              <p class="text-xs text-gray-500 mt-0.5">
+                Connect through an intermediate SSH server (bastion host)
+              </p>
+            </div>
+          </div>
 
-        <div v-if="enableJumpHost" class="mt-4">
-          <p class="text-sm text-gray-400 mb-4">
-            Select an SSH profile to use as a jump host. The connection will be
-            forwarded through this server to reach the target.
-          </p>
+          <div v-if="enableJumpHost" class="mt-4 pt-4 border-t border-gray-700">
+            <Select
+              id="jump-host-profile"
+              v-model="selectedJumpHostId"
+              label="Jump Host Profile"
+              placeholder="Select a profile"
+              :options="jumpHostOptions"
+              rules="required"
+            />
 
-          <Select
-            id="jump-host-profile"
-            v-model="selectedJumpHostId"
-            label="Jump Host Profile"
-            placeholder="Select a profile to use as jump host"
-            :options="jumpHostOptions"
-            rules="required"
-          />
-
-          <p class="text-xs text-gray-500 mt-2">
-            Tip: You can chain multiple jump hosts by configuring the selected
-            profile with its own jump host.
-          </p>
+            <p class="text-xs text-gray-500 -mt-4">
+              Tip: Chain multiple jump hosts by configuring the selected profile
+              with its own jump host.
+            </p>
+          </div>
         </div>
-      </Collapsible>
+      </div>
     </Form>
 
     <template #footer>
@@ -349,11 +333,11 @@ import Select from "../ui/Select.vue";
 import ColorPicker from "../ui/ColorPicker.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
-import Collapsible from "../ui/Collapsible.vue";
+import NavigationTabs from "../ui/NavigationTabs.vue";
 import SimpleCodeEditor from "../ui/SimpleCodeEditor.vue";
 import EnvVarEditor from "../ui/EnvVarEditor.vue";
 import { message } from "../../utils/message";
-import { Save } from "lucide-vue-next";
+import { Save, Server, Terminal, Network } from "lucide-vue-next";
 import { useSSHStore } from "../../stores/ssh";
 import { useSSHKeyStore } from "../../stores/sshKey";
 import { useOverlay } from "../../composables/useOverlay";
@@ -391,6 +375,13 @@ const groupId = getOverlayProp(
 const sshProfileForm = ref<InstanceType<typeof Form> | null>(null);
 const isTesting = ref(false);
 const isLoadingProfile = ref(false);
+const activeTab = ref("basic");
+
+const tabs = [
+  { id: "basic", label: "Basic", icon: Server },
+  { id: "terminal", label: "Terminal", icon: Terminal },
+  { id: "network", label: "Network", icon: Network },
+];
 
 const sshProfile = ref<{
   name: string;
