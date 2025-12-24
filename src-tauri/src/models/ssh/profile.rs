@@ -383,18 +383,35 @@ pub struct UpdateSSHProfileRequest {
     pub host: Option<String>,
     pub port: Option<u16>,
     pub username: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub group_id: Option<Option<String>>, // None = no change, Some(None) = remove from group
     pub auth_method: Option<AuthMethod>,
     pub auth_data: Option<AuthData>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub timeout: Option<Option<u32>>,
     pub keep_alive: Option<bool>,
     pub compression: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub jump_hosts: Option<Option<Vec<JumpHostConfig>>>, // None = no change, Some(None) = remove
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub color: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub description: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub command: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub working_dir: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub env: Option<Option<std::collections::HashMap<String, String>>>,
+}
+
+/// Deserialize optional field: missing = None, null = Some(None), value = Some(Some(value))
+fn deserialize_optional_field<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
 }
 
 /// Request to test SSH connection (minimal required fields)

@@ -653,7 +653,6 @@ const handleSubmit = async () => {
 
   try {
     const authData = buildAuthData();
-    // Destructure to exclude authData from spread - we only want to send it when explicitly set
     const {
       authData: _existingAuthData,
       proxy: _existingProxy,
@@ -662,8 +661,8 @@ const handleSubmit = async () => {
 
     const profileData = {
       ...restProfile,
-      ...(authData && { authData }), // Only include authData if provided
-      groupId: sshProfile.value.groupId || undefined,
+      ...(authData && { authData }),
+      groupId: sshProfile.value.groupId || null,
       proxy: enableProxy.value
         ? {
             proxyType: proxyConfig.value.proxyType,
@@ -731,8 +730,6 @@ const closeModal = () => {
   activeTab.value = "basic";
   closeOverlay("ssh-profile-modal");
 };
-
-// Reset jump host state in closeModal function is handled by the watch
 
 watch(
   () => [sshProfileId.value, groupId.value],
