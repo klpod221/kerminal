@@ -151,6 +151,8 @@ jobs:
           fi
 
   publish-aur:
+    permissions:
+      contents: read
     name: Publish to AUR (${{ matrix.repo }})
     needs: build-tauri
     runs-on: ubuntu-latest

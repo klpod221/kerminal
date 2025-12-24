@@ -8,14 +8,15 @@ use tauri::State;
 
 /// Derive encryption key from password and salt using PBKDF2
 fn derive_key_from_password(password: &str, salt: &[u8; 32]) -> Result<[u8; 32], String> {
-    let mut key = [0u8; 32];
+    let mut key: [u8; 32] = Default::default();
 
-    let _ = pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
+    pbkdf2::pbkdf2::<hmac::Hmac<sha2::Sha256>>(
         password.as_bytes(),
         salt,
         100_000, // 100k iterations
         &mut key,
-    );
+    )
+    .map_err(|_| "PBKDF2 calibration failed".to_string())?;
 
     Ok(key)
 }
