@@ -57,11 +57,11 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 
 ### Dashboard
 
-![Dashboard](public/screenshots/Dashboard.png)
+![Dashboard](docs/public/screenshots/Dashboard.png)
 
 ### Main Interface
 
-![Kerminal Main Interface](public/screenshots/MainInterface.png)
+![Kerminal Main Interface](docs/public/screenshots/MainInterface.png)
 
 ## ✨ Features
 

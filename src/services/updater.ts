@@ -116,11 +116,7 @@ export async function checkLinuxUpdate(): Promise<{
     // Get current version from package
     const currentVersion = `v${version}`;
 
-    // console.log("[Updater] Latest version from GitHub:", latestVersion);
-    // console.log("[Updater] Current version:", currentVersion);
-
     if (latestVersion !== currentVersion) {
-      // console.log("[Updater] Update available!");
       return {
         available: true,
         version: latestVersion,
@@ -128,7 +124,6 @@ export async function checkLinuxUpdate(): Promise<{
       };
     }
 
-    // console.log("[Updater] No update available.");
     return { available: false };
   } catch (error) {
     console.error("Failed to check Linux updates:", error);

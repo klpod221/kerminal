@@ -7,7 +7,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "pretty": "prettier --write \"./**/*.{ts,vue,css}\""
+    "pretty": "prettier --write \"./**/*.{ts,vue,css}\"",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -44,6 +47,7 @@
     "tailwindcss": "^4.1.13",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
+    "vitepress": "^1.6.4",
     "vue-tsc": "^2.0.29"
   }
 }
