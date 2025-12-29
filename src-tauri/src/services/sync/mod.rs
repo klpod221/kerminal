@@ -69,17 +69,19 @@ impl SyncService {
             local_guard.get_all_external_databases().await?
         }; // Drop locks
 
-        let db_service = self.database_service.lock().await;
-        let local_db = db_service.get_local_database();
-        let sync_settings = {
-            let guard = local_db.read().await;
-            guard.get_global_sync_settings().await?
-        };
+        let auto_sync_enabled = {
+            let db_service = self.database_service.lock().await;
+            let local_db = db_service.get_local_database();
+            let sync_settings = {
+                let guard = local_db.read().await;
+                guard.get_global_sync_settings().await?
+            };
 
-        let auto_sync_enabled = sync_settings
-            .as_ref()
-            .map(|s| s.auto_sync_enabled)
-            .unwrap_or(false);
+            sync_settings
+                .as_ref()
+                .map(|s| s.auto_sync_enabled)
+                .unwrap_or(false)
+        };
 
         if auto_sync_enabled {
             for config in configs {
