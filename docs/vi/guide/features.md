@@ -22,6 +22,12 @@ Kerminal được trang bị đầy đủ các tính năng được thiết kế
 - Tích hợp clipboard (sao chép/dán)
 - Phím tắt cho tất cả hành động phổ biến
 
+### Sixel Graphics Protocol
+- Hiển thị hình ảnh trực tiếp trong terminal
+- Hỗ trợ các công cụ như `img2sixel`, `lsix`, `viu`, v.v.
+- Render tăng tốc phần cứng qua xterm-addon-image
+- Hoàn hảo để xem biểu đồ, sơ đồ và preview hình ảnh
+
 ## 📡 Quản lý SSH & Tunneling
 
 ### Tổ chức Profile

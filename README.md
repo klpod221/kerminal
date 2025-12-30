@@ -239,15 +239,15 @@ If you encounter any issues or have questions:
 - [x] SFTP file transfer integration
 - [x] Auto-lock sessions and keychain integration
 - [x] Jump host chain support for SSH connections
+- [x] Support Sixel graphics protocol for inline images
 
 ### In Progress
-- [x] Support graphic protocol (Sixel - ✅ Fully functional, Kitty - ⏳ Partial support)
-- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
+- [ ] Homebrew install for macOS
 
 ### Planned
-- [ ] Homebrew install for macOS
-- [ ] Plugin system for extensions
+- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
 - [ ] AI Agent for auto-completion, suggestion, chat and automation
+- [ ] Plugin system for extensions
 - [ ] Cloud backup integration
 - [ ] Web-based version
 - [ ] Mobile app companion

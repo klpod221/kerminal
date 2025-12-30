@@ -22,6 +22,12 @@ Kerminal comes packed with features designed to enhance your terminal experience
 - Clipboard integration (copy/paste)
 - Keyboard shortcuts for all common actions
 
+### Sixel Graphics Protocol
+- Display inline images directly in the terminal
+- Supported by tools like `img2sixel`, `lsix`, `viu`, and more
+- Hardware-accelerated rendering via xterm-addon-image
+- Perfect for visualizing charts, diagrams, and image previews
+
 ## 📡 SSH Management & Tunneling
 
 ### Profile Organization
