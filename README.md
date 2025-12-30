@@ -257,6 +257,26 @@ If you encounter any issues or have questions:
 Thanks to all the amazing people who have contributed to this project! 🎉
 
 <!-- readme: collaborators,contributors -start -->
+<table>
+	<tbody>
+		<tr>
+            <td align="center">
+                <a href="https://github.com/klpod221">
+                    <img src="https://avatars.githubusercontent.com/u/62713126?v=4" width="100;" alt="klpod221"/>
+                    <br />
+                    <sub><b>Bùi Thanh Xuân</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/vthuan1889">
+                    <img src="https://avatars.githubusercontent.com/u/84111292?v=4" width="100;" alt="vthuan1889"/>
+                    <br />
+                    <sub><b>Thuan Vo</b></sub>
+                </a>
+            </td>
+		</tr>
+	<tbody>
+</table>
 <!-- readme: collaborators,contributors -end -->
 
 ---
