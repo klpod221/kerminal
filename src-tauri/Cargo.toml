@@ -59,6 +59,9 @@ pbkdf2 = "0.12"
 hmac = "0.12"
 sha2 = "0.10"
 
+# Graphics protocol support
+image = "0.25"
+
 # Keychain integration
 keyring = "2.3"
 

@@ -241,7 +241,7 @@ If you encounter any issues or have questions:
 - [x] Jump host chain support for SSH connections
 
 ### In Progress
-- [ ] Support graphic protocol (Kitty, Sixel)
+- [x] Support graphic protocol (Sixel - ✅ Fully functional, Kitty - ⏳ Partial support)
 - [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
 
 ### Planned

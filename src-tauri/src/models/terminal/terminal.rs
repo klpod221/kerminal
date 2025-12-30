@@ -123,3 +123,16 @@ pub struct TerminalLatency {
     pub terminal_id: String,
     pub latency_ms: u64,
 }
+
+/// Event for graphics protocol data (Kitty)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalGraphicsData {
+    pub terminal_id: String,
+    pub protocol: String,    // "kitty" or "sixel"
+    pub format: Option<u32>, // 100=PNG, 24=RGB, 32=RGBA
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub data: Vec<u8>, // Image data (PNG bytes or raw pixels)
+    pub image_id: Option<u32>,
+}

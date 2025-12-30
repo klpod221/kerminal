@@ -183,6 +183,7 @@ import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { ImageAddon } from "@xterm/addon-image";
 
 interface TerminalProps {
   terminalId?: string;
@@ -493,6 +494,14 @@ onMounted(async () => {
   const unicode11Addon = new Unicode11Addon();
   term.loadAddon(unicode11Addon);
   term.unicode.activeVersion = "11";
+
+  // Load ImageAddon for Sixel graphics support
+  const imageAddon = new ImageAddon({
+    sixelSupport: true,
+    sixelScrolling: true,
+    sixelPaletteLimit: 256,
+  });
+  term.loadAddon(imageAddon);
 
   term.open(terminalRef.value);
 
