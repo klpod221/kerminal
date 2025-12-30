@@ -1,7 +1,9 @@
-/// Sixel graphics protocol parser
-///
-/// Sixel is handled primarily by xterm-addon-image on the frontend,
-/// so this module mainly provides passthrough and validation.
+//! Sixel graphics protocol parser
+//!
+//! Sixel is handled primarily by xterm-addon-image on the frontend,
+//! so this module mainly provides passthrough and validation utilities.
+
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct SixelParser;
 
