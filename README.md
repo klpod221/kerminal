@@ -52,6 +52,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
   - [Completed](#completed)
   - [In Progress](#in-progress)
   - [Planned](#planned)
+- [👥 Contributors](#-contributors)
 
 ## 📸 Screenshots
 
@@ -250,6 +251,13 @@ If you encounter any issues or have questions:
 - [ ] Cloud backup integration
 - [ ] Web-based version
 - [ ] Mobile app companion
+
+## 👥 Contributors
+
+Thanks to all the amazing people who have contributed to this project! 🎉
+
+<!-- readme: collaborators,contributors -start -->
+<!-- readme: collaborators,contributors -end -->
 
 ---
 
