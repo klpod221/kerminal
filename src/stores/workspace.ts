@@ -466,6 +466,47 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   };
 
   /**
+   * Reconnect SSH Config terminal
+   * @param terminalId - The terminal ID to reconnect
+   * @param sshConfigHost - The SSH config host name
+   * @param password - Optional password for authentication
+   */
+  const reconnectSSHConfig = async (
+    terminalId: string,
+    sshConfigHost: string,
+    password?: string,
+  ): Promise<void> => {
+    const terminal = terminals.value.find((t) => t.id === terminalId);
+    if (!terminal) return;
+
+    // Reset terminal state for reconnection
+    terminal.disconnectReason = undefined;
+    terminal.hasError = false;
+    terminal.errorMessage = undefined;
+    terminal.isSSHConnecting = true;
+    terminal.isConnected = false;
+    terminal.backendTerminalId = undefined;
+
+    // Preserve SSH Config connection info
+    terminal.sshConfigHost = sshConfigHost;
+    terminal.sshConfigPassword = password;
+
+    const context: ErrorContext = {
+      operation: "Reconnect SSH Config Terminal",
+      context: { terminalId, sshConfigHost },
+    };
+
+    try {
+      await terminalReady(terminalId);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      terminal.isSSHConnecting = false;
+      terminal.disconnectReason = "connection-lost";
+    }
+  };
+
+  /**
    * Helper: Remove terminal instance and close backend terminal if needed
    */
   const removeTerminalInstance = async (terminalId: string): Promise<void> => {
@@ -1513,6 +1554,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     addTerminalProfileTab,
     terminalReady,
     reconnectSSH,
+    reconnectSSHConfig,
     handleSSHConnectionError,
     handleSSHConnectionSuccess,
     resizeTerminal: (request: ResizeTerminalRequest) => resizeTerminal(request),

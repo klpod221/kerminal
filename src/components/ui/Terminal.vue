@@ -258,7 +258,8 @@ const formattedErrorMessage = computed(() => {
 
 const canReconnect = computed(
   () =>
-    currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId,
+    currentTerminal.value?.canReconnect &&
+    (currentTerminal.value?.sshProfileId || currentTerminal.value?.sshConfigHost),
 );
 
 const getLatencyColor = (latency: number) => {
@@ -268,13 +269,24 @@ const getLatencyColor = (latency: number) => {
 };
 
 const handleReconnect = () => {
-  if (currentTerminal.value?.sshProfileId) {
-    if (currentTerminal.value.hasError) {
-      clearTerminal();
-    }
+  if (!currentTerminal.value) return;
+
+  // Clear terminal error state before reconnect
+  if (currentTerminal.value.hasError) {
+    clearTerminal();
+  }
+
+  // Route to appropriate reconnect method
+  if (currentTerminal.value.sshProfileId) {
     workspaceStore.reconnectSSH(
       props.terminalId,
       currentTerminal.value.sshProfileId,
+    );
+  } else if (currentTerminal.value.sshConfigHost) {
+    workspaceStore.reconnectSSHConfig(
+      props.terminalId,
+      currentTerminal.value.sshConfigHost,
+      currentTerminal.value.sshConfigPassword,
     );
   }
 };
