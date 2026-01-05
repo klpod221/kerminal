@@ -133,7 +133,7 @@
             variant="primary"
             size="md"
             :icon="RefreshCw"
-            text="Try Again"
+            text="Reconnect"
             @click="handleReconnect"
           />
           <Button

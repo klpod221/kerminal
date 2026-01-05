@@ -1429,6 +1429,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           terminal.isSSHConnecting = false;
           terminal.isConnected = false;
           terminal.backendTerminalId = undefined;
+
+          // Enable reconnect for SSH connections that have profile or config info
+          if (terminal.sshProfileId || terminal.sshConfigHost) {
+            terminal.canReconnect = true;
+          }
         }
       }
     }
