@@ -8,7 +8,7 @@
       <template v-if="authStore.isAuthenticated">
         <Dashboard v-if="viewState.activeView === 'dashboard'" />
 
-        <Workspace v-if="viewState.activeView === 'workspace'" />
+        <Workspace v-show="viewState.activeView === 'workspace'" class="h-full" />
 
         <SFTPBrowser v-if="viewState.activeView === 'sftp'" />
 
@@ -41,9 +41,7 @@ import TopBar from "./components/TopBar.vue";
 const Dashboard = defineAsyncComponent(
   () => import("./components/Dashboard.vue"),
 );
-const Workspace = defineAsyncComponent(
-  () => import("./components/Workspace.vue"),
-);
+import Workspace from "./components/Workspace.vue";
 const SFTPBrowser = defineAsyncComponent(
   () => import("./components/sftp/SFTPBrowser.vue"),
 );
