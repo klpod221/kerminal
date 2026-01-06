@@ -204,6 +204,9 @@ const emit = defineEmits<{
   "terminal-output": [terminalId: string, data: string];
 }>();
 
+// Track if terminal-ready has been emitted to prevent duplicate emissions
+const terminalReadyEmitted = ref(false);
+
 const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
@@ -553,7 +556,11 @@ onMounted(async () => {
 
   await nextTick();
 
-  emit("terminal-ready", props.terminalId || "default");
+  // Only emit terminal-ready once to prevent duplicate buffer restoration
+  if (!terminalReadyEmitted.value) {
+    emit("terminal-ready", props.terminalId || "default");
+    terminalReadyEmitted.value = true;
+  }
 
   window.addEventListener("resize", handleResize);
 
