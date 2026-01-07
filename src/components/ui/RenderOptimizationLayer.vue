@@ -93,6 +93,13 @@ const hexMatrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%";
 const streamFontSize = 16;
 let dataStream: number[] = [];
 
+// Simple deterministic pseudo-random using incrementing seed
+let seed = Date.now();
+const nextPseudoRandom = () => {
+  seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+  return seed / 0x7fffffff;
+};
+
 const initMatrix = () => {
   if (!canvasRef.value) return;
 
@@ -105,7 +112,7 @@ const initMatrix = () => {
   // Re-initialize data stream
   dataStream = [];
   for (let x = 0; x < streamColumns; x++) {
-    dataStream[x] = Math.floor(Math.random() * -100); // Randomize start positions for better effect
+    dataStream[x] = Math.floor(nextPseudoRandom() * -100); // Randomize start positions for better effect
   }
 };
 
@@ -138,14 +145,14 @@ onMounted(() => {
 
     for (let i = 0; i < dataStream.length; i++) {
       const char = hexMatrix.charAt(
-        Math.floor(Math.random() * hexMatrix.length),
+        Math.floor(nextPseudoRandom() * hexMatrix.length),
       );
       ctx.fillText(char, i * streamFontSize, dataStream[i] * streamFontSize);
 
       // Randomly reset stream based on entropy
       if (
         dataStream[i] * streamFontSize > canvasRef.value.height &&
-        Math.random() > 0.975
+        nextPseudoRandom() > 0.975
       ) {
         dataStream[i] = 0;
       }
