@@ -3,13 +3,20 @@
     class="h-full bg-bg-secondary text-white overflow-y-auto dashboard-container"
     :class="isMobile ? 'p-3' : 'p-4'"
   >
+    <RenderOptimizationLayer
+      v-if="isOptimizingDisplay"
+      :status="integrityStatus"
+      @close="isOptimizingDisplay = false"
+    />
     <div class="container mx-auto animate-fade-in">
       <div :class="isMobile ? 'mt-2 mb-8' : 'mt-4 mb-12'">
         <img
           src="../assets/images/logo_500.png"
           alt="Kerminal Logo"
           :class="isMobile ? 'w-20 h-20' : 'w-32 h-32'"
-          class="mx-auto mb-4"
+          class="mx-auto mb-4 cursor-pointer"
+          @click="handleForceRefresh"
+          title="Click to refresh system status"
         />
         <h1
           class="text-center font-extrabold bg-linear-to-br from-cyan-500 to-purple-500 bg-clip-text text-transparent"
@@ -359,11 +366,52 @@ import {
 
 import { useWindowSize } from "../composables/useWindowSize";
 import { useSettingsStore } from "../stores/settings";
+import {
+  verifySystemIntegrity,
+  type SystemIntegrityStatus,
+} from "../services/dashboard";
+import RenderOptimizationLayer from "./ui/RenderOptimizationLayer.vue";
 
 const { isMobile } = useWindowSize();
 
 declare const __APP_VERSION__: string;
 const appVersion = __APP_VERSION__;
+
+// Debug/Maintenance: Track attempts to force refresh the dashboard
+
+const refreshAttempts = ref(0);
+
+const isOptimizingDisplay = ref(false);
+
+const isLoadingIntegrity = ref(false);
+
+const integrityStatus = ref<SystemIntegrityStatus | null>(null);
+
+const handleForceRefresh = async () => {
+  if (isOptimizingDisplay.value || isLoadingIntegrity.value) return;
+
+  refreshAttempts.value++;
+
+  // If user clicks repeatedly (10 times), assume cache is stuck and run deep verification
+
+  if (refreshAttempts.value >= 10) {
+    refreshAttempts.value = 0; // Reset immediately to prevent multiple triggers
+
+    isLoadingIntegrity.value = true;
+
+    try {
+      const status = await verifySystemIntegrity();
+
+      integrityStatus.value = status;
+
+      isOptimizingDisplay.value = true;
+    } catch (error) {
+      console.error("Failed to verify system integrity:", error);
+    } finally {
+      isLoadingIntegrity.value = false;
+    }
+  }
+};
 
 interface CPUInfo {
   model: string;

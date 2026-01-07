@@ -1,5 +1,12 @@
 <template>
   <div class="h-screen w-screen flex flex-col bg-bg-primary overflow-hidden">
+    <div
+      v-if="useLegacyRenderer"
+      class="fixed bottom-4 right-4 z-9999 font-mono text-green-500 text-opacity-80 text-sm select-none pointer-events-none"
+      style="text-shadow: 0 0 5px #0f0"
+    >
+      {{ getStatusLabel() }}
+    </div>
     <TopBar />
 
     <div class="grow overflow-hidden">
@@ -77,6 +84,7 @@ const CommandPaletteManager = defineAsyncComponent(
 
 import { useOverlay } from "./composables/useOverlay";
 import { useGlobalShortcuts } from "./composables/useGlobalShortcuts";
+import { useSystemMetrics } from "./composables/useSystemMetrics";
 
 import { useViewStateStore } from "./stores/viewState";
 import { useAuthStore } from "./stores/auth";
@@ -87,6 +95,7 @@ const authStore = useAuthStore();
 const updaterStore = useUpdaterStore();
 
 const { openOverlay, closeAllOverlays } = useOverlay();
+const { useLegacyRenderer, getStatusLabel } = useSystemMetrics();
 
 // Initialize global keyboard shortcuts once at app level
 useGlobalShortcuts();
@@ -109,7 +118,7 @@ onMounted(async () => {
         openOverlay("updater-modal");
       }
     },
-    { immediate: true }
+    { immediate: true },
   );
 
   try {

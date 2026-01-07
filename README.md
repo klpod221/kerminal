@@ -242,6 +242,7 @@ If you encounter any issues or have questions:
 - [x] Support Sixel graphics protocol for inline images
 
 ### In Progress
+- [ ] First user tour
 - [ ] Homebrew install for macOS
 
 ### Planned
