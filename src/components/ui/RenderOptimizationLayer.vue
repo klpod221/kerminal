@@ -11,7 +11,7 @@
         class="bg-black/80 border border-green-500 p-8 rounded shadow-[0_0_20px_rgba(0,255,0,0.5)] text-green-500 text-center pointer-events-auto backdrop-blur-sm max-w-md w-full mx-4"
       >
         <h1
-          class="text-4xl font-bold mb-2 tracking-widest uppercase glitch-text"
+          class="text-4xl font-bold mb-2 tracking-widest uppercase emphasis-text"
         >
           CORE DUMP
         </h1>
@@ -70,10 +70,10 @@ const props = defineProps<{
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const emit = defineEmits(["close"]);
 
-// Fallback logs if backend status is unavailable
+// Fallback status messages
 const defaultLogs = [
-  "Initializing neural simulation...",
-  "System integrity compromised.",
+  "Initializing subsystem diagnostics...",
+  "Running integrity verification...",
 ];
 
 const availableLogs = computed(() => {
@@ -88,8 +88,8 @@ const logSequenceKey = ref(0);
 let logInterval: number | null = null;
 let renderLoopId: number | null = null;
 
-// Hex matrix for data stream visualization
-const hexMatrix = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%";
+// Character set for data visualization
+const charSet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ123456789@#$%^&*()*&^%";
 const streamFontSize = 16;
 let dataStream: number[] = [];
 
@@ -100,7 +100,7 @@ const nextPseudoRandom = () => {
   return seed / 0x7fffffff;
 };
 
-const initMatrix = () => {
+const initRenderer = () => {
   if (!canvasRef.value) return;
 
   // Initialize canvas to viewport dimensions
@@ -112,7 +112,7 @@ const initMatrix = () => {
   // Re-initialize data stream
   dataStream = [];
   for (let x = 0; x < streamColumns; x++) {
-    dataStream[x] = Math.floor(nextPseudoRandom() * -100); // Randomize start positions for better effect
+    dataStream[x] = Math.floor(nextPseudoRandom() * -100);
   }
 };
 
@@ -131,7 +131,7 @@ onMounted(() => {
   if (!ctx) return;
 
   // Initial setup
-  initMatrix();
+  initRenderer();
 
   const renderFrame = () => {
     if (!ctx || !canvasRef.value) return;
@@ -140,12 +140,12 @@ onMounted(() => {
     ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
     ctx.fillRect(0, 0, canvasRef.value.width, canvasRef.value.height);
 
-    ctx.fillStyle = "#0F0"; // Signal color: Green
+    ctx.fillStyle = "#0F0";
     ctx.font = streamFontSize + "px monospace";
 
     for (let i = 0; i < dataStream.length; i++) {
-      const char = hexMatrix.charAt(
-        Math.floor(nextPseudoRandom() * hexMatrix.length),
+      const char = charSet.charAt(
+        Math.floor(nextPseudoRandom() * charSet.length),
       );
       ctx.fillText(char, i * streamFontSize, dataStream[i] * streamFontSize);
 
@@ -165,18 +165,18 @@ onMounted(() => {
   // Run render loop at ~30fps for stability
   renderLoopId = setInterval(renderFrame, 33);
 
-  window.addEventListener("resize", initMatrix);
+  window.addEventListener("resize", initRenderer);
 });
 
 onUnmounted(() => {
   if (renderLoopId) clearInterval(renderLoopId);
   if (logInterval) clearInterval(logInterval);
-  window.removeEventListener("resize", initMatrix);
+  window.removeEventListener("resize", initRenderer);
 });
 </script>
 
 <style scoped>
-.glitch-text {
+.emphasis-text {
   text-shadow:
     2px 2px 0px rgba(0, 255, 0, 0.2),
     -2px -2px 0px rgba(0, 255, 0, 0.2);

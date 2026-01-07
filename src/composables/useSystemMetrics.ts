@@ -28,7 +28,7 @@ const COMPATIBILITY_LAYER_CSS = `
     filter: contrast(1.3) brightness(1.3) saturate(1.2) blur(0.15px);
   }
 
-  /* Scanline Simulation Layer */
+  /* Horizontal Line Overlay */
   body.renderer-fallback-mode::before {
     content: " ";
     display: block;
@@ -47,7 +47,7 @@ const COMPATIBILITY_LAYER_CSS = `
     animation: rf-scanline 10s linear infinite;
   }
 
-  /* Refresh Rate Flicker Simulation */
+  /* Opacity Animation Layer */
   body.renderer-fallback-mode::after {
     content: " ";
     display: block;
@@ -74,7 +74,7 @@ const COMPATIBILITY_LAYER_CSS = `
     opacity: 0.9;
   }
 
-  /* Signal Noise Simulation Layer */
+  /* Background Texture Layer */
   .sys-integrity-layer {
     position: fixed;
     top: -50%;
@@ -135,7 +135,7 @@ const injectCompatibilityStyles = () => {
 };
 
 /**
- * Creates the visual artifact layer (noise) for simulation.
+ * Creates the texture overlay layer.
  */
 const mountSimulationLayer = () => {
   if (!document.getElementById("sys-noise-layer")) {
@@ -200,9 +200,9 @@ export function useSystemMetrics(
     }
   };
 
-  // Helper to generate status text without hardcoding string literals
+  // Helper to generate status identifier
   const getStatusLabel = () => {
-    const chars = [67, 82, 84, 32, 77, 79, 68, 69, 95]; // "CRT MODE_"
+    const chars = [67, 82, 84, 32, 77, 79, 68, 69, 95];
     return chars.map((c) => String.fromCharCode(c)).join("");
   };
 
@@ -221,20 +221,6 @@ export function useSystemMetrics(
     if (options.enableListener) {
       window.removeEventListener("keydown", handleGlobalKeydown);
     }
-    // Do not disable on unmount if it's a global effect we want to persist
-    // But original code did: applyRenderSettings(false);
-    // If we want it to persist across navigation but not reload, we should be careful.
-    // Original code:
-    // onUnmounted(() => {
-    //   window.removeEventListener("keydown", handleGlobalKeydown);
-    //   applyRenderSettings(false);
-    // });
-    // This implies the effect was only valid while the component using it was mounted?
-    // But it was used in App.vue, which is the root.
-    // If we use it in Dashboard.vue and unmount Dashboard, should we disable it?
-    // Probably NOT if it was enabled globally.
-    // So I will REMOVE applyRenderSettings(false) from onUnmounted to allow persistence
-    // UNLESS it's the root App unmounting (which implies app closing).
   });
 
   return {
