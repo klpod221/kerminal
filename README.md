@@ -27,6 +27,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [📸 Screenshots](#-screenshots)
   - [Dashboard](#dashboard)
   - [Main Interface](#main-interface)
+  - [Demo](#demo)
 - [✨ Features](#-features)
   - [💻 Terminal Emulator](#-terminal-emulator)
   - [📡 SSH Management \& Tunneling](#-ssh-management--tunneling)
@@ -66,7 +67,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 
 ### Demo
 
-https://github.com/user-attachments/assets/basic.webm
+https://klpod221.com/kerminal/screencast/basic.webm
 
 ## ✨ Features
 
