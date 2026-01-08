@@ -114,7 +114,7 @@ const iconSize = computed(() => {
 const variantClasses = computed(() => {
   switch (props.variant) {
     case "primary":
-      return "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white shadow-sm";
+      return "bg-linear-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20";
     case "secondary":
       return "bg-gray-600 hover:bg-gray-700 focus:ring-gray-500 text-white shadow-sm";
     case "success":
@@ -128,7 +128,7 @@ const variantClasses = computed(() => {
     case "outline":
       return "border border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:text-white focus:ring-gray-500";
     default:
-      return "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white shadow-sm";
+      return "bg-linear-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 text-white shadow-lg shadow-purple-500/20";
   }
 });
 

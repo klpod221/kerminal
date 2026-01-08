@@ -183,7 +183,6 @@
         </div>
 
         <Button
-          variant="success"
           size="sm"
           :icon="Plus"
           text="New Command"

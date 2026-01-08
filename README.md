@@ -240,14 +240,15 @@ If you encounter any issues or have questions:
 - [x] Auto-lock sessions and keychain integration
 - [x] Jump host chain support for SSH connections
 - [x] Support Sixel graphics protocol for inline images
+- [x] First user tour
 
 ### In Progress
-- [ ] First user tour
 - [ ] Homebrew install for macOS
 
 ### Planned
-- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
+- [ ] Pin Drawer as sidebar
 - [ ] AI Agent for auto-completion, suggestion, chat and automation
+- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
 - [ ] Plugin system for extensions
 - [ ] Cloud backup integration
 - [ ] Web-based version

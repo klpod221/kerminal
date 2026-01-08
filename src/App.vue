@@ -34,6 +34,9 @@
         <TerminalProfileManager />
 
         <CommandPaletteManager />
+
+        <!-- Tour Overlay -->
+        <TourOverlay />
       </template>
     </div>
   </div>
@@ -81,6 +84,9 @@ const TerminalProfileManager = defineAsyncComponent(
 const CommandPaletteManager = defineAsyncComponent(
   () => import("./components/CommandPaletteManager.vue"),
 );
+const TourOverlay = defineAsyncComponent(
+  () => import("./components/tour/TourOverlay.vue"),
+);
 
 import { useOverlay } from "./composables/useOverlay";
 import { useGlobalShortcuts } from "./composables/useGlobalShortcuts";
@@ -89,10 +95,12 @@ import { useSystemMetrics } from "./composables/useSystemMetrics";
 import { useViewStateStore } from "./stores/viewState";
 import { useAuthStore } from "./stores/auth";
 import { useUpdaterStore } from "./stores/updater";
+import { useTourStore } from "./stores/tour";
 
 const viewState = useViewStateStore();
 const authStore = useAuthStore();
 const updaterStore = useUpdaterStore();
+const tourStore = useTourStore();
 
 const { openOverlay, closeAllOverlays } = useOverlay();
 const { useLegacyRenderer, getStatusLabel } = useSystemMetrics();
@@ -188,10 +196,19 @@ onUnmounted(() => {
 
 watch(
   () => authStore.isAuthenticated,
-  (isAuthenticated) => {
+  async (isAuthenticated) => {
     if (isAuthenticated) {
       closeAllOverlays();
       viewState.toggleTopBar(true);
+
+      // Check if this is the first time user - show tour
+      await tourStore.loadState();
+      if (!tourStore.hasCompletedFirstTour) {
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+          tourStore.startTour();
+        }, 500);
+      }
     } else {
       viewState.toggleTopBar(false);
     }

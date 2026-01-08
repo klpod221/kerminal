@@ -3,6 +3,7 @@ import { useKeyboardShortcutsStore } from "../stores/keyboardShortcuts";
 import { ShortcutAction, ActiveShortcut } from "../types/shortcuts";
 import { useWorkspaceStore } from "../stores/workspace";
 import { useViewStateStore } from "../stores/viewState";
+import { useTourStore } from "../stores/tour";
 import { useOverlay } from "./useOverlay";
 
 // Singleton flag to ensure only one listener is registered
@@ -17,6 +18,7 @@ export function useGlobalShortcuts() {
   const shortcutsStore = useKeyboardShortcutsStore();
   const workspaceStore = useWorkspaceStore();
   const viewState = useViewStateStore();
+  const tourStore = useTourStore();
   const { openOverlay } = useOverlay();
 
   /**
@@ -73,6 +75,8 @@ export function useGlobalShortcuts() {
     if (normalizedEventKey === " ") normalizedEventKey = "space";
     else if (normalizedEventKey.startsWith("arrow"))
       normalizedEventKey = normalizedEventKey.replace("arrow", "");
+    // Handle Shift+/ producing ? on most keyboards
+    else if (normalizedEventKey === "?") normalizedEventKey = "/";
 
     // Normalize shortcut key
     let normalizedShortcutKey = shortcut.key.toLowerCase();
@@ -212,7 +216,7 @@ export function useGlobalShortcuts() {
       const panelIds = workspaceStore.collectPanelIds();
       if (panelIds.length > 0) {
         const currentIndex = panelIds.indexOf(workspaceStore.activePanelId);
-        
+
         let prevIndex = currentIndex - 1;
         if (currentIndex === -1 || prevIndex < 0) {
             prevIndex = panelIds.length - 1;
@@ -236,6 +240,9 @@ export function useGlobalShortcuts() {
     },
     [ShortcutAction.OpenCommandPalette]: () => {
       openOverlay("command-palette");
+    },
+    [ShortcutAction.StartTour]: () => {
+      tourStore.startTour();
     },
   };
 

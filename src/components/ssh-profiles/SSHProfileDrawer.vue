@@ -166,7 +166,6 @@
         />
 
         <Button
-          variant="warning"
           size="sm"
           :icon="Plus"
           text="New Profile"
