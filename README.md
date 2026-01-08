@@ -67,7 +67,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 
 ### Demo
 
-https://klpod221.com/kerminal/screencast/basic.webm
+[Kerminal Basic Demo](https://github.com/user-attachments/assets/eb886812-d928-4153-ae63-cfc95916a8c9)
 
 ## ✨ Features
 
