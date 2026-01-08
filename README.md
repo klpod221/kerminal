@@ -64,6 +64,10 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 
 ![Kerminal Main Interface](docs/public/screenshots/MainInterface.png)
 
+### Demo
+
+https://github.com/user-attachments/assets/basic.webm
+
 ## ✨ Features
 
 ### 💻 Terminal Emulator
