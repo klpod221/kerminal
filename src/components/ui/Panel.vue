@@ -143,6 +143,25 @@ watch(
   { immediate: true },
 );
 
+/**
+ * Handle window focus to restore terminal focus for active panel
+ * Only the active panel should focus its terminal
+ */
+const handleWindowFocus = (): void => {
+  if (!props.isActive) return;
+
+  setTimeout(() => {
+    // Skip if user already clicked on a terminal (xterm has focus)
+    const active = document.activeElement;
+    const isTerminalFocused =
+      active?.classList.contains("xterm-helper-textarea") ||
+      active?.closest(".xterm");
+    if (!isTerminalFocused) {
+      terminalManagerRef.value?.focusActiveTerminal();
+    }
+  }, 100);
+};
+
 const selectTab = (panelId: string, tabId: string): void => {
   emit("selectTab", panelId, tabId);
   emit("setActivePanel", panelId); // Also make this panel active
@@ -333,11 +352,13 @@ const onEscapeKey = (event: KeyboardEvent): void => {
 onMounted(() => {
   document.addEventListener("dragend", onGlobalDragEnd);
   document.addEventListener("keydown", onEscapeKey);
+  window.addEventListener("focus", handleWindowFocus);
 });
 
 onBeforeUnmount(() => {
   document.removeEventListener("dragend", onGlobalDragEnd);
   document.removeEventListener("keydown", onEscapeKey);
+  window.removeEventListener("focus", handleWindowFocus);
   if (hideDropZonesTimeout) {
     clearTimeout(hideDropZonesTimeout);
   }

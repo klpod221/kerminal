@@ -152,25 +152,9 @@ onMounted(async () => {
       },
     );
 
-    const handleWindowFocus = (): void => {
-      setTimeout(() => {
-        // Skip if user already clicked on a terminal (xterm has focus)
-        const active = document.activeElement;
-        const isTerminalFocused =
-          active?.classList.contains("xterm-helper-textarea") ||
-          active?.closest(".xterm");
-        if (!isTerminalFocused) {
-          focusActiveTerminal();
-        }
-      }, 100);
-    };
-
-    window.addEventListener("focus", handleWindowFocus);
-
     const originalUnlisten = outputUnlisten;
     outputUnlisten = () => {
       if (originalUnlisten) originalUnlisten();
-      window.removeEventListener("focus", handleWindowFocus);
     };
   } catch (error) {
     console.error("Failed to listen to terminal output:", error);
