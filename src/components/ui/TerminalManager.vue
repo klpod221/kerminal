@@ -154,7 +154,14 @@ onMounted(async () => {
 
     const handleWindowFocus = (): void => {
       setTimeout(() => {
-        focusActiveTerminal();
+        // Skip if user already clicked on a terminal (xterm has focus)
+        const active = document.activeElement;
+        const isTerminalFocused =
+          active?.classList.contains("xterm-helper-textarea") ||
+          active?.closest(".xterm");
+        if (!isTerminalFocused) {
+          focusActiveTerminal();
+        }
       }, 100);
     };
 
