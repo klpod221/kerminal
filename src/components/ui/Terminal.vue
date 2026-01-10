@@ -2,6 +2,8 @@
   <div
     ref="terminalRef"
     class="w-full h-full bg-bg-secondary terminal-container relative"
+    @click="handleContainerClick"
+    @mousedown="handleContainerMouseDown"
   >
     <!-- Latency Badge -->
     <div
@@ -133,7 +135,7 @@
             variant="primary"
             size="md"
             :icon="RefreshCw"
-            text="Try Again"
+            text="Reconnect"
             @click="handleReconnect"
           />
           <Button
@@ -204,9 +206,6 @@ const emit = defineEmits<{
   "terminal-output": [terminalId: string, data: string];
 }>();
 
-// Track if terminal-ready has been emitted to prevent duplicate emissions
-const terminalReadyEmitted = ref(false);
-
 const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
@@ -261,7 +260,9 @@ const formattedErrorMessage = computed(() => {
 
 const canReconnect = computed(
   () =>
-    currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId,
+    currentTerminal.value?.canReconnect &&
+    (currentTerminal.value?.sshProfileId ||
+      currentTerminal.value?.sshConfigHost),
 );
 
 const getLatencyColor = (latency: number) => {
@@ -271,13 +272,24 @@ const getLatencyColor = (latency: number) => {
 };
 
 const handleReconnect = () => {
-  if (currentTerminal.value?.sshProfileId) {
-    if (currentTerminal.value.hasError) {
-      clearTerminal();
-    }
+  if (!currentTerminal.value) return;
+
+  // Clear terminal error state before reconnect
+  if (currentTerminal.value.hasError) {
+    clearTerminal();
+  }
+
+  // Route to appropriate reconnect method
+  if (currentTerminal.value.sshProfileId) {
     workspaceStore.reconnectSSH(
       props.terminalId,
       currentTerminal.value.sshProfileId,
+    );
+  } else if (currentTerminal.value.sshConfigHost) {
+    workspaceStore.reconnectSSHConfig(
+      props.terminalId,
+      currentTerminal.value.sshConfigHost,
+      currentTerminal.value.sshConfigPassword,
     );
   }
 };
@@ -342,19 +354,149 @@ const handleResize = debounce(async () => {
   }
 }, 100);
 
-const focus = (): void => {
-  if (term) {
-    term.focus();
+// Focus guard: Check if terminal can receive focus
+const canFocus = computed(
+  () =>
+    props.isVisible &&
+    !props.isConnecting &&
+    !showDisconnectedOverlay.value &&
+    !showErrorOverlay.value,
+);
+
+// Smart focus with guard and delay
+const focus = (options?: { force?: boolean; delay?: number }): void => {
+  const { force = false, delay = 0 } = options || {};
+
+  if (!term) return;
+
+  // Focus guard: skip if overlay is showing (unless forced)
+  if (!force && !canFocus.value) return;
+
+  const doFocus = () => {
+    if (term && (force || canFocus.value)) {
+      term.focus();
+    }
+  };
+
+  // Auto-focus delay to avoid animation conflicts
+  if (delay > 0) {
+    setTimeout(doFocus, delay);
+  } else {
+    doFocus();
   }
 };
 
 const fitAndFocus = debounce((): void => {
   if (fitAddon && term && props.isVisible) {
     fitAddon.fit();
-    term.focus();
+    // Use smart focus with slight delay for animation safety
+    focus({ delay: 50 });
     handleTerminalResize();
   }
 }, 50);
+
+// Click-to-focus: Handle container click to focus terminal
+const handleContainerClick = (event: MouseEvent): void => {
+  // Only focus if clicking directly on the container or terminal area
+  // and not on interactive elements like buttons
+  const target = event.target as HTMLElement;
+  const isInteractiveElement = target.closest(
+    'button, a, input, [role="button"]',
+  );
+
+  if (!isInteractiveElement && canFocus.value) {
+    focus();
+  }
+};
+
+// Handle mousedown to capture focus earlier (better UX)
+const handleContainerMouseDown = (event: MouseEvent): void => {
+  const target = event.target as HTMLElement;
+  const isInteractiveElement = target.closest(
+    'button, a, input, [role="button"]',
+  );
+
+  if (!isInteractiveElement && canFocus.value) {
+    // Prevent default to avoid text selection issues during rapid clicks
+    // but only if we're in the terminal area
+    if (target.closest(".xterm")) {
+      focus();
+    }
+  }
+};
+
+// Focus trap: Keep focus in terminal when active
+const setupFocusTrap = (): void => {
+  if (!terminalRef.value || !term) return;
+
+  term.textarea?.addEventListener("blur", handleTerminalBlur);
+};
+
+const cleanupFocusTrap = (): void => {
+  term?.textarea?.removeEventListener("blur", handleTerminalBlur);
+};
+
+let focusTrapTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const handleTerminalBlur = (event: FocusEvent): void => {
+  // Clear any pending focus trap
+  if (focusTrapTimeout) {
+    clearTimeout(focusTrapTimeout);
+    focusTrapTimeout = null;
+  }
+
+  // Check if focus is moving outside the terminal container
+  const relatedTarget = event.relatedTarget as HTMLElement | null;
+
+  // If focus is moving to an element within the terminal container, allow it
+  if (relatedTarget && terminalRef.value?.contains(relatedTarget)) {
+    return;
+  }
+
+  // If focus is moving to an interactive element (button, modal, etc.), allow it
+  if (
+    relatedTarget &&
+    relatedTarget.closest(
+      'button, a, input, select, textarea, [role="dialog"], [role="menu"]',
+    )
+  ) {
+    return;
+  }
+
+  // If terminal should have focus and focus moved to body or unknown element,
+  // recapture focus after a brief delay
+  if (canFocus.value && props.isVisible) {
+    focusTrapTimeout = setTimeout(() => {
+      // Double-check conditions before re-focusing
+      if (
+        canFocus.value &&
+        props.isVisible &&
+        document.visibilityState === "visible"
+      ) {
+        focus();
+      }
+    }, 100);
+  }
+};
+
+// Visibility API: Re-focus when user returns to tab
+const handleVisibilityChange = (): void => {
+  if (
+    document.visibilityState === "visible" &&
+    canFocus.value &&
+    props.isVisible
+  ) {
+    // Delay focus to let the page settle
+    focus({ delay: 150 });
+  }
+};
+
+// Window focus handler: Re-focus when window regains focus
+const handleWindowFocus = (): void => {
+  if (canFocus.value && props.isVisible) {
+    focus({ delay: 100 });
+  }
+};
 
 const writeOutput = (data: string): void => {
   if (term) {
@@ -401,6 +543,24 @@ watch(
       nextTick(() => {
         fitAndFocus();
       });
+    }
+  },
+);
+
+// Watch for overlay changes to manage focus appropriately
+watch(
+  [() => props.isConnecting, showDisconnectedOverlay, showErrorOverlay],
+  (
+    [connecting, disconnected, error],
+    [prevConnecting, prevDisconnected, prevError],
+  ) => {
+    // If overlay just closed and terminal is visible, restore focus
+    const wasOverlayShowing = prevConnecting || prevDisconnected || prevError;
+    const isOverlayShowing = connecting || disconnected || error;
+
+    if (wasOverlayShowing && !isOverlayShowing && props.isVisible) {
+      // Delay focus to let overlay animation complete
+      focus({ delay: 200 });
     }
   },
 );
@@ -544,18 +704,33 @@ onMounted(async () => {
 
   await nextTick();
 
-  // Only emit terminal-ready once to prevent duplicate buffer restoration
-  if (!terminalReadyEmitted.value) {
-    emit("terminal-ready", props.terminalId || "default");
-    terminalReadyEmitted.value = true;
-  }
+  // Setup focus trap
+  setupFocusTrap();
+
+  // Setup visibility API listener for re-focus on tab return
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("focus", handleWindowFocus);
+
+  emit("terminal-ready", props.terminalId || "default");
 
   window.addEventListener("resize", handleResize);
 
   handleResize();
+
+  // Initial focus with delay for mount animation
+  focus({ delay: 100 });
 });
 
 onBeforeUnmount(async () => {
+  // Cleanup focus trap
+  if (focusTrapTimeout) {
+    clearTimeout(focusTrapTimeout);
+  }
+  cleanupFocusTrap();
+
+  // Cleanup visibility and focus listeners
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("focus", handleWindowFocus);
   window.removeEventListener("resize", handleResize);
 
   if (props.backendTerminalId) {

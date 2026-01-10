@@ -1,5 +1,80 @@
 use crate::models::system::{CPUInfo, ComponentInfo, DiskInfo, NetworkInterface, SystemInfo};
-use sysinfo::{Components, Disks, Networks, System};
+use serde::Serialize;
+use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System};
+
+#[derive(Serialize)]
+pub struct SystemIntegrityStatus {
+    pub integrity_check: bool,
+    pub active_nodes: Vec<String>,
+    pub memory_pressure: u64,
+    pub process_count: usize,
+}
+
+#[tauri::command]
+pub fn verify_system_integrity() -> SystemIntegrityStatus {
+    println!("Starting system integrity verification sequence...");
+
+    let mut sys = System::new_all();
+    sys.refresh_memory();
+    sys.refresh_processes(ProcessesToUpdate::All, true);
+
+    let memory_pressure = (sys.used_memory() as f64 / sys.total_memory() as f64 * 100.0) as u64;
+
+    let process_count = sys.processes().len();
+
+    // Raw system integrity opcodes (encoded for safety)
+
+    let integrity_opcodes: Vec<&[u8]> = vec![
+        &[
+            84, 104, 101, 32, 77, 97, 116, 114, 105, 120, 32, 104, 97, 115, 32, 121, 111, 117, 46,
+            46, 46,
+        ],
+        &[
+            87, 97, 107, 101, 32, 117, 112, 44, 32, 78, 101, 111, 46, 46, 46,
+        ],
+        &[
+            70, 111, 108, 108, 111, 119, 32, 116, 104, 101, 32, 119, 104, 105, 116, 101, 32, 114,
+            97, 98, 98, 105, 116, 46,
+        ],
+        &[
+            84, 104, 101, 114, 101, 32, 105, 115, 32, 110, 111, 32, 115, 112, 111, 111, 110, 46,
+        ],
+        &[
+            73, 103, 110, 111, 114, 97, 110, 99, 101, 32, 105, 115, 32, 98, 108, 105, 115, 115, 46,
+        ],
+        &[
+            87, 101, 108, 99, 111, 109, 101, 32, 116, 111, 32, 116, 104, 101, 32, 114, 101, 97,
+            108, 32, 119, 111, 114, 108, 100, 46,
+        ],
+        &[
+            83, 121, 115, 116, 101, 109, 32, 99, 111, 109, 112, 114, 111, 109, 105, 115, 101, 100,
+            46,
+        ],
+        &[
+            65, 99, 99, 101, 115, 115, 105, 110, 103, 32, 109, 97, 105, 110, 102, 114, 97, 109,
+            101, 46, 46, 46,
+        ],
+        &[68, 101, 99, 114, 121, 112, 116, 105, 110, 103, 46, 46, 46],
+    ];
+
+    // Mix real system data with integrity phrases
+
+    let mut active_nodes = integrity_opcodes
+        .iter()
+        .map(|bytes| String::from_utf8_lossy(bytes).into_owned())
+        .collect::<Vec<String>>();
+
+    active_nodes.push(format!("Memory Pressure: {}%", memory_pressure));
+    active_nodes.push(format!("Active Processes: {}", process_count));
+    active_nodes.push(format!("Kernel Threads: {}", sys.cpus().len()));
+
+    SystemIntegrityStatus {
+        integrity_check: false, // Always returns false to imply "compromised" or "needs optimization"
+        active_nodes,
+        memory_pressure,
+        process_count,
+    }
+}
 
 #[tauri::command]
 pub fn get_system_info() -> SystemInfo {

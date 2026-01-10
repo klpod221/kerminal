@@ -186,21 +186,32 @@
     </div>
 
     <!-- Modals -->
-    <TransferManager />
-    <FileRenameModal />
-    <FileDeleteModal />
-    <FilePermissionsModal />
-    <CreateDirectoryModal />
-    <CreateFileModal />
-    <SyncCompareModal />
-    <FileEditorModal />
-    <FilePreviewModal />
-    <FileSearchModal />
+    <TransferManager v-if="isOverlayVisible('sftp-transfer-manager-modal')" />
+    <FileRenameModal v-if="isOverlayVisible('sftp-file-rename-modal')" />
+    <FileDeleteModal v-if="isOverlayVisible('sftp-file-delete-modal')" />
+    <FilePermissionsModal
+      v-if="isOverlayVisible('sftp-file-permissions-modal')"
+    />
+    <CreateDirectoryModal
+      v-if="isOverlayVisible('sftp-create-directory-modal')"
+    />
+    <CreateFileModal v-if="isOverlayVisible('sftp-create-file-modal')" />
+    <SyncCompareModal v-if="isOverlayVisible('sftp-sync-compare-modal')" />
+    <FileEditorModal v-if="isOverlayVisible('sftp-file-editor-modal')" />
+    <FilePreviewModal v-if="isOverlayVisible('sftp-file-preview-modal')" />
+    <FileSearchModal v-if="isOverlayVisible('sftp-file-search-modal')" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import {
+  ref,
+  computed,
+  watch,
+  onMounted,
+  onUnmounted,
+  defineAsyncComponent,
+} from "vue";
 import { Splitpanes, Pane } from "splitpanes";
 import "splitpanes/dist/splitpanes.css";
 import { Activity, GitCompare, Search } from "lucide-vue-next";
@@ -209,16 +220,6 @@ import { useSSHStore } from "../../stores/ssh";
 import { message } from "../../utils/message";
 import { useOverlay } from "../../composables/useOverlay";
 import FileBrowser from "./FileBrowser.vue";
-import TransferManager from "./TransferManager.vue";
-import FileRenameModal from "./FileRenameModal.vue";
-import FileDeleteModal from "./FileDeleteModal.vue";
-import FilePermissionsModal from "./FilePermissionsModal.vue";
-import CreateDirectoryModal from "./CreateDirectoryModal.vue";
-import CreateFileModal from "./CreateFileModal.vue";
-import SyncCompareModal from "./SyncCompareModal.vue";
-import FileEditorModal from "./FileEditorModal.vue";
-import FilePreviewModal from "./FilePreviewModal.vue";
-import FileSearchModal from "./FileSearchModal.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import type { FileEntry } from "../../types/sftp";
@@ -234,6 +235,38 @@ import { dirname, homeDir, tempDir, join } from "@tauri-apps/api/path";
 import * as sftpService from "../../services/sftp";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { save, open } from "@tauri-apps/plugin-dialog";
+
+// Async components to reduce bundle size
+const TransferManager = defineAsyncComponent(
+  () => import("./TransferManager.vue"),
+);
+const FileRenameModal = defineAsyncComponent(
+  () => import("./FileRenameModal.vue"),
+);
+const FileDeleteModal = defineAsyncComponent(
+  () => import("./FileDeleteModal.vue"),
+);
+const FilePermissionsModal = defineAsyncComponent(
+  () => import("./FilePermissionsModal.vue"),
+);
+const CreateDirectoryModal = defineAsyncComponent(
+  () => import("./CreateDirectoryModal.vue"),
+);
+const CreateFileModal = defineAsyncComponent(
+  () => import("./CreateFileModal.vue"),
+);
+const SyncCompareModal = defineAsyncComponent(
+  () => import("./SyncCompareModal.vue"),
+);
+const FileEditorModal = defineAsyncComponent(
+  () => import("./FileEditorModal.vue"),
+);
+const FilePreviewModal = defineAsyncComponent(
+  () => import("./FilePreviewModal.vue"),
+);
+const FileSearchModal = defineAsyncComponent(
+  () => import("./FileSearchModal.vue"),
+);
 
 const sftpStore = useSFTPStore();
 const sshStore = useSSHStore();

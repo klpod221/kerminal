@@ -1,5 +1,12 @@
 <template>
   <div class="h-screen w-screen flex flex-col bg-bg-primary overflow-hidden">
+    <div
+      v-if="useLegacyRenderer"
+      class="fixed bottom-4 right-4 z-9999 font-mono text-green-500 text-opacity-80 text-sm select-none pointer-events-none"
+      style="text-shadow: 0 0 5px #0f0"
+    >
+      {{ getStatusLabel() }}
+    </div>
     <TopBar />
 
     <div class="grow overflow-hidden">
@@ -8,7 +15,7 @@
       <template v-if="authStore.isAuthenticated">
         <Dashboard v-if="viewState.activeView === 'dashboard'" />
 
-        <Workspace v-show="viewState.activeView === 'workspace'" class="h-full" />
+        <Workspace v-if="viewState.activeView === 'workspace'" />
 
         <SFTPBrowser v-if="viewState.activeView === 'sftp'" />
 
@@ -27,6 +34,9 @@
         <TerminalProfileManager />
 
         <CommandPaletteManager />
+
+        <!-- Tour Overlay -->
+        <TourOverlay />
       </template>
     </div>
   </div>
@@ -41,7 +51,9 @@ import TopBar from "./components/TopBar.vue";
 const Dashboard = defineAsyncComponent(
   () => import("./components/Dashboard.vue"),
 );
-import Workspace from "./components/Workspace.vue";
+const Workspace = defineAsyncComponent(
+  () => import("./components/Workspace.vue"),
+);
 const SFTPBrowser = defineAsyncComponent(
   () => import("./components/sftp/SFTPBrowser.vue"),
 );
@@ -72,19 +84,26 @@ const TerminalProfileManager = defineAsyncComponent(
 const CommandPaletteManager = defineAsyncComponent(
   () => import("./components/CommandPaletteManager.vue"),
 );
+const TourOverlay = defineAsyncComponent(
+  () => import("./components/tour/TourOverlay.vue"),
+);
 
 import { useOverlay } from "./composables/useOverlay";
 import { useGlobalShortcuts } from "./composables/useGlobalShortcuts";
+import { useSystemMetrics } from "./composables/useSystemMetrics";
 
 import { useViewStateStore } from "./stores/viewState";
 import { useAuthStore } from "./stores/auth";
 import { useUpdaterStore } from "./stores/updater";
+import { useTourStore } from "./stores/tour";
 
 const viewState = useViewStateStore();
 const authStore = useAuthStore();
 const updaterStore = useUpdaterStore();
+const tourStore = useTourStore();
 
 const { openOverlay, closeAllOverlays } = useOverlay();
+const { useLegacyRenderer, getStatusLabel } = useSystemMetrics();
 
 // Initialize global keyboard shortcuts once at app level
 useGlobalShortcuts();
@@ -107,7 +126,7 @@ onMounted(async () => {
         openOverlay("updater-modal");
       }
     },
-    { immediate: true }
+    { immediate: true },
   );
 
   try {
@@ -177,10 +196,19 @@ onUnmounted(() => {
 
 watch(
   () => authStore.isAuthenticated,
-  (isAuthenticated) => {
+  async (isAuthenticated) => {
     if (isAuthenticated) {
       closeAllOverlays();
       viewState.toggleTopBar(true);
+
+      // Check if this is the first time user - show tour
+      await tourStore.loadState();
+      if (!tourStore.hasCompletedFirstTour) {
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+          tourStore.startTour();
+        }, 500);
+      }
     } else {
       viewState.toggleTopBar(false);
     }

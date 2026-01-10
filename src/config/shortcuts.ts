@@ -189,6 +189,16 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     defaultModifiers: { ctrlKey: true, shiftKey: true }, // Ctrl+Shift+P on Windows/Linux, Cmd+Shift+P on Mac
     customizable: true,
   },
+
+  // Help
+  {
+    id: ShortcutAction.StartTour,
+    label: "Start Feature Tour",
+    category: "Help",
+    defaultKey: "/",
+    defaultModifiers: { ctrlKey: true, shiftKey: true }, // Ctrl+Shift+/ (?) on Windows/Linux, Cmd+Shift+/ on Mac
+    customizable: true,
+  },
 ];
 
 /**

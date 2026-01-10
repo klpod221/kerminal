@@ -13,6 +13,7 @@
     <div class="flex items-center justify-start">
       <!-- Dashboard button -->
       <div
+        data-tour="dashboard-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'dashboard' ? 'bg-gray-800' : '',
@@ -35,6 +36,7 @@
 
       <!-- Workspace button -->
       <div
+        data-tour="workspace-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'workspace' ? 'bg-gray-800' : '',
@@ -55,6 +57,7 @@
 
       <!-- SFTP button -->
       <div
+        data-tour="sftp-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'sftp' ? 'bg-gray-800' : '',
@@ -73,8 +76,12 @@
         />
       </div>
 
+      <!-- line -->
+      <div class="w-px h-[20px] bg-gray-700" />
+
       <!-- SSH Profiles button -->
       <div
+        data-tour="ssh-profiles-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           isOverlayVisible('ssh-profile-drawer') ? 'bg-gray-800' : '',
@@ -95,6 +102,7 @@
 
       <!-- Terminal Profiles button -->
       <div
+        data-tour="terminal-profiles-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           isOverlayVisible('terminal-profile-drawer') ? 'bg-gray-800' : '',
@@ -135,6 +143,7 @@
       <template v-else>
         <!-- Saved Commands -->
         <Button
+          data-tour="saved-commands-btn"
           title="Saved Commands"
           variant="ghost"
           size="sm"
@@ -149,6 +158,7 @@
 
         <!-- Recordings -->
         <Button
+          data-tour="recordings-btn"
           title="Session Recordings"
           variant="ghost"
           size="sm"
@@ -163,6 +173,7 @@
 
         <!-- Tunnel Manager -->
         <Button
+          data-tour="tunnels-btn"
           title="SSH Tunnel Manager"
           variant="ghost"
           size="sm"
@@ -177,6 +188,7 @@
 
         <!-- SSH Key Manager -->
         <Button
+          data-tour="ssh-keys-btn"
           title="SSH Key Manager"
           variant="ghost"
           size="sm"
@@ -191,6 +203,7 @@
 
         <!-- Sync Manager -->
         <Button
+          data-tour="sync-btn"
           title="Sync Manager"
           variant="ghost"
           size="sm"
@@ -205,6 +218,7 @@
 
         <!-- Theme Selector -->
         <Button
+          data-tour="theme-btn"
           title="Terminal Theme"
           variant="ghost"
           size="sm"
@@ -219,6 +233,7 @@
 
         <!-- Keyboard Shortcuts -->
         <Button
+          data-tour="shortcuts-btn"
           title="Keyboard Shortcuts"
           variant="ghost"
           size="sm"
@@ -232,6 +247,7 @@
         />
         <!-- Main Settings / Backup -->
         <Button
+          data-tour="backup-btn"
           title="Backup & Restore"
           variant="ghost"
           size="sm"
@@ -246,6 +262,7 @@
 
         <!-- Master Password  -->
         <Button
+          data-tour="master-password-btn"
           title="Master Password Settings"
           variant="ghost"
           size="sm"

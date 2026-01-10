@@ -47,6 +47,12 @@ features:
 ### Main Interface
 ![Main Interface](/screenshots/MainInterface.png)
 
+### Demo
+<video controls autoplay loop muted style="width: 100%; border-radius: 8px; margin-top: 16px;">
+  <source src="/screencast/basic.webm" type="video/webm">
+  Your browser does not support the video tag.
+</video>
+
 ## 📥 Ready to Get Started?
 
 Download Kerminal for your operating system.

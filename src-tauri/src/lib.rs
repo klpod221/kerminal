@@ -21,6 +21,7 @@ pub fn main() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             commands::dashboard::get_system_info,
+            commands::dashboard::verify_system_integrity,
             commands::terminal::create_terminal,
             commands::terminal::create_ssh_terminal,
             commands::terminal::create_ssh_config_terminal,

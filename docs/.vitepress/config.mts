@@ -4,7 +4,7 @@ export default defineConfig({
   title: 'Kerminal',
   description: 'Modern Terminal Emulator & SSH Manager',
   base: '/kerminal/',
-  
+
   head: [
     ['link', { rel: 'icon', href: '/favicon.ico' }],
     ['link', { rel: 'icon', type: 'image/png', href: '/logo.png' }]
@@ -27,14 +27,34 @@ export default defineConfig({
               text: 'Introduction',
               items: [
                 { text: 'Getting Started', link: '/guide/getting-started' },
-                { text: 'Features', link: '/guide/features' },
-                { text: 'Installation', link: '/guide/installation' }
+                { text: 'Installation', link: '/guide/installation' },
+                { text: 'Features', link: '/guide/features' }
               ]
             },
             {
-              text: 'Usage',
+              text: 'Terminal',
+              items: [
+                { text: 'Terminal Basics', link: '/guide/terminal-basics' },
+                { text: 'Keyboard Shortcuts', link: '/guide/keyboard-shortcuts' }
+              ]
+            },
+            {
+              text: 'SSH & Remote',
               items: [
                 { text: 'SSH Management', link: '/guide/ssh-management' },
+                { text: 'SFTP File Browser', link: '/guide/sftp' }
+              ]
+            },
+            {
+              text: 'Productivity',
+              items: [
+                { text: 'Saved Commands', link: '/guide/saved-commands' },
+                { text: 'Session Recording', link: '/guide/session-recording' }
+              ]
+            },
+            {
+              text: 'Data & Security',
+              items: [
                 { text: 'Sync & Security', link: '/guide/sync-security' }
               ]
             },
@@ -65,14 +85,34 @@ export default defineConfig({
               text: 'Giới thiệu',
               items: [
                 { text: 'Bắt đầu', link: '/vi/guide/getting-started' },
-                { text: 'Tính năng', link: '/vi/guide/features' },
-                { text: 'Cài đặt', link: '/vi/guide/installation' }
+                { text: 'Cài đặt', link: '/vi/guide/installation' },
+                { text: 'Tính năng', link: '/vi/guide/features' }
               ]
             },
             {
-              text: 'Sử dụng',
+              text: 'Terminal',
+              items: [
+                { text: 'Cơ bản Terminal', link: '/vi/guide/terminal-basics' },
+                { text: 'Phím tắt', link: '/vi/guide/keyboard-shortcuts' }
+              ]
+            },
+            {
+              text: 'SSH & Remote',
               items: [
                 { text: 'Quản lý SSH', link: '/vi/guide/ssh-management' },
+                { text: 'Trình duyệt SFTP', link: '/vi/guide/sftp' }
+              ]
+            },
+            {
+              text: 'Năng suất',
+              items: [
+                { text: 'Lệnh đã lưu', link: '/vi/guide/saved-commands' },
+                { text: 'Ghi phiên', link: '/vi/guide/session-recording' }
+              ]
+            },
+            {
+              text: 'Dữ liệu & Bảo mật',
+              items: [
                 { text: 'Đồng bộ & Bảo mật', link: '/vi/guide/sync-security' }
               ]
             },
@@ -90,7 +130,7 @@ export default defineConfig({
 
   themeConfig: {
     logo: '/logo.png',
-    
+
     socialLinks: [
       { icon: 'github', link: 'https://github.com/klpod221/kerminal' }
     ],

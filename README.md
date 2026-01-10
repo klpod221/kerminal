@@ -27,6 +27,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [📸 Screenshots](#-screenshots)
   - [Dashboard](#dashboard)
   - [Main Interface](#main-interface)
+  - [Demo](#demo)
 - [✨ Features](#-features)
   - [💻 Terminal Emulator](#-terminal-emulator)
   - [📡 SSH Management \& Tunneling](#-ssh-management--tunneling)
@@ -63,6 +64,10 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 ### Main Interface
 
 ![Kerminal Main Interface](docs/public/screenshots/MainInterface.png)
+
+### Demo
+
+[Kerminal Basic Demo](https://github.com/user-attachments/assets/eb886812-d928-4153-ae63-cfc95916a8c9)
 
 ## ✨ Features
 
@@ -240,13 +245,15 @@ If you encounter any issues or have questions:
 - [x] Auto-lock sessions and keychain integration
 - [x] Jump host chain support for SSH connections
 - [x] Support Sixel graphics protocol for inline images
+- [x] First user tour
 
 ### In Progress
 - [ ] Homebrew install for macOS
 
 ### Planned
-- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
+- [ ] Pin Drawer as sidebar
 - [ ] AI Agent for auto-completion, suggestion, chat and automation
+- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
 - [ ] Plugin system for extensions
 - [ ] Cloud backup integration
 - [ ] Web-based version
@@ -261,17 +268,17 @@ Thanks to all the amazing people who have contributed to this project! 🎉
 	<tbody>
 		<tr>
             <td align="center">
-                <a href="https://github.com/klpod221">
-                    <img src="https://avatars.githubusercontent.com/u/62713126?v=4" width="100;" alt="klpod221"/>
-                    <br />
-                    <sub><b>Bùi Thanh Xuân</b></sub>
-                </a>
-            </td>
-            <td align="center">
                 <a href="https://github.com/vthuan1889">
                     <img src="https://avatars.githubusercontent.com/u/84111292?v=4" width="100;" alt="vthuan1889"/>
                     <br />
                     <sub><b>Thuan Vo</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/klpod221">
+                    <img src="https://avatars.githubusercontent.com/u/62713126?v=4" width="100;" alt="klpod221"/>
+                    <br />
+                    <sub><b>Bùi Thanh Xuân</b></sub>
                 </a>
             </td>
 		</tr>

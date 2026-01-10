@@ -47,6 +47,12 @@ features:
 ### Giao diện chính
 ![Main Interface](/screenshots/MainInterface.png)
 
+### Demo
+<video controls autoplay loop muted style="width: 100%; border-radius: 8px; margin-top: 16px;">
+  <source src="/screencast/basic.webm" type="video/webm">
+  Trình duyệt của bạn không hỗ trợ thẻ video.
+</video>
+
 ## 📥 Sẵn sàng bắt đầu?
 
 Tải xuống Kerminal cho hệ điều hành của bạn.
