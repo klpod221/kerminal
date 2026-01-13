@@ -158,6 +158,14 @@ pub fn main() {
             commands::terminal_profile::delete_terminal_profile,
             commands::database::backup::export_backup,
             commands::database::backup::import_backup,
+            commands::ai::get_ai_settings,
+            commands::ai::update_ai_settings,
+            commands::ai::get_ai_providers,
+            commands::ai::add_ai_provider,
+            commands::ai::update_ai_provider,
+            commands::ai::remove_ai_provider,
+            commands::ai::test_ai_connection,
+            commands::ai::get_ai_suggestions,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

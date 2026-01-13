@@ -5,6 +5,8 @@
   <KeyboardShortcutsModal />
   <BackupRestoreModal />
   <UpdaterModal />
+  <AISettingsModal />
+  <AIProviderModal />
 </template>
 
 <script setup lang="ts">
@@ -15,9 +17,14 @@ import FontSettingsModal from "./FontSettingsModal.vue";
 import KeyboardShortcutsModal from "./KeyboardShortcutsModal.vue";
 import BackupRestoreModal from "./BackupRestoreModal.vue";
 import UpdaterModal from "./UpdaterModal.vue";
+
+import AISettingsModal from "./AISettingsModal.vue";
+import AIProviderModal from "./AIProviderModal.vue";
 import { useSettingsStore } from "../../stores/settings";
+import { useAIStore } from "../../stores/ai";
 
 const settingsStore = useSettingsStore();
+const aiStore = useAIStore();
 
 /**
  * Initialize settings feature:

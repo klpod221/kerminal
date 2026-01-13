@@ -245,6 +245,22 @@
           "
           @click="toggleOverlay('keyboard-shortcuts-modal')"
         />
+
+        <!-- AI Settings -->
+        <Button
+          data-tour="ai-settings-btn"
+          title="AI Assistant Settings"
+          variant="ghost"
+          size="sm"
+          :icon="Sparkles"
+          :class="
+            isOverlayVisible('ai-settings-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('ai-settings-modal')"
+        />
+
         <!-- Main Settings / Backup -->
         <Button
           data-tour="backup-btn"
@@ -435,6 +451,7 @@ import {
   FileCode,
   Archive,
   Download,
+  Sparkles,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

@@ -23,6 +23,8 @@ pub enum AppError {
     Validation(String),
     /// Not found errors
     NotFound(String),
+    /// External API errors
+    ExternalApi(String),
     /// General application errors
     General(String),
 
@@ -43,6 +45,7 @@ impl fmt::Display for AppError {
             AppError::Network(msg) => write!(f, "Network error: {}", msg),
             AppError::Validation(msg) => write!(f, "Validation error: {}", msg),
             AppError::NotFound(msg) => write!(f, "Not found: {}", msg),
+            AppError::ExternalApi(msg) => write!(f, "External API error: {}", msg),
             AppError::General(msg) => write!(f, "Application error: {}", msg),
             AppError::ConflictResolutionRequired => write!(f, "Conflict resolution required"),
             AppError::MasterPasswordRequired => write!(f, "Master password required"),
@@ -186,6 +189,10 @@ impl AppError {
         AppError::General(format!("Internal error: {}", msg.into()))
     }
 
+    pub fn external_api(msg: impl Into<String>) -> Self {
+        AppError::ExternalApi(msg.into())
+    }
+
     pub fn not_implemented(msg: impl Into<String>) -> Self {
         AppError::General(format!("Not implemented: {}", msg.into()))
     }
@@ -244,6 +251,14 @@ impl AppError {
 
     pub fn invalid_data(msg: impl Into<String>) -> Self {
         AppError::Encryption(format!("Invalid data: {}", msg.into()))
+    }
+
+    pub fn not_found(msg: impl Into<String>) -> Self {
+        AppError::NotFound(msg.into())
+    }
+
+    pub fn network(msg: impl Into<String>) -> Self {
+        AppError::Network(msg.into())
     }
 }
 

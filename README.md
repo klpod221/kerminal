@@ -248,14 +248,14 @@ If you encounter any issues or have questions:
 - [x] First user tour
 
 ### In Progress
-- [ ] Homebrew install for macOS
+- [ ] AI Agent for auto-completion, suggestion, chat and automation
 
 ### Planned
 - [ ] Pin Drawer as sidebar
-- [ ] AI Agent for auto-completion, suggestion, chat and automation
 - [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
 - [ ] Plugin system for extensions
 - [ ] Cloud backup integration
+- [ ] Homebrew install for macOS
 - [ ] Web-based version
 - [ ] Mobile app companion
 

@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod auth_events;
 pub mod buffer;
 pub mod dashboard;

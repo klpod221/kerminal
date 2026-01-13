@@ -250,7 +250,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
-    focusedTerminalId.value = newTabId; // Set focus on new terminal
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -292,6 +292,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -334,6 +335,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -378,6 +380,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -694,7 +697,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "horizontal");
     setActivePanel(newPanelId);
-    focusedTerminalId.value = newTab.id; // Set focus on new terminal
+    focusedTerminalId.value = newTab.id;
     tabCounter++;
   };
 
@@ -721,7 +724,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
-          shouldFocusOnReady: true, // Mark this terminal to focus when ready
+          shouldFocusOnReady: true,
         };
         terminals.value.push(newTerminal);
       } else {
@@ -754,7 +757,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "vertical");
     setActivePanel(newPanelId);
-    focusedTerminalId.value = newTab.id; // Set focus on new terminal
+    focusedTerminalId.value = newTab.id;
     tabCounter++;
   };
 
