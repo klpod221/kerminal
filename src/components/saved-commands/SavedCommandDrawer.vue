@@ -232,7 +232,7 @@ import type {
   SavedCommandSearchParams,
 } from "../../types/savedCommand";
 
-const { openOverlay } = useOverlay();
+const { openOverlay, closeOverlay } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
 
 const searchQuery = ref("");
@@ -360,6 +360,7 @@ const editGroup = (group: SavedCommandGroup) => {
 const executeCommand = async (command: SavedCommand) => {
   await savedCommandStore.executeCommand(command.id);
   message.success(`Executed: ${command.name}`);
+  closeOverlay("saved-command-drawer");
 };
 
 const copyCommand = async (command: SavedCommand) => {

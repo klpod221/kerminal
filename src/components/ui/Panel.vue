@@ -56,6 +56,7 @@
         ref="terminalManagerRef"
         :terminals="activeTerminals"
         :active-terminal-id="panel.activeTabId"
+        :focused-terminal-id="focusedTerminalId"
         @terminal-ready="onTerminalReady"
       />
     </div>
@@ -87,6 +88,7 @@ interface PanelProps {
   panel: Panel;
   terminals: TerminalInstance[];
   isActive: boolean;
+  focusedTerminalId?: string | null;
 }
 
 interface PanelEmits {

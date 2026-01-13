@@ -9,8 +9,10 @@
       :backend-terminal-id="terminal.backendTerminalId"
       :is-connecting="terminal.isSSHConnecting || false"
       :is-visible="terminal.id === activeTerminalId"
+      :is-focused="props.focusedTerminalId === terminal.id"
       class="w-full h-full absolute inset-0"
       @terminal-ready="onTerminalReady"
+      @focus-terminal="onFocusTerminal"
     />
   </div>
 </template>
@@ -27,6 +29,7 @@ import { useWorkspaceStore } from "../../stores/workspace";
 interface TerminalManagerProps {
   terminals: TerminalInstance[];
   activeTerminalId?: string;
+  focusedTerminalId?: string | null;
 }
 
 interface TerminalComponent extends ComponentPublicInstance {
@@ -39,12 +42,21 @@ interface TerminalComponent extends ComponentPublicInstance {
 
 const props = defineProps<TerminalManagerProps>();
 
+const workspaceStore = useWorkspaceStore();
+
 const terminalRefs = ref<Record<string, ComponentPublicInstance | null>>({});
 let outputUnlisten: (() => void) | null = null;
 
 const bufferManager = TerminalBufferManager.getInstance();
 
 const emit = defineEmits(["terminal-ready"]);
+
+/**
+ * Handle focus terminal event from child terminal
+ */
+const onFocusTerminal = (terminalId: string): void => {
+  workspaceStore.setFocusedTerminal(terminalId);
+};
 
 /**
  * Focus the active terminal

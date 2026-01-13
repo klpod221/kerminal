@@ -191,6 +191,7 @@ interface TerminalProps {
   terminalId?: string;
   backendTerminalId?: string;
   isVisible?: boolean;
+  isFocused?: boolean;
   isConnecting?: boolean;
 }
 
@@ -198,12 +199,14 @@ const props = withDefaults(defineProps<TerminalProps>(), {
   terminalId: "default",
   backendTerminalId: "",
   isVisible: true,
+  isFocused: false,
   isConnecting: false,
 });
 
 const emit = defineEmits<{
   "terminal-ready": [terminalId: string];
   "terminal-output": [terminalId: string, data: string];
+  "focus-terminal": [terminalId: string];
 }>();
 
 const terminalRef = ref<HTMLElement | null>(null);
@@ -358,6 +361,7 @@ const handleResize = debounce(async () => {
 const canFocus = computed(
   () =>
     props.isVisible &&
+    props.isFocused &&
     !props.isConnecting &&
     !showDisconnectedOverlay.value &&
     !showErrorOverlay.value,
@@ -404,8 +408,12 @@ const handleContainerClick = (event: MouseEvent): void => {
     'button, a, input, [role="button"]',
   );
 
-  if (!isInteractiveElement && canFocus.value) {
-    focus();
+  if (!isInteractiveElement) {
+    // Always emit focus-terminal to update the store, even if canFocus is false
+    emit("focus-terminal", props.terminalId);
+    if (canFocus.value) {
+      focus();
+    }
   }
 };
 
@@ -465,12 +473,13 @@ const handleTerminalBlur = (event: FocusEvent): void => {
 
   // If terminal should have focus and focus moved to body or unknown element,
   // recapture focus after a brief delay
-  if (canFocus.value && props.isVisible) {
+  if (canFocus.value && props.isVisible && props.isFocused) {
     focusTrapTimeout = setTimeout(() => {
       // Double-check conditions before re-focusing
       if (
         canFocus.value &&
         props.isVisible &&
+        props.isFocused &&
         document.visibilityState === "visible"
       ) {
         focus();
@@ -484,7 +493,8 @@ const handleVisibilityChange = (): void => {
   if (
     document.visibilityState === "visible" &&
     canFocus.value &&
-    props.isVisible
+    props.isVisible &&
+    props.isFocused
   ) {
     // Delay focus to let the page settle
     focus({ delay: 150 });
@@ -493,17 +503,23 @@ const handleVisibilityChange = (): void => {
 
 // Window focus handler: Re-focus when window regains focus
 const handleWindowFocus = (): void => {
-  if (canFocus.value && props.isVisible) {
+  if (canFocus.value && props.isVisible && props.isFocused) {
     focus({ delay: 100 });
   }
 };
 
-const writeOutput = (data: string): void => {
+const writeOutput = (data: string | Uint8Array): void => {
   if (term) {
+    // Write to terminal first for lowest latency
     term.write(data);
 
     if (props.backendTerminalId) {
-      bufferManager.saveToLocalBuffer(props.backendTerminalId, data);
+      // Convert to string only for buffering (if needed)
+      // This defers the string decoding cost to after the render call
+      const text =
+        typeof data === "string" ? data : new TextDecoder().decode(data);
+
+      bufferManager.saveToLocalBuffer(props.backendTerminalId, text);
     }
   }
 };
@@ -540,6 +556,17 @@ watch(
   () => props.isVisible,
   (newVisible) => {
     if (newVisible && term && fitAddon) {
+      nextTick(() => {
+        fitAndFocus();
+      });
+    }
+  },
+);
+
+watch(
+  () => props.isFocused,
+  (newFocused) => {
+    if (newFocused && props.isVisible && term && fitAddon) {
       nextTick(() => {
         fitAndFocus();
       });
