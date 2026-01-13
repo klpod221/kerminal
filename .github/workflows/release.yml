@@ -133,20 +133,20 @@ jobs:
           if [ -n "$APPIMAGE" ] && [ -f "$APPIMAGE" ]; then
             # Get the tag name
             TAG_NAME="${GITHUB_REF#refs/tags/}"
-            
+
             # Delete the old AppImage from release (uploaded by tauri-action)
             APPIMAGE_NAME=$(basename "$APPIMAGE")
             gh release delete-asset "$TAG_NAME" "$APPIMAGE_NAME" --yes 2>/dev/null || true
-            
+
             # Upload the fixed AppImage
             gh release upload "$TAG_NAME" "$APPIMAGE" --clobber
-            
+
             # Re-sign and upload signature if signing keys are available
             if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && [ -f "$APPIMAGE_SIG" ]; then
               gh release delete-asset "$TAG_NAME" "${APPIMAGE_NAME}.sig" --yes 2>/dev/null || true
               gh release upload "$TAG_NAME" "$APPIMAGE_SIG" --clobber
             fi
-            
+
             echo "Fixed AppImage uploaded successfully"
           fi
 
@@ -168,6 +168,10 @@ jobs:
 
       - name: Install Dependencies and Create User
         run: |
+          # Initialize and update keyring first to avoid PGP signature trust errors
+          pacman-key --init
+          pacman-key --populate archlinux
+          pacman -Sy --noconfirm archlinux-keyring
           pacman -Syu --noconfirm
           pacman -S --noconfirm git openssh base-devel pacman-contrib sudo
           useradd -m builder

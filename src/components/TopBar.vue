@@ -274,6 +274,27 @@
           "
           @click="toggleOverlay('master-password-settings')"
         />
+
+        <!-- Update Checker -->
+        <div class="relative">
+          <Button
+            data-tour="updates-btn"
+            title="Check for Updates"
+            variant="ghost"
+            size="sm"
+            :icon="Download"
+            :class="
+              isOverlayVisible('updater-modal')
+                ? 'bg-gray-800 text-gray-400 hover:text-white'
+                : ''
+            "
+            @click="toggleOverlay('updater-modal')"
+          />
+          <span
+            v-if="updaterStore.hasUpdate"
+            class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-bg-primary animate-pulse"
+          />
+        </div>
       </template>
     </div>
 
@@ -375,6 +396,19 @@
                 <Palette :size="18" />
                 <span>Terminal Theme</span>
               </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation relative"
+                :class="isOverlayVisible('updater-modal') ? 'bg-gray-800' : ''"
+                @click="handleMobileMenuClick('updater-modal')"
+              >
+                <Download :size="18" />
+                <span>Check for Updates</span>
+                <span
+                  v-if="updaterStore.hasUpdate"
+                  class="ml-auto w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -400,15 +434,18 @@ import {
   FolderOpen,
   FileCode,
   Archive,
+  Download,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";
 
 import { useViewStateStore } from "../stores/viewState";
+import { useUpdaterStore } from "../stores/updater";
 import { useOverlay } from "../composables/useOverlay";
 import { useWindowSize } from "../composables/useWindowSize";
 
 const viewState = useViewStateStore();
+const updaterStore = useUpdaterStore();
 const { openOverlay, closeOverlay, closeAllOverlays, isOverlayVisible } =
   useOverlay();
 const { isMobile } = useWindowSize();

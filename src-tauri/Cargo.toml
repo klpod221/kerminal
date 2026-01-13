@@ -1,6 +1,6 @@
 [package]
 name = "Kerminal"
-version = "2.5.10"
+version = "2.5.11"
 description = "Modern Terminal with SSH, Tunneling & Cross-Device Sync"
 license = "MIT"
 repository = "https://github.com/klpod221/kerminal"
@@ -74,6 +74,7 @@ tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 walkdir = "2.5.0"
 reqwest = { version = "0.12.25", features = ["json", "rustls-tls"] }
+semver = "1.0"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-updater = "2"
