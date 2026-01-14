@@ -288,15 +288,15 @@ impl AIProvider for GeminiProvider {
         let prompt = build_user_prompt(context);
 
         let url = format!(
-            "{}/models/{}:generateContent?key={}",
+            "{}/models/{}:generateContent",
             base_url.trim_end_matches('/'),
-            config.model,
-            api_key
+            config.model
         );
 
         let response = client
             .post(&url)
             .header("Content-Type", "application/json")
+            .header("x-goog-api-key", api_key)
             .json(&json!({
                 "contents": [{
                     "parts": [{ "text": format!("{}\n\nUser Input: {}", SYSTEM_PROMPT, prompt) }]
