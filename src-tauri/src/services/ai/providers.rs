@@ -356,14 +356,14 @@ impl AIProvider for GeminiProvider {
 
         let client = reqwest::Client::new();
         let url = format!(
-            "{}/models/{}?key={}",
+            "{}/models/{}",
             base_url.trim_end_matches('/'),
             config.model,
-            api_key
         );
 
         let response = client
             .get(&url)
+            .bearer_auth(api_key)
             .send()
             .await
             .map_err(|e| AppError::network(e.to_string()))?;
