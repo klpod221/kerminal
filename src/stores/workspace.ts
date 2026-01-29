@@ -208,6 +208,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    */
   const setActivePanel = (panelId: string): void => {
     activePanelId.value = panelId;
+    const panel = findPanelInLayout(panelLayout.value, panelId);
+    if (panel && panel.activeTabId) {
+      setFocusedTerminal(panel.activeTabId);
+    }
   };
 
   /**
@@ -220,6 +224,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (panel) {
       panel.activeTabId = tabId;
       viewState.setActiveView("workspace");
+      if (activePanelId.value === panelId) {
+        setFocusedTerminal(tabId);
+      }
     }
   };
 
