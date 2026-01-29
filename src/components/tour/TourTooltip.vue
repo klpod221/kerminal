@@ -4,7 +4,7 @@
     :style="tooltipStyle"
   >
     <div
-      class="bg-bg-tertiary border border-gray-700 rounded-xl shadow-2xl max-w-md overflow-hidden"
+      class="bg-bg-tertiary border border-gray-700 rounded-xl shadow-2xl w-[450px] overflow-hidden"
     >
       <!-- Progress bar -->
       <div class="h-1 bg-gray-800">
@@ -98,7 +98,7 @@ defineEmits<{
 }>();
 
 const TOOLTIP_OFFSET = 16;
-const TOOLTIP_WIDTH = 400;
+const TOOLTIP_WIDTH = 450;
 
 const tooltipStyle = computed(() => {
   if (!props.targetRect || props.step.position === "center") {
