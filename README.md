@@ -247,8 +247,7 @@ If you encounter any issues or have questions:
 - [x] Support Sixel graphics protocol for inline images
 - [x] First user tour
 
-### In Progress
-- [ ] AI Agent for auto-completion, suggestion, chat and automation
+
 
 ### Planned
 - [ ] Pin Drawer as sidebar

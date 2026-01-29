@@ -151,17 +151,6 @@
 
     <!-- History Search Modal -->
     <HistorySearchModal />
-
-    <!-- AI Suggestion Popup -->
-    <AISuggestionPopup
-      :visible="aiVisible"
-      :suggestions="aiSuggestions"
-      :latency-ms="aiLatency"
-      :position="cursorPosition"
-      :is-loading="aiStore.isLoading"
-      @select="handleAISelect"
-      @close="aiVisible = false"
-    />
   </div>
 </template>
 
@@ -187,10 +176,7 @@ import { getTerminalTheme } from "../../utils/terminalTheme";
 import type { SimpleTerminal } from "../../core";
 import { useSettingsStore } from "../../stores/settings";
 import { useOverlayStore } from "../../stores/overlay";
-import { useAIStore } from "../../stores/ai";
 import type { PanelLayout, Tab } from "../../types/panel";
-import type { AISuggestion } from "../../types/ai";
-import AISuggestionPopup from "./AISuggestionPopup.vue";
 
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
@@ -231,18 +217,8 @@ let fitAddon: FitAddon;
 const workspaceStore = useWorkspaceStore();
 const settingsStore = useSettingsStore();
 const overlayStore = useOverlayStore();
-const aiStore = useAIStore();
 
-// AI State
-const aiVisible = ref(false);
-const currentInputBuffer = ref("");
-const cursorPosition = ref({ x: 0, y: 0 });
-
-const aiSuggestions = computed(
-  () => aiStore.lastSuggestions?.suggestions || [],
-);
-
-const aiLatency = computed(() => aiStore.lastSuggestions?.latencyMs);
+// AI State - REMOVED
 
 const currentTerminal = computed(() =>
   workspaceStore.terminals.find((t) => t.id === props.terminalId),
@@ -351,91 +327,7 @@ const bufferManager = TerminalBufferManager.getInstance();
 
 const inputBatcher = InputBatcher.getInstance();
 
-// AI Methods
-const updateCursorPosition = () => {
-  if (!term || !terminalRef.value) return;
-
-  // Get cursor coordinates from xterm
-  // This is relative to the terminal grid
-  // We need pixel coordinates
-  // xterm.buffer.active.cursorX
-  const cursorX = term.buffer.active.cursorX;
-  const cursorY = term.buffer.active.cursorY;
-
-  // Estimate pixel position based on font metrics (approximate)
-  // Or use xterm's render layer if accessible, but it's hard.
-  // Simple heuristic: (cursorX * charWidth) + padding
-  if (term.element) {
-    const core = (term as any)._core;
-    if (core && core._renderService && core._renderService.dimensions) {
-      const dims = core._renderService.dimensions;
-      const x = cursorX * dims.actualCellWidth + 10;
-      const y = cursorY * dims.actualCellHeight + 10;
-      cursorPosition.value = { x, y };
-      return;
-    }
-  }
-
-  cursorPosition.value = { x: 100, y: 100 };
-};
-
-const triggerAI = async () => {
-  if (!aiStore.isAIEnabled) return;
-
-  updateCursorPosition();
-  aiVisible.value = true;
-
-  await aiStore.getSuggestions({
-    currentInput: currentInputBuffer.value,
-    cwd: undefined, // We don't track CWD easily here yet. Backend tracks it? Backend PTY knows?
-    // We configured "includeCwd" in settings, but we need to pass it if we know it.
-    // Backend PTY service knows CWD. But AI service interaction here is from frontend.
-    // Maybe we pass empty CWD and let backend fill it if possible?
-    // Currently backend implementation relies on passed context.
-    // Resolving CWD on frontend is hard without querying backend.
-  });
-};
-
-const handleAISelect = (suggestion: AISuggestion) => {
-  // Replace current buffer with command?
-  // Or just append?
-  // Usually we want to replace what user typed with the suggestion.
-  // But we don't know exactly what part corresponds to suggestion.
-  // "Completion" usually completes prefix.
-  // "Suggestion" might be full command.
-  // For now, let's assume suggestion is full command.
-
-  // If we want to replace, we need to send backspaces for currentInputBuffer.length
-  // then send generic command.
-
-  const backspaces = "\u007F".repeat(currentInputBuffer.value.length);
-  handleTerminalInput(backspaces + suggestion.command);
-
-  // Update buffer
-  currentInputBuffer.value = suggestion.command;
-
-  aiVisible.value = false;
-  term.focus();
-};
-
 const handleTerminalInput = (data: string): void => {
-  // AI Input Buffering
-  if (data === "\r") {
-    currentInputBuffer.value = "";
-    if (aiVisible.value) aiVisible.value = false;
-  } else if (data === "\u007F") {
-    currentInputBuffer.value = currentInputBuffer.value.slice(0, -1);
-  } else if (data.length === 1 && (data.codePointAt(0) ?? 0) >= 32) {
-    currentInputBuffer.value += data;
-  }
-
-  // Auto trigger
-  if (aiStore.settings.isEnabled && aiStore.settings.triggerMode !== "manual") {
-    // Debounce trigger?
-    // For now, manual only for safety until we implement debounce properly
-    // User settings has autoTriggerDelayMs.
-  }
-
   if (!props.backendTerminalId) return;
 
   try {
@@ -836,12 +728,6 @@ onMounted(async () => {
           term.write(clipboardText);
         }
       })();
-      return false;
-    }
-
-    // AI Trigger (Ctrl+Space)
-    if (arg.ctrlKey && arg.code === "Space" && arg.type === "keydown") {
-      triggerAI();
       return false;
     }
 

@@ -1,7 +1,6 @@
 use crate::core::auth_session_manager::AuthSessionManager;
 use crate::database::{DatabaseService, DatabaseServiceConfig};
 use crate::services::{
-    ai::AIService,
     auth::AuthService,
     history::HistoryManager,
     saved_command::SavedCommandService,
@@ -31,12 +30,11 @@ pub struct AppState {
     pub sftp_transfer_manager: Arc<TransferManager>,
     pub sftp_sync_service: Arc<SFTPSyncService>,
     pub history_manager: HistoryManager,
-    pub ai_service: Arc<AIService>,
 }
 
 impl AppState {
     /// Create new app state with initialized database service
-    pub async fn new(app_handle: AppHandle) -> Result<Self, String> {
+    pub async fn new(_app_handle: AppHandle) -> Result<Self, String> {
         let config = DatabaseServiceConfig::default();
         let database_service = DatabaseService::new(config)
             .await
@@ -78,15 +76,6 @@ impl AppState {
         let history_manager =
             HistoryManager::new(terminal_manager_arc.clone(), ssh_service_arc.clone());
 
-        let ai_service = Arc::new(AIService::new(
-            app_handle.clone(),
-            database_service_arc.clone(),
-        ));
-        // Initialize AI service (load settings)
-        if let Err(e) = ai_service.initialize().await {
-            eprintln!("Warning: Failed to initialize AI service: {}", e);
-        }
-
         Ok(Self {
             database_service: database_service_arc,
             auth_service,
@@ -102,7 +91,6 @@ impl AppState {
             sftp_transfer_manager,
             sftp_sync_service,
             history_manager,
-            ai_service,
         })
     }
 }
