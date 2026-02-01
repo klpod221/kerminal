@@ -27,6 +27,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [📸 Screenshots](#-screenshots)
   - [Dashboard](#dashboard)
   - [Main Interface](#main-interface)
+  - [Demo](#demo)
 - [✨ Features](#-features)
   - [💻 Terminal Emulator](#-terminal-emulator)
   - [📡 SSH Management \& Tunneling](#-ssh-management--tunneling)
@@ -49,16 +50,24 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [🙏 Acknowledgments](#-acknowledgments)
 - [📮 Support](#-support)
 - [🗺️ Roadmap](#️-roadmap)
+  - [Completed](#completed)
+  - [In Progress](#in-progress)
+  - [Planned](#planned)
+- [👥 Contributors](#-contributors)
 
 ## 📸 Screenshots
 
 ### Dashboard
 
-![Dashboard](public/screenshots/Dashboard.png)
+![Dashboard](docs/public/screenshots/Dashboard.png)
 
 ### Main Interface
 
-![Kerminal Main Interface](public/screenshots/MainInterface.png)
+![Kerminal Main Interface](docs/public/screenshots/MainInterface.png)
+
+### Demo
+
+[Kerminal Basic Demo](https://github.com/user-attachments/assets/eb886812-d928-4153-ae63-cfc95916a8c9)
 
 ## ✨ Features
 
@@ -71,6 +80,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - Profile organization with groups, colors, and descriptions
 - Authentication: password and keys (certificate, Kerberos, PKCS11, agent coming soon)
 - SSH key manager with import/export, connection testing, proxy support (HTTP, SOCKS4/5)
+- Jump Host Chain: Connect through multiple bastion hosts with automatic authentication
 - Port forwarding (Local/Remote/Dynamic) with auto-start and status monitoring
 
 ### 💾 Saved Commands & Session Recording
@@ -218,18 +228,62 @@ If you encounter any issues or have questions:
 
 ## 🗺️ Roadmap
 
+### Completed
+- [x] Multiple tabs and split panes terminal
+- [x] WebGL-accelerated rendering with Unicode support
+- [x] AES-256-GCM encryption with master password
+- [x] SSH profile management with groups and colors
+- [x] SSH key manager with import/export
+- [x] Proxy support (HTTP, SOCKS4/5)
+- [x] Port forwarding (Local/Remote/Dynamic SOCKS)
+- [x] Multi-device sync (MySQL/PostgreSQL/MongoDB)
 - [x] Custom terminal themes and color schemes
 - [x] Custom terminal font settings
-- [x] Syntax highlighting for saved commands
+- [x] Saved commands with syntax highlighting
 - [x] Session recording and playback (asciicast format)
 - [x] SFTP file transfer integration
-- [ ] Support graphic protocol
-- [ ] More SSH Authentication Methods
+- [x] Auto-lock sessions and keychain integration
+- [x] Jump host chain support for SSH connections
+- [x] Support Sixel graphics protocol for inline images
+- [x] First user tour
+
+
+
+### Planned
+- [ ] Pin Drawer as sidebar
+- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
 - [ ] Plugin system for extensions
-- [ ] AI Agent for auto-completion, suggestion, chat and automation tasks
 - [ ] Cloud backup integration
+- [ ] Homebrew install for macOS
 - [ ] Web-based version
 - [ ] Mobile app companion
+
+## 👥 Contributors
+
+Thanks to all the amazing people who have contributed to this project! 🎉
+
+<!-- readme: collaborators,contributors -start -->
+<table>
+	<tbody>
+		<tr>
+            <td align="center">
+                <a href="https://github.com/klpod221">
+                    <img src="https://avatars.githubusercontent.com/u/62713126?v=4" width="100;" alt="klpod221"/>
+                    <br />
+                    <sub><b>Bùi Thanh Xuân</b></sub>
+                </a>
+            </td>
+            <td align="center">
+                <a href="https://github.com/vthuan1889">
+                    <img src="https://avatars.githubusercontent.com/u/84111292?v=4" width="100;" alt="vthuan1889"/>
+                    <br />
+                    <sub><b>Thuan Vo</b></sub>
+                </a>
+            </td>
+		</tr>
+	<tbody>
+</table>
+<!-- readme: collaborators,contributors -end -->
 
 ---
 

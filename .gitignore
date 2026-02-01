@@ -27,3 +27,7 @@ target
 
 # Android keystore
 .android/*.keystore
+
+# VitePress
+docs/.vitepress/dist
+docs/.vitepress/cache

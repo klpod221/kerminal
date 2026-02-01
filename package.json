@@ -1,13 +1,16 @@
 {
   "name": "kerminal",
-  "version": "2.5.5",
+  "version": "2.5.13",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "pretty": "prettier --write \"./**/*.{ts,vue,css}\""
+    "pretty": "prettier --write \"./**/*.{ts,vue,css}\"",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2",
@@ -23,6 +26,7 @@
     "@xterm/addon-unicode11": "^0.8.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/addon-image": "^0.9.0",
     "@xterm/xterm": "^5.5.0",
     "asciinema-player": "^3.12.1",
     "date-fns": "^4.1.0",
@@ -44,6 +48,7 @@
     "tailwindcss": "^4.1.13",
     "typescript": "~5.6.2",
     "vite": "^6.0.3",
+    "vitepress": "^1.6.4",
     "vue-tsc": "^2.0.29"
   }
 }

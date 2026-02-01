@@ -33,33 +33,6 @@
     />
 
     <div v-else class="space-y-4 p-4">
-      <!-- Recent Connections -->
-      <div
-        v-if="
-          !searchQuery && connectionHistoryStore.recentConnections.length > 0
-        "
-      >
-        <Collapsible
-          title="Recent Connections"
-          :badge="
-            String(Math.min(connectionHistoryStore.recentConnections.length, 3))
-          "
-          :default-expanded="true"
-        >
-          <div class="space-y-2">
-            <RecentConnectionItem
-              v-for="entry in connectionHistoryStore.recentConnections.slice(
-                0,
-                3,
-              )"
-              :key="`${entry.type}-${entry.id}`"
-              :entry="entry"
-              @connect="connectToHistoryEntry(entry)"
-            />
-          </div>
-        </Collapsible>
-      </div>
-
       <!-- Grouped Profiles -->
       <div
         v-for="groupData in filteredGroupsData"
@@ -193,7 +166,6 @@
         />
 
         <Button
-          variant="warning"
           size="sm"
           :icon="Plus"
           text="New Profile"
@@ -236,8 +208,6 @@ import { useSSHStore } from "../../stores/ssh";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { caseInsensitiveIncludes } from "../../utils/helpers";
 import { showConfirm } from "../../utils/message";
-import { useConnectionHistoryStore } from "../../stores/connectionHistory";
-import RecentConnectionItem from "./RecentConnectionItem.vue";
 
 const searchQuery = ref("");
 const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
@@ -245,13 +215,9 @@ const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 const { openOverlay, closeOverlay } = useOverlay();
 const sshStore = useSSHStore();
 const workspaceStore = useWorkspaceStore();
-const connectionHistoryStore = useConnectionHistoryStore();
 
 onMounted(async () => {
-  await Promise.all([
-    sshStore.loadConfigHosts(),
-    connectionHistoryStore.loadHistory(),
-  ]);
+  await sshStore.loadConfigHosts();
 });
 
 /**
@@ -346,15 +312,6 @@ const connectToProfile = (profile: SSHProfile) => {
 
   workspaceStore.addSSHTab(activePanelId, profile.id, profile.name);
 
-  connectionHistoryStore.addEntry({
-    id: profile.id,
-    type: "profile",
-    name: profile.name,
-    username: profile.username,
-    host: profile.host,
-    color: profile.color,
-  });
-
   closeOverlay("ssh-profile-drawer");
 };
 
@@ -418,40 +375,10 @@ const connectToConfigHost = async (host: SSHConfigHost) => {
       });
     } else {
       workspaceStore.addSSHConfigTab(activePanelId, host.name, displayName);
-
-      connectionHistoryStore.addEntry({
-        id: host.name,
-        type: "config-host",
-        name: host.name,
-        username: host.user || "unknown",
-        host: host.hostname,
-      });
-
       closeOverlay("ssh-profile-drawer");
     }
   } catch (error) {
     console.error("Failed to connect to SSH config host:", error);
-  }
-};
-
-const connectToHistoryEntry = async (entry: any) => {
-  if (entry.type === "profile") {
-    const profile = sshStore.findProfileById(entry.id);
-    if (profile) {
-      connectToProfile(profile);
-    } else {
-      // Profile might have been deleted, try to connect with cached info or show error
-      // For now, let's just show an error if profile is missing
-      // Ideally we could try to reconstruct a connection request
-      console.error("Profile not found:", entry.id);
-    }
-  } else if (entry.type === "config-host") {
-    const host = sshStore.configHosts.find((h) => h.name === entry.id);
-    if (host) {
-      connectToConfigHost(host);
-    } else {
-      console.error("Config host not found:", entry.id);
-    }
   }
 };
 </script>

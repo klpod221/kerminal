@@ -47,6 +47,21 @@ export interface ProxyConfig {
 }
 
 /**
+ * SSH Jump Host configuration - matches backend JumpHostConfig
+ * Used for SSH chaining / ProxyJump
+ */
+export interface JumpHostConfig {
+  /** Reference to an existing SSH profile ID (preferred method) */
+  profileId?: string;
+  /** Inline configuration (used when profileId is not set) */
+  host?: string;
+  port?: number;
+  username?: string;
+  authMethod?: AuthMethod;
+  authData?: AuthData;
+}
+
+/**
  * SSH Authentication methods - matches backend AuthMethod enum
  */
 export type AuthMethod =
@@ -130,6 +145,7 @@ export interface SSHProfile extends BaseModel {
   keepAlive: boolean;
   compression: boolean;
   proxy?: ProxyConfig;
+  jumpHosts?: JumpHostConfig[];
   color?: string;
   description?: string;
   command?: string;
@@ -188,6 +204,7 @@ export interface CreateSSHProfileRequest {
   keepAlive?: boolean;
   compression?: boolean;
   proxy?: ProxyConfig;
+  jumpHosts?: JumpHostConfig[];
   color?: string;
   icon?: string;
   description?: string;
@@ -211,6 +228,7 @@ export interface UpdateSSHProfileRequest {
   keepAlive?: boolean;
   compression?: boolean;
   proxy?: ProxyConfig | null;
+  jumpHosts?: JumpHostConfig[] | null;
   color?: string | null;
   icon?: string | null;
   description?: string | null;
@@ -249,17 +267,4 @@ export interface UpdateSSHKeyRequest {
   privateKey?: string;
   publicKey?: string | null;
   passphrase?: string | null;
-}
-
-/**
- * Connection History Entry
- */
-export interface ConnectionHistoryEntry {
-  id: string;
-  type: "profile" | "config-host" | "manual";
-  name: string;
-  username: string;
-  host: string;
-  lastConnected: number;
-  color?: string;
 }

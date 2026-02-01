@@ -5,6 +5,7 @@
         :panel="layout.panel!"
         :terminals="terminals"
         :is-active="layout.panel!.id === activePanelId"
+        :focused-terminal-id="focusedTerminalId"
         @select-tab="selectTab"
         @close-tab="closeTab"
         @add-tab="addTab"
@@ -38,6 +39,7 @@
             :layout="child"
             :terminals="terminals"
             :active-panel-id="activePanelId"
+            :focused-terminal-id="focusedTerminalId"
             @select-tab="selectTab"
             @close-tab="closeTab"
             @add-tab="addTab"
@@ -70,6 +72,7 @@ interface PanelManagerProps {
   layout: PanelLayout;
   terminals: TerminalInstance[];
   activePanelId: string;
+  focusedTerminalId?: string | null;
 }
 
 type SplitDirection = "top" | "bottom" | "left" | "right";

@@ -56,6 +56,20 @@
           </div>
         </div>
 
+        <!-- Don't show again checkbox -->
+        <label
+          v-if="!isDownloading"
+          class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-gray-300"
+        >
+          <input
+            type="checkbox"
+            :checked="dontShowUpdateModal"
+            @change="handleDontShowChange($event)"
+            class="w-4 h-4 rounded border-gray-600 bg-dark-700 text-green-500 focus:ring-green-500 focus:ring-offset-0"
+          />
+          <span>Don't show this again</span>
+        </label>
+
         <!-- Actions -->
         <div class="flex gap-3 mt-4">
           <Button
@@ -97,6 +111,19 @@
           or download from GitHub.
         </p>
 
+        <!-- Don't show again checkbox -->
+        <label
+          class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-gray-300"
+        >
+          <input
+            type="checkbox"
+            :checked="dontShowUpdateModal"
+            @change="handleDontShowChange($event)"
+            class="w-4 h-4 rounded border-gray-600 bg-dark-700 text-green-500 focus:ring-green-500 focus:ring-offset-0"
+          />
+          <span>Don't show this again</span>
+        </label>
+
         <div class="flex gap-3">
           <Button variant="secondary" @click="handleClose" class="flex-1">
             Later
@@ -134,11 +161,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import {
-  Download,
-  RefreshCw,
-  ExternalLink,
-} from "lucide-vue-next";
+import { Download, RefreshCw, ExternalLink } from "lucide-vue-next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
@@ -160,6 +183,12 @@ const downloadProgress = computed(() => updaterStore.downloadProgress);
 const hasUpdate = computed(() => updaterStore.hasUpdate);
 const isLinux = computed(() => updaterStore.isLinux);
 const linuxUpdateInfo = computed(() => updaterStore.linuxUpdateInfo);
+const dontShowUpdateModal = computed(() => updaterStore.dontShowUpdateModal);
+
+const handleDontShowChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  updaterStore.setDontShowUpdateModal(target.checked);
+};
 
 const formatBytes = (bytes: number): string => {
   if (bytes === 0) return "0 B";

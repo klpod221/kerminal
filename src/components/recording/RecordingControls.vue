@@ -11,8 +11,14 @@
       <Square :size="14" class="text-red-500" fill="currentColor" />
     </Button>
   </div>
-  <Button v-else variant="ghost" @click="handleStart" title="Start recording">
-    <Circle :size="14" class="text-gray-400 hover:text-red-500" />
+  <Button
+    v-else
+    variant="ghost"
+    @click="handleStart"
+    title="Start recording"
+    class="relative"
+  >
+    <Circle :size="14" class="text-red-500" />
   </Button>
 </template>
 

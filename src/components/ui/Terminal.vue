@@ -2,6 +2,8 @@
   <div
     ref="terminalRef"
     class="w-full h-full bg-bg-secondary terminal-container relative"
+    @click="handleContainerClick"
+    @mousedown="handleContainerMouseDown"
   >
     <!-- Latency Badge -->
     <div
@@ -133,7 +135,7 @@
             variant="primary"
             size="md"
             :icon="RefreshCw"
-            text="Try Again"
+            text="Reconnect"
             @click="handleReconnect"
           />
           <Button
@@ -173,6 +175,7 @@ import HistorySearchModal from "../history/HistorySearchModal.vue";
 import { getTerminalTheme } from "../../utils/terminalTheme";
 import type { SimpleTerminal } from "../../core";
 import { useSettingsStore } from "../../stores/settings";
+import { useOverlayStore } from "../../stores/overlay";
 import type { PanelLayout, Tab } from "../../types/panel";
 
 import { Terminal } from "@xterm/xterm";
@@ -183,11 +186,13 @@ import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { ImageAddon } from "@xterm/addon-image";
 
 interface TerminalProps {
   terminalId?: string;
   backendTerminalId?: string;
   isVisible?: boolean;
+  isFocused?: boolean;
   isConnecting?: boolean;
 }
 
@@ -195,12 +200,14 @@ const props = withDefaults(defineProps<TerminalProps>(), {
   terminalId: "default",
   backendTerminalId: "",
   isVisible: true,
+  isFocused: false,
   isConnecting: false,
 });
 
 const emit = defineEmits<{
   "terminal-ready": [terminalId: string];
   "terminal-output": [terminalId: string, data: string];
+  "focus-terminal": [terminalId: string];
 }>();
 
 const terminalRef = ref<HTMLElement | null>(null);
@@ -209,6 +216,9 @@ let fitAddon: FitAddon;
 
 const workspaceStore = useWorkspaceStore();
 const settingsStore = useSettingsStore();
+const overlayStore = useOverlayStore();
+
+// AI State - REMOVED
 
 const currentTerminal = computed(() =>
   workspaceStore.terminals.find((t) => t.id === props.terminalId),
@@ -257,7 +267,9 @@ const formattedErrorMessage = computed(() => {
 
 const canReconnect = computed(
   () =>
-    currentTerminal.value?.canReconnect && currentTerminal.value?.sshProfileId,
+    currentTerminal.value?.canReconnect &&
+    (currentTerminal.value?.sshProfileId ||
+      currentTerminal.value?.sshConfigHost),
 );
 
 const getLatencyColor = (latency: number) => {
@@ -267,13 +279,24 @@ const getLatencyColor = (latency: number) => {
 };
 
 const handleReconnect = () => {
-  if (currentTerminal.value?.sshProfileId) {
-    if (currentTerminal.value.hasError) {
-      clearTerminal();
-    }
+  if (!currentTerminal.value) return;
+
+  // Clear terminal error state before reconnect
+  if (currentTerminal.value.hasError) {
+    clearTerminal();
+  }
+
+  // Route to appropriate reconnect method
+  if (currentTerminal.value.sshProfileId) {
     workspaceStore.reconnectSSH(
       props.terminalId,
       currentTerminal.value.sshProfileId,
+    );
+  } else if (currentTerminal.value.sshConfigHost) {
+    workspaceStore.reconnectSSHConfig(
+      props.terminalId,
+      currentTerminal.value.sshConfigHost,
+      currentTerminal.value.sshConfigPassword,
     );
   }
 };
@@ -338,26 +361,168 @@ const handleResize = debounce(async () => {
   }
 }, 100);
 
-const focus = (): void => {
-  if (term) {
-    term.focus();
+const canFocus = computed(
+  () =>
+    props.isVisible &&
+    props.isFocused &&
+    !props.isConnecting &&
+    !showDisconnectedOverlay.value &&
+    !showErrorOverlay.value &&
+    !overlayStore.hasActiveOverlay,
+);
+
+// Smart focus with guard and delay
+const focus = (options?: { force?: boolean; delay?: number }): void => {
+  const { force = false, delay = 0 } = options || {};
+
+  if (!term) return;
+
+  // Focus guard: skip if overlay is showing (unless forced)
+  if (!force && !canFocus.value) return;
+
+  const doFocus = () => {
+    if (term && (force || canFocus.value)) {
+      term.focus();
+    }
+  };
+
+  // Auto-focus delay to avoid animation conflicts
+  if (delay > 0) {
+    setTimeout(doFocus, delay);
+  } else {
+    doFocus();
   }
 };
 
 const fitAndFocus = debounce((): void => {
   if (fitAddon && term && props.isVisible) {
     fitAddon.fit();
-    term.focus();
+    // Use smart focus with slight delay for animation safety
+    focus({ delay: 50 });
     handleTerminalResize();
   }
 }, 50);
 
-const writeOutput = (data: string): void => {
+// Click-to-focus: Handle container click to focus terminal
+const handleContainerClick = (event: MouseEvent): void => {
+  // Only focus if clicking directly on the container or terminal area
+  // and not on interactive elements like buttons
+  const target = event.target as HTMLElement;
+  const isInteractiveElement = target.closest(
+    'button, a, input, [role="button"]',
+  );
+
+  if (!isInteractiveElement) {
+    emit("focus-terminal", props.terminalId);
+    if (canFocus.value) {
+      focus();
+    }
+  }
+};
+
+// Handle mousedown to capture focus earlier (better UX)
+const handleContainerMouseDown = (event: MouseEvent): void => {
+  const target = event.target as HTMLElement;
+  const isInteractiveElement = target.closest(
+    'button, a, input, [role="button"]',
+  );
+
+  if (!isInteractiveElement && canFocus.value) {
+    // Prevent default to avoid text selection issues during rapid clicks
+    // but only if we're in the terminal area
+    if (target.closest(".xterm")) {
+      focus();
+    }
+  }
+};
+
+// Focus trap: Keep focus in terminal when active
+const setupFocusTrap = (): void => {
+  if (!terminalRef.value || !term) return;
+
+  term.textarea?.addEventListener("blur", handleTerminalBlur);
+};
+
+const cleanupFocusTrap = (): void => {
+  term?.textarea?.removeEventListener("blur", handleTerminalBlur);
+};
+
+let focusTrapTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const handleTerminalBlur = (event: FocusEvent): void => {
+  // Clear any pending focus trap
+  if (focusTrapTimeout) {
+    clearTimeout(focusTrapTimeout);
+    focusTrapTimeout = null;
+  }
+
+  // Check if focus is moving outside the terminal container
+  const relatedTarget = event.relatedTarget as HTMLElement | null;
+
+  // If focus is moving to an element within the terminal container, allow it
+  if (relatedTarget && terminalRef.value?.contains(relatedTarget)) {
+    return;
+  }
+
+  // If focus is moving to an interactive element (button, modal, etc.), allow it
+  if (
+    relatedTarget &&
+    relatedTarget.closest(
+      'button, a, input, select, textarea, [role="dialog"], [role="menu"]',
+    )
+  ) {
+    return;
+  }
+
+  // If terminal should have focus and focus moved to body or unknown element,
+  // recapture focus after a brief delay
+  if (canFocus.value && props.isVisible && props.isFocused) {
+    focusTrapTimeout = setTimeout(() => {
+      // Double-check conditions before re-focusing
+      if (
+        canFocus.value &&
+        props.isVisible &&
+        props.isFocused &&
+        document.visibilityState === "visible"
+      ) {
+        focus();
+      }
+    }, 100);
+  }
+};
+
+// Visibility API: Re-focus when user returns to tab
+const handleVisibilityChange = (): void => {
+  if (
+    document.visibilityState === "visible" &&
+    canFocus.value &&
+    props.isVisible &&
+    props.isFocused
+  ) {
+    // Delay focus to let the page settle
+    focus({ delay: 150 });
+  }
+};
+
+// Window focus handler: Re-focus when window regains focus
+const handleWindowFocus = (): void => {
+  if (canFocus.value && props.isVisible && props.isFocused) {
+    focus({ delay: 100 });
+  }
+};
+
+const writeOutput = (data: string | Uint8Array): void => {
   if (term) {
+    // Write to terminal first for lowest latency
     term.write(data);
 
     if (props.backendTerminalId) {
-      bufferManager.saveToLocalBuffer(props.backendTerminalId, data);
+      // Convert to string only for buffering (if needed)
+      // This defers the string decoding cost to after the render call
+      const text =
+        typeof data === "string" ? data : new TextDecoder().decode(data);
+
+      bufferManager.saveToLocalBuffer(props.backendTerminalId, text);
     }
   }
 };
@@ -397,6 +562,44 @@ watch(
       nextTick(() => {
         fitAndFocus();
       });
+    }
+  },
+);
+
+watch(
+  () => props.isFocused,
+  (newFocused) => {
+    if (newFocused && props.isVisible && term && fitAddon) {
+      nextTick(() => {
+        fitAndFocus();
+      });
+    }
+  },
+);
+
+// Watch for overlay changes to manage focus appropriately
+watch(
+  [() => props.isConnecting, showDisconnectedOverlay, showErrorOverlay],
+  (
+    [connecting, disconnected, error],
+    [prevConnecting, prevDisconnected, prevError],
+  ) => {
+    // If overlay just closed and terminal is visible, restore focus
+    const wasOverlayShowing = prevConnecting || prevDisconnected || prevError;
+    const isOverlayShowing = connecting || disconnected || error;
+
+    if (wasOverlayShowing && !isOverlayShowing && props.isVisible) {
+      // Delay focus to let overlay animation complete
+      focus({ delay: 200 });
+    }
+  },
+);
+
+watch(
+  () => overlayStore.hasActiveOverlay,
+  (hasOverlay, hadOverlay) => {
+    if (hadOverlay && !hasOverlay && props.isVisible && props.isFocused) {
+      focus({ delay: 300 });
     }
   },
 );
@@ -494,6 +697,14 @@ onMounted(async () => {
   term.loadAddon(unicode11Addon);
   term.unicode.activeVersion = "11";
 
+  // Load ImageAddon for Sixel graphics support
+  const imageAddon = new ImageAddon({
+    sixelSupport: true,
+    sixelScrolling: true,
+    sixelPaletteLimit: 256,
+  });
+  term.loadAddon(imageAddon);
+
   term.open(terminalRef.value);
 
   term.onSelectionChange(async () => {
@@ -532,14 +743,33 @@ onMounted(async () => {
 
   await nextTick();
 
+  // Setup focus trap
+  setupFocusTrap();
+
+  // Setup visibility API listener for re-focus on tab return
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("focus", handleWindowFocus);
+
   emit("terminal-ready", props.terminalId || "default");
 
   window.addEventListener("resize", handleResize);
 
   handleResize();
+
+  // Initial focus with delay for mount animation
+  focus({ delay: 100 });
 });
 
 onBeforeUnmount(async () => {
+  // Cleanup focus trap
+  if (focusTrapTimeout) {
+    clearTimeout(focusTrapTimeout);
+  }
+  cleanupFocusTrap();
+
+  // Cleanup visibility and focus listeners
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("focus", handleWindowFocus);
   window.removeEventListener("resize", handleResize);
 
   if (props.backendTerminalId) {

@@ -38,6 +38,10 @@ pub struct SSHProfile {
     /// Proxy settings
     pub proxy: Option<ProxyConfig>,
 
+    /// Jump hosts for SSH chaining (ProxyJump)
+    /// Supports multi-hop: connections go through each jump host in order
+    pub jump_hosts: Option<Vec<JumpHostConfig>>,
+
     /// UI customization
     pub color: Option<String>, // Hex color
 
@@ -81,6 +85,23 @@ pub enum ProxyType {
     Http,
     Socks5,
     Socks4,
+}
+
+/// Jump host configuration for SSH chaining (ProxyJump)
+/// Can reference an existing SSH profile or define inline credentials
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JumpHostConfig {
+    /// Reference to an existing SSH profile ID (preferred method)
+    /// If set, other fields are ignored and profile's config is used
+    pub profile_id: Option<String>,
+
+    /// Inline configuration (used when profile_id is None)
+    pub host: Option<String>,
+    pub port: Option<u16>,
+    pub username: Option<String>,
+    pub auth_method: Option<AuthMethod>,
+    pub auth_data: Option<AuthData>,
 }
 
 impl std::fmt::Display for ProxyType {
@@ -155,6 +176,7 @@ impl SSHProfile {
             keep_alive: true,
             compression: false,
             proxy: None,
+            jump_hosts: None,
             color: None,
             description: None,
             command: None,
@@ -318,6 +340,7 @@ pub struct CreateSSHProfileRequest {
     pub keep_alive: Option<bool>,
     pub compression: Option<bool>,
     pub proxy: Option<ProxyConfig>,
+    pub jump_hosts: Option<Vec<JumpHostConfig>>,
     pub color: Option<String>,
     pub description: Option<String>,
     pub command: Option<String>,
@@ -341,6 +364,7 @@ impl CreateSSHProfileRequest {
         profile.timeout = self.timeout.or(Some(30));
         profile.keep_alive = self.keep_alive.unwrap_or(true);
         profile.compression = self.compression.unwrap_or(false);
+        profile.jump_hosts = self.jump_hosts;
         profile.color = self.color;
         profile.description = self.description;
         profile.command = self.command;
@@ -359,17 +383,35 @@ pub struct UpdateSSHProfileRequest {
     pub host: Option<String>,
     pub port: Option<u16>,
     pub username: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub group_id: Option<Option<String>>, // None = no change, Some(None) = remove from group
     pub auth_method: Option<AuthMethod>,
     pub auth_data: Option<AuthData>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub timeout: Option<Option<u32>>,
     pub keep_alive: Option<bool>,
     pub compression: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
+    pub jump_hosts: Option<Option<Vec<JumpHostConfig>>>, // None = no change, Some(None) = remove
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub color: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub description: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub command: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub working_dir: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub env: Option<Option<std::collections::HashMap<String, String>>>,
+}
+
+/// Deserialize optional field: missing = None, null = Some(None), value = Some(Some(value))
+fn deserialize_optional_field<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: serde::Deserialize<'de>,
+    D: serde::Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
 }
 
 /// Request to test SSH connection (minimal required fields)
@@ -385,6 +427,7 @@ pub struct TestSSHConnectionRequest {
     pub keep_alive: bool,
     pub compression: bool,
     pub proxy: Option<ProxyConfig>,
+    pub jump_hosts: Option<Vec<JumpHostConfig>>,
 }
 
 impl TestSSHConnectionRequest {
@@ -403,6 +446,7 @@ impl TestSSHConnectionRequest {
             keep_alive: self.keep_alive,
             compression: self.compression,
             proxy: self.proxy,
+            jump_hosts: self.jump_hosts,
             color: None,
             description: None,
             command: None,
@@ -443,6 +487,9 @@ impl UpdateSSHProfileRequest {
         }
         if let Some(compression) = self.compression {
             profile.compression = compression;
+        }
+        if let Some(jump_hosts) = self.jump_hosts {
+            profile.jump_hosts = jump_hosts;
         }
         if let Some(color) = self.color {
             profile.color = color;

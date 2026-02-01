@@ -609,8 +609,17 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::NotFound(format!("SSH profile {} not found", id)))?;
 
+        // IMPORTANT: Decrypt profile first to avoid double encryption
+        // If we don't decrypt and apply update without new authData,
+        // the already-encrypted password gets re-encrypted incorrectly
+        if profile.has_encrypted_data() {
+            let mp_manager = self.master_password_manager.read().await;
+            profile.decrypt_fields(&*mp_manager)?;
+        }
+
         request.apply_to_profile(&mut profile);
 
+        // Re-encrypt after applying updates
         if profile.has_encrypted_data() {
             let mp_manager = self.master_password_manager.read().await;
             profile.encrypt_fields(&*mp_manager)?;

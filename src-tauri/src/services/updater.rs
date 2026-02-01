@@ -1,3 +1,4 @@
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Runtime};
@@ -93,7 +94,13 @@ impl<R: Runtime> UpdaterService<R> {
             let clean_latest = latest_version.trim_start_matches('v');
             let clean_current = current_version.trim_start_matches('v');
 
-            if clean_latest != clean_current {
+            // Use semver comparison instead of string comparison
+            let is_newer = match (Version::parse(clean_latest), Version::parse(clean_current)) {
+                (Ok(latest), Ok(current)) => latest > current,
+                _ => clean_latest != clean_current, // Fallback to string comparison if parsing fails
+            };
+
+            if is_newer {
                 let info = LinuxUpdateInfo {
                     available: true,
                     version: Some(format!("v{}", clean_latest)),

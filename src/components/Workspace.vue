@@ -3,6 +3,7 @@
     :layout="workspaceStore.panelLayout"
     :terminals="workspaceStore.terminals"
     :active-panel-id="workspaceStore.activePanelId"
+    :focused-terminal-id="workspaceStore.focusedTerminalId"
     @select-tab="workspaceStore.selectTab"
     @close-tab="workspaceStore.closeTab"
     @add-tab="workspaceStore.addTab"

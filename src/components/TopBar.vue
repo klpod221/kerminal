@@ -13,6 +13,7 @@
     <div class="flex items-center justify-start">
       <!-- Dashboard button -->
       <div
+        data-tour="dashboard-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'dashboard' ? 'bg-gray-800' : '',
@@ -35,6 +36,7 @@
 
       <!-- Workspace button -->
       <div
+        data-tour="workspace-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'workspace' ? 'bg-gray-800' : '',
@@ -55,6 +57,7 @@
 
       <!-- SFTP button -->
       <div
+        data-tour="sftp-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           viewState.activeView === 'sftp' ? 'bg-gray-800' : '',
@@ -73,8 +76,12 @@
         />
       </div>
 
+      <!-- line -->
+      <div class="w-px h-[20px] bg-gray-700" />
+
       <!-- SSH Profiles button -->
       <div
+        data-tour="ssh-profiles-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           isOverlayVisible('ssh-profile-drawer') ? 'bg-gray-800' : '',
@@ -95,6 +102,7 @@
 
       <!-- Terminal Profiles button -->
       <div
+        data-tour="terminal-profiles-btn"
         class="flex items-center h-[30px] sm:h-9 transition-colors duration-200 shrink-0 hover:bg-gray-800 cursor-pointer touch-manipulation"
         :class="[
           isOverlayVisible('terminal-profile-drawer') ? 'bg-gray-800' : '',
@@ -135,6 +143,7 @@
       <template v-else>
         <!-- Saved Commands -->
         <Button
+          data-tour="saved-commands-btn"
           title="Saved Commands"
           variant="ghost"
           size="sm"
@@ -149,6 +158,7 @@
 
         <!-- Recordings -->
         <Button
+          data-tour="recordings-btn"
           title="Session Recordings"
           variant="ghost"
           size="sm"
@@ -163,6 +173,7 @@
 
         <!-- Tunnel Manager -->
         <Button
+          data-tour="tunnels-btn"
           title="SSH Tunnel Manager"
           variant="ghost"
           size="sm"
@@ -177,6 +188,7 @@
 
         <!-- SSH Key Manager -->
         <Button
+          data-tour="ssh-keys-btn"
           title="SSH Key Manager"
           variant="ghost"
           size="sm"
@@ -191,6 +203,7 @@
 
         <!-- Sync Manager -->
         <Button
+          data-tour="sync-btn"
           title="Sync Manager"
           variant="ghost"
           size="sm"
@@ -205,6 +218,7 @@
 
         <!-- Theme Selector -->
         <Button
+          data-tour="theme-btn"
           title="Terminal Theme"
           variant="ghost"
           size="sm"
@@ -219,6 +233,7 @@
 
         <!-- Keyboard Shortcuts -->
         <Button
+          data-tour="shortcuts-btn"
           title="Keyboard Shortcuts"
           variant="ghost"
           size="sm"
@@ -230,8 +245,10 @@
           "
           @click="toggleOverlay('keyboard-shortcuts-modal')"
         />
+
         <!-- Main Settings / Backup -->
         <Button
+          data-tour="backup-btn"
           title="Backup & Restore"
           variant="ghost"
           size="sm"
@@ -246,6 +263,7 @@
 
         <!-- Master Password  -->
         <Button
+          data-tour="master-password-btn"
           title="Master Password Settings"
           variant="ghost"
           size="sm"
@@ -257,6 +275,27 @@
           "
           @click="toggleOverlay('master-password-settings')"
         />
+
+        <!-- Update Checker -->
+        <div class="relative">
+          <Button
+            data-tour="updates-btn"
+            title="Check for Updates"
+            variant="ghost"
+            size="sm"
+            :icon="Download"
+            :class="
+              isOverlayVisible('updater-modal')
+                ? 'bg-gray-800 text-gray-400 hover:text-white'
+                : ''
+            "
+            @click="toggleOverlay('updater-modal')"
+          />
+          <span
+            v-if="updaterStore.hasUpdate"
+            class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-bg-primary animate-pulse"
+          />
+        </div>
       </template>
     </div>
 
@@ -358,6 +397,19 @@
                 <Palette :size="18" />
                 <span>Terminal Theme</span>
               </button>
+
+              <button
+                class="w-full flex items-center gap-3 px-3 py-3 text-left text-white hover:bg-gray-800 rounded transition-colors touch-manipulation relative"
+                :class="isOverlayVisible('updater-modal') ? 'bg-gray-800' : ''"
+                @click="handleMobileMenuClick('updater-modal')"
+              >
+                <Download :size="18" />
+                <span>Check for Updates</span>
+                <span
+                  v-if="updaterStore.hasUpdate"
+                  class="ml-auto w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"
+                />
+              </button>
             </div>
           </div>
         </div>
@@ -383,15 +435,18 @@ import {
   FolderOpen,
   FileCode,
   Archive,
+  Download,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";
 
 import { useViewStateStore } from "../stores/viewState";
+import { useUpdaterStore } from "../stores/updater";
 import { useOverlay } from "../composables/useOverlay";
 import { useWindowSize } from "../composables/useWindowSize";
 
 const viewState = useViewStateStore();
+const updaterStore = useUpdaterStore();
 const { openOverlay, closeOverlay, closeAllOverlays, isOverlayVisible } =
   useOverlay();
 const { isMobile } = useWindowSize();

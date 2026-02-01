@@ -123,3 +123,15 @@ pub struct TerminalLatency {
     pub terminal_id: String,
     pub latency_ms: u64,
 }
+
+/// Event for graphics protocol data (Sixel)
+#[allow(dead_code)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TerminalGraphicsData {
+    pub terminal_id: String,
+    pub protocol: String, // "sixel"
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub data: Vec<u8>, // Sixel sequence data
+}

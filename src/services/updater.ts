@@ -10,6 +10,18 @@ export interface UpdateInfo {
   currentVersion: string;
 }
 
+export interface LinuxUpdateInfo {
+  available: boolean;
+  version?: string;
+  url?: string;
+}
+
+export interface TauriUpdateInfo {
+  version: string;
+  date?: string;
+  body?: string;
+}
+
 export interface UpdateProgress {
   downloaded: number;
   total: number;
@@ -116,11 +128,7 @@ export async function checkLinuxUpdate(): Promise<{
     // Get current version from package
     const currentVersion = `v${version}`;
 
-    // console.log("[Updater] Latest version from GitHub:", latestVersion);
-    // console.log("[Updater] Current version:", currentVersion);
-
     if (latestVersion !== currentVersion) {
-      // console.log("[Updater] Update available!");
       return {
         available: true,
         version: latestVersion,
@@ -128,7 +136,6 @@ export async function checkLinuxUpdate(): Promise<{
       };
     }
 
-    // console.log("[Updater] No update available.");
     return { available: false };
   } catch (error) {
     console.error("Failed to check Linux updates:", error);
@@ -140,15 +147,10 @@ export async function checkLinuxUpdate(): Promise<{
  * Listen to update available events
  */
 export async function listenToUpdateEvents(
-  callback: (data: {
-    available: boolean;
-    version?: string;
-    url?: string;
-  }) => void,
+  callback: (data: LinuxUpdateInfo | TauriUpdateInfo) => void,
 ): Promise<() => void> {
-  return await api.listen<{
-    available: boolean;
-    version?: string;
-    url?: string;
-  }>("update-available", callback);
+  return await api.listen<LinuxUpdateInfo | TauriUpdateInfo>(
+    "update-available",
+    callback,
+  );
 }

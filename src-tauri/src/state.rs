@@ -10,8 +10,9 @@ use crate::services::{
     terminal::TerminalManager,
     tunnel::TunnelService,
 };
-use futures::FutureExt;
+
 use std::sync::Arc;
+use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 pub struct AppState {
@@ -33,7 +34,7 @@ pub struct AppState {
 
 impl AppState {
     /// Create new app state with initialized database service
-    pub async fn new() -> Result<Self, String> {
+    pub async fn new(_app_handle: AppHandle) -> Result<Self, String> {
         let config = DatabaseServiceConfig::default();
         let database_service = DatabaseService::new(config)
             .await
@@ -91,63 +92,5 @@ impl AppState {
             sftp_sync_service,
             history_manager,
         })
-    }
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        let database_service_arc = Arc::new(Mutex::new(
-            DatabaseService::new(DatabaseServiceConfig::default())
-                .now_or_never()
-                .unwrap()
-                .unwrap(),
-        ));
-
-        let auth_service = AuthService::new(database_service_arc.clone());
-        let ssh_key_service =
-            Arc::new(Mutex::new(SSHKeyService::new(database_service_arc.clone())));
-        let ssh_service = SSHService::new(database_service_arc.clone(), ssh_key_service.clone());
-        let ssh_service_arc = Arc::new(ssh_service);
-        let tunnel_service = TunnelService::new(database_service_arc.clone());
-        let saved_command_service = SavedCommandService::new(database_service_arc.clone());
-
-        let sync_service = Arc::new(SyncService::new(database_service_arc.clone()));
-
-        let terminal_manager = TerminalManager::new_with_ssh_key_service(
-            database_service_arc.clone(),
-            ssh_key_service.clone(),
-        );
-
-        let auth_session_manager = Arc::new(Mutex::new(AuthSessionManager::new(
-            database_service_arc.clone(),
-        )));
-
-        let ssh_connection_pool = Arc::new(SSHConnectionPool::default());
-        let sftp_service = Arc::new(SFTPService::new(
-            ssh_service_arc.clone(),
-            ssh_key_service.clone(),
-        ));
-        let sftp_transfer_manager = Arc::new(TransferManager::new(sftp_service.clone()));
-        let sftp_sync_service = Arc::new(SFTPSyncService::new(sftp_service.clone()));
-        let terminal_manager_arc = Arc::new(terminal_manager);
-        let history_manager =
-            HistoryManager::new(terminal_manager_arc.clone(), ssh_service_arc.clone());
-
-        Self {
-            database_service: database_service_arc,
-            auth_service,
-            ssh_service: ssh_service_arc,
-            ssh_key_service,
-            ssh_connection_pool,
-            tunnel_service,
-            saved_command_service,
-            sync_service,
-            terminal_manager: terminal_manager_arc,
-            auth_session_manager,
-            sftp_service,
-            sftp_transfer_manager,
-            sftp_sync_service,
-            history_manager,
-        }
     }
 }

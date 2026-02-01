@@ -20,8 +20,8 @@
         stateClasses,
         {
           'opacity-50 cursor-not-allowed': disabled,
-          'fit-content': fitContent
-        }
+          'fit-content': fitContent,
+        },
       ]"
       :style="{ height: fitContent ? 'auto' : height }"
     >
@@ -56,12 +56,18 @@
     </div>
 
     <!-- Helper text (only show if no error) -->
-    <p v-if="helperText && !generatedErrorMessage" class="text-xs text-gray-400 min-h-[1.25rem]">
+    <p
+      v-if="helperText && !generatedErrorMessage"
+      class="text-xs text-gray-400 min-h-5"
+    >
       {{ helperText }}
     </p>
 
     <!-- Error message -->
-    <p v-if="generatedErrorMessage" class="text-xs text-red-400 flex items-center min-h-[1.25rem]">
+    <p
+      v-if="generatedErrorMessage"
+      class="text-xs text-red-400 flex items-center min-h-5"
+    >
       <component :is="TriangleAlert" class="mr-1 w-3 h-3" />
       {{ generatedErrorMessage }}
     </p>
@@ -148,11 +154,12 @@ const highlightedCode = computed(() => {
       return Prism.highlight(
         content,
         Prism.languages[props.language],
-        props.language
+        props.language,
       );
     }
     return Prism.util.encode(content);
   } catch (e) {
+    console.error("Prism highlight error:", e);
     return Prism.util.encode(content);
   }
 });
@@ -215,14 +222,15 @@ const syncScroll = () => {
   }
 };
 
-watch(() => props.modelValue, () => {
-  nextTick(syncScroll);
-});
+watch(
+  () => props.modelValue,
+  () => {
+    nextTick(syncScroll);
+  },
+);
 </script>
 
 <style scoped>
-
-
 .editor-container {
   position: relative;
   width: 100%;

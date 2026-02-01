@@ -64,6 +64,15 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
   const activePanelId = ref<string>("panel-1");
   const terminals = ref<TerminalInstance[]>([]);
+  const focusedTerminalId = ref<string | null>(null);
+
+  /**
+   * Set the focused terminal
+   * @param terminalId - The terminal ID to focus, or null to clear focus
+   */
+  const setFocusedTerminal = (terminalId: string | null): void => {
+    focusedTerminalId.value = terminalId;
+  };
 
   let tabCounter = 1;
   let panelCounter = 2; // Start from 2 since panel-1 is already created
@@ -199,6 +208,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    */
   const setActivePanel = (panelId: string): void => {
     activePanelId.value = panelId;
+    const panel = findPanelInLayout(panelLayout.value, panelId);
+    if (panel && panel.activeTabId) {
+      setFocusedTerminal(panel.activeTabId);
+    }
   };
 
   /**
@@ -211,6 +224,9 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (panel) {
       panel.activeTabId = tabId;
       viewState.setActiveView("workspace");
+      if (activePanelId.value === panelId) {
+        setFocusedTerminal(tabId);
+      }
     }
   };
 
@@ -241,6 +257,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -282,6 +299,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -324,6 +342,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -368,6 +387,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panel.activeTabId = newTabId;
 
     terminals.value.push(newTerminal);
+    focusedTerminalId.value = newTabId;
 
     viewState.setActiveView("workspace");
 
@@ -453,6 +473,47 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     const context: ErrorContext = {
       operation: "Reconnect SSH Terminal",
       context: { terminalId, profileId: _profileId },
+    };
+
+    try {
+      await terminalReady(terminalId);
+    } catch (error) {
+      const errorMessage = handleError(error, context);
+      message.error(errorMessage);
+      terminal.isSSHConnecting = false;
+      terminal.disconnectReason = "connection-lost";
+    }
+  };
+
+  /**
+   * Reconnect SSH Config terminal
+   * @param terminalId - The terminal ID to reconnect
+   * @param sshConfigHost - The SSH config host name
+   * @param password - Optional password for authentication
+   */
+  const reconnectSSHConfig = async (
+    terminalId: string,
+    sshConfigHost: string,
+    password?: string,
+  ): Promise<void> => {
+    const terminal = terminals.value.find((t) => t.id === terminalId);
+    if (!terminal) return;
+
+    // Reset terminal state for reconnection
+    terminal.disconnectReason = undefined;
+    terminal.hasError = false;
+    terminal.errorMessage = undefined;
+    terminal.isSSHConnecting = true;
+    terminal.isConnected = false;
+    terminal.backendTerminalId = undefined;
+
+    // Preserve SSH Config connection info
+    terminal.sshConfigHost = sshConfigHost;
+    terminal.sshConfigPassword = password;
+
+    const context: ErrorContext = {
+      operation: "Reconnect SSH Config Terminal",
+      context: { terminalId, sshConfigHost },
     };
 
     try {
@@ -643,6 +704,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "horizontal");
     setActivePanel(newPanelId);
+    focusedTerminalId.value = newTab.id;
     tabCounter++;
   };
 
@@ -669,7 +731,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
-          shouldFocusOnReady: true, // Mark this terminal to focus when ready
+          shouldFocusOnReady: true,
         };
         terminals.value.push(newTerminal);
       } else {
@@ -702,6 +764,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "vertical");
     setActivePanel(newPanelId);
+    focusedTerminalId.value = newTab.id;
     tabCounter++;
   };
 
@@ -1388,6 +1451,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           terminal.isSSHConnecting = false;
           terminal.isConnected = false;
           terminal.backendTerminalId = undefined;
+
+          // Enable reconnect for SSH connections that have profile or config info
+          if (terminal.sshProfileId || terminal.sshConfigHost) {
+            terminal.canReconnect = true;
+          }
         }
       }
     }
@@ -1492,8 +1560,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     panelLayout,
     activePanelId,
     terminals,
+    focusedTerminalId,
 
     setActivePanel,
+    setFocusedTerminal,
     selectTab,
     addTab,
     addSSHTab,
@@ -1513,6 +1583,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     addTerminalProfileTab,
     terminalReady,
     reconnectSSH,
+    reconnectSSHConfig,
     handleSSHConnectionError,
     handleSSHConnectionSuccess,
     resizeTerminal: (request: ResizeTerminalRequest) => resizeTerminal(request),

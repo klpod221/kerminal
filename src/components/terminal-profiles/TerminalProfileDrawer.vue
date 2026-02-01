@@ -54,7 +54,6 @@
     <template #footer>
       <div class="flex justify-end w-full">
         <Button
-          variant="primary"
           size="sm"
           :icon="Plus"
           text="New Profile"

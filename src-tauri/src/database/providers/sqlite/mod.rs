@@ -436,6 +436,12 @@ impl Database for SQLiteProvider {
             .await
             .ok();
 
+        // Add jump_hosts column migration
+        sqlx::query("ALTER TABLE ssh_profiles ADD COLUMN jump_hosts TEXT")
+            .execute(&*pool)
+            .await
+            .ok();
+
         Ok(())
     }
 

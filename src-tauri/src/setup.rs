@@ -14,7 +14,7 @@ pub fn init(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>
         let updater_service = crate::services::updater::UpdaterService::new(app_handle.clone());
         updater_service.start_update_check_loop();
 
-        match AppState::new().await {
+        match AppState::new(app_handle.clone()).await {
             Ok(app_state) => {
                 let auth_session_manager = app_state.auth_session_manager.clone();
                 let sftp_transfer_manager = app_state.sftp_transfer_manager.clone();

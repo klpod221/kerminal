@@ -88,7 +88,7 @@
           <div
             class="overflow-y-auto"
             :class="[
-              isMobile ? 'p-3 max-h-[calc(100vh-9rem)]' : 'p-4 max-h-[60vh]',
+              isMobile ? 'p-3 max-h-[calc(100vh-9rem)]' : 'p-4 max-h-[75vh]',
             ]"
           >
             <slot />

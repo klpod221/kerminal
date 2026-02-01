@@ -49,6 +49,7 @@ impl PostgreSQLProvider {
                 group_id VARCHAR(36),
                 auth_method TEXT NOT NULL,
                 auth_data TEXT NOT NULL,
+                jump_hosts TEXT,
                 description TEXT,
                 color VARCHAR(50),
                 timeout INTEGER,
