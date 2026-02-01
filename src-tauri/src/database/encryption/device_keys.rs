@@ -18,7 +18,7 @@ pub struct DeviceKeyManager {
 }
 
 /// Device encryption key information
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DeviceEncryptionKey {
     #[allow(dead_code)]
     pub device_id: String,
@@ -34,8 +34,22 @@ pub struct DeviceEncryptionKey {
     pub last_used_at: DateTime<Utc>,
 }
 
+impl std::fmt::Debug for DeviceEncryptionKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeviceEncryptionKey")
+            .field("device_id", &self.device_id)
+            .field("device_name", &self.device_name)
+            .field("encryption_key", &"***REDACTED***")
+            .field("key_salt", &"***REDACTED***")
+            .field("key_version", &self.key_version)
+            .field("created_at", &self.created_at)
+            .field("last_used_at", &self.last_used_at)
+            .finish()
+    }
+}
+
 /// Master password entry information
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MasterPasswordEntry {
     pub device_id: String,
     pub password_salt: [u8; 32],
@@ -44,6 +58,20 @@ pub struct MasterPasswordEntry {
     pub auto_lock_timeout: Option<u32>, // in minutes
     pub created_at: DateTime<Utc>,
     pub last_verified_at: Option<DateTime<Utc>>,
+}
+
+impl std::fmt::Debug for MasterPasswordEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MasterPasswordEntry")
+            .field("device_id", &self.device_id)
+            .field("password_salt", &"***REDACTED***")
+            .field("verification_hash", &"***REDACTED***")
+            .field("auto_unlock", &self.auto_unlock)
+            .field("auto_lock_timeout", &self.auto_lock_timeout)
+            .field("created_at", &self.created_at)
+            .field("last_verified_at", &self.last_verified_at)
+            .finish()
+    }
 }
 
 impl DeviceKeyManager {

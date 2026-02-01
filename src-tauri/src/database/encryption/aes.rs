@@ -3,7 +3,7 @@ use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
     Aes256Gcm, Nonce,
 };
-use rand::RngCore;
+use rand::Rng;
 
 /// AES-256-GCM encryption service
 pub struct AESEncryption;
@@ -14,8 +14,7 @@ impl AESEncryption {
         let cipher = Aes256Gcm::new_from_slice(key)
             .map_err(|e| EncryptionError::InvalidKey(e.to_string()))?;
 
-        let mut nonce_bytes = [0u8; 12];
-        OsRng.fill_bytes(&mut nonce_bytes);
+        let nonce_bytes: [u8; 12] = OsRng.gen();
         let nonce = &Nonce::from(nonce_bytes);
 
         let ciphertext = cipher
@@ -48,15 +47,8 @@ impl AESEncryption {
         Ok(plaintext)
     }
 
-    /// Generate a random 256-bit key
-    pub fn generate_key() -> [u8; 32] {
-        let mut key = [0u8; 32];
-        OsRng.fill_bytes(&mut key);
-        key
-    }
-
     /// Generate a random salt
     pub fn generate_salt() -> [u8; 32] {
-        Self::generate_key() // Same as key generation
+        OsRng.gen()
     }
 }

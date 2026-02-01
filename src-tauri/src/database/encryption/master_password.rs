@@ -21,7 +21,7 @@ pub struct MasterPasswordManager {
 }
 
 /// Master password setup request
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SetupMasterPasswordRequest {
     pub device_name: String,
@@ -32,11 +32,33 @@ pub struct SetupMasterPasswordRequest {
     pub auto_lock_timeout: Option<u32>, // in minutes
 }
 
+impl std::fmt::Debug for SetupMasterPasswordRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SetupMasterPasswordRequest")
+            .field("device_name", &self.device_name)
+            .field("password", &"***REDACTED***")
+            .field("confirm_password", &"***REDACTED***")
+            .field("auto_unlock", &self.auto_unlock)
+            .field("use_keychain", &self.use_keychain)
+            .field("auto_lock_timeout", &self.auto_lock_timeout)
+            .finish()
+    }
+}
+
 /// Master password verification request
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct VerifyMasterPasswordRequest {
     pub password: String,
     pub device_id: Option<String>,
+}
+
+impl std::fmt::Debug for VerifyMasterPasswordRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("VerifyMasterPasswordRequest")
+            .field("password", &"***REDACTED***")
+            .field("device_id", &self.device_id)
+            .finish()
+    }
 }
 
 /// Master password status
