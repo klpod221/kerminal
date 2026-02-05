@@ -22,6 +22,7 @@ import {
 } from "../services/terminal";
 import { invoke } from "@tauri-apps/api/core";
 import { api } from "../services/api";
+import { TerminalRegistry } from "../core";
 import type {
   ResizeTerminalRequest,
   TerminalData,
@@ -554,6 +555,8 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         message.error(errorMessage);
       }
     }
+    // Cleanup terminal from registry (removes DOM node)
+    TerminalRegistry.destroyTerminal(terminalId);
     terminals.value.splice(terminalIndex, 1);
   };
 

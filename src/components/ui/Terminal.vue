@@ -217,8 +217,6 @@ const workspaceStore = useWorkspaceStore();
 const settingsStore = useSettingsStore();
 const overlayStore = useOverlayStore();
 
-// AI State - REMOVED
-
 const currentTerminal = computed(() =>
   workspaceStore.terminals.find((t) => t.id === props.terminalId),
 );
