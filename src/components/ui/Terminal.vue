@@ -165,7 +165,7 @@ import {
 } from "vue";
 import { debounce } from "../../utils/helpers";
 import { extractErrorMessage } from "../../utils/errorHandler";
-import { TerminalBufferManager, InputBatcher } from "../../core";
+import { InputBatcher } from "../../core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { XCircle, RefreshCw, X, Wifi } from "lucide-vue-next";
@@ -173,7 +173,6 @@ import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
 import HistorySearchModal from "../history/HistorySearchModal.vue";
 import { getTerminalTheme } from "../../utils/terminalTheme";
-import type { SimpleTerminal } from "../../core";
 import { useSettingsStore } from "../../stores/settings";
 import { useOverlayStore } from "../../stores/overlay";
 import type { PanelLayout, Tab } from "../../types/panel";
@@ -322,8 +321,6 @@ const handleCloseTab = () => {
     workspaceStore.closeTab(panelId, props.terminalId);
   }
 };
-
-const bufferManager = TerminalBufferManager.getInstance();
 
 const inputBatcher = InputBatcher.getInstance();
 
@@ -515,43 +512,12 @@ const writeOutput = (data: string | Uint8Array): void => {
   if (term) {
     // Write to terminal first for lowest latency
     term.write(data);
-
-    if (props.backendTerminalId) {
-      // Convert to string only for buffering (if needed)
-      // This defers the string decoding cost to after the render call
-      const text =
-        typeof data === "string" ? data : new TextDecoder().decode(data);
-
-      bufferManager.saveToLocalBuffer(props.backendTerminalId, text);
-    }
-  }
-};
-
-const restoreBuffer = async (): Promise<boolean> => {
-  if (!term || !props.backendTerminalId) return false;
-
-  try {
-    const simpleTerminal: SimpleTerminal = {
-      clear: () => term.clear(),
-      write: (data: string) => term.write(data),
-    };
-    return await bufferManager.restoreBuffer(
-      props.backendTerminalId,
-      simpleTerminal,
-    );
-  } catch (error) {
-    console.error("Failed to restore buffer:", error);
-    return false;
   }
 };
 
 const clearTerminal = async (): Promise<void> => {
   if (term) {
     term.clear();
-  }
-
-  if (props.backendTerminalId) {
-    bufferManager.clearLocalBuffer(props.backendTerminalId);
   }
 };
 
@@ -641,7 +607,6 @@ defineExpose({
   focus,
   fitAndFocus,
   writeOutput,
-  restoreBuffer,
   clearTerminal,
 });
 

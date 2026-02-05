@@ -31,11 +31,6 @@ pub fn main() {
             commands::terminal::close_terminal,
             commands::terminal::get_terminal_info,
             commands::terminal::list_terminals,
-            commands::buffer::get_terminal_buffer,
-            commands::buffer::get_terminal_buffer_chunk,
-            commands::buffer::has_terminal_buffer,
-            commands::buffer::get_buffer_stats,
-            commands::buffer::cleanup_terminal_buffers,
             commands::system::get_user_hostname,
             commands::system::get_system_fonts,
             commands::auth_events::notify_session_unlocked,
@@ -158,7 +153,6 @@ pub fn main() {
             commands::terminal_profile::delete_terminal_profile,
             commands::database::backup::export_backup,
             commands::database::backup::import_backup,
-
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

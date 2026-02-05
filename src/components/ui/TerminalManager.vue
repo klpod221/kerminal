@@ -23,7 +23,6 @@ import Terminal from "./Terminal.vue";
 import type { ComponentPublicInstance } from "vue";
 import { bytesToString } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
-import { TerminalBufferManager } from "../../core";
 import { useWorkspaceStore } from "../../stores/workspace";
 
 interface TerminalManagerProps {
@@ -36,7 +35,6 @@ interface TerminalComponent extends ComponentPublicInstance {
   focus: () => void;
   fitAndFocus: () => void;
   writeOutput: (data: string) => void;
-  restoreBuffer: () => Promise<boolean>;
   clearTerminal: () => Promise<void>;
 }
 
@@ -46,8 +44,6 @@ const workspaceStore = useWorkspaceStore();
 
 const terminalRefs = ref<Record<string, ComponentPublicInstance | null>>({});
 let outputUnlisten: (() => void) | null = null;
-
-const bufferManager = TerminalBufferManager.getInstance();
 
 const emit = defineEmits(["terminal-ready"]);
 
@@ -97,22 +93,9 @@ const setTerminalRef = (
 const onTerminalReady = async (terminalId: string): Promise<void> => {
   emit("terminal-ready", terminalId);
 
-  const terminalInstance = terminalRefs.value[terminalId];
-  if (terminalInstance && "restoreBuffer" in terminalInstance) {
-    const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
-    if (matchingTerminal && matchingTerminal.backendTerminalId) {
-      try {
-        await (terminalInstance as TerminalComponent).restoreBuffer();
-      } catch (error) {
-        console.error(
-          `Failed to restore buffer for terminal ${terminalId}:`,
-          error,
-        );
-      }
-    }
-  }
-
   const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
+  const terminalInstance = terminalRefs.value[terminalId];
+
   const shouldFocusOnReady =
     matchingTerminal?.shouldFocusOnReady ||
     terminalId === props.activeTerminalId;
@@ -186,12 +169,5 @@ onBeforeUnmount(() => {
   if (outputUnlisten) {
     outputUnlisten();
   }
-
-  Object.keys(terminalRefs.value).forEach((terminalId) => {
-    const matchingTerminal = props.terminals.find((t) => t.id === terminalId);
-    if (matchingTerminal && matchingTerminal.backendTerminalId) {
-      bufferManager.clearLocalBuffer(matchingTerminal.backendTerminalId);
-    }
-  });
 });
 </script>
