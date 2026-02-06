@@ -163,8 +163,8 @@ onMounted(async () => {
       return;
     }
   } catch (error) {
+    void error; // NOSONAR
     // Ignore error during initial auto-unlock attempt
-    console.debug("Auto-unlock failed silently:", error);
   }
 });
 

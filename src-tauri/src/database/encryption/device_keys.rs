@@ -1,6 +1,7 @@
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use chrono::{DateTime, Utc};
+use log::{error, warn};
 use std::collections::HashMap;
 
 use crate::database::{
@@ -111,7 +112,7 @@ impl DeviceKeyManager {
             {
                 Ok(()) => {}
                 Err(e) => {
-                    eprintln!("Warning: Failed to store password in keychain: {}", e);
+                    warn!("Warning: Failed to store password in keychain: {}", e);
                 }
             }
 
@@ -121,7 +122,7 @@ impl DeviceKeyManager {
             {
                 Ok(()) => {}
                 Err(e) => {
-                    eprintln!("Warning: Failed to store device key in keychain: {}", e);
+                    warn!("Warning: Failed to store device key in keychain: {}", e);
                 }
             }
         }
@@ -206,7 +207,7 @@ impl DeviceKeyManager {
             }
             Ok(None) => {}
             Err(e) => {
-                eprintln!(
+                error!(
                     "DeviceKeyManager: Error retrieving device key from keychain: {}",
                     e
                 );
@@ -422,7 +423,7 @@ impl DeviceKeyManager {
 
         let current_key = self.device_keys.get(&self.current_device_id)
             .ok_or_else(|| {
-                eprintln!("DeviceKeyManager[{}]::ensure_shared_device_key_from_current: Current device key not found!",
+                error!("DeviceKeyManager[{}]: ensure_shared_device_key_from_current: Current device key not found!",
                     self.instance_id);
                 EncryptionError::UnknownDeviceKey(self.current_device_id.clone())
             })?;

@@ -693,7 +693,7 @@ async function loadPreview() {
     }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
-    console.error("Failed to load preview:", errorMessage);
+    // Failed to load preview: errorMessage
     error.value = errorMessage;
   } finally {
     loading.value = false;
@@ -713,7 +713,7 @@ async function processPreviewFile(filePath: string) {
       previewUrl.value = URL.createObjectURL(blob);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      console.error("Failed to create blob URL:", errorMessage);
+      // Failed to create blob URL: errorMessage
       throw new Error(`Failed to load file: ${errorMessage}`);
     }
   } else if (previewType.value === "html") {
@@ -812,9 +812,9 @@ async function loadRemotePreview() {
     // Short delay to ensure file system is ready
     try {
       await readFile(tempFile);
-    } catch (err) {
+    } catch {
+      // NOSONAR
       // Ignore initial read error, file might not be ready yet
-      console.debug("Initial preview read failed, retrying...", err);
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
 

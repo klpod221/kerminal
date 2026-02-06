@@ -202,7 +202,8 @@ const handleSearch = async () => {
       undefined, // undefined = load all (no limit)
     );
   } catch (error) {
-    console.debug("Search history error handled by store:", error);
+    // NOSONAR
+    // Search history error handled by store
   } finally {
     // Small delay to prevent flickering
     setTimeout(() => {
@@ -223,7 +224,7 @@ const handleExecute = async (entry: CommandHistoryEntry) => {
         data: entry.command + "\n",
       });
     } catch (error) {
-      console.error("Failed to execute command:", error);
+      // Failed to execute command
       message.error(`Failed to execute command: ${error}`);
     }
   }
@@ -253,7 +254,8 @@ const handleExport = async () => {
       searchQuery.value || undefined,
     );
   } catch (error) {
-    console.debug("Export history error handled by store:", error);
+    // NOSONAR
+    // Export history error handled by store
   } finally {
     exporting.value = false;
   }

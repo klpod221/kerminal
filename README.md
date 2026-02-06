@@ -51,7 +51,6 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [📮 Support](#-support)
 - [🗺️ Roadmap](#️-roadmap)
   - [Completed](#completed)
-  - [In Progress](#in-progress)
   - [Planned](#planned)
 - [👥 Contributors](#-contributors)
 
@@ -246,8 +245,6 @@ If you encounter any issues or have questions:
 - [x] Jump host chain support for SSH connections
 - [x] Support Sixel graphics protocol for inline images
 - [x] First user tour
-
-
 
 ### Planned
 - [ ] Pin Drawer as sidebar

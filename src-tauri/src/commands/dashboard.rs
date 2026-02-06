@@ -1,4 +1,5 @@
 use crate::models::system::{CPUInfo, ComponentInfo, DiskInfo, NetworkInterface, SystemInfo};
+use log::info;
 use serde::Serialize;
 use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System};
 
@@ -12,7 +13,7 @@ pub struct SystemIntegrityStatus {
 
 #[tauri::command]
 pub fn verify_system_integrity() -> SystemIntegrityStatus {
-    println!("Starting system integrity verification sequence...");
+    info!("Starting system integrity verification sequence...");
 
     let mut sys = System::new_all();
     sys.refresh_memory();

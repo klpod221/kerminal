@@ -565,7 +565,7 @@ const handleMoveToNewPanel = (tab: TabType): void => {
   emit("moveTabToNewPanel", props.panel.id, tab.id);
 };
 
-const onTabDragStart = (tab: TabType): void => {
+const onTabDragStart = (_tab: TabType): void => {
   // Drag start logic if needed
 };
 

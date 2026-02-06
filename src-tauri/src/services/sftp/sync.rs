@@ -11,6 +11,7 @@ use crate::services::sftp::service::SFTPService;
 
 use anyhow::Result;
 use chrono;
+use log::{error, info, warn};
 use tauri::Emitter;
 use tokio::fs;
 use tokio::sync::RwLock;
@@ -336,7 +337,7 @@ impl SyncService {
             if let Some(max_size) = operation.max_file_size {
                 if let Some(ref entry) = diff.local_entry {
                     if entry.size.unwrap_or(0) > max_size {
-                        eprintln!("[SFTP Sync] Skipping large file: {}", diff.path);
+                        warn!("[SFTP Sync] Skipping large file: {}", diff.path);
                         continue;
                     }
                 }
@@ -374,11 +375,11 @@ impl SyncService {
                     .await
                 {
                     Ok(_) => {
-                        eprintln!("[SFTP Sync] Uploaded: {}", diff.path);
+                        info!("[SFTP Sync] Uploaded: {}", diff.path);
                         processed += 1;
                     }
                     Err(e) => {
-                        eprintln!("[SFTP Sync] Failed to upload {}: {}", diff.path, e);
+                        error!("[SFTP Sync] Failed to upload {}: {}", diff.path, e);
                         self.emit_progress(SyncProgressEvent::sftp_error(&e.to_string()))
                             .await;
                     }
@@ -433,7 +434,7 @@ impl SyncService {
             if let Some(max_size) = operation.max_file_size {
                 if let Some(ref entry) = diff.remote_entry {
                     if entry.size.unwrap_or(0) > max_size {
-                        eprintln!("[SFTP Sync] Skipping large file: {}", diff.path);
+                        warn!("[SFTP Sync] Skipping large file: {}", diff.path);
                         continue;
                     }
                 }
@@ -471,11 +472,11 @@ impl SyncService {
                 .await
             {
                 Ok(_) => {
-                    eprintln!("[SFTP Sync] Downloaded: {}", diff.path);
+                    info!("[SFTP Sync] Downloaded: {}", diff.path);
                     processed += 1;
                 }
                 Err(e) => {
-                    eprintln!("[SFTP Sync] Failed to download {}: {}", diff.path, e);
+                    error!("[SFTP Sync] Failed to download {}: {}", diff.path, e);
                     self.emit_progress(SyncProgressEvent::sftp_error(&e.to_string()))
                         .await;
                 }
@@ -530,10 +531,10 @@ impl SyncService {
                             .await
                         {
                             Ok(_) => {
-                                eprintln!("[SFTP Sync] Uploaded: {}", diff.path);
+                                info!("[SFTP Sync] Uploaded: {}", diff.path);
                             }
                             Err(e) => {
-                                eprintln!("[SFTP Sync] Failed to upload {}: {}", diff.path, e);
+                                error!("[SFTP Sync] Failed to upload {}: {}", diff.path, e);
                             }
                         }
                     }
@@ -561,10 +562,10 @@ impl SyncService {
                         .await
                     {
                         Ok(_) => {
-                            eprintln!("[SFTP Sync] Downloaded: {}", diff.path);
+                            info!("[SFTP Sync] Downloaded: {}", diff.path);
                         }
                         Err(e) => {
-                            eprintln!("[SFTP Sync] Failed to download {}: {}", diff.path, e);
+                            error!("[SFTP Sync] Failed to download {}: {}", diff.path, e);
                         }
                     }
                 }
@@ -591,13 +592,13 @@ impl SyncService {
                                         .await
                                     {
                                         Ok(_) => {
-                                            eprintln!(
+                                            info!(
                                                 "[SFTP Sync] Conflict resolved (local newer): uploaded {}",
                                                 diff.path
                                             );
                                         }
                                         Err(e) => {
-                                            eprintln!(
+                                            error!(
                                                 "[SFTP Sync] Failed to upload {}: {}",
                                                 diff.path, e
                                             );
@@ -616,13 +617,13 @@ impl SyncService {
                                     .await
                                 {
                                     Ok(_) => {
-                                        eprintln!(
+                                        info!(
                                             "[SFTP Sync] Conflict resolved (remote newer): downloaded {}",
                                             diff.path
                                         );
                                     }
                                     Err(e) => {
-                                        eprintln!(
+                                        error!(
                                             "[SFTP Sync] Failed to download {}: {}",
                                             diff.path, e
                                         );
@@ -632,7 +633,7 @@ impl SyncService {
                         }
                         _ => {
                             // Cannot determine which is newer, log conflict
-                            eprintln!(
+                            error!(
                                 "[SFTP Sync] Conflict: cannot determine newer version for {}",
                                 diff.path
                             );

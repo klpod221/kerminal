@@ -321,15 +321,16 @@ impl DatabaseService {
             .delete_master_password_entry(&self.current_device.device_id)
             .await
         {
-            eprintln!("Warning: Failed to delete master password entry: {}", e);
+            log::warn!("Warning: Failed to delete master password entry: {}", e);
         }
 
         let profiles = local_db.find_all_ssh_profiles().await?;
         for profile in profiles {
             if let Err(e) = local_db.delete_ssh_profile(&profile.base.id).await {
-                eprintln!(
+                log::warn!(
                     "Warning: Failed to delete SSH profile {}: {}",
-                    profile.name, e
+                    profile.name,
+                    e
                 );
             }
         }
@@ -337,7 +338,7 @@ impl DatabaseService {
         let groups = local_db.find_all_ssh_groups().await?;
         for group in groups {
             if let Err(e) = local_db.delete_ssh_group(&group.base.id).await {
-                eprintln!("Warning: Failed to delete SSH group {}: {}", group.name, e);
+                log::warn!("Warning: Failed to delete SSH group {}: {}", group.name, e);
             }
         }
 
@@ -1144,8 +1145,12 @@ impl Default for DatabaseServiceConfig {
             .unwrap_or_else(|| std::env::current_dir().unwrap())
             .join("com.klpod221.kerminal");
 
+        use log::warn;
+
+        // ...
+
         if std::fs::create_dir_all(&data_dir).is_err() {
-            eprintln!("Warning: Could not create data directory: {:?}", data_dir);
+            warn!("Warning: Could not create data directory: {:?}", data_dir);
         }
 
         let db_path = data_dir.join("kerminal.db").to_string_lossy().to_string();

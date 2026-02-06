@@ -1,5 +1,6 @@
 use crate::database::error::{EncryptionError, EncryptionResult};
 use keyring::{Entry, Error as KeyringError};
+use log::warn;
 
 use base64::{engine::general_purpose, Engine as _};
 /// System keychain integration cho auto-unlock
@@ -125,7 +126,7 @@ impl KeychainManager {
         }
 
         if !errors.is_empty() {
-            eprintln!("Keychain cleanup warnings: {}", errors.join(", "));
+            warn!("Keychain cleanup warnings: {}", errors.join(", "));
         }
 
         Ok(())

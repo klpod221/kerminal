@@ -1,4 +1,5 @@
 use chrono::{Duration, Utc};
+use log::error;
 use std::sync::Arc;
 use tokio::{
     sync::Mutex,
@@ -90,7 +91,7 @@ impl SyncScheduler {
             }
 
             if let Err(e) = self.process_scheduled_syncs().await {
-                eprintln!("Scheduler error: {}", e);
+                error!("Scheduler error: {}", e);
             }
         }
     }
@@ -120,7 +121,7 @@ impl SyncScheduler {
             // is_sync_due now doesn't cause deadlock since we released the lock above
             if self.is_sync_due(&config).await? {
                 if let Err(e) = self.execute_scheduled_sync(&config).await {
-                    eprintln!("Failed to sync database {}: {}", config.name, e);
+                    error!("Failed to sync database {}: {}", config.name, e);
                 }
             }
         }
@@ -166,7 +167,7 @@ impl SyncScheduler {
         match result {
             Ok(_log) => Ok(()),
             Err(e) => {
-                eprintln!("Scheduled sync failed for {}: {}", config.name, e);
+                error!("Scheduled sync failed for {}: {}", config.name, e);
                 Err(e)
             }
         }

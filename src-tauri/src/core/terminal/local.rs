@@ -1,6 +1,7 @@
 use crate::core::title_detector::TitleDetector;
 use crate::error::AppError;
 use crate::models::terminal::{LocalConfig, TerminalConfig, TerminalExited, TerminalState};
+use log::{error, warn};
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize};
 use std::io::{Read, Write};
 use std::sync::Arc;
@@ -129,13 +130,13 @@ impl LocalTerminal {
     pub async fn disconnect(&mut self) -> Result<(), AppError> {
         if let Some((_, mut child)) = self.pty_pair.take() {
             if let Err(e) = child.kill() {
-                eprintln!("Failed to kill child process: {}", e);
+                warn!("Failed to kill child process: {}", e);
             }
 
             match child.wait() {
                 Ok(_) => {}
                 Err(e) => {
-                    eprintln!("Failed to wait for child process: {}", e);
+                    warn!("Failed to wait for child process: {}", e);
                 }
             }
         }
@@ -217,10 +218,7 @@ impl LocalTerminal {
                                     reason: Some("user-closed".to_string()),
                                 };
                                 if exit_sender.send(exit_event).is_err() {
-                                    eprintln!(
-                                        "Exit event channel closed for terminal {}",
-                                        terminal_id
-                                    );
+                                    warn!("Exit event channel closed for terminal {}", terminal_id);
                                 }
                             }
                             break;
@@ -239,10 +237,10 @@ impl LocalTerminal {
                             }
                         }
                         Err(e) => {
-                            eprintln!("Failed to read from PTY: {}", e);
+                            error!("Failed to read from PTY: {}", e);
                             let error_msg = format!("PTY read error: {}", e).into_bytes();
                             if sender.send(error_msg).is_err() {
-                                eprintln!("Data channel closed for terminal {}", terminal_id);
+                                warn!("Data channel closed for terminal {}", terminal_id);
                             }
                             break;
                         }

@@ -626,9 +626,9 @@ const filteredFiles = computed(() => {
     if (searchOptions.value.useRegex) {
       regex = new RegExp(query, "i");
     }
-  } catch (error) {
+  } catch {
+    // NOSONAR
     // Invalid regex, fall back to plain text search
-    console.debug("Invalid regex:", error);
     regex = null;
   }
 
@@ -1197,8 +1197,9 @@ async function onDrop(event: DragEvent) {
   // First try getData
   try {
     dragData = event.dataTransfer.getData("application/x-filebrowser-files");
-  } catch (e) {
-    console.debug("Failed to get drag data:", e);
+  } catch {
+    // NOSONAR
+    // Failed to get drag data
   }
 
   // If getData doesn't work, the data might not be available in drop event
@@ -1228,8 +1229,8 @@ async function onDrop(event: DragEvent) {
         isSourceRemote: data.isRemote,
       });
       return;
-    } catch (error) {
-      console.debug("Failed to parse drag data:", error);
+    } catch {
+      // Ignore clean up errors
     }
   }
 

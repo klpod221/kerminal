@@ -1,4 +1,5 @@
 use crate::state::AppState;
+use log::error;
 use tauri::{App, Manager};
 
 pub fn init(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>> {
@@ -33,7 +34,7 @@ pub fn init(app: &mut App) -> std::result::Result<(), Box<dyn std::error::Error>
                 sftp_transfer_manager.start_queue_processor(app_handle.clone());
             }
             Err(e) => {
-                eprintln!("Failed to initialize AppState: {}", e);
+                error!("Failed to initialize AppState: {}", e);
             }
         }
     });

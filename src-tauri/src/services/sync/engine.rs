@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use log::info;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
@@ -555,7 +556,7 @@ impl SyncEngine {
         let guard = local.write().await;
         guard.save_conflict_resolution(&conflict_resolution).await?;
 
-        eprintln!(
+        info!(
             "[INFO] Saved conflict for manual resolution: {} ({})",
             conflict_resolution.entity_type, conflict_resolution.entity_id
         );

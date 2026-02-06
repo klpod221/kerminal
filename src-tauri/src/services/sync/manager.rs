@@ -1,3 +1,4 @@
+use log::warn;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
@@ -68,7 +69,7 @@ impl SyncManager {
             };
 
             if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
-                eprintln!(
+                warn!(
                     "[SyncManager] Warning: Failed to update sync settings after connect: {}",
                     e
                 );
@@ -99,7 +100,7 @@ impl SyncManager {
             };
 
             if let Err(e) = local_db_guard.update_sync_settings(&update_request).await {
-                eprintln!(
+                warn!(
                     "[SyncManager] Warning: Failed to update sync settings after disconnect: {}",
                     e
                 );

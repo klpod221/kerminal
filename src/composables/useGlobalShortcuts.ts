@@ -42,24 +42,7 @@ export function useGlobalShortcuts() {
     if (!isXterm && isModalInput) return true;
 
     // For xterm, allow shortcuts but they might be handled by terminal
-    // (Existing logic implies returning true to ignore, but original was "return" to stop)
-    // Original logic:
-    // if (!isXterm && isModalInput) return; // Stop
-    // if (!isXterm) return; // Stop (so if it IS xterm, continue?? No wait)
-    // The original logic:
-    // if (isInputElement) {
-    //   if (!isXterm && isModalInput) return;
-    //   if (!isXterm) return;
-    // }
-    // Basically: if input AND NOT xterm -> return (ignore)
-    // If input AND IS xterm -> continue (don't ignore)
-    // Wait, original:
-    // if (!isXterm) return; // This runs if (!isXterm && isModalInput) is FALSE.
-    // So if isModalInput is false, but isXterm is false (generic input), it returns.
-    // So essentially: If input is NOT xterm, return.
-    // So: if input AND NOT xterm, return true (ignore).
-    // If input AND xterm, return false (process).
-
+    // Only process if it's NOT an xterm textarea (e.g. standard inputs)
     return !isXterm;
   };
 

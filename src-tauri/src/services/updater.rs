@@ -1,3 +1,4 @@
+use log::error;
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -46,7 +47,7 @@ impl<R: Runtime> UpdaterService<R> {
 
             loop {
                 if let Err(e) = Self::check_and_notify(&app_handle).await {
-                    eprintln!("Failed to check for updates: {}", e);
+                    error!("Failed to check for updates: {}", e);
                 }
 
                 sleep(Duration::from_secs(86400)).await;

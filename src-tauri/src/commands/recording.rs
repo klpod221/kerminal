@@ -1,6 +1,7 @@
 use crate::models::recording::*;
 use crate::services::recording::*;
 use crate::state::AppState;
+use log::warn;
 use std::sync::Arc;
 use tauri::{Emitter, Manager, State};
 
@@ -157,7 +158,7 @@ pub async fn delete_recording(
     {
         // Delete file
         if let Err(e) = tokio::fs::remove_file(&recording.file_path).await {
-            eprintln!("Warning: Failed to delete recording file: {}", e);
+            warn!("Warning: Failed to delete recording file: {}", e);
         }
     }
 

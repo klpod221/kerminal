@@ -1,5 +1,6 @@
 use base64::{engine::general_purpose, Engine as _};
 use chrono::{DateTime, Utc};
+use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -123,7 +124,7 @@ impl MasterPasswordManager {
             {
                 Ok(()) => {}
                 Err(e) => {
-                    eprintln!("Warning: Failed to store password in keychain: {}", e);
+                    warn!("Warning: Failed to store password in keychain: {}", e);
                 }
             }
         }
@@ -177,13 +178,13 @@ impl MasterPasswordManager {
 
             match manager.ensure_shared_key_from_keychain(&self.current_device_id, entry) {
                 Ok(()) => {}
-                Err(e) => eprintln!(
+                Err(e) => error!(
                     "try_auto_unlock_with_entry: Failed to create shared key: {}",
                     e
                 ),
             }
         } else {
-            eprintln!("Auto-unlock failed");
+            warn!("Auto-unlock failed");
         }
 
         Ok(success)
@@ -283,14 +284,14 @@ impl MasterPasswordManager {
                 .keychain_manager
                 .delete_master_password(&self.current_device_id)
             {
-                eprintln!("Warning: Failed to remove password from keychain: {}", e);
+                warn!("Warning: Failed to remove password from keychain: {}", e);
             }
 
             if let Err(e) = self
                 .keychain_manager
                 .delete_device_key(&self.current_device_id)
             {
-                eprintln!("Warning: Failed to remove device key from keychain: {}", e);
+                warn!("Warning: Failed to remove device key from keychain: {}", e);
             }
         }
 
@@ -315,21 +316,21 @@ impl MasterPasswordManager {
                 .keychain_manager
                 .delete_master_password(&self.current_device_id)
             {
-                eprintln!("Warning: Failed to remove password from keychain: {}", e);
+                warn!("Warning: Failed to remove password from keychain: {}", e);
             }
 
             if let Err(e) = self
                 .keychain_manager
                 .delete_device_key(&self.current_device_id)
             {
-                eprintln!("Warning: Failed to remove device key from keychain: {}", e);
+                warn!("Warning: Failed to remove device key from keychain: {}", e);
             }
         } else if let Some(pwd) = password {
             if let Err(e) = self
                 .keychain_manager
                 .store_master_password(&self.current_device_id, &pwd)
             {
-                eprintln!("Warning: Failed to store password in keychain: {}", e);
+                warn!("Warning: Failed to store password in keychain: {}", e);
                 return Err(EncryptionError::KeychainError(format!(
                     "Failed to store password: {}",
                     e
@@ -342,7 +343,7 @@ impl MasterPasswordManager {
                     .keychain_manager
                     .store_device_key(&self.current_device_id, &device_key.encryption_key)
                 {
-                    eprintln!("Warning: Failed to store device key in keychain: {}", e);
+                    warn!("Warning: Failed to store device key in keychain: {}", e);
                 }
             }
         }
@@ -362,7 +363,7 @@ impl MasterPasswordManager {
         manager.clear_all_keys();
 
         if let Err(e) = self.keychain_manager.clear_all(&loaded_devices) {
-            eprintln!("Warning: Failed to clear keychain: {}", e);
+            warn!("Warning: Failed to clear keychain: {}", e);
         }
 
         self.session_start = None;
@@ -466,11 +467,11 @@ impl EncryptionService for MasterPasswordManager {
                 manager
                     .ensure_shared_device_key_from_current()
                     .map_err(|e| {
-                        eprintln!("encrypt: Failed to create shared key: {}", e);
+                        error!("encrypt: Failed to create shared key: {}", e);
                         crate::database::error::DatabaseError::EncryptionError(e)
                     })?;
             } else {
-                eprintln!("encrypt: No current device key available, cannot create shared key");
+                error!("encrypt: No current device key available, cannot create shared key");
                 return Err(crate::database::error::DatabaseError::EncryptionError(
                     crate::database::error::EncryptionError::UnknownDeviceKey(
                         "No device key available for encryption. Please unlock first.".to_string(),
@@ -480,7 +481,7 @@ impl EncryptionService for MasterPasswordManager {
         }
 
         manager.encrypt_with_device(data, device_id).map_err(|e| {
-            eprintln!(
+            error!(
                 "encrypt: Encryption failed with device {:?}: {}",
                 device_id, e
             );
@@ -498,7 +499,7 @@ impl EncryptionService for MasterPasswordManager {
             if let Ok(data) = manager.decrypt_with_device(encrypted_data, Some(device_id)) {
                 return Ok(data);
             } else {
-                eprintln!("decrypt: Failed to decrypt with device: {}", device_id);
+                warn!("decrypt: Failed to decrypt with device: {}", device_id);
             }
         }
 
@@ -506,7 +507,7 @@ impl EncryptionService for MasterPasswordManager {
             .try_decrypt_with_any_device(encrypted_data)
             .map(|(data, _device_id)| data)
             .map_err(|e| {
-                eprintln!("decrypt: Failed to decrypt with any device key: {}", e);
+                error!("decrypt: Failed to decrypt with any device key: {}", e);
                 e.into()
             })
     }

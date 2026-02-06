@@ -62,8 +62,8 @@ async function processFileEntry(
       uid: null,
       gid: null,
     };
-  } catch (error) {
-    console.warn(`Failed to get metadata for ${entryPath}:`, error);
+  } catch (error) { // NOSONAR
+    // Failed to get metadata (expected for non-existent/inaccessible files)
     return null;
   }
 }
@@ -159,7 +159,7 @@ async function compareDirectories(
     );
   } catch (error) {
     const errorMessage = handleError(error, context);
-    console.error("Failed to compare directories:", errorMessage);
+    // Failed to compare directories: errorMessage
     throw new Error(errorMessage);
   }
 }
@@ -188,7 +188,7 @@ async function syncDirectories(
     await sftpService.syncSFTPDirectories(sessionId, operation);
   } catch (error) {
     const errorMessage = handleError(error, context);
-    console.error("Failed to sync directories:", errorMessage);
+    // Failed to sync directories: errorMessage
     throw new Error(errorMessage);
   }
 }
@@ -210,7 +210,7 @@ async function readFile(sessionId: string, path: string): Promise<string> {
     return await sftpService.readSFTPFile(sessionId, path);
   } catch (error) {
     const errorMessage = handleError(error, context);
-    console.error("Failed to read file:", errorMessage);
+    // Failed to read file: errorMessage
     throw new Error(errorMessage);
   }
 }
@@ -236,7 +236,7 @@ async function writeFile(
     await sftpService.writeSFTPFile(sessionId, path, content);
   } catch (error) {
     const errorMessage = handleError(error, context);
-    console.error("Failed to write file:", errorMessage);
+    // Failed to write file: errorMessage
     throw new Error(errorMessage);
   }
 }
@@ -386,7 +386,7 @@ async function search(
     return await sftpService.searchSFTP(sessionId, path, query);
   } catch (error) {
     const errorMessage = handleError(error, context);
-    console.error("Failed to search:", errorMessage);
+    // Failed to search: errorMessage
     throw new Error(errorMessage);
   }
 }
@@ -530,7 +530,7 @@ export const useSFTPStore = defineStore("sftp", () => {
         if (result.status === "fulfilled" && result.value !== null) {
           files.push(result.value);
         } else if (result.status === "rejected") {
-          console.warn("Failed to process directory entry:", result.reason);
+          // Failed to process directory entry: result.reason
         }
       }
 
@@ -623,7 +623,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       browserState.value.activeTransfers.delete(transferId);
     } catch (error) {
       const errorMessage = handleError(error, context);
-      console.error("Failed to cancel transfer:", errorMessage);
+      // Failed to cancel transfer: errorMessage
       throw new Error(errorMessage);
     }
   }
@@ -670,7 +670,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       }
     } catch (error) {
       const errorMessage = handleError(error, context);
-      console.error("Failed to rename file:", errorMessage);
+      // Failed to rename file: errorMessage
       throw new Error(errorMessage);
     }
   }
@@ -699,7 +699,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       }
     } catch (error) {
       const errorMessage = handleError(error, context);
-      console.error("Failed to delete file:", errorMessage);
+      // Failed to delete file: errorMessage
       throw new Error(errorMessage);
     }
   }
@@ -728,7 +728,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       }
     } catch (error) {
       const errorMessage = handleError(error, context);
-      console.error("Failed to set permissions:", errorMessage);
+      // Failed to set permissions: errorMessage
       throw new Error(errorMessage);
     }
   }
@@ -755,7 +755,7 @@ export const useSFTPStore = defineStore("sftp", () => {
       }
     } catch (error) {
       const errorMessage = handleError(error, context);
-      console.error("Failed to create directory:", errorMessage);
+      // Failed to create directory: errorMessage
       throw new Error(errorMessage);
     }
   }

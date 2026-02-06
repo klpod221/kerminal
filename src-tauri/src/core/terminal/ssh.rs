@@ -4,6 +4,7 @@ use crate::models::ssh::key::ResolvedSSHKey;
 use crate::models::ssh::{AuthData, SSHProfile};
 use crate::models::terminal::{TerminalConfig, TerminalState};
 use async_trait::async_trait;
+use log::warn;
 use russh::client::{DisconnectReason, Handle, Handler, Session};
 use russh::{client::Msg, Channel, ChannelId, Disconnect};
 use russh_keys::key::PublicKey;
@@ -395,7 +396,7 @@ impl SSHTerminal {
                 if let Some(db_service) = &self.database_service {
                     let db = db_service.lock().await;
                     if let Err(e) = db.mark_key_used(key_id).await {
-                        eprintln!("Warning: Failed to mark SSH key {} as used: {}", key_id, e);
+                        warn!("Warning: Failed to mark SSH key {} as used: {}", key_id, e);
                     }
                 }
             }

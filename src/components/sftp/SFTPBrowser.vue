@@ -1522,7 +1522,8 @@ function handlePaneDrop(pane: "local" | "remote", event: DragEvent) {
         }
       }
     } catch (error) {
-      console.debug("Failed to process drop data:", error);
+      // NOSONAR
+      // Failed to process drop data
     }
   }
 }
@@ -1614,7 +1615,8 @@ async function uploadDirectoryRecursive(
   try {
     await sftpStore.createDirectory(sessionId, remoteDirPath);
   } catch (error) {
-    console.debug("Create directory failed (may already exist):", error);
+    // NOSONAR
+    // Create directory failed (may already exist)
   }
 
   const files = await collectLocalDirectoryFiles(localDirPath, localDirPath);
@@ -1633,10 +1635,8 @@ async function uploadDirectoryRecursive(
     try {
       await sftpStore.createDirectory(sessionId, remoteParentDir);
     } catch (error) {
-      console.debug(
-        "Create parent directory failed (may already exist):",
-        error,
-      );
+      // NOSONAR
+      // Create parent directory failed (may already exist)
     }
 
     await sftpStore.uploadFile(sessionId, file.path, remoteFilePath);
@@ -1656,7 +1656,8 @@ async function downloadDirectoryRecursive(
   try {
     await mkdir(localDirPath, { recursive: true });
   } catch (error) {
-    console.debug("Make local directory failed (may already exist):", error);
+    // NOSONAR
+    // Make local directory failed (may already exist)
   }
 
   const files = await collectRemoteDirectoryFiles(
@@ -1677,10 +1678,8 @@ async function downloadDirectoryRecursive(
     try {
       await mkdir(localParentDir, { recursive: true });
     } catch (error) {
-      console.debug(
-        "Make local parent directory failed (may already exist):",
-        error,
-      );
+      // NOSONAR
+      // Make local parent directory failed (may already exist)
     }
 
     await sftpStore.downloadFile(sessionId, file.path, localFilePath);

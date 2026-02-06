@@ -11,6 +11,7 @@ pub use queue::SyncQueue;
 pub use scheduler::SyncScheduler;
 pub use serializer::SyncSerializable;
 
+use log::{error, info, warn};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -86,7 +87,7 @@ impl SyncService {
         if auto_sync_enabled {
             for config in configs {
                 if let Err(e) = self.sync_manager.connect(&config).await {
-                    eprintln!("Failed to auto-connect to {}: {}", config.name, e);
+                    error!("Failed to auto-connect to {}: {}", config.name, e);
                 } else {
                     self.sync_scheduler
                         .enable_database(config.base.id.clone())
@@ -103,11 +104,11 @@ impl SyncService {
             match local_guard.delete_old_sync_logs(30).await {
                 Ok(deleted) => {
                     if deleted > 0 {
-                        eprintln!("[SyncService] Cleaned up {} old sync logs", deleted);
+                        info!("[SyncService] Cleaned up {} old sync logs", deleted);
                     }
                 }
                 Err(e) => {
-                    eprintln!(
+                    warn!(
                         "[SyncService] Warning: Failed to cleanup old sync logs: {}",
                         e
                     );
@@ -199,11 +200,11 @@ impl SyncService {
         };
 
         match &result {
-            Ok(log) => println!(
+            Ok(log) => info!(
                 "SyncService::sync: Sync completed successfully. Records synced: {}",
                 log.records_synced
             ),
-            Err(e) => eprintln!("SyncService::sync: Sync failed: {}", e),
+            Err(e) => error!("SyncService::sync: Sync failed: {}", e),
         }
 
         result

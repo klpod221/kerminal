@@ -1,5 +1,6 @@
 use anyhow::Result;
 use async_trait::async_trait;
+use log::{error, info};
 use russh::client::{Config, Handle};
 use russh_keys::key;
 use std::collections::HashMap;
@@ -65,7 +66,7 @@ impl TunnelService {
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
             if let Err(e) = service_clone.start_auto_start_tunnels().await {
-                eprintln!("Failed to start auto-start tunnels: {}", e);
+                error!("Failed to start auto-start tunnels: {}", e);
             }
         });
 
@@ -150,7 +151,7 @@ impl TunnelService {
     /// Delete SSH tunnel
     pub async fn delete_tunnel(&self, id: &str) -> DatabaseResult<()> {
         if let Err(e) = self.stop_tunnel(id.to_string()).await {
-            eprintln!("Failed to stop tunnel before deletion: {}", e);
+            error!("Failed to stop tunnel before deletion: {}", e);
         }
 
         let db_service = self.database_service.lock().await;
@@ -231,7 +232,7 @@ impl TunnelService {
             .await
             {
                 Err(e) => {
-                    eprintln!("Tunnel {} failed: {}", tunnel_id_clone, e);
+                    error!("Tunnel {} failed: {}", tunnel_id_clone, e);
 
                     // Ensure error status is set
                     {
@@ -304,7 +305,7 @@ impl TunnelService {
 
         for tunnel in tunnels {
             if let Err(e) = self.start_tunnel(tunnel.base.id.clone()).await {
-                eprintln!("Failed to auto-start tunnel {}: {}", tunnel.name, e);
+                error!("Failed to auto-start tunnel {}: {}", tunnel.name, e);
             }
         }
 
@@ -476,7 +477,7 @@ impl TunnelService {
                             tokio::spawn(Self::proxy_connection(stream, session.clone(), channel, cancel_token.clone()));
                         }
                         Err(e) => {
-                            eprintln!("Failed to accept connection: {}", e);
+                            error!("Failed to accept connection: {}", e);
                         }
                     }
                 }
@@ -525,7 +526,7 @@ impl TunnelService {
             remote_port
         };
 
-        eprintln!(
+        info!(
             "✅ Remote port forwarding established: {}:{} -> {}:{}",
             bind_address, actual_port, local_host, local_port
         );
@@ -545,10 +546,10 @@ impl TunnelService {
 
                     match cancel_result {
                         Ok(_) => {
-                            eprintln!("✅ Remote port forwarding cancelled: {}:{}", bind_address_clone, actual_port);
+                            info!("✅ Remote port forwarding cancelled: {}:{}", bind_address_clone, actual_port);
                         },
                         Err(e) => {
-                            eprintln!("❌ Failed to cancel remote port forwarding: {}", e);
+                            error!("❌ Failed to cancel remote port forwarding: {}", e);
                         }
                     }
                     break;
@@ -571,11 +572,11 @@ impl TunnelService {
                                 let _ = test_channel.close().await;
                             }
                             Ok(Err(e)) => {
-                                eprintln!("❌ SSH session health check failed: {}", e);
+                                error!("❌ SSH session health check failed: {}", e);
                                 return Err(anyhow::anyhow!("SSH session unhealthy: {}", e));
                             }
                             Err(_) => {
-                                eprintln!("❌ SSH session health check timed out");
+                                error!("❌ SSH session health check timed out");
                                 return Err(anyhow::anyhow!("SSH session timeout"));
                             }
                         }
@@ -607,7 +608,7 @@ impl TunnelService {
                             tokio::spawn(Self::handle_socks_connection(stream, session.clone(), cancel_token.clone()));
                         }
                         Err(e) => {
-                            eprintln!("Failed to accept SOCKS connection: {}", e);
+                            error!("Failed to accept SOCKS connection: {}", e);
                         }
                     }
                 }
@@ -640,12 +641,12 @@ impl TunnelService {
                         Ok(0) => break, // EOF
                         Ok(n) => {
                             if let Err(e) = channel.data(&buffer[..n]).await {
-                                eprintln!("Failed to send data to remote: {}", e);
+                                error!("Failed to send data to remote: {}", e);
                                 break;
                             }
                         }
                         Err(e) => {
-                            eprintln!("Failed to read from local stream: {}", e);
+                            error!("Failed to read from local stream: {}", e);
                             break;
                         }
                     }
@@ -654,11 +655,11 @@ impl TunnelService {
                     match msg {
                         Some(ChannelMsg::Data { ref data }) => {
                             if let Err(e) = local_writer.write_all(data).await {
-                                eprintln!("Failed to write to local stream: {}", e);
+                                error!("Failed to write to local stream: {}", e);
                                 break;
                             }
                             if let Err(e) = local_writer.flush().await {
-                                eprintln!("Failed to flush local stream: {}", e);
+                                error!("Failed to flush local stream: {}", e);
                                 break;
                             }
                         }
@@ -755,7 +756,7 @@ impl TunnelService {
                 Self::proxy_socks_connection(local_stream, session, channel, cancel_token).await?;
             }
             Err(e) => {
-                eprintln!("Failed to establish SSH channel: {}", e);
+                error!("Failed to establish SSH channel: {}", e);
                 let response = [
                     0x05, 0x05, 0x00, 0x01, // SOCKS5, connection refused, reserved, IPv4
                     0x00, 0x00, 0x00, 0x00, // Bind IP (0.0.0.0)
@@ -791,12 +792,12 @@ impl TunnelService {
                         Ok(0) => break, // EOF
                         Ok(n) => {
                             if let Err(e) = channel.data(&buffer[..n]).await {
-                                eprintln!("Failed to send data to remote via SOCKS: {}", e);
+                                error!("Failed to send data to remote via SOCKS: {}", e);
                                 break;
                             }
                         }
                         Err(e) => {
-                            eprintln!("Failed to read from local SOCKS stream: {}", e);
+                            error!("Failed to read from local SOCKS stream: {}", e);
                             break;
                         }
                     }
@@ -805,11 +806,11 @@ impl TunnelService {
                     match msg {
                         Some(ChannelMsg::Data { ref data }) => {
                             if let Err(e) = local_writer.write_all(data).await {
-                                eprintln!("Failed to write to local SOCKS stream: {}", e);
+                                error!("Failed to write to local SOCKS stream: {}", e);
                                 break;
                             }
                             if let Err(e) = local_writer.flush().await {
-                                eprintln!("Failed to flush local SOCKS stream: {}", e);
+                                error!("Failed to flush local SOCKS stream: {}", e);
                                 break;
                             }
                         }
