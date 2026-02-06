@@ -165,7 +165,7 @@ import {
 } from "vue";
 import { debounce } from "../../utils/helpers";
 import { extractErrorMessage } from "../../utils/errorHandler";
-import { InputBatcher } from "../../core";
+import { InputBatcher, FlowController } from "../../core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { XCircle, RefreshCw, X, Wifi } from "lucide-vue-next";
@@ -212,6 +212,7 @@ const emit = defineEmits<{
 const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
+let flowController: FlowController;
 
 const workspaceStore = useWorkspaceStore();
 const settingsStore = useSettingsStore();
@@ -507,9 +508,9 @@ const handleWindowFocus = (): void => {
 };
 
 const writeOutput = (data: string | Uint8Array): void => {
-  if (term) {
-    // Write to terminal first for lowest latency
-    term.write(data);
+  if (term && flowController) {
+    // Use FlowController for batched rendering and flow control
+    flowController.write(data);
   }
 };
 
@@ -637,6 +638,10 @@ onMounted(async () => {
   fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
 
+  // Initialize FlowController for optimized large output handling
+  flowController = new FlowController();
+  flowController.attach(term);
+
   const webLinksAddon = new WebLinksAddon(
     async (event: MouseEvent, uri: string) => {
       event.preventDefault();
@@ -743,6 +748,10 @@ onBeforeUnmount(async () => {
     }
 
     inputBatcher.clearTerminal(props.backendTerminalId);
+  }
+
+  if (flowController) {
+    flowController.detach();
   }
 
   if (term) {

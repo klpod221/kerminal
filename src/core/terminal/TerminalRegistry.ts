@@ -5,11 +5,17 @@ import type { FitAddon } from "@xterm/addon-fit";
 /**
  * Terminal instance managed by the registry
  */
+import type { FlowController } from "./FlowController";
+
+/**
+ * Terminal instance managed by the registry
+ */
 export interface ManagedTerminal {
   id: string;
   container: HTMLDivElement;
   term: Terminal | null;
   fitAddon: FitAddon | null;
+  flowController: FlowController | null;
   mountedTo: HTMLElement | null;
   onDataDisposable: { dispose: () => void } | null;
 }
@@ -60,13 +66,15 @@ class TerminalRegistryClass {
     id: string,
     container: HTMLDivElement,
     term: Terminal | null = null,
-    fitAddon: FitAddon | null = null
+    fitAddon: FitAddon | null = null,
+    flowController: FlowController | null = null
   ): void {
     if (this.terminals.has(id)) {
       // Update existing terminal
       const existing = this.terminals.get(id)!;
       existing.term = term;
       existing.fitAddon = fitAddon;
+      existing.flowController = flowController;
       return;
     }
 
@@ -75,6 +83,7 @@ class TerminalRegistryClass {
       container,
       term,
       fitAddon,
+      flowController,
       mountedTo: null,
       onDataDisposable: null,
     };
@@ -94,12 +103,14 @@ class TerminalRegistryClass {
   public updateTerminalInstance(
     id: string,
     term: Terminal,
-    fitAddon: FitAddon
+    fitAddon: FitAddon,
+    flowController: FlowController
   ): void {
     const managed = this.terminals.get(id);
     if (managed) {
       managed.term = term;
       managed.fitAddon = fitAddon;
+      managed.flowController = flowController;
     }
   }
 
@@ -171,6 +182,12 @@ class TerminalRegistryClass {
     if (managed.onDataDisposable) {
       managed.onDataDisposable.dispose();
       managed.onDataDisposable = null;
+    }
+
+    // Detach flow controller
+    if (managed.flowController) {
+      managed.flowController.detach();
+      managed.flowController = null;
     }
 
     // Dispose xterm instance

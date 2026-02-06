@@ -25,6 +25,12 @@ impl TitleDetector {
 
     /// Process terminal output and detect title changes
     pub fn process_output(&mut self, data: &[u8]) -> Option<String> {
+        // Heuristic: heavy data transfer usually fills the buffer (64KB).
+        // Prompts are usually small. Skip expensive regex if buffer is large and has no escape.
+        if data.len() > 1024 && !data.iter().any(|&b| b == 0x1b) {
+            return None;
+        }
+
         let text = String::from_utf8_lossy(data);
 
         if let Some(ansi_title) = self.extract_title_from_ansi(&text) {

@@ -13,7 +13,7 @@ import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { bytesToString, debounce } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
 import { useWorkspaceStore } from "../../stores/workspace";
-import { TerminalRegistry, InputBatcher } from "../../core";
+import { TerminalRegistry, InputBatcher, FlowController } from "../../core";
 
 // Import Terminal component dynamically for creating instances
 import { Terminal } from "@xterm/xterm";
@@ -57,7 +57,11 @@ const emit = defineEmits(["terminal-ready"]);
 const createTerminalInstance = async (
   _terminalId: string,
   container: HTMLDivElement,
-): Promise<{ term: Terminal; fitAddon: FitAddon }> => {
+): Promise<{
+  term: Terminal;
+  fitAddon: FitAddon;
+  flowController: FlowController;
+}> => {
   const customTheme = settingsStore.getCustomTheme(settingsStore.terminalTheme);
   const theme = customTheme
     ? customTheme.colors
@@ -143,10 +147,11 @@ const createTerminalInstance = async (
     }
   });
 
-  // Note: Input handler will be attached later via setInputHandler
-  // after backendTerminalId is available
+  // Initialize FlowController
+  const flowController = new FlowController();
+  flowController.attach(term);
 
-  return { term, fitAddon };
+  return { term, fitAddon, flowController };
 };
 
 /**
@@ -166,13 +171,18 @@ const ensureTerminalExists = async (terminalId: string): Promise<void> => {
   TerminalRegistry.registerTerminal(terminalId, container);
 
   // Create xterm instance
-  const { term, fitAddon } = await createTerminalInstance(
+  const { term, fitAddon, flowController } = await createTerminalInstance(
     terminalId,
     container,
   );
 
   // Update registry with term and fitAddon
-  TerminalRegistry.updateTerminalInstance(terminalId, term, fitAddon);
+  TerminalRegistry.updateTerminalInstance(
+    terminalId,
+    term,
+    fitAddon,
+    flowController,
+  );
 
   // Note: Fit will be done after mounting to panel (hidden host has no dimensions)
 
@@ -360,7 +370,11 @@ onMounted(async () => {
         if (!matchingTerminal) return;
 
         const managed = TerminalRegistry.getTerminal(matchingTerminal.id);
-        if (managed?.term) {
+        if (managed?.flowController) {
+          const output = bytesToString(terminalData.data);
+          managed.flowController.write(output);
+        } else if (managed?.term) {
+          // Fallback if no flow controller (shouldn't happen with new logic)
           const output = bytesToString(terminalData.data);
           managed.term.write(output);
         }

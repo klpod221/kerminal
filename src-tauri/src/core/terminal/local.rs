@@ -4,8 +4,6 @@ use crate::models::terminal::{LocalConfig, TerminalConfig, TerminalExited, Termi
 use portable_pty::{Child, CommandBuilder, MasterPty, PtySize};
 use std::io::{Read, Write};
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
 use tokio::sync::{mpsc, Mutex};
 
 /// Local terminal implementation using portable-pty
@@ -208,7 +206,7 @@ impl LocalTerminal {
             let terminal_id = self.id.clone();
 
             tokio::task::spawn_blocking(move || {
-                let mut buffer = [0u8; 8192];
+                let mut buffer = [0u8; 65536]; // 64KB for better throughput
                 loop {
                     match reader.read(&mut buffer) {
                         Ok(0) => {
@@ -250,7 +248,7 @@ impl LocalTerminal {
                         }
                     }
 
-                    thread::sleep(Duration::from_millis(1));
+                    // Removed fixed sleep: PTY read naturally blocks when no data
                 }
             });
 

@@ -92,11 +92,7 @@ export const useUpdaterStore = defineStore("updater", () => {
         availableUpdate.value = update;
         lastCheckTime.value = Date.now();
 
-        // Check if this version was skipped
         if (update && skippedVersions.value.includes(update.version)) {
-          if (!silent) {
-            console.log(`Update ${update.version} was skipped by user`);
-          }
           return false;
         }
 

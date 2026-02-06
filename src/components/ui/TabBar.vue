@@ -566,7 +566,7 @@ const handleMoveToNewPanel = (tab: TabType): void => {
 };
 
 const onTabDragStart = (tab: TabType): void => {
-  console.log("onTabDragStart", tab);
+  // Drag start logic if needed
 };
 
 const onTabDrop = (draggedTab: TabType, targetTab: TabType): void => {
