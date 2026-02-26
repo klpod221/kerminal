@@ -407,6 +407,7 @@ impl Database for SQLiteProvider {
                 icon TEXT,
                 color TEXT,
                 command TEXT,
+                is_default BOOLEAN NOT NULL DEFAULT 0,
                 created_at INTEGER NOT NULL,
                 updated_at INTEGER NOT NULL
             )
@@ -421,6 +422,14 @@ impl Database for SQLiteProvider {
             .execute(&*pool)
             .await
             .ok(); // Ignore error if column already exists
+
+        // Add is_default column if it doesn't exist (migration)
+        sqlx::query(
+            "ALTER TABLE terminal_profiles ADD COLUMN is_default BOOLEAN NOT NULL DEFAULT 0",
+        )
+        .execute(&*pool)
+        .await
+        .ok();
 
         // Add SSH profile columns migration
         sqlx::query("ALTER TABLE ssh_profiles ADD COLUMN command TEXT")
@@ -732,6 +741,20 @@ impl SQLiteProvider {
 
     pub async fn delete_terminal_profile(&self, id: &str) -> DatabaseResult<()> {
         terminal::delete_terminal_profile(self, id).await
+    }
+
+    pub async fn set_default_terminal_profile(&self, id: &str) -> DatabaseResult<()> {
+        terminal::set_default_terminal_profile(self, id).await
+    }
+
+    pub async fn clear_default_terminal_profile(&self) -> DatabaseResult<()> {
+        terminal::clear_default_terminal_profile(self).await
+    }
+
+    pub async fn find_default_terminal_profile(
+        &self,
+    ) -> DatabaseResult<Option<crate::models::terminal::profile::TerminalProfile>> {
+        terminal::find_default_terminal_profile(self).await
     }
 
     pub async fn get_all_external_databases(

@@ -12,6 +12,7 @@ pub struct TerminalProfile {
     pub icon: Option<String>,
     pub color: Option<String>,
     pub command: Option<String>,
+    pub is_default: bool,
     pub created_at: i64,
     pub updated_at: i64,
 }

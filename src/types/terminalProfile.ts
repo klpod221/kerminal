@@ -7,6 +7,7 @@ export interface TerminalProfile {
   icon?: string;
   color?: string;
   command?: string;
+  isDefault?: boolean;
 }
 
 export interface CreateTerminalProfileRequest {

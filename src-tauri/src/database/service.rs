@@ -1177,6 +1177,7 @@ impl DatabaseService {
             icon: request.icon,
             color: request.color,
             command: request.command.filter(|s| !s.is_empty()),
+            is_default: false,
             created_at: Utc::now().timestamp_millis(),
             updated_at: Utc::now().timestamp_millis(),
         };
@@ -1256,6 +1257,26 @@ impl DatabaseService {
     pub async fn delete_terminal_profile(&self, id: &str) -> DatabaseResult<()> {
         let local_db = self.local_db.read().await;
         local_db.delete_terminal_profile(id).await
+    }
+
+    /// Set a terminal profile as default (clears any previous default)
+    pub async fn set_default_terminal_profile(&self, id: &str) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        local_db.set_default_terminal_profile(id).await
+    }
+
+    /// Clear default status from all terminal profiles
+    pub async fn clear_default_terminal_profile(&self) -> DatabaseResult<()> {
+        let local_db = self.local_db.read().await;
+        local_db.clear_default_terminal_profile().await
+    }
+
+    /// Get the default terminal profile, if any
+    pub async fn get_default_terminal_profile(
+        &self,
+    ) -> DatabaseResult<Option<crate::models::terminal::profile::TerminalProfile>> {
+        let local_db = self.local_db.read().await;
+        local_db.find_default_terminal_profile().await
     }
 
     pub async fn save_external_database(

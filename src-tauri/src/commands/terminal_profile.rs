@@ -59,3 +59,34 @@ pub async fn delete_terminal_profile(
         .await
         .map_err(|e| AppError::Database(e.to_string()))
 }
+
+#[tauri::command]
+pub async fn set_default_terminal_profile(
+    app_state: State<'_, AppState>,
+    id: String,
+) -> Result<(), AppError> {
+    let db = app_state.database_service.lock().await;
+    db.set_default_terminal_profile(&id)
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))
+}
+
+#[tauri::command]
+pub async fn clear_default_terminal_profile(
+    app_state: State<'_, AppState>,
+) -> Result<(), AppError> {
+    let db = app_state.database_service.lock().await;
+    db.clear_default_terminal_profile()
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))
+}
+
+#[tauri::command]
+pub async fn get_default_terminal_profile(
+    app_state: State<'_, AppState>,
+) -> Result<Option<TerminalProfile>, AppError> {
+    let db = app_state.database_service.lock().await;
+    db.get_default_terminal_profile()
+        .await
+        .map_err(|e| AppError::Database(e.to_string()))
+}

@@ -22,6 +22,12 @@
           <h4 class="text-sm font-medium text-white truncate">
             {{ profile.name }}
           </h4>
+          <span
+            v-if="profile.isDefault"
+            class="text-xs px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-medium shrink-0"
+          >
+            Default
+          </span>
         </div>
         <div class="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
           <span class="font-mono bg-gray-800 px-1 rounded">{{
@@ -39,6 +45,21 @@
 
       <!-- Actions -->
       <div class="shrink-0 flex items-center gap-1">
+        <!-- Set as default button -->
+        <Button
+          variant="ghost"
+          size="sm"
+          :icon="profile.isDefault ? StarOff : Star"
+          :title="profile.isDefault ? 'Unset default' : 'Set as default'"
+          :class="[
+            'p-1.5!',
+            profile.isDefault
+              ? 'text-yellow-400 hover:text-yellow-300 hover:bg-yellow-600/20'
+              : 'text-gray-400 hover:text-yellow-400 hover:bg-yellow-600/20',
+          ]"
+          @click.stop="handleToggleDefault"
+        />
+
         <!-- Edit button -->
         <Button
           variant="ghost"
@@ -67,7 +88,7 @@
 import type { TerminalProfile } from "../../types/terminalProfile";
 import Card from "../ui/Card.vue";
 import Button from "../ui/Button.vue";
-import { Edit3, Trash2 } from "lucide-vue-next";
+import { Edit3, Trash2, Star, StarOff } from "lucide-vue-next";
 import { showConfirm } from "../../utils/message";
 
 interface Props {
@@ -78,6 +99,7 @@ interface Emits {
   launch: [profile: TerminalProfile];
   edit: [profile: TerminalProfile];
   delete: [profile: TerminalProfile];
+  "toggle-default": [profile: TerminalProfile];
 }
 
 const props = defineProps<Props>();
@@ -91,5 +113,9 @@ const handleDelete = async () => {
   if (confirmed) {
     emit("delete", props.profile);
   }
+};
+
+const handleToggleDefault = () => {
+  emit("toggle-default", props.profile);
 };
 </script>

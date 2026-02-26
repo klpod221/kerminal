@@ -40,6 +40,7 @@
           @launch="launchProfile"
           @edit="editProfile"
           @delete="deleteProfile"
+          @toggle-default="toggleDefault"
         />
       </div>
 
@@ -86,15 +87,23 @@ const { openOverlay, closeOverlay } = useOverlay();
 const searchQuery = ref("");
 
 const filteredProfiles = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return store.profiles;
+  let result = store.profiles;
+
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.trim();
+    result = result.filter(
+      (p) =>
+        caseInsensitiveIncludes(p.name, query) ||
+        caseInsensitiveIncludes(p.shell, query),
+    );
   }
-  const query = searchQuery.value.trim();
-  return store.profiles.filter(
-    (p) =>
-      caseInsensitiveIncludes(p.name, query) ||
-      caseInsensitiveIncludes(p.shell, query),
-  );
+
+  // Sort: default profile first, then alphabetically by name
+  return [...result].sort((a, b) => {
+    if (a.isDefault && !b.isDefault) return -1;
+    if (!a.isDefault && b.isDefault) return 1;
+    return a.name.localeCompare(b.name);
+  });
 });
 
 const createNewProfile = () => {
@@ -113,6 +122,14 @@ const launchProfile = (profile: TerminalProfile) => {
   const activePanelId = workspaceStore.activePanelId || "panel-1";
   workspaceStore.addTerminalProfileTab(activePanelId, profile);
   closeOverlay("terminal-profile-drawer");
+};
+
+const toggleDefault = async (profile: TerminalProfile) => {
+  if (profile.isDefault) {
+    await store.clearDefaultProfile();
+  } else {
+    await store.setDefaultProfile(profile.id);
+  }
 };
 
 onMounted(() => {
