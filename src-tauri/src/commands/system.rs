@@ -51,39 +51,49 @@ pub fn get_system_fonts() -> Vec<String> {
         }
     }
 
-    // Try to get fonts on Windows
+    // Try to get fonts on Windows via Registry (returns proper display names)
     #[cfg(target_os = "windows")]
     {
-        use std::fs;
-        use std::path::Path;
+        use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+        use winreg::RegKey;
 
-        // Try to read fonts from Windows Fonts directory
-        let fonts_dir = Path::new("C:\\Windows\\Fonts");
-        if let Ok(entries) = fs::read_dir(fonts_dir) {
-            for entry in entries.flatten() {
-                if let Some(file_name) = entry.file_name().to_str() {
-                    // Extract font name from filename (remove extension and variants)
-                    if file_name.ends_with(".ttf") || file_name.ends_with(".otf") {
-                        let font_name = file_name
-                            .replace(".ttf", "")
-                            .replace(".otf", "")
-                            .replace("_", " ")
-                            .trim()
-                            .to_string();
+        const FONTS_REG_PATH: &str =
+            "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
 
-                        // Clean up common suffixes
-                        let cleaned = font_name
-                            .replace("Bold", "")
-                            .replace("Italic", "")
-                            .replace("Regular", "")
-                            .replace("Light", "")
-                            .trim()
-                            .to_string();
+        // Suffixes to strip from registry key names, e.g. " (TrueType)"
+        let suffixes = [
+            " (TrueType)",
+            " (OpenType)",
+            " (Type 1)",
+        ];
 
-                        if !cleaned.is_empty() {
-                            fonts.insert(cleaned);
-                        }
-                    }
+        let strip_suffix = |name: &str| -> String {
+            let mut s = name.to_string();
+            for suffix in &suffixes {
+                if s.ends_with(suffix) {
+                    s.truncate(s.len() - suffix.len());
+                    break;
+                }
+            }
+            s.trim().to_string()
+        };
+
+        // System-wide fonts (HKEY_LOCAL_MACHINE)
+        if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey(FONTS_REG_PATH) {
+            for (name, _value) in hklm.enum_values().flatten() {
+                let font_name = strip_suffix(&name);
+                if !font_name.is_empty() {
+                    fonts.insert(font_name);
+                }
+            }
+        }
+
+        // User-installed fonts (HKEY_CURRENT_USER) — e.g. fonts installed without admin
+        if let Ok(hkcu) = RegKey::predef(HKEY_CURRENT_USER).open_subkey(FONTS_REG_PATH) {
+            for (name, _value) in hkcu.enum_values().flatten() {
+                let font_name = strip_suffix(&name);
+                if !font_name.is_empty() {
+                    fonts.insert(font_name);
                 }
             }
         }
