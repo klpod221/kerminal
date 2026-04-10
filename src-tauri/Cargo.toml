@@ -2,7 +2,7 @@
 name = "Kerminal"
 version = "2.6.1"
 description = "Modern Terminal with SSH, Tunneling & Cross-Device Sync"
-license = "MIT"
+license = "GPL-3.0-or-later"
 repository = "https://github.com/klpod221/kerminal"
 authors = ["klpod221 <klpod221@gmail.com>"]
 edition = "2021"
