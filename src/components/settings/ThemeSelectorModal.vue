@@ -30,6 +30,28 @@
       </Button>
     </div>
 
+    <Card
+      no-padding
+      :custom-class="'mb-4 p-4 border-gray-700/70 bg-gray-800/40'"
+    >
+      <div class="flex items-start gap-3">
+        <Checkbox
+          id="use-webgl-renderer"
+          v-model="useWebGLRenderer"
+          class="mt-0.5 mb-0!"
+        />
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-gray-200">
+            Use WebGL terminal renderer (restart required)
+          </p>
+          <p class="text-xs text-gray-500 mt-1">
+            May improve performance, but can cause input lag or issues on some
+            Linux systems.
+          </p>
+        </div>
+      </div>
+    </Card>
+
     <!-- Custom Themes Section -->
     <div v-if="settingsStore.customThemes.length > 0" class="space-y-2 mb-6">
       <div class="flex items-center gap-2 px-2 py-1.5">
@@ -214,6 +236,7 @@ import { Palette, Check, Plus, Edit2, Trash2, Type } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";
+import Checkbox from "../ui/Checkbox.vue";
 import { useSettingsStore } from "../../stores/settings";
 import { getTerminalTheme } from "../../utils/terminalTheme";
 import { useOverlay } from "../../composables/useOverlay";
@@ -229,6 +252,13 @@ const customThemesList = computed(() => {
 
 const builtInThemesList = computed(() => {
   return settingsStore.builtInThemes;
+});
+
+const useWebGLRenderer = computed({
+  get: () => settingsStore.useWebGLRenderer,
+  set: (enabled: boolean) => {
+    void settingsStore.setUseWebGLRenderer(enabled);
+  },
 });
 
 const selectTheme = async (theme: string) => {

@@ -173,6 +173,7 @@ import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
 import HistorySearchModal from "../history/HistorySearchModal.vue";
 import { getTerminalTheme } from "../../utils/terminalTheme";
+import { loadWebGLRenderer } from "../../utils/terminalRenderer";
 import { useSettingsStore } from "../../stores/settings";
 import { useOverlayStore } from "../../stores/overlay";
 import type { PanelLayout, Tab } from "../../types/panel";
@@ -184,7 +185,6 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
-import { WebglAddon } from "@xterm/addon-webgl";
 import { ImageAddon } from "@xterm/addon-image";
 
 interface TerminalProps {
@@ -632,8 +632,7 @@ onMounted(async () => {
     theme: theme,
   });
 
-  const webglAddon = new WebglAddon();
-  term.loadAddon(webglAddon);
+  await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
 
   fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
