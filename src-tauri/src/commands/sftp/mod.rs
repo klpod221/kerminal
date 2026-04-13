@@ -3,14 +3,16 @@ use crate::models::sftp::file_entry::FileEntry;
 use crate::models::sftp::requests::{
     CancelTransferRequest, CompareDirectoriesRequest, ConnectSFTPRequest, CreateDirectoryRequest,
     CreateSymlinkRequest, DeleteRequest, DisconnectSFTPRequest, DownloadFileRequest,
-    GetAllTransfersRequest, GetTransferProgressRequest, ListDirectoryRequest, PauseTransferRequest,
-    ReadFileRequest, ReadSymlinkRequest, RenameRequest, ReorderQueueRequest, ResumeTransferRequest,
-    RetryTransferRequest, SearchRequest, SetPermissionsRequest, SetTransferPriorityRequest,
-    StatRequest, SyncDirectoriesRequest, UploadFileRequest, WriteFileRequest,
+    GetAllTransfersRequest, GetTransferProgressRequest, ListDirectoryRequest,
+    PauseTransferRequest, ReadFileRequest, ReadSymlinkRequest, RenameRequest, ReorderQueueRequest,
+    ResumeTransferRequest, RetryTransferRequest, SearchRequest, SetPermissionsRequest,
+    SetTransferPriorityRequest, StatRequest, SyncDirectoriesRequest, UploadFileRequest,
+    WriteFileRequest,
 };
 use crate::models::sftp::search::SearchResult;
 use crate::models::sftp::sync::DiffEntry;
 use crate::models::sftp::transfer::TransferProgress;
+use crate::models::sftp::ConnectResponse;
 use crate::state::AppState;
 use tauri::State;
 
@@ -28,13 +30,27 @@ macro_rules! sftp_result {
     };
 }
 
-/// Connect to SFTP server using SSH profile
+/// Connect to SFTP server using SSH profile.
+/// Resolves the remote user's home directory server-side (SSH_FXP_REALPATH)
+/// and returns it alongside the session ID so the frontend needs no extra call.
 #[tauri::command]
 pub async fn sftp_connect(
     state: State<'_, AppState>,
     request: ConnectSFTPRequest,
-) -> Result<String, String> {
-    sftp_result!(state.sftp_service.connect(request.profile_id).await)
+) -> Result<ConnectResponse, String> {
+    let session_id = sftp_result!(state.sftp_service.connect(request.profile_id).await)?;
+
+    // Resolve $HOME server-side; gracefully degrade to "/" on older servers.
+    let home_dir = state
+        .sftp_service
+        .get_home_directory(session_id.clone())
+        .await
+        .unwrap_or_else(|_| "/".to_string());
+
+    Ok(ConnectResponse {
+        session_id,
+        home_dir,
+    })
 }
 
 /// Disconnect SFTP session

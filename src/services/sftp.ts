@@ -25,10 +25,16 @@ import type {
   SearchResult,
 } from "../types/sftp";
 
+export interface ConnectResponse {
+  sessionId: string;
+  /** Server-resolved absolute path of the remote user's home directory. */
+  homeDir: string;
+}
+
 /**
  * Connect to SFTP server using SSH profile
  */
-export async function connectSFTP(profileId: string): Promise<string> {
+export async function connectSFTP(profileId: string): Promise<ConnectResponse> {
   return await api.call("sftp_connect", { profileId });
 }
 

@@ -233,6 +233,7 @@ import {
 } from "@tauri-apps/plugin-fs";
 import { dirname, homeDir, tempDir, join } from "@tauri-apps/api/path";
 import * as sftpService from "../../services/sftp";
+import { canPreviewFile } from "../../utils/filePreview";
 import { openPath } from "@tauri-apps/plugin-opener";
 import { save, open } from "@tauri-apps/plugin-dialog";
 
@@ -482,18 +483,19 @@ async function handlePermissionsSubmit(event: Event) {
 async function handleProfileSelect(profileId: string) {
   if (!profileId || profileId === "") return;
 
-  await sftpStore.connect(profileId);
+  const { homeDir } = await sftpStore.connect(profileId);
 
   selectedProfileId.value = profileId;
 
   if (!sftpStore.browserState.localPath) {
-    const homeDir = await getHomeDirectory();
-    await sftpStore.listLocalDirectory(homeDir);
+    const homeDirLocal = await getHomeDirectory();
+    await sftpStore.listLocalDirectory(homeDirLocal);
   }
 
   if (sftpStore.activeSessionId) {
     const profile = sshStore.profiles.find((p) => p.id === profileId);
-    const remotePath = profile?.username ? `/home/${profile.username}` : "/";
+    // Priority: user-configured workingDir > server-resolved $HOME
+    const remotePath = profile?.workingDir || homeDir;
     await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, remotePath);
   }
 }
@@ -596,113 +598,6 @@ async function handleLocalUpload(files: FileList | File[]) {
       }, 5000);
     }
   }
-}
-
-/**
- * Check if a file can be previewed
- */
-function canPreviewFile(file: FileEntry): boolean {
-  if (file.fileType !== "file") return false;
-
-  const previewableExtensions = new Set([
-    "jpg",
-    "jpeg",
-    "png",
-    "gif",
-    "bmp",
-    "webp",
-    "svg",
-    "ico",
-    "mp4",
-    "webm",
-    "ogg",
-    "avi",
-    "mov",
-    "wmv",
-    "flv",
-    "mkv",
-    "html",
-    "htm",
-    "md",
-    "markdown",
-    "pdf",
-    "txt",
-    "text",
-    "log",
-    "json",
-    "yaml",
-    "yml",
-    "xml",
-    "csv",
-    "tsv",
-    "ini",
-    "conf",
-    "config",
-    "cfg",
-    "properties",
-    "env",
-    "gitignore",
-    "gitattributes",
-    "dockerfile",
-    "makefile",
-    "sh",
-    "bash",
-    "zsh",
-    "fish",
-    "ps1",
-    "bat",
-    "cmd",
-    "js",
-    "ts",
-    "jsx",
-    "tsx",
-    "vue",
-    "svelte",
-    "py",
-    "java",
-    "c",
-    "cpp",
-    "cc",
-    "h",
-    "hpp",
-    "cs",
-    "go",
-    "rs",
-    "rb",
-    "php",
-    "swift",
-    "kt",
-    "scala",
-    "clj",
-    "hs",
-    "ml",
-    "sql",
-    "r",
-    "m",
-    "pl",
-    "pm",
-    "lua",
-    "vim",
-    "css",
-    "scss",
-    "sass",
-    "less",
-    "styl",
-    "stylus",
-    // Office (show info, not actual preview)
-    "doc",
-    "docx",
-    "xls",
-    "xlsx",
-    "ppt",
-    "pptx",
-    "odt",
-    "ods",
-    "odp",
-  ]);
-
-  const ext = file.name.split(".").pop()?.toLowerCase();
-  return ext ? previewableExtensions.has(ext) : false;
 }
 
 async function handleLocalOpen(file: FileEntry) {

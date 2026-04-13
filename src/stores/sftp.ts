@@ -441,14 +441,15 @@ export const useSFTPStore = defineStore("sftp", () => {
     );
   });
 
-  // Actions
   /**
    * Connect to SFTP server with retry logic
    * @param profileId - SSH profile ID to connect with
-   * @returns Session ID
+   * @returns Object with sessionId and server-resolved homeDir
    * @throws Enhanced error with context if connection fails
    */
-  async function connect(profileId: string): Promise<string> {
+  async function connect(
+    profileId: string,
+  ): Promise<{ sessionId: string; homeDir: string }> {
     connecting.value = true;
     const context: ErrorContext = {
       operation: "SFTP Connection",
@@ -456,7 +457,7 @@ export const useSFTPStore = defineStore("sftp", () => {
     };
 
     try {
-      const sessionId = await withRetry(
+      const { sessionId, homeDir } = await withRetry(
         () => sftpService.connectSFTP(profileId),
         {
           maxRetries: 2,
@@ -482,7 +483,7 @@ export const useSFTPStore = defineStore("sftp", () => {
 
       startRealtime();
 
-      return sessionId;
+      return { sessionId, homeDir };
     } catch (error) {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);

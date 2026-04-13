@@ -283,6 +283,25 @@ impl SFTPService {
             })
     }
 
+    /// Resolve the remote user's home directory via SSH_FXP_REALPATH on "."
+    ///
+    /// This is the canonical way to get `$HOME` from the server — the SFTP
+    /// session starts in the user's home directory by default, so
+    /// `canonicalize(".")` returns the absolute path without any client-side
+    /// guessing or hardcoded `/home/<user>` conventions.
+    pub async fn get_home_directory(&self, session_id: String) -> Result<String, SFTPError> {
+        let session_data = self.get_session(&session_id).await?;
+        let mut data = session_data.lock().await;
+        data.last_used = Utc::now();
+
+        data.sftp
+            .canonicalize(".")
+            .await
+            .map_err(|e| SFTPError::Other {
+                message: format!("Failed to resolve home directory: {}", e),
+            })
+    }
+
     /// List directory contents
     pub async fn list_directory(
         &self,
