@@ -22,12 +22,12 @@ import { FitAddon } from "@xterm/addon-fit";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { Unicode11Addon } from "@xterm/addon-unicode11";
-import { WebglAddon } from "@xterm/addon-webgl";
 import { ImageAddon } from "@xterm/addon-image";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 
 import { getTerminalTheme } from "../../utils/terminalTheme";
+import { loadWebGLRenderer } from "../../utils/terminalRenderer";
 import { useSettingsStore } from "../../stores/settings";
 
 interface TerminalManagerProps {
@@ -82,8 +82,7 @@ const createTerminalInstance = async (
     theme: theme,
   });
 
-  const webglAddon = new WebglAddon();
-  term.loadAddon(webglAddon);
+  await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
 
   const fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
