@@ -277,6 +277,13 @@ Thanks to all the amazing people who have contributed to this project! 🎉
                     <sub><b>Thuan Vo</b></sub>
                 </a>
             </td>
+            <td align="center">
+                <a href="https://github.com/vetash">
+                    <img src="https://avatars.githubusercontent.com/u/8321589?v=4" width="100;" alt="vetash"/>
+                    <br />
+                    <sub><b>Vitaly Barakov</b></sub>
+                </a>
+            </td>
 		</tr>
 	<tbody>
 </table>
