@@ -53,6 +53,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
   - [Completed](#completed)
   - [Planned](#planned)
 - [👥 Contributors](#-contributors)
+- [⭐ Star History](#-star-history)
 
 ## 📸 Screenshots
 
@@ -288,6 +289,16 @@ Thanks to all the amazing people who have contributed to this project! 🎉
 	<tbody>
 </table>
 <!-- readme: collaborators,contributors -end -->
+
+## ⭐ Star History
+
+<a href="https://www.star-history.com/?repos=klpod221%2Fkerminal&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=klpod221/kerminal&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=klpod221/kerminal&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=klpod221/kerminal&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ---
 
