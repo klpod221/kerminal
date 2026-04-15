@@ -30,26 +30,14 @@
       </Button>
     </div>
 
-    <Card
-      no-padding
-      :custom-class="'mb-4 p-4 border-gray-700/70 bg-gray-800/40'"
-    >
-      <div class="flex items-start gap-3">
-        <Checkbox
-          id="use-webgl-renderer"
-          v-model="useWebGLRenderer"
-          class="mt-0.5 mb-0!"
-        />
-        <div class="min-w-0">
-          <p class="text-sm font-medium text-gray-200">
-            Use WebGL terminal renderer (restart required)
-          </p>
-          <p class="text-xs text-gray-500 mt-1">
-            May improve performance, but can cause input lag or issues on some
-            Linux systems.
-          </p>
-        </div>
-      </div>
+    <Card custom-class="mb-2">
+      <Checkbox
+        id="use-webgl-renderer"
+        v-model="useWebGLRenderer"
+        label="Use WebGL terminal renderer (restart required)"
+        helper-text="May improve performance, but can cause input lag or issues on some Linux systems."
+        class="mt-0.5 mb-0!"
+      />
     </Card>
 
     <!-- Custom Themes Section -->
@@ -257,7 +245,7 @@ const builtInThemesList = computed(() => {
 const useWebGLRenderer = computed({
   get: () => settingsStore.useWebGLRenderer,
   set: (enabled: boolean) => {
-    void settingsStore.setUseWebGLRenderer(enabled);
+    settingsStore.setUseWebGLRenderer(enabled);
   },
 });
 

@@ -11,7 +11,7 @@ const getPlatformHint = (): string => {
 
   const nav = navigator as NavigatorWithUAData;
 
-  return nav.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
+  return nav.userAgentData?.platform || navigator.userAgent || "";
 };
 
 export const isLinuxPlatform = (): boolean =>
