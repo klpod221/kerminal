@@ -109,10 +109,7 @@ jobs:
 
           # Ensure .DirIcon exists for AppImage standard compliance
           echo "Ensuring .DirIcon exists..."
-          ICON_PATH=$(find squashfs-root/usr/share/icons -name "*.png" | sort -r | head -n 1)
-          if [ -n "$ICON_PATH" ]; then
-            cp "$ICON_PATH" squashfs-root/.DirIcon
-          fi
+          cp src-tauri/icons/icon.png squashfs-root/.DirIcon || true
 
           # Repack AppImage using appimagetool
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool

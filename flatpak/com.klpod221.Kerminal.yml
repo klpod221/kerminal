@@ -21,7 +21,7 @@ modules:
       - ar x kerminal.deb
       - tar xf data.tar.*
       # Install binary
-      - install -Dm755 usr/bin/kerminal /app/bin/kerminal
+      - install -Dm755 usr/bin/Kerminal /app/bin/kerminal
       # Copy icons and rename them to match app-id
       - cp -r usr/share/icons/hicolor /app/share/
       - find /app/share/icons/hicolor -name "kerminal.png" -execdir mv {} com.klpod221.Kerminal.png \;
