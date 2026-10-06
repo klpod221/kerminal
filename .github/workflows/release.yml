@@ -109,6 +109,7 @@ jobs:
 
           # Ensure .DirIcon exists for AppImage standard compliance
           echo "Ensuring .DirIcon exists..."
+          rm -f squashfs-root/.DirIcon
           cp src-tauri/icons/icon.png squashfs-root/.DirIcon || true
 
           # Repack AppImage using appimagetool
@@ -183,7 +184,7 @@ jobs:
       - name: Build Flatpak
         run: |
           cd flatpak
-          flatpak-builder build-dir com.klpod221.Kerminal.yml --force-clean --install-deps-from=flathub --user
+          flatpak-builder build-dir com.klpod221.Kerminal.yml --force-clean --install-deps-from=flathub --user --repo=repo
           flatpak build-bundle repo kerminal.flatpak com.klpod221.Kerminal
 
       - name: Upload Flatpak
