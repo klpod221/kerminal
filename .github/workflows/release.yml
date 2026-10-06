@@ -111,6 +111,11 @@ jobs:
           echo "Ensuring .DirIcon exists..."
           rm -f squashfs-root/.DirIcon
           cp src-tauri/icons/icon.png squashfs-root/.DirIcon || true
+
+          # Ensure AppRun and binaries have correct executable permissions for firejail
+          chmod a+x squashfs-root/AppRun || true
+          chmod -R a+x squashfs-root/usr/bin/ || true
+
           # Repack AppImage using appimagetool
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
           chmod +x appimagetool
