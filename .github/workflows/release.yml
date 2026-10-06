@@ -111,12 +111,6 @@ jobs:
           echo "Ensuring .DirIcon exists..."
           rm -f squashfs-root/.DirIcon
           cp src-tauri/icons/icon.png squashfs-root/.DirIcon || true
-
-          # Ensure AppRun is a correct relative symlink (Tauri might create absolute symlinks)
-          rm -f squashfs-root/AppRun
-          ln -s usr/bin/Kerminal squashfs-root/AppRun
-          chmod -R +x squashfs-root/usr/bin/ || true
-
           # Repack AppImage using appimagetool
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
           chmod +x appimagetool
