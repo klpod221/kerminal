@@ -112,6 +112,10 @@ jobs:
           rm -f squashfs-root/.DirIcon
           cp src-tauri/icons/icon.png squashfs-root/.DirIcon || true
 
+          # Ensure AppRun and binaries are executable
+          chmod +x squashfs-root/AppRun || true
+          chmod -R +x squashfs-root/usr/bin/ || true
+
           # Repack AppImage using appimagetool
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
           chmod +x appimagetool
