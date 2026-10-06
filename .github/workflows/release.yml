@@ -150,6 +150,45 @@ jobs:
             echo "Fixed AppImage uploaded successfully"
           fi
 
+  build-flatpak:
+    permissions:
+      contents: write
+    name: Build Flatpak
+    needs: build-tauri
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Flatpak Builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+      - name: Download Deb from Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          # Download the .deb from the current release
+          gh release download "$TAG_NAME" -p "*.deb" --dir flatpak/
+          # Rename it to kerminal.deb for the manifest
+          mv flatpak/*.deb flatpak/kerminal.deb
+
+      - name: Build Flatpak
+        run: |
+          cd flatpak
+          flatpak-builder build-dir com.klpod221.Kerminal.yml --force-clean --install-deps-from=flathub --user
+          flatpak build-bundle repo kerminal.flatpak com.klpod221.Kerminal
+
+      - name: Upload Flatpak
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          gh release upload "$TAG_NAME" flatpak/kerminal.flatpak --clobber
+
   publish-aur:
     permissions:
       contents: read

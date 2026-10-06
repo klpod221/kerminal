@@ -1,0 +1,36 @@
+app-id: com.klpod221.Kerminal
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: kerminal
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --share=network
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --filesystem=host
+  - --env=WEBKIT_DISABLE_DMABUF_RENDERER=1
+modules:
+  - name: kerminal
+    buildsystem: simple
+    build-commands:
+      # Extract the Debian package
+      - ar x kerminal.deb
+      - tar xf data.tar.*
+      # Install binary
+      - install -Dm755 usr/bin/kerminal /app/bin/kerminal
+      # Copy icons and rename them to match app-id
+      - cp -r usr/share/icons/hicolor /app/share/
+      - find /app/share/icons/hicolor -name "kerminal.png" -execdir mv {} com.klpod221.Kerminal.png \;
+      - find /app/share/icons/hicolor -name "kerminal.svg" -execdir mv {} com.klpod221.Kerminal.svg \; || true
+      # Copy desktop file and rename/update to match app-id
+      - mkdir -p /app/share/applications
+      - cp usr/share/applications/*.desktop /app/share/applications/com.klpod221.Kerminal.desktop
+      - sed -i 's|^Exec=.*|Exec=kerminal|' /app/share/applications/com.klpod221.Kerminal.desktop
+      - sed -i 's|^Icon=.*|Icon=com.klpod221.Kerminal|' /app/share/applications/com.klpod221.Kerminal.desktop
+    sources:
+      - type: file
+        path: kerminal.deb
