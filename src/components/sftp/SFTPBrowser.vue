@@ -550,8 +550,8 @@ async function handleLocalUpload(files: FileList | File[]) {
       let filePath = "";
       const fileWithPath = file as File & { path?: string };
 
-      if (fileWithPath.path && !fileWithPath.path.includes("/")) {
-        // File has a direct path (not from directory structure)
+      if (fileWithPath.path) {
+        // File has a direct path
         filePath = fileWithPath.path;
       } else if (file instanceof File) {
         const tempDirPath = await tempDir();
@@ -1006,12 +1006,6 @@ async function handleRemoteDragFiles(payload: {
 async function handleSingleFileDownload(file: FileEntry) {
   const localPathResult = await save({
     defaultPath: file.name,
-    filters: [
-      {
-        name: "All Files",
-        extensions: ["*"],
-      },
-    ],
   });
 
   if (localPathResult) {

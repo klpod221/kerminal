@@ -155,9 +155,12 @@ impl SSHKeyService {
         {
             Ok(KeyType::RSA)
         } else if key_content.contains("BEGIN OPENSSH PRIVATE KEY") {
-            if key_content.contains("ssh-ed25519") {
+            // In OpenSSH format, the private key blocks are base64 encoded.
+            // ssh-ed25519 encoded in base64 is c3NoLWVkMjU1MTk
+            // ecdsa-sha2-nistp256 is ZWNkc2Etc2hhMi1uaXN0cDI1Ng
+            if key_content.contains("ssh-ed25519") || key_content.contains("c3NoLWVkMjU1MTk") {
                 Ok(KeyType::Ed25519)
-            } else if key_content.contains("ecdsa") {
+            } else if key_content.contains("ecdsa") || key_content.contains("ZWNkc2Etc2hhMi1uaXN0cDI1Ng") {
                 Ok(KeyType::ECDSA)
             } else {
                 Ok(KeyType::RSA)

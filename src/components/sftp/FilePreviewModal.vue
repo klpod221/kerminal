@@ -882,12 +882,6 @@ async function downloadFile() {
 
   const localPathResult = await save({
     defaultPath: file.value.name,
-    filters: [
-      {
-        name: "All Files",
-        extensions: ["*"],
-      },
-    ],
   });
 
   if (localPathResult) {
