@@ -23,9 +23,10 @@ modules:
       # Install binary
       - install -Dm755 usr/bin/Kerminal /app/bin/kerminal
       # Copy icons and rename them to match app-id
-      - cp -r usr/share/icons/hicolor /app/share/
-      - find /app/share/icons/hicolor -name "kerminal.png" -execdir mv {} com.klpod221.Kerminal.png \;
-      - find /app/share/icons/hicolor -name "kerminal.svg" -execdir mv {} com.klpod221.Kerminal.svg \; || true
+      - mkdir -p /app/share/icons
+      - cp -r usr/share/icons/hicolor /app/share/icons/
+      - find /app/share/icons/hicolor -name "*erminal.png" -execdir mv {} com.klpod221.Kerminal.png \;
+      - find /app/share/icons/hicolor -name "*erminal.svg" -execdir mv {} com.klpod221.Kerminal.svg \; || true
       # Copy desktop file and rename/update to match app-id
       - mkdir -p /app/share/applications
       - cp usr/share/applications/*.desktop /app/share/applications/com.klpod221.Kerminal.desktop
