@@ -41,6 +41,8 @@ pub fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::dashboard::get_system_info,
             commands::dashboard::verify_system_integrity,
+            commands::dashboard::execute_remote_docker_command,
+            commands::dashboard::get_remote_server_metrics,
             commands::terminal::create_terminal,
             commands::terminal::create_ssh_terminal,
             commands::terminal::create_ssh_config_terminal,

@@ -47,6 +47,7 @@
       @move-tab="moveTab"
       @duplicate-tab="duplicateTab"
       @move-tab-to-new-panel="moveTabToNewPanel"
+      @toggle-server-tools="toggleServerTools"
     />
 
     <!-- Panel Content -->
@@ -59,6 +60,26 @@
         :focused-terminal-id="focusedTerminalId"
         @terminal-ready="onTerminalReady"
       />
+      
+      <!-- Server Tools Drawer -->
+      <div 
+        class="absolute top-0 right-0 h-full w-[400px] bg-bg-secondary border-l border-gray-800 shadow-2xl transition-transform duration-300 ease-in-out z-20 flex flex-col"
+        :class="isServerToolsOpen ? 'translate-x-0' : 'translate-x-full'"
+      >
+        <div class="flex items-center justify-between p-3 border-b border-gray-800 bg-bg-primary">
+          <h3 class="font-semibold text-gray-200">Server Tools</h3>
+          <button @click="isServerToolsOpen = false" class="text-gray-400 hover:text-white">
+            <X class="w-4 h-4" />
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-2 space-y-4" v-if="activeProfileId">
+          <ServerMonitor :profile-id="activeProfileId" :is-active="isServerToolsOpen" />
+          <DockerManager :profile-id="activeProfileId" :is-active="isServerToolsOpen" />
+        </div>
+        <div class="flex-1 flex items-center justify-center p-4 text-gray-400 text-center" v-else-if="isServerToolsOpen">
+          <p>Please connect to an SSH server to use Server Tools.</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -75,6 +96,9 @@ import {
 import TabBar from "./TabBar.vue";
 import TerminalManager from "./TerminalManager.vue";
 import DropZones from "./DropZones.vue";
+import ServerMonitor from "../monitor/ServerMonitor.vue";
+import DockerManager from "../docker/DockerManager.vue";
+import { X } from "lucide-vue-next";
 import type { Panel, TerminalInstance, Tab } from "../../types/panel";
 import type { ComponentPublicInstance } from "vue";
 
@@ -127,9 +151,16 @@ const showDropZones = ref(false);
 const dragEnterCounter = ref(0);
 let hideDropZonesTimeout: ReturnType<typeof setTimeout> | null = null;
 
+const isServerToolsOpen = ref(false);
+
 const activeTerminals = computed(() => {
   const tabIds = new Set(props.panel.tabs.map((tab) => tab.id));
   return props.terminals.filter((terminal) => tabIds.has(terminal.id));
+});
+
+const activeProfileId = computed(() => {
+  const activeTerminal = activeTerminals.value.find(t => t.id === props.panel.activeTabId);
+  return activeTerminal?.sshProfileId || activeTerminal?.sshConfigHost || null;
 });
 
 watch(
@@ -194,6 +225,10 @@ const onTerminalReady = (terminalId: string): void => {
 
 const handlePanelClick = (): void => {
   emit("setActivePanel", props.panel.id);
+};
+
+const toggleServerTools = (): void => {
+  isServerToolsOpen.value = !isServerToolsOpen.value;
 };
 
 /**

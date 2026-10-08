@@ -155,6 +155,17 @@
         @click="splitHorizontal"
       />
 
+      <!-- Server Tools Button -->
+      <Button
+        v-if="!isMobile && isSSH"
+        title="Server Tools (Monitor & Docker)"
+        variant="ghost"
+        size="sm"
+        :icon="Activity"
+        class="hover:text-green-400"
+        @click="toggleServerTools"
+      />
+
       <!-- Split Vertical Button - Hide on mobile -->
       <Button
         v-if="!isMobile"
@@ -179,6 +190,7 @@
 
       <!-- Close Panel Button -->
       <Button
+        v-if="!isOnlyPanel"
         title="Close panel"
         variant="ghost"
         size="sm"
@@ -215,6 +227,7 @@ import {
   ChevronRight,
   Terminal,
   Settings,
+  Activity,
 } from "lucide-vue-next";
 import Tab from "./Tab.vue";
 import Button from "./Button.vue";
@@ -227,6 +240,7 @@ import type {
   TerminalInstance,
 } from "../../types/panel";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu.vue";
+import { useWorkspaceStore } from "../../stores/workspace";
 
 interface TabBarProps {
   panel: Panel;
@@ -250,6 +264,7 @@ interface TabBarEmits {
   duplicateTab: [panelId: string, tabId: string];
   moveTabToNewPanel: [panelId: string, tabId: string];
   addTabWithProfile: [panelId: string, profile: any];
+  toggleServerTools: [panelId: string];
 }
 
 const props = withDefaults(defineProps<TabBarProps>(), {
@@ -257,6 +272,7 @@ const props = withDefaults(defineProps<TabBarProps>(), {
 });
 
 const emit = defineEmits<TabBarEmits>();
+const workspaceStore = useWorkspaceStore();
 const { width: windowWidth, isMobile } = useWindowSize();
 
 const tabsContainer = ref<HTMLElement | null>(null);
@@ -273,6 +289,13 @@ const canScrollRight = computed(
   () => scrollOffset.value > -maxScrollOffset.value,
 );
 const showScrollButtons = computed(() => maxScrollOffset.value > 0);
+
+const isOnlyPanel = computed(() => workspaceStore.panelLayout.type === 'panel');
+
+const isSSH = computed(() => {
+  const activeTerminal = props.terminals?.find(t => t.id === props.panel.activeTabId);
+  return activeTerminal?.sshProfileId || activeTerminal?.sshConfigHost;
+});
 
 /**
  * Get backend terminal ID for a tab
@@ -563,6 +586,10 @@ const handleCloseToRight = (tab: TabType): void => {
  */
 const handleMoveToNewPanel = (tab: TabType): void => {
   emit("moveTabToNewPanel", props.panel.id, tab.id);
+};
+
+const toggleServerTools = (): void => {
+  emit("toggleServerTools", props.panel.id);
 };
 
 const onTabDragStart = (_tab: TabType): void => {
