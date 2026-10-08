@@ -41,6 +41,8 @@ import {
 import { invoke } from "@tauri-apps/api/core";
 import { api } from "../services/api";
 import { TerminalRegistry } from "../core";
+import { useSSHStore } from "./ssh";
+import { showConfirm } from "../utils/message";
 import type {
   ResizeTerminalRequest,
   TerminalData,
@@ -1309,8 +1311,31 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       );
     } else if (profileId) {
       return withRetry(
-        () => createSSHTerminal(profileId), // assertion removed
-        { maxRetries: 2, retryDelay: 1000 },
+        async () => {
+          try {
+            return await createSSHTerminal(profileId);
+          } catch (e: any) {
+            const errMsg = JSON.stringify(e);
+            if (errMsg.includes("Unknown server key")) {
+              const profile = useSSHStore().findProfileById(profileId);
+              if (profile && profile.host) {
+                const inspection = await api.callRaw<any>("inspect_ssh_host_key", { host: profile.host, port: profile.port || 22 });
+                const msg = inspection.status === "changed" 
+                  ? `WARNING: The host key for ${profile.host} has CHANGED!\nFingerprint: ${inspection.fingerprint}\n\nDo you want to trust it anyway? (This could be a MITM attack)`
+                  : `The host key for ${profile.host} is unknown.\nFingerprint: ${inspection.fingerprint}\n\nDo you want to trust it?`;
+                const trusted = await showConfirm("SSH Host Key Verification", msg);
+                if (trusted) {
+                  await api.callRaw("trust_ssh_host_key", { host: profile.host, port: profile.port || 22, expectedFingerprint: inspection.fingerprint });
+                  return await createSSHTerminal(profileId);
+                } else {
+                  throw new Error("Host key verification rejected by user.");
+                }
+              }
+            }
+            throw e;
+          }
+        },
+        { maxRetries: 0, retryDelay: 1000 },
         context,
       );
     } else if (terminal.profileId) {

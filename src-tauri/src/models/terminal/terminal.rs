@@ -59,7 +59,7 @@ pub struct TerminalInfo {
 #[serde(rename_all = "camelCase")]
 pub struct TerminalData {
     pub terminal_id: String,
-    pub data: Vec<u8>,
+    pub data: String,
 }
 
 /// Request to create a new terminal

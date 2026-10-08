@@ -31,7 +31,6 @@ export class InputBatcher {
 
   private readonly pendingData: Map<string, string> = new Map();
   private readonly timeouts: Map<string, number> = new Map();
-  private readonly BATCH_DELAY = 16; // ~60fps, optimal for human typing
 
   /**
    * Get singleton instance
@@ -52,14 +51,17 @@ export class InputBatcher {
     const currentData = this.pendingData.get(terminalId) || "";
     this.pendingData.set(terminalId, currentData + data);
 
-    const existingTimeout = this.timeouts.get(terminalId);
-    if (existingTimeout) {
-      clearTimeout(existingTimeout);
+    // If there's already a pending flush, let it batch.
+    if (this.timeouts.has(terminalId)) {
+      return;
     }
 
+    // Schedule flush at the end of the current event loop tick.
+    // This batches synchronous calls (e.g., pasting chunked data) but
+    // sends single keystrokes almost immediately without the 16ms debounce delay.
     const timeout = globalThis.setTimeout(() => {
       this.flushInput(terminalId);
-    }, this.BATCH_DELAY);
+    }, 0);
 
     this.timeouts.set(terminalId, timeout);
   }

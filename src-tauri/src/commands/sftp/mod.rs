@@ -37,8 +37,10 @@ macro_rules! sftp_result {
 pub async fn sftp_connect(
     state: State<'_, AppState>,
     request: ConnectSFTPRequest,
+    app_handle: tauri::AppHandle,
 ) -> Result<ConnectResponse, String> {
-    let session_id = sftp_result!(state.sftp_service.connect(request.profile_id).await)?;
+    let known_hosts_path = crate::commands::ssh_host_key::get_known_hosts_path(&app_handle);
+    let session_id = sftp_result!(state.sftp_service.connect(request.profile_id, known_hosts_path).await)?;
 
     // Resolve $HOME server-side; gracefully degrade to "/" on older servers.
     let home_dir = state

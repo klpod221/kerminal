@@ -110,6 +110,7 @@ impl TerminalManager {
             terminal_id.clone(),
             config.clone(),
             Some(self.database_service.clone()),
+            app_handle.clone(),
         )
         .await?;
 
@@ -181,18 +182,19 @@ impl TerminalManager {
                 let _ = handle.emit("ssh-connected", &success_event);
             }
         }
-        let (tx, mut rx) = mpsc::unbounded_channel::<Vec<u8>>();
         let (title_tx, mut title_rx) = mpsc::unbounded_channel::<String>();
         let (exit_tx, mut exit_rx) = mpsc::unbounded_channel::<TerminalExited>();
         let (latency_tx, mut latency_rx) = mpsc::unbounded_channel::<TerminalLatency>();
 
-        {
-            let mut senders = self.output_senders.write().await;
-            senders.insert(terminal_id.clone(), tx.clone());
-        }
+        let buffer = crate::utils::output_buffer::TerminalOutputBuffer::new(4 * 1024 * 1024); // 4MB
 
         terminal
-            .start_read_loop(tx, Some(title_tx), Some(exit_tx), Some(latency_tx))
+            .start_read_loop(
+                buffer.clone(),
+                Some(title_tx),
+                Some(exit_tx),
+                Some(latency_tx),
+            )
             .await?;
 
         let terminal_id_clone = terminal_id.clone();
@@ -201,16 +203,38 @@ impl TerminalManager {
         let recorders_clone = self.recorders.clone();
 
         tokio::spawn(async move {
-            while let Some(data) = rx.recv().await {
-                let terminal_data = TerminalData {
-                    terminal_id: terminal_id_clone.clone(),
-                    data: data.clone(),
-                };
+            let mut decoder = crate::utils::utf8::IncrementalUtf8Decoder::new();
+            loop {
+                let (data, dropped_count) = buffer.pop_all().await;
+                if data.is_empty() {
+                    break; // EOF
+                }
+
+                if dropped_count > 0 {
+                    // Send a warning to frontend if bytes were dropped
+                    let warning_data = TerminalData {
+                        terminal_id: terminal_id_clone.clone(),
+                        data: format!("\r\n\x1b[31m[Kerminal Warning: output too fast, dropped {} bytes]\x1b[0m\r\n", dropped_count),
+                    };
+                    if let Some(handle) = &app_handle_clone {
+                        let _ = handle.emit("terminal-output", &warning_data);
+                    }
+                }
 
                 // Record output if recording is active (always record raw output)
                 if let Some(recorder) = recorders_clone.read().await.get(&terminal_id_clone) {
                     let _ = recorder.record_output(&data).await;
                 }
+
+                let decoded = decoder.decode(&data);
+                if decoded.is_empty() {
+                    continue;
+                }
+
+                let terminal_data = TerminalData {
+                    terminal_id: terminal_id_clone.clone(),
+                    data: decoded,
+                };
 
                 if let Some(handle) = &app_handle_clone {
                     let _ = handle.emit("terminal-output", &terminal_data);

@@ -84,7 +84,8 @@ pub async fn start_tunnel(
     id: String,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    tunnel_result!(state.tunnel_service.start_tunnel(id.clone()).await)?;
+    let known_hosts_path = crate::commands::ssh_host_key::get_known_hosts_path(&app_handle);
+    tunnel_result!(state.tunnel_service.start_tunnel(id.clone(), known_hosts_path).await)?;
     let tunnel_with_status = app_result!(state.tunnel_service.get_tunnel_with_status(&id).await)?;
     let _ = app_handle.emit("tunnel_started", &tunnel_with_status);
     Ok(())

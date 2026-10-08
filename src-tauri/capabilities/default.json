@@ -9,11 +9,10 @@
     "core:default",
     "opener:default",
     {
-      "identifier": "opener:allow-open-path",
+      "identifier": "opener:allow-open-url",
       "allow": [
-        {
-          "path": "**/*"
-        }
+        { "url": "http://*" },
+        { "url": "https://*" }
       ]
     },
     "store:default",
@@ -30,9 +29,11 @@
     {
       "identifier": "fs:scope",
       "allow": [
-        {
-          "path": "**/*"
-        }
+        { "path": "$APPDATA/**" },
+        { "path": "$APPCONFIG/**" },
+        { "path": "$TEMP/**" },
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$HOME/**" }
       ]
     }
   ]

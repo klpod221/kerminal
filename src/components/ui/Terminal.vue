@@ -323,15 +323,6 @@ const handleCloseTab = () => {
 
 const inputBatcher = InputBatcher.getInstance();
 
-const handleTerminalInput = (data: string): void => {
-  if (!props.backendTerminalId) return;
-
-  try {
-    inputBatcher.batchInput(props.backendTerminalId, data);
-  } catch (error) {
-    console.error("Failed to batch input for terminal:", error);
-  }
-};
 
 const handleTerminalResize = async (): Promise<void> => {
   if (!fitAddon || !props.backendTerminalId) return;
@@ -704,9 +695,7 @@ onMounted(async () => {
     return true;
   });
 
-  term.onData((data) => {
-    handleTerminalInput(data);
-  });
+  // onData is now handled centrally by TerminalManager via TerminalRegistry.setInputHandler
 
   await nextTick();
 

@@ -211,7 +211,7 @@ impl LocalTerminal {
     /// Start reading from terminal and send output to the provided sender
     pub async fn start_read_loop(
         &mut self,
-        sender: mpsc::UnboundedSender<Vec<u8>>,
+        sender: Arc<crate::utils::output_buffer::TerminalOutputBuffer>,
         title_sender: Option<mpsc::UnboundedSender<String>>,
         exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>,
         _latency_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalLatency>>,
@@ -239,6 +239,8 @@ impl LocalTerminal {
                                     warn!("Exit event channel closed for terminal {}", terminal_id);
                                 }
                             }
+                            // signal EOF to the buffer
+                            sender.push(&[]);
                             break;
                         }
                         Ok(n) => {
@@ -250,21 +252,17 @@ impl LocalTerminal {
                                 }
                             }
 
-                            if sender.send(data).is_err() {
-                                break;
-                            }
+                            sender.push(&data);
                         }
                         Err(e) => {
                             error!("Failed to read from PTY: {}", e);
                             let error_msg = format!("PTY read error: {}", e).into_bytes();
-                            if sender.send(error_msg).is_err() {
-                                warn!("Data channel closed for terminal {}", terminal_id);
-                            }
+                            sender.push(&error_msg);
+                            // signal EOF
+                            sender.push(&[]);
                             break;
                         }
                     }
-
-                    // Removed fixed sleep: PTY read naturally blocks when no data
                 }
             });
 

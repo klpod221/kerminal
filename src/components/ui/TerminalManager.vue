@@ -10,7 +10,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
-import { bytesToString, debounce } from "../../utils/helpers";
+import { debounce } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { TerminalRegistry, InputBatcher, FlowController } from "../../core";
@@ -183,6 +183,16 @@ const ensureTerminalExists = async (terminalId: string): Promise<void> => {
     flowController,
   );
 
+  // Attach input handler
+  const terminal = props.terminals.find((t) => t.id === terminalId);
+  if (terminal?.backendTerminalId) {
+    TerminalRegistry.setInputHandler(terminal.id, (data) => {
+      if (terminal.backendTerminalId) {
+        inputBatcher.batchInput(terminal.backendTerminalId, data);
+      }
+    });
+  }
+
   // Note: Fit will be done after mounting to panel (hidden host has no dimensions)
 
   // Emit ready event
@@ -310,7 +320,7 @@ watch(
       }
     }
   },
-  { deep: true },
+  { deep: true, immediate: true },
 );
 
 // Watch for settings changes
@@ -369,13 +379,9 @@ onMounted(async () => {
         if (!matchingTerminal) return;
 
         const managed = TerminalRegistry.getTerminal(matchingTerminal.id);
-        if (managed?.flowController) {
-          const output = bytesToString(terminalData.data);
-          managed.flowController.write(output);
-        } else if (managed?.term) {
-          // Fallback if no flow controller (shouldn't happen with new logic)
-          const output = bytesToString(terminalData.data);
-          managed.term.write(output);
+        if (managed?.term) {
+          // Temporarily bypass FlowController to fix rendering freeze
+          managed.term.write(terminalData.data);
         }
       },
     );

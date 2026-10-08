@@ -45,7 +45,7 @@
   "bundle": {
     "createUpdaterArtifacts": true,
     "publisher": "klpod221",
-    "license": "MIT",
+    "license": "GPL-3.0-or-later",
     "copyright": "klpod221",
     "homepage": "https://klpod221.com/kerminal",
     "active": true,

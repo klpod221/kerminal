@@ -114,7 +114,7 @@ export interface ResizeTerminalRequest {
 
 export interface TerminalData {
   terminalId: string;
-  data: number[]; // Vec<u8> from Rust
+  data: string; // Decoded string from Rust
 }
 
 export interface TerminalTitleChanged {

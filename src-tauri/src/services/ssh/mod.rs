@@ -195,6 +195,7 @@ impl SSHService {
             config,
             profile,
             Some(self.database_service.clone()),
+            std::path::PathBuf::from("known_hosts"),
         )
         .map_err(|e| {
             crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string()))

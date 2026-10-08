@@ -26,6 +26,7 @@ mod models;
 mod services;
 mod setup;
 mod state;
+mod utils;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn main() {
@@ -177,6 +178,8 @@ pub fn main() {
             commands::terminal_profile::get_default_terminal_profile,
             commands::database::backup::export_backup,
             commands::database::backup::import_backup,
+            commands::ssh_host_key::inspect_ssh_host_key,
+            commands::ssh_host_key::trust_ssh_host_key,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

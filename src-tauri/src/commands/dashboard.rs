@@ -182,10 +182,12 @@ async fn execute_ssh_command(
     profile_id: &str,
     command: &str,
     app_state: &State<'_, AppState>,
+    app_handle: &tauri::AppHandle,
 ) -> Result<String, String> {
+    let known_hosts_path = crate::commands::ssh_host_key::get_known_hosts_path(app_handle);
     let session_key = app_state
         .sftp_service
-        .connect(profile_id.to_string())
+        .connect(profile_id.to_string(), known_hosts_path)
         .await
         .map_err(|e| format!("Connection failed: {:?}", e))?;
 
@@ -224,11 +226,12 @@ pub async fn execute_remote_docker_command(
     action: String,
     container_id: Option<String>,
     app_state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<Vec<DockerContainer>, String> {
     log::info!("Executing docker action '{}' on profile {}", action, profile_id);
     
     if action == "ps" {
-        let output = execute_ssh_command(&profile_id, "docker ps -a --format '{{json .}}'", &app_state).await?;
+        let output = execute_ssh_command(&profile_id, "docker ps -a --format '{{json .}}'", &app_state, &app_handle).await?;
         let mut containers = Vec::new();
         for line in output.lines() {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(line) {
@@ -246,7 +249,7 @@ pub async fn execute_remote_docker_command(
     } else if action == "start" || action == "stop" {
         if let Some(id) = container_id {
             let cmd = format!("docker {} {}", action, id);
-            execute_ssh_command(&profile_id, &cmd, &app_state).await?;
+            execute_ssh_command(&profile_id, &cmd, &app_state, &app_handle).await?;
         }
         return Ok(vec![]);
     }
@@ -274,22 +277,23 @@ pub struct ServerMetrics {
 pub async fn get_remote_server_metrics(
     profile_id: String,
     app_state: State<'_, AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<ServerMetrics, String> {
     log::info!("Fetching remote metrics for profile {}", profile_id);
     
     // CPU: run top -bn1 | grep 'Cpu(s)' 
-    let cpu_out = execute_ssh_command(&profile_id, "top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'", &app_state).await?;
+    let cpu_out = execute_ssh_command(&profile_id, "top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'", &app_state, &app_handle).await?;
     let cpu: u8 = cpu_out.trim().parse::<f32>().unwrap_or(0.0) as u8;
 
     // CPU Name:
-    let cpu_name_out = execute_ssh_command(&profile_id, "cat /proc/cpuinfo | grep 'model name' | head -n 1 | awk -F: '{print $2}'", &app_state).await?;
+    let cpu_name_out = execute_ssh_command(&profile_id, "cat /proc/cpuinfo | grep 'model name' | head -n 1 | awk -F: '{print $2}'", &app_state, &app_handle).await?;
     let mut cpu_name = cpu_name_out.trim().to_string();
     if cpu_name.is_empty() {
         cpu_name = "CPU".to_string();
     }
 
     // RAM: run free -m
-    let ram_out = execute_ssh_command(&profile_id, "free -m | grep Mem | awk '{print $3\",\"$2}'", &app_state).await?;
+    let ram_out = execute_ssh_command(&profile_id, "free -m | grep Mem | awk '{print $3\",\"$2}'", &app_state, &app_handle).await?;
     let mut ram_used_mb = 0.0;
     let mut ram_total_mb = 0.0;
     if let Some((u, t)) = ram_out.trim().split_once(',') {
@@ -301,7 +305,7 @@ pub async fn get_remote_server_metrics(
     let ram_total = format!("{:.1}", ram_total_mb / 1024.0);
 
     // Disk: run df -h /
-    let disk_out = execute_ssh_command(&profile_id, "df -h / | tail -n 1 | awk '{print $5}' | sed 's/%//'", &app_state).await?;
+    let disk_out = execute_ssh_command(&profile_id, "df -h / | tail -n 1 | awk '{print $5}' | sed 's/%//'", &app_state, &app_handle).await?;
     let disk: u8 = disk_out.trim().parse().unwrap_or(0);
 
     // GPU: nvidia-smi (NVIDIA) or rocm-smi (AMD)
@@ -312,7 +316,7 @@ pub async fn get_remote_server_metrics(
     let mut gpu_name = "GPU Compute".to_string();
     
     // Check NVIDIA first
-    if let Ok(gpu_out) = execute_ssh_command(&profile_id, "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits", &app_state).await {
+    if let Ok(gpu_out) = execute_ssh_command(&profile_id, "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits", &app_state, &app_handle).await {
         if !gpu_out.trim().is_empty() && !gpu_out.contains("command not found") && !gpu_out.contains("not found") {
             has_gpu = true;
             if let Some(first_line) = gpu_out.lines().next() {
@@ -331,7 +335,7 @@ pub async fn get_remote_server_metrics(
 
     // If no NVIDIA, check AMD (rocm-smi)
     if !has_gpu {
-        if let Ok(amd_out) = execute_ssh_command(&profile_id, "rocm-smi --showuse --showmeminfo vram --csv", &app_state).await {
+        if let Ok(amd_out) = execute_ssh_command(&profile_id, "rocm-smi --showuse --showmeminfo vram --csv", &app_state, &app_handle).await {
             if !amd_out.trim().is_empty() && !amd_out.contains("command not found") && !amd_out.contains("not found") {
                 has_gpu = true;
                 // Parse CSV from rocm-smi

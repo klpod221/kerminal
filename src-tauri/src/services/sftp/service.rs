@@ -37,7 +37,11 @@ use russh_sftp::client::SftpSession;
 
 /// Simple handler for SFTP connections
 #[derive(Clone)]
-pub struct SFTPClientHandler;
+pub struct SFTPClientHandler {
+    host: String,
+    port: u16,
+    known_hosts_path: std::path::PathBuf,
+}
 
 #[async_trait]
 impl russh::client::Handler for SFTPClientHandler {
@@ -45,9 +49,16 @@ impl russh::client::Handler for SFTPClientHandler {
 
     async fn check_server_key(
         &mut self,
-        _server_public_key: &PublicKey,
+        server_public_key: &PublicKey,
     ) -> Result<bool, Self::Error> {
-        Ok(true)
+        if !self.known_hosts_path.exists() {
+            return Ok(false);
+        }
+        
+        match russh_keys::check_known_hosts_path(&self.host, self.port, server_public_key, &self.known_hosts_path) {
+            Ok(true) => Ok(true),
+            _ => Ok(false),
+        }
     }
 }
 
@@ -76,7 +87,7 @@ impl SFTPService {
     }
 
     /// Connect to SFTP server using SSH profile
-    pub async fn connect(&self, profile_id: String) -> Result<String, SFTPError> {
+    pub async fn connect(&self, profile_id: String, known_hosts_path: std::path::PathBuf) -> Result<String, SFTPError> {
         // Get profile from database
         let profile = self
             .ssh_service
@@ -117,7 +128,11 @@ impl SFTPService {
         config.maximum_packet_size = 32768;
 
         let config = Arc::new(config);
-        let handler = SFTPClientHandler;
+        let handler = SFTPClientHandler {
+            host: profile.host.clone(),
+            port: profile.port,
+            known_hosts_path,
+        };
 
         let mut session = if let Some(proxy_config) = &profile.proxy {
             let stream = create_proxy_stream(proxy_config, &profile.host, profile.port)

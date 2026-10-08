@@ -96,7 +96,7 @@ impl TerminalWrapper {
     /// Start reading from terminal and send output to the provided sender
     pub async fn start_read_loop(
         &mut self,
-        sender: mpsc::UnboundedSender<Vec<u8>>,
+        sender: Arc<crate::utils::output_buffer::TerminalOutputBuffer>,
         title_sender: Option<mpsc::UnboundedSender<String>>,
         exit_sender: Option<mpsc::UnboundedSender<TerminalExited>>,
         latency_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalLatency>>,
@@ -125,6 +125,7 @@ impl TerminalFactory {
         id: String,
         config: TerminalConfig,
         database_service: Option<Arc<Mutex<DatabaseService>>>,
+        app_handle: Option<tauri::AppHandle>,
     ) -> Result<TerminalWrapper, AppError> {
         match config.terminal_type {
             TerminalType::Local => {
@@ -156,11 +157,18 @@ impl TerminalFactory {
                         .map_err(|e| AppError::Database(e.to_string()))?
                 };
 
+                let known_hosts_path = if let Some(app) = &app_handle {
+                    crate::commands::ssh_host_key::get_known_hosts_path(app)
+                } else {
+                    std::path::PathBuf::from("known_hosts")
+                };
+
                 Ok(TerminalWrapper::Ssh(Box::new(ssh::SSHTerminal::new(
                     id,
                     config,
                     ssh_profile,
                     Some(database_service),
+                    known_hosts_path,
                 )?)))
             }
             TerminalType::SSHConfig => {
@@ -176,11 +184,18 @@ impl TerminalFactory {
                     .to_temporary_profile(password)
                     .map_err(|e| AppError::Config(format!("Failed to create profile: {}", e)))?;
 
+                let known_hosts_path = if let Some(app) = &app_handle {
+                    crate::commands::ssh_host_key::get_known_hosts_path(app)
+                } else {
+                    std::path::PathBuf::from("known_hosts")
+                };
+
                 Ok(TerminalWrapper::Ssh(Box::new(ssh::SSHTerminal::new(
                     id,
                     config,
                     ssh_profile,
                     database_service,
+                    known_hosts_path,
                 )?)))
             }
         }
