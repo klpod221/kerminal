@@ -18,7 +18,7 @@ import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { debounce } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
 import { useWorkspaceStore } from "../../stores/workspace";
-import { TerminalRegistry, InputBatcher, createTerminalOutputWriter, createTerminalRendererHealthWatchdog } from "../../core";
+import { TerminalRegistry, createTerminalOutputWriter, createTerminalRendererHealthWatchdog } from "../../core";
 import { getTerminalMetrics } from "../../services/terminal";
 
 (window as any).getTerminalMetrics = async (id: string) => {
@@ -52,10 +52,14 @@ const props = defineProps<TerminalManagerProps>();
 const workspaceStore = useWorkspaceStore();
 const settingsStore = useSettingsStore();
 
+import { useTerminalInputSecurity } from "../../composables/terminal/useTerminalInputSecurity";
+import { useBroadcastStore } from "../../stores/broadcast";
+const { handleTerminalInput } = useTerminalInputSecurity();
+const broadcastStore = useBroadcastStore();
+
 const mountPointRef = ref<HTMLElement | null>(null);
 
 let outputUnlisten: (() => void) | null = null;
-const inputBatcher = InputBatcher.getInstance();
 
 // Track currently mounted terminal
 const currentMountedId = ref<string | null>(null);
@@ -146,21 +150,26 @@ const createTerminalInstance = async (
 
   term.open(container);
 
-  // Handle paste
+  // Handle custom key events
   term.attachCustomKeyEventHandler((arg: KeyboardEvent): boolean => {
     if (
       (arg.ctrlKey || arg.metaKey) &&
       arg.shiftKey &&
-      arg.key === "v" &&
       arg.type === "keydown"
     ) {
-      (async () => {
-        const clipboardText = await readText();
-        if (clipboardText) {
-          term.write(clipboardText);
-        }
-      })();
-      return false;
+      if (arg.key === "v") {
+        (async () => {
+          const clipboardText = await readText();
+          if (clipboardText) {
+            term.write(clipboardText);
+          }
+        })();
+        return false;
+      }
+      if (arg.key === "b" || arg.key === "B") {
+        broadcastStore.toggleBroadcast();
+        return false;
+      }
     }
     return true;
   });
@@ -214,16 +223,13 @@ const ensureTerminalExists = async (terminalId: string): Promise<void> => {
   );
 
   // Attach input handler
-  const terminal = props.terminals.find((t) => t.id === terminalId);
-    TerminalRegistry.setInputHandler(terminal.id, (data) => {
-      if (terminal.backendTerminalId) {
-        inputBatcher.batchInput(terminal.backendTerminalId, data);
-        const managed = TerminalRegistry.getTerminal(terminal.id);
-        if (managed?.outputWriter) {
-          managed.outputWriter.flush();
-        }
-      }
+  TerminalRegistry.setInputHandler(terminalId, (data) => {
+    handleTerminalInput(terminalId, data, {
+      activeTerminalId: props.activeTerminalId || terminalId,
+      panels: workspaceStore.getAllPanels(),
+      allTerminals: workspaceStore.terminals,
     });
+  });
 
   // Note: Fit will be done after mounting to panel (hidden host has no dimensions)
 
@@ -342,15 +348,14 @@ watch(
         await ensureTerminalExists(terminal.id);
       }
 
-      // Update input handler if backendTerminalId is set (uses safe replacement)
-      if (terminal.backendTerminalId) {
-        TerminalRegistry.setInputHandler(terminal.id, (data) => {
-          if (terminal.backendTerminalId) {
-            inputBatcher.batchInput(terminal.backendTerminalId, data);
-            TerminalRegistry.getTerminal(terminal.id)?.outputWriter?.flush();
-          }
+      // Update input handler (uses safe replacement)
+      TerminalRegistry.setInputHandler(terminal.id, (data) => {
+        handleTerminalInput(terminal.id, data, {
+          activeTerminalId: props.activeTerminalId || terminal.id,
+          panels: workspaceStore.getAllPanels(),
+          allTerminals: workspaceStore.terminals,
         });
-      }
+      });
     }
   },
   { deep: true, immediate: true },

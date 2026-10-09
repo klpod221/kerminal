@@ -28,6 +28,7 @@ import { api } from "../services/api";
 import { TerminalRegistry } from "../core";
 import { useSSHStore } from "./ssh";
 import { showConfirm } from "../utils/message";
+import { collectAllPanels } from "../types/panel";
 import type {
   ResizeTerminalRequest,
   TerminalData,
@@ -1615,5 +1616,6 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     findPanelInLayout: (panelId: string) =>
       findPanelInLayout(panelLayout.value, panelId),
     collectPanelIds: () => collectPanelIds(panelLayout.value),
+    getAllPanels: () => collectAllPanels(panelLayout.value),
   };
 });

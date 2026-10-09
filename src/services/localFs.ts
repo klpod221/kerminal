@@ -58,6 +58,10 @@ export async function createLocalFile(path: string, contents = ""): Promise<void
   await api.callRaw("local_fs_write_text_file", { path, contents });
 }
 
+export async function readLocalTextFile(path: string): Promise<string> {
+  return await api.callRaw<string>("local_fs_read_text_file", { path });
+}
+
 export async function removeLocalPath(path: string): Promise<void> {
   await api.callRaw("local_fs_remove", { path });
 }

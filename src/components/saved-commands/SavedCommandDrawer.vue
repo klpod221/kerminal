@@ -73,15 +73,51 @@
           </Form>
         </div>
 
-        <!-- Stats -->
-        <div class="flex items-center gap-4 text-xs text-gray-400">
-          <span
-            >Showing {{ filteredCommandCount }} of
-            {{ savedCommandStore.commandCount }} commands</span
+        <!-- Scope Pills Selector -->
+        <div class="flex items-center gap-1.5 pt-1">
+          <span class="text-xs text-gray-400 mr-1">Scope:</span>
+          <button
+            type="button"
+            class="px-2 py-0.5 text-xs rounded transition-colors"
+            :class="
+              activeScope === 'all'
+                ? 'bg-blue-600/30 text-blue-300 font-medium border border-blue-500/40'
+                : 'text-gray-400 hover:text-white bg-gray-800/60'
+            "
+            @click="activeScope = 'all'"
           >
-          <span v-if="activeFilter !== 'all'" class="text-blue-400">
-            • Filtered by {{ activeFilterLabel }}
-          </span>
+            All
+          </button>
+          <button
+            type="button"
+            class="px-2 py-0.5 text-xs rounded transition-colors"
+            :class="
+              activeScope === 'local'
+                ? 'bg-emerald-600/30 text-emerald-300 font-medium border border-emerald-500/40'
+                : 'text-gray-400 hover:text-white bg-gray-800/60'
+            "
+            @click="activeScope = 'local'"
+          >
+            💻 Local
+          </button>
+          <button
+            type="button"
+            class="px-2 py-0.5 text-xs rounded transition-colors"
+            :class="
+              activeScope === 'ssh'
+                ? 'bg-purple-600/30 text-purple-300 font-medium border border-purple-500/40'
+                : 'text-gray-400 hover:text-white bg-gray-800/60'
+            "
+            @click="activeScope = 'ssh'"
+          >
+            ☁️ SSH
+          </button>
+        </div>
+
+        <!-- Stats -->
+        <div class="text-xs text-gray-400">
+          Showing {{ filteredCommandCount }} of
+          {{ savedCommandStore.commandCount }} commands
         </div>
       </div>
 
@@ -176,14 +212,32 @@
 
     <!-- Footer -->
     <template #footer>
-      <div class="flex justify-between items-center gap-2">
-        <div class="flex gap-2">
+      <div class="flex justify-between items-center gap-2 w-full">
+        <div class="flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="sm"
             :icon="FolderPlus"
             text="New Group"
             @click="createNewGroup()"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="Upload"
+            title="Import from JSON or Shell script (.sh)"
+            text="Import"
+            :loading="isImporting"
+            @click="triggerImportDialog"
+          />
+          <Button
+            variant="ghost"
+            size="sm"
+            :icon="Download"
+            title="Export snippets to JSON or Shell script (.sh)"
+            text="Export"
+            :loading="isExporting"
+            @click="exportSnippets"
           />
         </div>
 
@@ -218,6 +272,8 @@ import {
   Zap,
   Wrench,
   Monitor,
+  Upload,
+  Download,
 } from "lucide-vue-next";
 import Drawer from "../ui/Drawer.vue";
 import Form from "../ui/Form.vue";
@@ -230,19 +286,29 @@ import SavedCommandItem from "./SavedCommandItem.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useDebounce } from "../../composables/useDebounce";
 import { useSavedCommandStore } from "../../stores/savedCommand";
+import { useSnippetTransfer } from "../../composables/saved-commands/useSnippetTransfer";
 import { message, showConfirm } from "../../utils/message";
 import type {
   SavedCommand,
   SavedCommandGroup,
   SavedCommandSearchParams,
+  SavedCommandScope,
 } from "../../types/savedCommand";
+import { extractScopeFromTags } from "../../types/savedCommand";
 
 const { openOverlay, closeOverlay } = useOverlay();
 const savedCommandStore = useSavedCommandStore();
+const {
+  isImporting,
+  isExporting,
+  exportSnippets,
+  triggerImportDialog,
+} = useSnippetTransfer();
 
 const searchQuery = ref("");
 const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 const activeFilter = ref<"all" | "favorites" | "recent" | "unused">("all");
+const activeScope = ref<SavedCommandScope | "all">("all");
 const sortBy = ref<"name" | "lastUsed" | "usageCount" | "createdAt">("name");
 
 const iconComponents: Record<string, any> = {
@@ -272,19 +338,14 @@ const filteredCommands = computed(() => {
     sortOrder: sortOrder.value,
   };
 
-  return savedCommandStore.filterCommands(searchParams);
+  let list = savedCommandStore.filterCommands(searchParams);
+  if (activeScope.value !== "all") {
+    list = list.filter((c) => extractScopeFromTags(c.tags) === activeScope.value);
+  }
+  return list;
 });
 
 const filteredCommandCount = computed(() => filteredCommands.value.length);
-
-const activeFilterLabel = computed(() => {
-  const labels: Record<string, string> = {
-    favorites: "Favorites",
-    recent: "Recent",
-    unused: "Unused",
-  };
-  return labels[activeFilter.value] || "All";
-});
 
 const filteredGroupsData = computed(() => {
   const getSortValue = (command: SavedCommand): number | string => {

@@ -48,23 +48,31 @@
             {{ command.name }}
           </h4>
 
+          <!-- Scope badge -->
+          <Badge v-if="commandScope === 'local'" variant="success" size="xs">
+            💻 Local
+          </Badge>
+          <Badge v-else-if="commandScope === 'ssh'" variant="purple" size="xs">
+            ☁️ SSH
+          </Badge>
+
           <!-- Usage count badge -->
           <Badge v-if="command.usageCount > 0" variant="gray" size="xs">
             {{ command.usageCount }}× used
           </Badge>
 
           <!-- Tags -->
-          <div v-if="parsedTags.length > 0" class="flex items-center gap-1">
+          <div v-if="displayTags.length > 0" class="flex items-center gap-1">
             <Badge
-              v-for="tag in parsedTags.slice(0, 3)"
+              v-for="tag in displayTags.slice(0, 3)"
               :key="tag"
               variant="primary"
               size="xs"
             >
               {{ tag }}
             </Badge>
-            <Badge v-if="parsedTags.length > 3" variant="outline" size="xs">
-              +{{ parsedTags.length - 3 }}
+            <Badge v-if="displayTags.length > 3" variant="outline" size="xs">
+              +{{ displayTags.length - 3 }}
             </Badge>
           </div>
         </div>
@@ -137,12 +145,15 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { SavedCommand } from "../../types/savedCommand";
+import {
+  extractScopeFromTags,
+  getDisplayTags,
+} from "../../types/savedCommand";
 import { Copy, Star, Edit3, Trash2, Clock, Play } from "lucide-vue-next";
 import Card from "../ui/Card.vue";
 import Badge from "../ui/Badge.vue";
 import Button from "../ui/Button.vue";
 import CommandPreview from "../ui/CommandPreview.vue";
-import { safeJsonParse } from "../../utils/helpers";
 import { formatRelativeTime as formatTime } from "../../utils/formatter";
 import { showConfirm } from "../../utils/message";
 
@@ -171,7 +182,11 @@ const handleDelete = async () => {
   }
 };
 
-const parsedTags = computed(() => {
-  return safeJsonParse<string[]>(props.command.tags, []);
+const commandScope = computed(() => {
+  return extractScopeFromTags(props.command.tags);
+});
+
+const displayTags = computed(() => {
+  return getDisplayTags(props.command.tags);
 });
 </script>

@@ -17,6 +17,7 @@ export enum ShortcutAction {
   NewTab = "newTab",
   CloseTab = "closeTab",
   NextTab = "nextTab",
+  ToggleBroadcast = "toggleBroadcast",
   SwitchToTab1 = "switchToTab1",
   SwitchToTab2 = "switchToTab2",
   SwitchToTab3 = "switchToTab3",

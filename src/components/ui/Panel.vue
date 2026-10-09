@@ -5,13 +5,25 @@
 
 <template>
   <div
-    class="flex flex-col h-full cursor-pointer relative bg-bg-primary panel"
+    class="flex flex-col h-full cursor-pointer relative bg-bg-primary panel transition-all duration-200"
+    :class="{
+      'ring-1 ring-amber-500/60 shadow-lg shadow-amber-950/20': broadcastStore.isBroadcastEnabled,
+    }"
     @click="handlePanelClick"
     @dragover="onDragOver"
     @dragenter="onDragEnter"
     @dragleave="onDragLeave"
     @drop="onDrop"
   >
+    <!-- Broadcast Indicator Badge -->
+    <div
+      v-if="broadcastStore.isBroadcastEnabled"
+      class="absolute top-9 right-3 z-30 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/50 text-[10px] font-bold text-amber-300 pointer-events-none select-none tracking-wider animate-pulse backdrop-blur-xs shadow-md"
+    >
+      <Radio class="w-3 h-3 text-amber-400" />
+      <span>BROADCASTING</span>
+    </div>
+
     <!-- Active panel background overlay -->
     <div
       class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
@@ -103,7 +115,8 @@ import TerminalManager from "./TerminalManager.vue";
 import DropZones from "./DropZones.vue";
 import ServerMonitor from "../monitor/ServerMonitor.vue";
 import DockerManager from "../docker/DockerManager.vue";
-import { X } from "lucide-vue-next";
+import { X, Radio } from "lucide-vue-next";
+import { useBroadcastStore } from "../../stores/broadcast";
 import type { Panel, TerminalInstance, Tab } from "../../types/panel";
 import type { ComponentPublicInstance } from "vue";
 
@@ -149,6 +162,7 @@ interface PanelEmits {
 const props = defineProps<PanelProps>();
 
 const emit = defineEmits<PanelEmits>();
+const broadcastStore = useBroadcastStore();
 
 const terminalManagerRef = ref<TerminalManagerComponent | null>(null);
 

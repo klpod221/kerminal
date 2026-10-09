@@ -168,6 +168,7 @@
         size="sm"
         :icon="Activity"
         class="hover:text-green-400"
+        data-tour="server-tools-btn"
         @click="toggleServerTools"
       />
 
@@ -178,7 +179,32 @@
         variant="ghost"
         size="sm"
         :icon="SplitSquareVertical"
+        data-tour="split-vertical-btn"
         @click="splitVertical"
+      />
+
+      <!-- Broadcast Input Button -->
+      <Button
+        v-if="!isMobile"
+        :title="broadcastStore.isBroadcastEnabled ? 'Broadcast Input is ON (Ctrl+Shift+B) - Click to disable' : 'Broadcast Input (Ctrl+Shift+B) - Send keys to all panes'"
+        variant="ghost"
+        size="sm"
+        :icon="Radio"
+        :class="broadcastStore.isBroadcastEnabled ? 'text-amber-400 bg-amber-500/20 ring-1 ring-amber-500/50 animate-pulse' : 'text-gray-400 hover:text-white'"
+        data-tour="broadcast-btn"
+        @click="broadcastStore.toggleBroadcast"
+      />
+
+      <!-- Dangerous Command Protection Toggle Button -->
+      <Button
+        v-if="!isMobile"
+        :title="securityStore.isProtectionEnabled ? 'Dangerous Command Protection is ON (Click to disable)' : 'Dangerous Command Protection is OFF (Click to enable)'"
+        variant="ghost"
+        size="sm"
+        :icon="securityStore.isProtectionEnabled ? ShieldCheck : ShieldAlert"
+        :class="securityStore.isProtectionEnabled ? 'text-emerald-400 hover:text-emerald-300' : 'text-gray-500 hover:text-gray-400'"
+        data-tour="security-toggle-btn"
+        @click="securityStore.toggleProtection"
       />
 
       <!-- Add Tab Button on mobile -->
@@ -233,6 +259,9 @@ import {
   Terminal,
   Settings,
   Activity,
+  Radio,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-vue-next";
 import Tab from "./Tab.vue";
 import Button from "./Button.vue";
@@ -246,6 +275,8 @@ import type {
 } from "../../types/panel";
 import ContextMenu, { type ContextMenuItem } from "./ContextMenu.vue";
 import { useWorkspaceStore } from "../../stores/workspace";
+import { useBroadcastStore } from "../../stores/broadcast";
+import { useSecurityStore } from "../../stores/security";
 
 interface TabBarProps {
   panel: Panel;
@@ -278,6 +309,8 @@ const props = withDefaults(defineProps<TabBarProps>(), {
 
 const emit = defineEmits<TabBarEmits>();
 const workspaceStore = useWorkspaceStore();
+const broadcastStore = useBroadcastStore();
+const securityStore = useSecurityStore();
 const { width: windowWidth, isMobile } = useWindowSize();
 
 const tabsContainer = ref<HTMLElement | null>(null);

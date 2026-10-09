@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import type { TourStep } from "../types/tour";
+import { useViewStateStore } from "../stores/viewState";
+
+const waitFrame = () => new Promise((resolve) => setTimeout(resolve, 80));
 
 /**
  * Tour steps configuration for Kerminal
- * Covers all 14 main features of the application
+ * Covers workspace features, security, broadcast, and system navigation
  */
 export const TOUR_STEPS: TourStep[] = [
   {
@@ -13,49 +16,107 @@ export const TOUR_STEPS: TourStep[] = [
     target: ".dashboard-container",
     title: "Welcome to Kerminal! 🎉",
     description:
-      "Kerminal is a modern terminal emulator and SSH manager. Let us give you a quick tour of all the features available.",
+      "Kerminal is a modern terminal emulator, SSH manager, and DevOps workspace. Let's take a comprehensive tour of everything it can do!",
     position: "center",
     highlight: false,
   },
   {
     id: "dashboard",
     target: '[data-tour="dashboard-btn"]',
-    title: "Dashboard",
+    title: "System Dashboard 📊",
     description:
-      "This is your Dashboard - displaying real-time system information including CPU, Memory, Disk, and Network statistics.",
+      "Real-time hardware monitoring: CPU, Memory, Disk, and Network traffic at a glance.",
     position: "bottom",
     highlight: true,
     spotlightPadding: 4,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("dashboard");
+      await waitFrame();
+    },
   },
   {
     id: "workspace",
     target: '[data-tour="workspace-btn"]',
-    title: "Workspace",
+    title: "Terminal Workspace 💻",
     description:
-      "Your main workspace with powerful terminal capabilities. Open multiple tabs, split panels vertically or horizontally, and work efficiently.",
+      "Your central terminal powerhouse! Multi-tab sessions, split panes, low-latency GPU rendering, and advanced keyboard navigation.",
     position: "bottom",
     highlight: true,
     spotlightPadding: 4,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("workspace");
+      await waitFrame();
+    },
+  },
+  {
+    id: "split-panels",
+    target: '[data-tour="split-vertical-btn"]',
+    title: "Split Terminal Panes 🪟",
+    description:
+      "Divide your view vertically or horizontally (Ctrl+K / Ctrl+L). Drag and drop tabs directly between panes to organize your ideal layout.",
+    position: "bottom",
+    highlight: true,
+    spotlightPadding: 4,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("workspace");
+      await waitFrame();
+    },
+  },
+  {
+    id: "broadcast-input",
+    target: '[data-tour="broadcast-btn"]',
+    title: "Broadcast Input 📡",
+    description:
+      "Synchronize your keystrokes across all open terminal panes simultaneously with Ctrl+Shift+B! Execute identical commands across a fleet of servers with zero effort.",
+    position: "bottom",
+    highlight: true,
+    spotlightPadding: 4,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("workspace");
+      await waitFrame();
+    },
+  },
+  {
+    id: "security-protection",
+    target: '[data-tour="security-toggle-btn"]',
+    title: "Dangerous Command Protection 🛡️",
+    description:
+      "Smart security shield! Automatically intercepts destructive commands (rm -rf /, mkfs, dd, fork bomb) and prompts for confirmation before execution. Easily toggle on or off anytime.",
+    position: "bottom",
+    highlight: true,
+    spotlightPadding: 4,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("workspace");
+      await waitFrame();
+    },
   },
   {
     id: "sftp",
     target: '[data-tour="sftp-btn"]',
-    title: "SFTP Browser",
+    title: "Dual-Pane SFTP Browser 📂",
     description:
-      "Manage files over SFTP connections. Drag and drop to upload/download files, connect to any SSH server seamlessly.",
+      "Seamless file management over SSH. Browse local and remote file systems side-by-side, drag & drop to transfer files, and edit remote files directly.",
     position: "bottom",
     highlight: true,
     spotlightPadding: 4,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("sftp");
+      await waitFrame();
+    },
   },
   {
     id: "ssh-profiles",
     target: '[data-tour="ssh-profiles-btn"]',
-    title: "SSH Profiles",
+    title: "SSH Profiles & Jump Hosts 🔑",
     description:
-      "Store and manage your SSH connections securely. All credentials are encrypted with your master password.",
+      "Store and manage remote connections securely. Supports SSH groups, Jump Hosts (bastions), custom ports, and encrypted credentials.",
     position: "bottom",
     highlight: true,
     spotlightPadding: 4,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("dashboard");
+      await waitFrame();
+    },
   },
   {
     id: "terminal-profiles",
@@ -165,6 +226,10 @@ export const TOUR_STEPS: TourStep[] = [
       "Thank you for choosing Kerminal! We hope it empowers your workflow and makes your development journey smoother. Happy coding, and may your connections always be stable! 💻✨",
     position: "center",
     highlight: false,
+    beforeShow: async () => {
+      useViewStateStore().setActiveView("workspace");
+      await waitFrame();
+    },
   },
 ];
 

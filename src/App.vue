@@ -25,6 +25,7 @@
   <div class="h-screen w-screen flex flex-col bg-bg-primary overflow-hidden">
     <!-- Global Terminal Host for DOM teleportation -->
     <TerminalHost />
+    <DangerousCommandModal />
     <div
       v-if="useLegacyRenderer"
       class="fixed bottom-4 right-4 z-9999 font-mono text-green-500 text-opacity-80 text-sm select-none pointer-events-none"
@@ -73,6 +74,7 @@ import { message } from "./utils/message";
 
 import TopBar from "./components/TopBar.vue";
 import TerminalHost from "./components/ui/TerminalHost.vue";
+import DangerousCommandModal from "./components/security/DangerousCommandModal.vue";
 
 const Dashboard = defineAsyncComponent(
   () => import("./components/Dashboard.vue"),

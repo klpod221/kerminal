@@ -10,12 +10,15 @@ export interface BaseModel {
   syncStatus: "synced" | "pending" | "conflict";
 }
 
+export type SavedCommandScope = "any" | "local" | "ssh";
+
 export interface SavedCommand extends BaseModel {
   name: string;
   description?: string;
   command: string;
   groupId?: string;
   tags?: string; // JSON array as string
+  scope?: SavedCommandScope;
   isFavorite: boolean;
   usageCount: number;
   lastUsedAt?: string;
@@ -89,5 +92,52 @@ export interface SavedCommandSearchParams {
   sortBy?: SavedCommandSortBy;
   sortOrder?: "asc" | "desc";
   filterBy?: SavedCommandFilterBy;
+  scope?: SavedCommandScope | "all";
   tags?: string[];
+}
+
+/**
+ * Extract scope from a tags JSON string or array
+ */
+export function extractScopeFromTags(rawTags?: string | string[]): SavedCommandScope {
+  if (!rawTags) return "any";
+  try {
+    const list: string[] = Array.isArray(rawTags)
+      ? rawTags
+      : JSON.parse(rawTags);
+    if (list.includes("scope:local")) return "local";
+    if (list.includes("scope:ssh")) return "ssh";
+    return "any";
+  } catch {
+    return "any";
+  }
+}
+
+/**
+ * Clean tags to remove internal scope markers
+ */
+export function getDisplayTags(rawTags?: string | string[]): string[] {
+  if (!rawTags) return [];
+  try {
+    const list: string[] = Array.isArray(rawTags)
+      ? rawTags
+      : JSON.parse(rawTags);
+    return list.filter((t) => !t.startsWith("scope:"));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Pack user tags and selected scope into a JSON tags string
+ */
+export function packTagsWithScope(
+  tags: string[],
+  scope: SavedCommandScope,
+): string {
+  const cleanTags = tags.filter((t) => !t.startsWith("scope:"));
+  if (scope !== "any") {
+    cleanTags.push(`scope:${scope}`);
+  }
+  return JSON.stringify(cleanTags);
 }

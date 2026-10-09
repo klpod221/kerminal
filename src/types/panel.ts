@@ -135,3 +135,15 @@ export interface TerminalLatency {
   terminalId: string;
   latencyMs: number;
 }
+
+export function collectAllPanels(layout: PanelLayout): Panel[] {
+  const result: Panel[] = [];
+  if (layout.type === "panel" && layout.panel) {
+    result.push(layout.panel);
+  } else if (layout.type === "split" && layout.children) {
+    for (const child of layout.children) {
+      result.push(...collectAllPanels(child));
+    }
+  }
+  return result;
+}

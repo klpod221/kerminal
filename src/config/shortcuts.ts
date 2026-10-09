@@ -63,6 +63,14 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     customizable: true,
   },
   {
+    id: ShortcutAction.ToggleBroadcast,
+    label: "Toggle Broadcast Input",
+    category: "Terminal",
+    defaultKey: "b",
+    defaultModifiers: { ctrlKey: true, shiftKey: true }, // Ctrl+Shift+B on Windows/Linux, Cmd+Shift+B on Mac
+    customizable: true,
+  },
+  {
     id: ShortcutAction.SwitchToTab1,
     label: "Switch to Tab 1",
     category: "Terminal",
