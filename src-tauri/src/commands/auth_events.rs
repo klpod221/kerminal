@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 use crate::core::auth_session_manager::SessionLockReason;
 use crate::state::AppState;
 use chrono::Utc;

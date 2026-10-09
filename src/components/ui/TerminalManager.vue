@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div class="w-full h-full relative">
     <!-- Mount point for teleported terminal -->
@@ -13,7 +18,7 @@ import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { debounce } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
 import { useWorkspaceStore } from "../../stores/workspace";
-import { TerminalRegistry, InputBatcher, FlowController, TerminalRendererHealthWatchdog } from "../../core";
+import { TerminalRegistry, InputBatcher, createTerminalOutputWriter, createTerminalRendererHealthWatchdog } from "../../core";
 import { getTerminalMetrics } from "../../services/terminal";
 
 // Expose global metrics fetcher
@@ -73,7 +78,7 @@ const createTerminalInstance = async (
 ): Promise<{
   term: Terminal;
   fitAddon: FitAddon;
-  flowController: FlowController;
+  outputWriter: any;
 }> => {
   const customTheme = settingsStore.getCustomTheme(settingsStore.terminalTheme);
   const theme = customTheme
@@ -97,9 +102,19 @@ const createTerminalInstance = async (
 
   const webglAddon = await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
   if (webglAddon) {
-    TerminalRendererHealthWatchdog.monitor(term, webglAddon, () => {
-      message.warning("WebGL context lost! Falling back to DOM renderer.");
-      settingsStore.useWebGLRenderer = false;
+    createTerminalRendererHealthWatchdog({
+      container: container,
+      renderer: {
+        backend: "webgl",
+        getTrackedCanvases: () => Array.from(container.querySelectorAll("canvas")),
+        reportHealth: (signal) => {
+          if (signal !== "healthy") {
+            message.warning("WebGL context lost! Falling back to DOM renderer.");
+            settingsStore.useWebGLRenderer = false;
+            try { webglAddon.dispose(); } catch (e) {}
+          }
+        }
+      }
     });
   }
 
@@ -165,11 +180,14 @@ const createTerminalInstance = async (
     }
   });
 
-  // Initialize FlowController
-  const flowController = new FlowController();
-  flowController.attach(term);
+  // Initialize AdaptiveOutputWriter
+  const outputWriter = createTerminalOutputWriter(term, {
+    adaptive: true,
+    cadence: "focused",
+  });
+  outputWriter.setTuiCursorProtection(true);
 
-  return { term, fitAddon, flowController };
+  return { term, fitAddon, outputWriter };
 };
 
 /**
@@ -189,7 +207,7 @@ const ensureTerminalExists = async (terminalId: string): Promise<void> => {
   TerminalRegistry.registerTerminal(terminalId, container);
 
   // Create xterm instance
-  const { term, fitAddon, flowController } = await createTerminalInstance(
+  const { term, fitAddon, outputWriter } = await createTerminalInstance(
     terminalId,
     container,
   );
@@ -199,7 +217,7 @@ const ensureTerminalExists = async (terminalId: string): Promise<void> => {
     terminalId,
     term,
     fitAddon,
-    flowController,
+    outputWriter,
   );
 
   // Attach input handler
@@ -405,8 +423,9 @@ onMounted(async () => {
         if (!matchingTerminal) return;
 
         const managed = TerminalRegistry.getTerminal(matchingTerminal.id);
-        if (managed?.flowController) {
-          managed.flowController.write(terminalData.data);
+        if (managed?.outputWriter) {
+          const strData = typeof terminalData.data === 'string' ? terminalData.data : new TextDecoder().decode(terminalData.data);
+          managed.outputWriter.write(strData);
         }
       },
     );

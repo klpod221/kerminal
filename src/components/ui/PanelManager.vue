@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div class="flex-1 h-full overflow-hidden">
     <div v-if="layout.type === 'panel'" class="h-full">

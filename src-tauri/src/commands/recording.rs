@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 use crate::models::recording::*;
 use crate::services::recording::*;
 use crate::state::AppState;

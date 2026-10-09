@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 use crate::database::encryption::master_password::SetupMasterPasswordRequest;
 use crate::models::auth::{ChangeMasterPasswordRequest, VerifyMasterPasswordRequest};
 use crate::services::sync::SyncService;

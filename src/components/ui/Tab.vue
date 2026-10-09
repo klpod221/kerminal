@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div
     class="no-drag flex items-center h-full border-r border-gray-800 cursor-pointer group transition-all duration-100 ease-out flex-1 relative overflow-hidden touch-manipulation sm:max-h-[30px]"

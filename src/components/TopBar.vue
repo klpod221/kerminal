@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div
     class="grid items-center h-[30px] sm:h-9 text-white font-sans select-none bg-bg-primary border-b border-gray-800 shrink-0 relative z-50 topbar-container"

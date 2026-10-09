@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /**
  * Get the largest time unit and its value from the difference in milliseconds
  * @param {number} diff - Difference in milliseconds

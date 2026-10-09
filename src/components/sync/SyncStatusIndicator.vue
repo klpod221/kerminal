@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div v-if="syncStore.currentDatabase" class="flex items-center gap-2 text-xs">
     <Badge :variant="statusVariant" :size="'sm'" class="animate-pulse-subtle">

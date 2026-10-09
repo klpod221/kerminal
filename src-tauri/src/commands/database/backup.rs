@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 use crate::database::encryption::aes::AESEncryption;
 use crate::database::traits::Database;
 use crate::models::saved_command::{SavedCommand, SavedCommandGroup};

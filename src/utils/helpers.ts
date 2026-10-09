@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /**
  * Debounce function to limit the rate at which a function can fire.
  * @param func - The function to debounce.

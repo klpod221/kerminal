@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import { createVNode, render } from "vue";
 import MessageContainer from "../components/ui/MessageContainer.vue";
 import { ask } from "@tauri-apps/plugin-dialog";

@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 import { ref, computed, inject, onMounted, onUnmounted, toRef, type Ref, type ComputedRef } from "vue";
 import { validate as validateFn } from "../utils/validators";
 import type { FormContext } from "../types/form";

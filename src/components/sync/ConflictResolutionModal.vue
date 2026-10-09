@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <Modal id="conflict-resolution-modal" title="Resolve Sync Conflict" size="lg">
     <div v-if="!currentConflict" class="text-gray-400 text-center py-8">

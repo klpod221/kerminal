@@ -1,20 +1,5 @@
-/*
- * Kerminal - Modern Terminal Emulator & SSH Manager
- * Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 import { ref, type Ref } from "vue";
 import type { Terminal } from "@xterm/xterm";
@@ -23,7 +8,7 @@ import type { FitAddon } from "@xterm/addon-fit";
 /**
  * Terminal instance managed by the registry
  */
-import type { FlowController } from "./FlowController";
+import type { TerminalOutputWriter } from "./engine/AdaptiveOutputWriter";
 
 /**
  * Terminal instance managed by the registry
@@ -33,7 +18,7 @@ export interface ManagedTerminal {
   container: HTMLDivElement;
   term: Terminal | null;
   fitAddon: FitAddon | null;
-  flowController: FlowController | null;
+  outputWriter: TerminalOutputWriter | null;
   mountedTo: HTMLElement | null;
   onDataDisposable: { dispose: () => void } | null;
 }
@@ -85,14 +70,14 @@ class TerminalRegistryClass {
     container: HTMLDivElement,
     term: Terminal | null = null,
     fitAddon: FitAddon | null = null,
-    flowController: FlowController | null = null
+    outputWriter: TerminalOutputWriter | null = null
   ): void {
     if (this.terminals.has(id)) {
       // Update existing terminal
       const existing = this.terminals.get(id)!;
       existing.term = term;
       existing.fitAddon = fitAddon;
-      existing.flowController = flowController;
+      existing.outputWriter = outputWriter;
       return;
     }
 
@@ -101,7 +86,7 @@ class TerminalRegistryClass {
       container,
       term,
       fitAddon,
-      flowController,
+      outputWriter,
       mountedTo: null,
       onDataDisposable: null,
     };
@@ -122,13 +107,13 @@ class TerminalRegistryClass {
     id: string,
     term: Terminal,
     fitAddon: FitAddon,
-    flowController: FlowController
+    outputWriter: TerminalOutputWriter
   ): void {
     const managed = this.terminals.get(id);
     if (managed) {
       managed.term = term;
       managed.fitAddon = fitAddon;
-      managed.flowController = flowController;
+      managed.outputWriter = outputWriter;
     }
   }
 
@@ -202,10 +187,10 @@ class TerminalRegistryClass {
       managed.onDataDisposable = null;
     }
 
-    // Detach flow controller
-    if (managed.flowController) {
-      managed.flowController.detach();
-      managed.flowController = null;
+    // Detach output writer
+    if (managed.outputWriter) {
+      managed.outputWriter.dispose();
+      managed.outputWriter = null;
     }
 
     // Dispose xterm instance

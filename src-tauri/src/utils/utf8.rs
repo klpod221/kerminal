@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 /// Incremental UTF-8 decoder that buffers incomplete characters
 pub struct IncrementalUtf8Decoder {
     buffer: Vec<u8>,

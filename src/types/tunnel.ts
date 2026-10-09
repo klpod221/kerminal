@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 export type TunnelType = "Local" | "Remote" | "Dynamic";
 export type TunnelStatus = "stopped" | "starting" | "running" | "error";
 

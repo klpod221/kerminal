@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div class="code-editor-wrapper">
     <span v-if="label" class="block text-sm font-medium text-gray-300 mb-2">

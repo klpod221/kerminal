@@ -1,4 +1,9 @@
 <!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
+<!--
  * Kerminal - Modern Terminal Emulator & SSH Manager
  * Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
  *

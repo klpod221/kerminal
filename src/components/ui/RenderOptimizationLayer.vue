@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div class="fixed inset-0 z-9999 bg-black overflow-hidden font-mono">
     <!-- GPU Canvas Layer -->

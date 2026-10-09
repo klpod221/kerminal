@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div
     class="flex items-center border-b border-gray-800 relative bg-bg-primary sm:h-[30px] sm:min-h-[30px] sm:max-h-[30px]"

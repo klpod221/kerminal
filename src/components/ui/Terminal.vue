@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div
     ref="terminalRef"
@@ -165,7 +170,14 @@ import {
 } from "vue";
 import { debounce } from "../../utils/helpers";
 import { extractErrorMessage } from "../../utils/errorHandler";
-import { InputBatcher, FlowController } from "../../core";
+import { 
+  InputBatcher, 
+  createTerminalOutputWriter, 
+  type TerminalOutputWriter,
+  createTerminalRendererHealthWatchdog,
+  type TerminalRendererHealthWatchdog,
+  type TerminalRendererHealthSignal
+} from "../../core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useWorkspaceStore } from "../../stores/workspace";
 import { XCircle, RefreshCw, X, Wifi } from "lucide-vue-next";
@@ -212,7 +224,9 @@ const emit = defineEmits<{
 const terminalRef = ref<HTMLElement | null>(null);
 let term: Terminal;
 let fitAddon: FitAddon;
-let flowController: FlowController;
+let outputWriter: TerminalOutputWriter;
+let healthWatchdog: TerminalRendererHealthWatchdog | null = null;
+let webglAddonInstance: any = null;
 
 const workspaceStore = useWorkspaceStore();
 const settingsStore = useSettingsStore();
@@ -486,22 +500,32 @@ const handleVisibilityChange = (): void => {
     props.isVisible &&
     props.isFocused
   ) {
+    if (outputWriter) {
+      outputWriter.setCadence("focused");
+    }
     // Delay focus to let the page settle
     focus({ delay: 150 });
+  }
+  if (document.visibilityState === "hidden" && outputWriter) {
+    outputWriter.setCadence("hidden");
   }
 };
 
 // Window focus handler: Re-focus when window regains focus
 const handleWindowFocus = (): void => {
+  if (outputWriter) {
+    outputWriter.setCadence("focused");
+  }
   if (canFocus.value && props.isVisible && props.isFocused) {
     focus({ delay: 100 });
   }
 };
 
 const writeOutput = (data: string | Uint8Array): void => {
-  if (term && flowController) {
-    // Use FlowController for batched rendering and flow control
-    flowController.write(data);
+  if (term && outputWriter) {
+    // Convert Uint8Array to string if necessary
+    const strData = typeof data === 'string' ? data : new TextDecoder().decode(data);
+    outputWriter.write(strData);
   }
 };
 
@@ -514,6 +538,9 @@ const clearTerminal = async (): Promise<void> => {
 watch(
   () => props.isVisible,
   (newVisible) => {
+    if (outputWriter) {
+      outputWriter.setCadence(newVisible ? (props.isFocused ? "focused" : "visible") : "hidden");
+    }
     if (newVisible && term && fitAddon) {
       nextTick(() => {
         fitAndFocus();
@@ -525,6 +552,9 @@ watch(
 watch(
   () => props.isFocused,
   (newFocused) => {
+    if (outputWriter) {
+      outputWriter.setCadence(newFocused ? "focused" : (props.isVisible ? "visible" : "hidden"));
+    }
     if (newFocused && props.isVisible && term && fitAddon) {
       nextTick(() => {
         fitAndFocus();
@@ -623,14 +653,40 @@ onMounted(async () => {
     theme: theme,
   });
 
-  await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
+  webglAddonInstance = await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
 
   fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
 
-  // Initialize FlowController for optimized large output handling
-  flowController = new FlowController();
-  flowController.attach(term);
+  // Initialize AdaptiveOutputWriter for extreme performance
+  outputWriter = createTerminalOutputWriter(term, {
+    adaptive: true,
+    cadence: "focused",
+  });
+  // Enable TUI cursor protection for vim/htop
+  outputWriter.setTuiCursorProtection(true);
+
+  if (webglAddonInstance && terminalRef.value) {
+    healthWatchdog = createTerminalRendererHealthWatchdog({
+      container: terminalRef.value,
+      renderer: {
+        backend: "webgl",
+        getTrackedCanvases: () => {
+          if (!terminalRef.value) return [];
+          return Array.from(terminalRef.value.querySelectorAll("canvas"));
+        },
+        reportHealth: (signal: TerminalRendererHealthSignal) => {
+          if (signal !== "healthy") {
+            console.warn(`[WebGL Watchdog] Health signal: ${signal}. Falling back to DOM renderer.`);
+            if (webglAddonInstance) {
+              try { webglAddonInstance.dispose(); } catch (e) {}
+              webglAddonInstance = null;
+            }
+          }
+        }
+      }
+    });
+  }
 
   const webLinksAddon = new WebLinksAddon(
     async (event: MouseEvent, uri: string) => {
@@ -738,8 +794,12 @@ onBeforeUnmount(async () => {
     inputBatcher.clearTerminal(props.backendTerminalId);
   }
 
-  if (flowController) {
-    flowController.detach();
+  if (outputWriter) {
+    outputWriter.dispose();
+  }
+  
+  if (healthWatchdog) {
+    healthWatchdog.dispose();
   }
 
   if (term) {

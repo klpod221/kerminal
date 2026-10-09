@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div v-if="isRecording" class="flex items-center gap-2">
     <div class="flex items-center gap-1.5 px-2 py-1 bg-red-500/10 rounded-md">

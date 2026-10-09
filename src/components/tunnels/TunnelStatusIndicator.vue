@@ -1,3 +1,8 @@
+<!--
+  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  - SPDX-License-Identifier: GPL-3.0-or-later
+-->
+
 <template>
   <div class="flex items-center gap-1">
     <div class="w-2 h-2 rounded-full" :class="statusColor"></div>
