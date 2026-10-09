@@ -3,21 +3,112 @@
 
 import { api } from "./api";
 
+export interface ContainerInfo {
+  id: string;
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+  ports: string;
+  created: string;
+  compose_project: string | null;
+  compose_service: string | null;
+  engine: string;
+  cpu_perc?: string;
+  mem_usage?: string;
+}
+
+export interface ContainerStatInfo {
+  id: string;
+  cpu: string;
+  memory: string;
+}
+
+export type ContainerActionType =
+  | "start"
+  | "stop"
+  | "restart"
+  | "pause"
+  | "unpause"
+  | "rm";
+
 /**
- * Execute a remote docker command
- * @param profileId - The SSH profile ID
- * @param action - The action to perform (list, start, stop, etc)
- * @param containerId - The container ID (if applicable)
- * @returns Docker command result
+ * Fetch list of containers from target machine (local or remote via SSH)
+ */
+export async function getContainerList(
+  profileId?: string,
+  engine?: string,
+): Promise<ContainerInfo[]> {
+  return await api.callRaw<ContainerInfo[]>("get_container_list", {
+    profileId: profileId || undefined,
+    engine: engine || undefined,
+  });
+}
+
+/**
+ * Perform lifecycle actions on a container (start, stop, restart, pause, unpause, rm)
+ */
+export async function executeContainerAction(
+  profileId: string | undefined,
+  action: ContainerActionType,
+  containerId: string,
+  engine?: string,
+): Promise<void> {
+  return await api.callRaw<void>("execute_container_action", {
+    profileId: profileId || undefined,
+    action,
+    containerId,
+    engine: engine || undefined,
+  });
+}
+
+/**
+ * Fetch logs for a specific container
+ */
+export async function getContainerLogs(
+  profileId: string | undefined,
+  containerId: string,
+  tail = 200,
+  engine?: string,
+): Promise<string> {
+  return await api.callRaw<string>("get_container_logs", {
+    profileId: profileId || undefined,
+    containerId,
+    tail,
+    engine: engine || undefined,
+  });
+}
+
+/**
+ * Fetch live CPU and Memory resource usage for running containers
+ */
+export async function getContainerStats(
+  profileId?: string,
+  engine?: string,
+): Promise<Record<string, ContainerStatInfo>> {
+  return await api.callRaw<Record<string, ContainerStatInfo>>("get_container_stats", {
+    profileId: profileId || undefined,
+    engine: engine || undefined,
+  });
+}
+
+/**
+ * Backward compatibility adapter for legacy calls
  */
 export async function executeRemoteDockerCommand(
   profileId: string,
   action: string,
   containerId?: string,
 ): Promise<any> {
-  return await api.callRaw<any>("execute_remote_docker_command", {
-    profileId,
-    action,
-    containerId,
-  });
+  if (action === "ps") {
+    return await getContainerList(profileId);
+  }
+  if (containerId) {
+    return await executeContainerAction(
+      profileId,
+      action as ContainerActionType,
+      containerId,
+    );
+  }
+  return [];
 }

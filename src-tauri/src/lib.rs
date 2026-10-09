@@ -176,6 +176,10 @@ pub fn main() {
             commands::local_fs::local_fs_remove,
             commands::local_fs::local_fs_rename,
             commands::local_fs::local_fs_mkdir,
+            commands::docker::get_container_list,
+            commands::docker::execute_container_action,
+            commands::docker::get_container_logs,
+            commands::docker::get_container_stats,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

@@ -160,18 +160,6 @@
         @click="splitHorizontal"
       />
 
-      <!-- Server Tools Button -->
-      <Button
-        v-if="!isMobile && isSSH"
-        title="Server Tools (Monitor & Docker)"
-        variant="ghost"
-        size="sm"
-        :icon="Activity"
-        class="hover:text-green-400"
-        data-tour="server-tools-btn"
-        @click="toggleServerTools"
-      />
-
       <!-- Split Vertical Button - Hide on mobile -->
       <Button
         v-if="!isMobile"
@@ -181,6 +169,18 @@
         :icon="SplitSquareVertical"
         data-tour="split-vertical-btn"
         @click="splitVertical"
+      />
+
+      <!-- Server Tools Button -->
+      <Button
+        v-if="!isMobile"
+        :title="isSSH ? 'Server Tools (Monitor & Docker)' : 'Local Machine Tools (Docker)'"
+        variant="ghost"
+        size="sm"
+        :icon="Activity"
+        :class="isSSH ? 'hover:text-green-400' : 'hover:text-blue-400'"
+        data-tour="server-tools-btn"
+        @click="toggleServerTools"
       />
 
       <!-- Broadcast Input Button -->
@@ -332,7 +332,13 @@ const isOnlyPanel = computed(() => workspaceStore.panelLayout.type === 'panel');
 
 const isSSH = computed(() => {
   const activeTerminal = props.terminals?.find(t => t.id === props.panel.activeTabId);
-  return activeTerminal?.sshProfileId || activeTerminal?.sshConfigHost;
+  const activeTab = props.panel.tabs?.find(t => t.id === props.panel.activeTabId);
+  return !!(
+    activeTerminal?.sshProfileId ||
+    activeTerminal?.sshConfigHost ||
+    activeTab?.profileId ||
+    (activeTab as any)?.sshConfigHost
+  );
 });
 
 /**

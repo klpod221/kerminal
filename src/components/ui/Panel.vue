@@ -93,8 +93,12 @@
           <ServerMonitor :profile-id="activeProfileId" :is-active="isServerToolsOpen" />
           <DockerManager :profile-id="activeProfileId" :is-active="isServerToolsOpen" />
         </div>
-        <div class="flex-1 flex items-center justify-center p-4 text-gray-400 text-center" v-else-if="isServerToolsOpen">
-          <p>Please connect to an SSH server to use Server Tools.</p>
+        <div class="flex-1 overflow-y-auto p-2 space-y-4" v-else-if="isServerToolsOpen">
+          <div class="text-[11px] text-gray-400 px-1 py-0.5 font-medium flex items-center justify-between">
+            <span>Local Machine</span>
+            <span class="text-[10px] text-gray-500">Connect to SSH for remote tools</span>
+          </div>
+          <DockerManager profile-id="local" :is-active="isServerToolsOpen" />
         </div>
       </div>
     </div>
@@ -179,7 +183,14 @@ const activeTerminals = computed(() => {
 
 const activeProfileId = computed(() => {
   const activeTerminal = activeTerminals.value.find(t => t.id === props.panel.activeTabId);
-  return activeTerminal?.sshProfileId || activeTerminal?.sshConfigHost || null;
+  const activeTab = props.panel.tabs.find(t => t.id === props.panel.activeTabId);
+  return (
+    activeTerminal?.sshProfileId ||
+    activeTerminal?.sshConfigHost ||
+    activeTab?.profileId ||
+    (activeTab as any)?.sshConfigHost ||
+    null
+  );
 });
 
 watch(

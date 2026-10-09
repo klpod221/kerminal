@@ -681,6 +681,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     let newTab: Tab;
     if (panel.activeTabId && panel.tabs.length > 0) {
       const activeTab = panel.tabs.find((tab) => tab.id === panel.activeTabId);
+      const sourceTerminal = terminals.value.find((t) => t.id === panel.activeTabId);
       if (activeTab) {
         const newTabId = tabCounter.toString();
         newTab = {
@@ -689,11 +690,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           color: activeTab.color,
           profileId: activeTab.profileId,
           groupId: activeTab.groupId,
+          sshConfigHost: (activeTab as any).sshConfigHost,
         };
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
           shouldFocusOnReady: true,
+          sshProfileId: sourceTerminal?.sshProfileId || activeTab.profileId,
+          sshConfigHost: sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost,
+          isSSHConnecting: !!(sourceTerminal?.sshProfileId || activeTab.profileId || sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost),
+          canReconnect: sourceTerminal?.canReconnect,
         };
         terminals.value.push(newTerminal);
       } else {
@@ -741,6 +747,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     let newTab: Tab;
     if (panel.activeTabId && panel.tabs.length > 0) {
       const activeTab = panel.tabs.find((tab) => tab.id === panel.activeTabId);
+      const sourceTerminal = terminals.value.find((t) => t.id === panel.activeTabId);
       if (activeTab) {
         const newTabId = tabCounter.toString();
         newTab = {
@@ -749,11 +756,16 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           color: activeTab.color,
           profileId: activeTab.profileId,
           groupId: activeTab.groupId,
+          sshConfigHost: (activeTab as any).sshConfigHost,
         };
         const newTerminal: TerminalInstance = {
           id: newTabId,
           ready: false,
           shouldFocusOnReady: true,
+          sshProfileId: sourceTerminal?.sshProfileId || activeTab.profileId,
+          sshConfigHost: sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost,
+          isSSHConnecting: !!(sourceTerminal?.sshProfileId || activeTab.profileId || sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost),
+          canReconnect: sourceTerminal?.canReconnect,
         };
         terminals.value.push(newTerminal);
       } else {
@@ -985,6 +997,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (!panel) return;
 
     const sourceTab = panel.tabs.find((tab) => tab.id === tabId);
+    const sourceTerminal = terminals.value.find((t) => t.id === tabId);
     if (!sourceTab) return;
 
     const newTabId = tabCounter.toString();
@@ -994,12 +1007,17 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       color: sourceTab.color,
       profileId: sourceTab.profileId,
       groupId: sourceTab.groupId,
+      sshConfigHost: (sourceTab as any).sshConfigHost,
     };
 
     const newTerminal: TerminalInstance = {
       id: newTabId,
       ready: false,
       shouldFocusOnReady: true, // Focus duplicated tabs when ready
+      sshProfileId: sourceTerminal?.sshProfileId || sourceTab.profileId,
+      sshConfigHost: sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost,
+      isSSHConnecting: !!(sourceTerminal?.sshProfileId || sourceTab.profileId || sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost),
+      canReconnect: sourceTerminal?.canReconnect,
     };
 
     const sourceIndex = panel.tabs.findIndex((tab) => tab.id === tabId);
@@ -1127,6 +1145,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     if (!panel) return;
 
     const sourceTab = panel.tabs.find((tab) => tab.id === tabId);
+    const sourceTerminal = terminals.value.find((t) => t.id === tabId);
     if (!sourceTab) return;
 
     const newTabId = tabCounter.toString();
@@ -1136,12 +1155,17 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       color: sourceTab.color,
       profileId: sourceTab.profileId,
       groupId: sourceTab.groupId,
+      sshConfigHost: (sourceTab as any).sshConfigHost,
     };
 
     const newTerminal: TerminalInstance = {
       id: newTabId,
       ready: false,
       shouldFocusOnReady: true,
+      sshProfileId: sourceTerminal?.sshProfileId || sourceTab.profileId,
+      sshConfigHost: sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost,
+      isSSHConnecting: !!(sourceTerminal?.sshProfileId || sourceTab.profileId || sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost),
+      canReconnect: sourceTerminal?.canReconnect,
     };
     terminals.value.push(newTerminal);
 
@@ -1372,6 +1396,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         context,
       );
       terminal.backendTerminalId = response.terminalId;
+      if (profileId) {
+        terminal.sshProfileId = profileId;
+      }
+      if (tab?.sshConfigHost) {
+        terminal.sshConfigHost = tab.sshConfigHost;
+      }
     } catch (error) {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
