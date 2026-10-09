@@ -63,6 +63,8 @@ export class FlowController {
   private totalBytesWritten = 0;
   private writeCount = 0;
 
+  private renderFallbackTimer: ReturnType<typeof setTimeout> | null = null;
+
   private onPauseCallback?: () => void;
   private onResumeCallback?: () => void;
 
@@ -143,10 +145,27 @@ export class FlowController {
 
     this.renderScheduled = true;
 
+    // Fast path: use requestAnimationFrame for smooth 60fps rendering when visible
     requestAnimationFrame(() => {
+      this.clearFallbackTimer();
       this.renderScheduled = false;
       this.flushBatch();
     });
+
+    // Adaptive fallback: if rAF doesn't fire (e.g. background tab or hidden pane),
+    // we still flush periodically to prevent buffer overflow and "data discarded" errors.
+    this.renderFallbackTimer = setTimeout(() => {
+      this.renderFallbackTimer = null;
+      this.renderScheduled = false;
+      this.flushBatch();
+    }, 100); // 100ms fallback flush rate
+  }
+
+  private clearFallbackTimer(): void {
+    if (this.renderFallbackTimer) {
+      clearTimeout(this.renderFallbackTimer);
+      this.renderFallbackTimer = null;
+    }
   }
 
   /**
@@ -263,5 +282,6 @@ export class FlowController {
     this.bufferedBytes = 0;
     this.isPaused = false;
     this.renderScheduled = false;
+    this.clearFallbackTimer();
   }
 }

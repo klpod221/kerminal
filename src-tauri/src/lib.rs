@@ -52,6 +52,7 @@ pub fn main() {
             commands::terminal::resize_terminal,
             commands::terminal::close_terminal,
             commands::terminal::get_terminal_info,
+            commands::terminal::get_terminal_metrics,
             commands::terminal::list_terminals,
             commands::system::get_user_hostname,
             commands::system::get_system_fonts,
@@ -180,6 +181,15 @@ pub fn main() {
             commands::database::backup::import_backup,
             commands::ssh_host_key::inspect_ssh_host_key,
             commands::ssh_host_key::trust_ssh_host_key,
+            commands::local_fs::local_fs_read_dir,
+            commands::local_fs::local_fs_read_file,
+            commands::local_fs::local_fs_read_text_file,
+            commands::local_fs::local_fs_write_file,
+            commands::local_fs::local_fs_write_text_file,
+            commands::local_fs::local_fs_stat,
+            commands::local_fs::local_fs_remove,
+            commands::local_fs::local_fs_rename,
+            commands::local_fs::local_fs_mkdir,
         ])
         .setup(setup::init)
         .run(tauri::generate_context!())

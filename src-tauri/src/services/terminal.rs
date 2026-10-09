@@ -41,6 +41,7 @@ pub struct TerminalManager {
     ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
     pub recorders: Arc<RwLock<HashMap<String, Arc<SessionRecorder>>>>,
     titles: Arc<RwLock<HashMap<String, String>>>,
+    output_buffers: Arc<RwLock<HashMap<String, Arc<crate::utils::output_buffer::TerminalOutputBuffer>>>>,
 }
 
 impl TerminalManager {
@@ -59,6 +60,7 @@ impl TerminalManager {
             ssh_key_service: Some(ssh_key_service),
             recorders: Arc::new(RwLock::new(HashMap::new())),
             titles: Arc::new(RwLock::new(HashMap::new())),
+            output_buffers: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -187,6 +189,11 @@ impl TerminalManager {
         let (latency_tx, mut latency_rx) = mpsc::unbounded_channel::<TerminalLatency>();
 
         let buffer = crate::utils::output_buffer::TerminalOutputBuffer::new(4 * 1024 * 1024); // 4MB
+
+        {
+            let mut buffers = self.output_buffers.write().await;
+            buffers.insert(terminal_id.clone(), buffer.clone());
+        }
 
         terminal
             .start_read_loop(
@@ -350,6 +357,11 @@ impl TerminalManager {
         }
 
         {
+            let mut buffers = self.output_buffers.write().await;
+            buffers.remove(&terminal_id);
+        }
+
+        {
             let mut titles = self.titles.write().await;
             titles.remove(&terminal_id);
         }
@@ -401,5 +413,14 @@ impl TerminalManager {
         }
 
         Ok(terminal_infos)
+    }
+
+    pub async fn get_terminal_metrics(&self, terminal_id: String) -> Result<crate::utils::output_buffer::TerminalMetrics, AppError> {
+        let buffers = self.output_buffers.read().await;
+        if let Some(buffer) = buffers.get(&terminal_id) {
+            Ok(buffer.get_metrics())
+        } else {
+            Err(AppError::TerminalNotFound(terminal_id))
+        }
     }
 }

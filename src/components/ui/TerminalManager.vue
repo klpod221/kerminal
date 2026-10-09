@@ -13,7 +13,19 @@ import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 import { debounce } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
 import { useWorkspaceStore } from "../../stores/workspace";
-import { TerminalRegistry, InputBatcher, FlowController } from "../../core";
+import { TerminalRegistry, InputBatcher, FlowController, TerminalRendererHealthWatchdog } from "../../core";
+import { getTerminalMetrics } from "../../services/terminal";
+
+// Expose global metrics fetcher
+(window as any).getTerminalMetrics = async (backendTerminalId: string) => {
+  try {
+    const metrics = await getTerminalMetrics(backendTerminalId);
+    console.table(metrics);
+    return metrics;
+  } catch (err) {
+    console.error('Failed to get metrics:', err);
+  }
+};
 
 // Import Terminal component dynamically for creating instances
 import { Terminal } from "@xterm/xterm";
@@ -29,6 +41,7 @@ import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import { getTerminalTheme } from "../../utils/terminalTheme";
 import { loadWebGLRenderer } from "../../utils/terminalRenderer";
 import { useSettingsStore } from "../../stores/settings";
+import { message } from "../../utils/message";
 
 interface TerminalManagerProps {
   terminals: TerminalInstance[];
@@ -82,7 +95,13 @@ const createTerminalInstance = async (
     theme: theme,
   });
 
-  await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
+  const webglAddon = await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
+  if (webglAddon) {
+    TerminalRendererHealthWatchdog.monitor(term, webglAddon, () => {
+      message.warning("WebGL context lost! Falling back to DOM renderer.");
+      settingsStore.useWebGLRenderer = false;
+    });
+  }
 
   const fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
@@ -317,6 +336,13 @@ watch(
             inputBatcher.batchInput(terminal.backendTerminalId, data);
           }
         });
+        
+        // Log metrics usage once per terminal
+        if (!(window as any)[`_metrics_logged_${terminal.backendTerminalId}`]) {
+          (window as any)[`_metrics_logged_${terminal.backendTerminalId}`] = true;
+          console.log(`[Metrics] Debug metrics available for ${terminal.backendTerminalId}:`);
+          console.log(`          -> await window.getTerminalMetrics('${terminal.backendTerminalId}')`);
+        }
       }
     }
   },
@@ -379,9 +405,8 @@ onMounted(async () => {
         if (!matchingTerminal) return;
 
         const managed = TerminalRegistry.getTerminal(matchingTerminal.id);
-        if (managed?.term) {
-          // Temporarily bypass FlowController to fix rendering freeze
-          managed.term.write(terminalData.data);
+        if (managed?.flowController) {
+          managed.flowController.write(terminalData.data);
         }
       },
     );

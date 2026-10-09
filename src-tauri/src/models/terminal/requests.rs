@@ -40,3 +40,10 @@ pub struct CloseTerminalRequest {
 pub struct GetTerminalInfoRequest {
     pub terminal_id: String,
 }
+
+/// Request for getting terminal metrics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTerminalMetricsRequest {
+    pub terminal_id: String,
+}

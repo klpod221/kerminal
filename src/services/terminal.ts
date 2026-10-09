@@ -269,3 +269,15 @@ export const cleanupTerminalListeners = (): void => {
     latencyUnlisten = null;
   }
 };
+
+/**
+ * Get terminal metrics
+ */
+export async function getTerminalMetrics(terminalId: string): Promise<any> {
+  try {
+    return await api.call<any>("get_terminal_metrics", { terminalId });
+  } catch (error) {
+    console.error(`Failed to get metrics for terminal ${terminalId}:`, error);
+    throw error;
+  }
+}

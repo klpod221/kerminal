@@ -121,7 +121,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue';
 import { ActivityIcon, CpuIcon, MemoryStickIcon, ZapIcon, HardDriveIcon } from 'lucide-vue-next';
-import { invoke } from '@tauri-apps/api/core';
+import { getRemoteServerMetrics } from '../../services/monitor';
 
 const props = defineProps<{
   profileId: string;
@@ -148,7 +148,7 @@ const metrics = ref({
 const fetchMetrics = async () => {
   if (!monitoring.value || !props.profileId || !props.isActive) return;
   try {
-    const data: any = await invoke('get_remote_server_metrics', { profileId: props.profileId });
+    const data: any = await getRemoteServerMetrics(props.profileId);
     metrics.value = {
       cpu: data.cpu,
       cpuName: data.cpu_name || 'CPU Usage',

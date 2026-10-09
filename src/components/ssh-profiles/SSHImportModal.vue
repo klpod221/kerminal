@@ -96,7 +96,7 @@ import { ref, computed, watch } from "vue";
 import { Download } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
-import { invoke } from "@tauri-apps/api/core";
+import { importSSHKeyFromFile } from "../../services/sshKey";
 import type { SSHKey } from "../../types/ssh";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSSHStore } from "../../stores/ssh";
@@ -169,12 +169,12 @@ const handleImport = async () => {
       if (host.identityFile) {
         try {
           const keyName = `Imported: ${host.name}`;
-          const key = await invoke<SSHKey>("import_ssh_key_from_file", {
-            name: keyName,
-            filePath: host.identityFile,
-            passphrase: null,
-            description: `Imported from SSH config for host ${host.name}`,
-          });
+          const key = await importSSHKeyFromFile(
+            keyName,
+            host.identityFile,
+            undefined, // passphrase
+            `Imported from SSH config for host ${host.name}`
+          );
           authData = { KeyReference: { keyId: key.id } };
         } catch (err: any) {
           console.error(`Failed to import key for ${host.name}:`, err);

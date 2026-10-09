@@ -38,7 +38,7 @@ import {
   listenToTerminalOutput,
   listenToTerminalLatency,
 } from "../services/terminal";
-import { invoke } from "@tauri-apps/api/core";
+
 import { api } from "../services/api";
 import { TerminalRegistry } from "../core";
 import { useSSHStore } from "./ssh";
@@ -261,7 +261,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
 
     // Check for default terminal profile
     try {
-      const defaultProfile = await invoke<any | null>(
+      const defaultProfile = await api.call<any | null>(
         "get_default_terminal_profile",
       );
       if (defaultProfile) {
@@ -1339,14 +1339,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
         context,
       );
     } else if (terminal.profileId) {
-      return invoke<CreateTerminalResponse>("create_terminal", {
-        request: {
-          shell: terminal.shell,
-          workingDir: terminal.workingDir,
-          title,
-          terminalProfileId: terminal.profileId,
-          command: terminal.command,
-        },
+      return api.call<CreateTerminalResponse>("create_terminal", {
+        shell: terminal.shell,
+        workingDir: terminal.workingDir,
+        title,
+        terminalProfileId: terminal.profileId,
+        command: terminal.command,
       });
     } else {
       return createLocalTerminal(terminal.shell, terminal.workingDir, title);

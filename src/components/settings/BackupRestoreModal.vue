@@ -246,9 +246,9 @@ import {
   AlertTriangle,
   ArrowRight,
 } from "lucide-vue-next";
-import { invoke } from "@tauri-apps/api/core";
+
 import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeTextFile, readTextFile } from "@tauri-apps/plugin-fs";
+import { api } from "../../services/api";
 import { message } from "../../utils/message";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
@@ -321,7 +321,7 @@ const handleExport = async () => {
 
     exporting.value = true;
 
-    const backupData = await invoke<string>("export_backup", {
+    const backupData = await api.callRaw<string>("export_backup", {
       password: useEncryption.value ? exportPassword.value : null,
     });
 
@@ -341,7 +341,7 @@ const handleExport = async () => {
     });
 
     if (filePath) {
-      await writeTextFile(filePath, backupData);
+      await api.callRaw("local_fs_write_text_file", { path: filePath, contents: backupData });
       message.success(
         `Backup exported successfully${useEncryption.value ? " (encrypted)" : ""}!`,
       );
@@ -375,7 +375,7 @@ const handleImport = async () => {
     });
 
     if (filePath && typeof filePath === "string") {
-      const content = await readTextFile(filePath);
+      const content = await api.callRaw<string>("local_fs_read_text_file", { path: filePath });
 
       // Auto-detect if backup is encrypted (Base64 vs JSON)
       const isEncrypted = !content.trim().startsWith("{");
@@ -394,7 +394,7 @@ const handleImport = async () => {
         return;
       }
 
-      await invoke("import_backup", {
+      await api.callRaw("import_backup", {
         backupContent: content,
         password: isEncrypted ? importPassword.value : null,
       });

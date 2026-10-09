@@ -23,7 +23,7 @@ import type {
   CreateTerminalProfileRequest,
   UpdateTerminalProfileRequest,
 } from "../types/terminalProfile";
-import { invoke } from "@tauri-apps/api/core";
+import { api } from "../services/api";
 import { message } from "../utils/message";
 import { handleError, type ErrorContext } from "../utils/errorHandler";
 
@@ -44,7 +44,7 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      const stored = await invoke<TerminalProfile[]>("list_terminal_profiles");
+      const stored = await api.call<TerminalProfile[]>("list_terminal_profiles");
       profiles.value = stored;
     } catch (error) {
       const errorMessage = handleError(error, context);
@@ -66,9 +66,9 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      const newProfile = await invoke<TerminalProfile>(
+      const newProfile = await api.call<TerminalProfile>(
         "create_terminal_profile",
-        { request },
+        request,
       );
       profiles.value.push(newProfile);
       return newProfile;
@@ -89,7 +89,7 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      const updatedProfile = await invoke<TerminalProfile>(
+      const updatedProfile = await api.callRaw<TerminalProfile>(
         "update_terminal_profile",
         { id, request },
       );
@@ -115,7 +115,7 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      await invoke("delete_terminal_profile", { id });
+      await api.callRaw("delete_terminal_profile", { id });
       const index = profiles.value.findIndex((p) => p.id === id);
       if (index !== -1) {
         profiles.value.splice(index, 1);
@@ -144,7 +144,7 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      await invoke("set_default_terminal_profile", { id });
+      await api.callRaw("set_default_terminal_profile", { id });
       // Update local state: clear previous default and set new one
       profiles.value.forEach((p) => {
         p.isDefault = p.id === id;
@@ -164,7 +164,7 @@ export const useTerminalProfileStore = defineStore("terminalProfile", () => {
     };
 
     try {
-      await invoke("clear_default_terminal_profile");
+      await api.call("clear_default_terminal_profile");
       profiles.value.forEach((p) => {
         p.isDefault = false;
       });

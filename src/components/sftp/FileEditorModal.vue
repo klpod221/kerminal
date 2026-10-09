@@ -51,7 +51,7 @@ import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
 import { useSFTPStore } from "../../stores/sftp";
 import type { FileEntry } from "../../types/sftp";
-import { readFile, writeFile } from "@tauri-apps/plugin-fs";
+import { api } from "../../services/api";
 
 import type { editor } from "monaco-editor";
 
@@ -147,9 +147,9 @@ async function loadFileContent() {
     }
 
     if (isLocal.value) {
-      const fileContent = await readFile(file.value.path);
+      const fileContent = await api.callRaw<number[]>("local_fs_read_file", { path: file.value.path });
       const decoder = new TextDecoder();
-      const decoded = decoder.decode(fileContent);
+      const decoded = decoder.decode(new Uint8Array(fileContent));
 
       if (decoded.includes("\0")) {
         throw new Error("File appears to be binary, not text");
@@ -206,7 +206,7 @@ async function saveLocalFile() {
 
   const encoder = new TextEncoder();
   const fileContent = encoder.encode(content.value);
-  await writeFile(file.value.path, fileContent);
+  await api.callRaw("local_fs_write_file", { path: file.value.path, contents: Array.from(fileContent) });
   message.success("File saved successfully");
 
   if (sftpStore.browserState.localPath) {

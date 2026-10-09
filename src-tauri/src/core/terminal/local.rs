@@ -239,8 +239,9 @@ impl LocalTerminal {
                                     warn!("Exit event channel closed for terminal {}", terminal_id);
                                 }
                             }
-                            // signal EOF to the buffer
-                            sender.push(&[]);
+                            tokio::runtime::Handle::current().block_on(async {
+                                sender.push_async(&[]).await;
+                            });
                             break;
                         }
                         Ok(n) => {
@@ -252,14 +253,18 @@ impl LocalTerminal {
                                 }
                             }
 
-                            sender.push(&data);
+                            tokio::runtime::Handle::current().block_on(async {
+                                sender.push_async(&data).await;
+                            });
                         }
                         Err(e) => {
                             error!("Failed to read from PTY: {}", e);
                             let error_msg = format!("PTY read error: {}", e).into_bytes();
-                            sender.push(&error_msg);
-                            // signal EOF
-                            sender.push(&[]);
+                            tokio::runtime::Handle::current().block_on(async {
+                                sender.push_async(&error_msg).await;
+                                // signal EOF
+                                sender.push_async(&[]).await;
+                            });
                             break;
                         }
                     }

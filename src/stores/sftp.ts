@@ -29,7 +29,7 @@ import type {
 import * as sftpService from "../services/sftp";
 import { api } from "../services/api";
 import { useSSHStore } from "./ssh";
-import { readDir, stat } from "@tauri-apps/plugin-fs";
+
 import {
   withRetry,
   handleError,
@@ -42,9 +42,17 @@ import { message } from "../utils/message";
  * Manages SFTP sessions, file browsing, and transfers
  */
 
+interface LocalFileEntry {
+  name: string;
+  is_file: boolean;
+  is_dir: boolean;
+  size: number;
+  modified: number | null;
+}
+
 // Helper function to process directory entries
 async function processFileEntry(
-  entry: any,
+  entry: LocalFileEntry,
   path: string,
 ): Promise<FileEntry | null> {
   const normalizedPath = path.endsWith("/") ? path.slice(0, -1) : path;
@@ -53,37 +61,23 @@ async function processFileEntry(
       ? `/${entry.name}`
       : `${normalizedPath}/${entry.name}`;
 
-  try {
-    const meta = await stat(entryPath);
-
-    let fileType: FileEntry["fileType"] = "file";
-    if (meta.isDirectory) {
-      fileType = "directory";
-    } else if (entry.isSymlink || meta.isSymlink) {
-      fileType = "symlink";
-    }
-
-    let permissions = 0o644;
-    if (meta.mode) {
-      permissions = meta.mode & 0o777;
-    }
-
-    return {
-      name: entry.name,
-      path: entryPath,
-      fileType,
-      size: fileType === "file" ? meta.size || null : null,
-      permissions,
-      modified: new Date(meta.mtime || Date.now()).toISOString(),
-      accessed: meta.atime ? new Date(meta.atime).toISOString() : null,
-      symlinkTarget: null, // Would need readlink to get this
-      uid: null,
-      gid: null,
-    };
-  } catch (error) { // NOSONAR
-    // Failed to get metadata (expected for non-existent/inaccessible files)
-    return null;
+  let fileType: FileEntry["fileType"] = "file";
+  if (entry.is_dir) {
+    fileType = "directory";
   }
+
+  return {
+    name: entry.name,
+    path: entryPath,
+    fileType,
+    size: fileType === "file" ? entry.size || null : null,
+    permissions: 0o644,
+    modified: entry.modified ? new Date(entry.modified * 1000).toISOString() : new Date().toISOString(),
+    accessed: null,
+    symlinkTarget: null, 
+    uid: null,
+    gid: null,
+  };
 }
 
 /**
@@ -538,7 +532,7 @@ export const useSFTPStore = defineStore("sftp", () => {
     };
 
     try {
-      const entries = await readDir(path);
+      const entries = await api.callRaw<LocalFileEntry[]>("local_fs_read_dir", { path });
 
       const fileResults = await Promise.allSettled(
         entries.map((entry) => processFileEntry(entry, path)),

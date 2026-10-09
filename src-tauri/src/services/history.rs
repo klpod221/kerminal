@@ -23,6 +23,7 @@ use crate::models::history::{
     SearchHistoryResponse,
 };
 use crate::models::ssh::{AuthData, SSHProfile};
+use crate::utils::redaction::redact_secrets;
 use crate::models::terminal::TerminalType;
 use crate::services::ssh::SSHService;
 use crate::services::terminal::TerminalManager;
@@ -211,7 +212,7 @@ impl HistoryManager {
 
                     if !command.is_empty() {
                         entries.push(CommandHistoryEntry {
-                            command: command.to_string(),
+                            command: redact_secrets(command),
                             timestamp,
                             index,
                         });
@@ -229,7 +230,7 @@ impl HistoryManager {
 
                 if !command.is_empty() {
                     entries.push(CommandHistoryEntry {
-                        command: command.to_string(),
+                        command: redact_secrets(command),
                         timestamp: None,
                         index,
                     });
@@ -270,7 +271,7 @@ impl HistoryManager {
 
             if !command.is_empty() {
                 entries.push(CommandHistoryEntry {
-                    command: command.to_string(),
+                    command: redact_secrets(command),
                     timestamp: None, // Bash doesn't store timestamps by default
                     index,
                 });
@@ -543,7 +544,7 @@ impl HistoryManager {
 
                     if !command.is_empty() {
                         entries.push(CommandHistoryEntry {
-                            command: command.to_string(),
+                            command: redact_secrets(command),
                             timestamp,
                             index,
                         });
@@ -558,7 +559,7 @@ impl HistoryManager {
                 }
                 if !command.is_empty() {
                     entries.push(CommandHistoryEntry {
-                        command: command.to_string(),
+                        command: redact_secrets(command),
                         timestamp: None,
                         index,
                     });

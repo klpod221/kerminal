@@ -90,7 +90,7 @@ impl Handler for ClientHandler {
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
         if let Some(sender) = self.output_sender.lock().await.as_ref() {
-            sender.push(data);
+            sender.push_async(data).await;
         }
         Ok(())
     }
@@ -103,7 +103,7 @@ impl Handler for ClientHandler {
         _session: &mut Session,
     ) -> Result<(), Self::Error> {
         if let Some(sender) = self.output_sender.lock().await.as_ref() {
-            sender.push(data);
+            sender.push_async(data).await;
         }
         Ok(())
     }
@@ -115,8 +115,8 @@ impl Handler for ClientHandler {
     ) -> Result<(), Self::Error> {
         if let Some(sender) = self.output_sender.lock().await.as_ref() {
             let eof_msg = b"[SSH: Connection closed by remote host]\r\n";
-            sender.push(eof_msg);
-            sender.push(&[]);
+            sender.push_async(eof_msg).await;
+            sender.push_async(&[]).await;
         }
 
         if let Some(sender) = self.exit_sender.lock().await.as_ref() {
@@ -170,8 +170,8 @@ impl Handler for ClientHandler {
 
         let output_sender = self.output_sender.lock().await;
         if let Some(sender) = output_sender.as_ref() {
-            sender.push(message.as_bytes());
-            sender.push(&[]);
+            sender.push_async(message.as_bytes()).await;
+            sender.push_async(&[]).await;
         }
 
         let exit_sender = self.exit_sender.lock().await;

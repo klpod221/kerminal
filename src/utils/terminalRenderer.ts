@@ -22,14 +22,16 @@ export const getDefaultUseWebGLRenderer = (): boolean => !isLinuxPlatform();
 export const loadWebGLRenderer = async (
   term: Terminal,
   enabled: boolean,
-): Promise<void> => {
-  if (!enabled) return;
+): Promise<any | null> => {
+  if (!enabled) return null;
 
   try {
     const { WebglAddon } = await import("@xterm/addon-webgl");
     const webglAddon = new WebglAddon();
     term.loadAddon(webglAddon);
+    return webglAddon;
   } catch (error) {
     console.warn("WebGL renderer failed, falling back", error);
+    return null;
   }
 };

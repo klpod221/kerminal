@@ -2,7 +2,7 @@ use crate::error::AppError;
 use crate::models::terminal::{
     CloseTerminalRequest, CreateLocalTerminalRequest, CreateSshConfigTerminalRequest,
     CreateSshTerminalRequest, CreateTerminalRequest, CreateTerminalResponse,
-    GetTerminalInfoRequest, LocalConfig, ResizeTerminalRequest, TerminalConfig, TerminalInfo,
+    GetTerminalInfoRequest, GetTerminalMetricsRequest, LocalConfig, ResizeTerminalRequest, TerminalConfig, TerminalInfo,
     TerminalType, WriteBatchTerminalRequest, WriteTerminalRequest,
 };
 use crate::state::AppState;
@@ -191,4 +191,16 @@ pub async fn get_terminal_info(
 #[tauri::command]
 pub async fn list_terminals(app_state: State<'_, AppState>) -> Result<Vec<TerminalInfo>, AppError> {
     app_state.terminal_manager.list_terminals().await
+}
+
+/// Get metrics for a specific terminal
+#[tauri::command]
+pub async fn get_terminal_metrics(
+    request: GetTerminalMetricsRequest,
+    app_state: State<'_, AppState>,
+) -> Result<crate::utils::output_buffer::TerminalMetrics, AppError> {
+    app_state
+        .terminal_manager
+        .get_terminal_metrics(request.terminal_id)
+        .await
 }

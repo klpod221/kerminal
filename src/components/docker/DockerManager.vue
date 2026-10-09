@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
+import { executeRemoteDockerCommand } from '../../services/docker';
 import { BoxIcon, RefreshCwIcon, PlayIcon, SquareIcon, FileTextIcon } from 'lucide-vue-next';
 
 const props = defineProps<{
@@ -115,10 +115,10 @@ const fetchContainers = async () => {
   error.value = null;
   containers.value = [];
   try {
-    const data: DockerContainer[] = await invoke('execute_remote_docker_command', {
-      profileId: props.profileId,
-      action: "ps"
-    });
+    const data: DockerContainer[] = await executeRemoteDockerCommand(
+      props.profileId,
+      "ps"
+    );
     containers.value = data;
   } catch (err: any) {
     error.value = err.message || 'Failed to fetch containers';
@@ -130,7 +130,7 @@ const fetchContainers = async () => {
 const startContainer = async (id: string) => {
   if (!props.profileId) return;
   try {
-    await invoke('execute_remote_docker_command', { profileId: props.profileId, action: "start", containerId: id });
+    await executeRemoteDockerCommand(props.profileId, "start", id);
     await fetchContainers();
   } catch (err: any) {
     error.value = err.message || 'Failed to start container';
@@ -140,7 +140,7 @@ const startContainer = async (id: string) => {
 const stopContainer = async (id: string) => {
   if (!props.profileId) return;
   try {
-    await invoke('execute_remote_docker_command', { profileId: props.profileId, action: "stop", containerId: id });
+    await executeRemoteDockerCommand(props.profileId, "stop", id);
     await fetchContainers();
   } catch (err: any) {
     error.value = err.message || 'Failed to stop container';

@@ -223,14 +223,17 @@ import FileBrowser from "./FileBrowser.vue";
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
 import type { FileEntry } from "../../types/sftp";
-import {
-  rename,
-  remove,
-  stat,
-  writeFile,
-  mkdir,
-  readDir,
-} from "@tauri-apps/plugin-fs";
+import { api } from "../../services/api";
+const remove = (path: string, options?: any) => api.callRaw("local_fs_remove", { path });
+const rename = (oldPath: string, newPath: string) => api.callRaw("local_fs_rename", { old_path: oldPath, new_path: newPath });
+const writeFile = (path: string, data: Uint8Array) => api.callRaw("local_fs_write_file", { path, contents: Array.from(data) });
+const mkdir = (path: string, options?: any) => api.callRaw("local_fs_mkdir", { path });
+interface LocalFileEntry { name: string; is_dir: boolean; is_file: boolean; size: number; modified: number | null; }
+const readDir = (path: string) => api.callRaw<LocalFileEntry[]>("local_fs_read_dir", { path });
+const stat = async (path: string) => { 
+  const res = await api.callRaw<any>("local_fs_stat", { path });
+  return { isDirectory: res.is_dir, isSymlink: false };
+};
 import { dirname, homeDir, tempDir, join } from "@tauri-apps/api/path";
 import * as sftpService from "../../services/sftp";
 import { canPreviewFile } from "../../utils/filePreview";
@@ -1437,13 +1440,12 @@ async function collectLocalDirectoryFiles(
         : `${normalizedPath}/${entry.name}`;
 
     try {
-      const entryStat = await stat(entryPath);
       const relativePath = entryPath.replace(basePath, "").replace(/^\//, "");
 
-      if (entryStat.isDirectory) {
+      if (entry.is_dir) {
         const subFiles = await collectLocalDirectoryFiles(entryPath, basePath);
         files.push(...subFiles);
-      } else {
+      } else if (entry.is_file) {
         files.push({ path: entryPath, relativePath });
       }
     } catch (error) {

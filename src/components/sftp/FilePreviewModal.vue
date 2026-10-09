@@ -358,7 +358,7 @@ import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
 import { useSFTPStore } from "../../stores/sftp";
 import type { FileEntry } from "../../types/sftp";
-import { readFile, remove } from "@tauri-apps/plugin-fs";
+import { api } from "../../services/api";
 import { tempDir, join } from "@tauri-apps/api/path";
 import { save } from "@tauri-apps/plugin-dialog";
 
@@ -707,9 +707,9 @@ async function processPreviewFile(filePath: string) {
 
   if (previewType.value === "image" || previewType.value === "pdf") {
     try {
-      const fileContent = await readFile(filePath);
+      const fileContent = await api.callRaw<number[]>("local_fs_read_file", { path: filePath });
       const mimeType = getMimeType(fileType.value);
-      const blob = new Blob([fileContent], { type: mimeType });
+      const blob = new Blob([new Uint8Array(fileContent)], { type: mimeType });
       previewUrl.value = URL.createObjectURL(blob);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
@@ -717,18 +717,18 @@ async function processPreviewFile(filePath: string) {
       throw new Error(`Failed to load file: ${errorMessage}`);
     }
   } else if (previewType.value === "html") {
-    const fileContent = await readFile(filePath);
+    const fileContent = await api.callRaw<number[]>("local_fs_read_file", { path: filePath });
     const decoder = new TextDecoder();
-    htmlContent.value = decoder.decode(fileContent);
+    htmlContent.value = decoder.decode(new Uint8Array(fileContent));
   } else if (previewType.value === "markdown") {
-    const fileContent = await readFile(filePath);
+    const fileContent = await api.callRaw<number[]>("local_fs_read_file", { path: filePath });
     const decoder = new TextDecoder();
-    markdownContent.value = decoder.decode(fileContent);
+    markdownContent.value = decoder.decode(new Uint8Array(fileContent));
     renderedMarkdown.value = renderMarkdown(markdownContent.value);
   } else if (previewType.value === "text") {
-    const fileContent = await readFile(filePath);
+    const fileContent = await api.callRaw<number[]>("local_fs_read_file", { path: filePath });
     const decoder = new TextDecoder();
-    textContent.value = decoder.decode(fileContent);
+    textContent.value = decoder.decode(new Uint8Array(fileContent));
   }
 }
 
@@ -811,7 +811,7 @@ async function loadRemotePreview() {
 
     // Short delay to ensure file system is ready
     try {
-      await readFile(tempFile);
+      await api.callRaw<number[]>("local_fs_read_file", { path: tempFile });
     } catch {
       // NOSONAR
       // Ignore initial read error, file might not be ready yet
@@ -859,7 +859,7 @@ function handleImageError() {
 async function cleanupTempFile() {
   if (tempFilePath.value) {
     try {
-      await remove(tempFilePath.value);
+      await api.callRaw("local_fs_remove", { path: tempFilePath.value });
     } catch (err) {
       console.warn("Failed to cleanup temp file:", err);
     } finally {

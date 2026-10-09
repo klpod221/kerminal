@@ -17,7 +17,6 @@
  */
 
 import { check, Update } from "@tauri-apps/plugin-updater";
-import { invoke } from "@tauri-apps/api/core";
 import { api } from "./api";
 import { version } from "../../package.json";
 
@@ -122,8 +121,8 @@ export async function downloadAndInstall(
  * Restart the application
  */
 export async function restartApp(): Promise<void> {
-  // Use the process plugin through invoke
-  await invoke("plugin:process|restart");
+  // Use the process plugin through api.callRaw
+  await api.callRaw("plugin:process|restart");
 }
 
 /**
