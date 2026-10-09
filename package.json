@@ -1,6 +1,6 @@
 {
   "name": "kerminal",
-  "version": "2.6.7",
+  "version": "2.6.8",
   "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
