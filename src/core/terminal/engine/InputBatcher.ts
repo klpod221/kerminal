@@ -33,6 +33,20 @@ export class InputBatcher {
   public batchInput(terminalId: string, data: string): void {
     if (!terminalId || !data) return;
 
+    // Send single interactive keystrokes/control sequences immediately (0ms input latency)
+    if (!this.pendingData.has(terminalId) && data.length <= 16) {
+      writeToTerminal({
+        terminalId,
+        data,
+      }).catch((error) => {
+        console.error(
+          `Failed to send immediate input to terminal ${terminalId}:`,
+          error,
+        );
+      });
+      return;
+    }
+
     const currentData = this.pendingData.get(terminalId) || "";
     this.pendingData.set(terminalId, currentData + data);
 
@@ -41,9 +55,6 @@ export class InputBatcher {
       return;
     }
 
-    // Schedule flush at the end of the current event loop tick.
-    // This batches synchronous calls (e.g., pasting chunked data) but
-    // sends single keystrokes almost immediately without the 16ms debounce delay.
     const timeout = globalThis.setTimeout(() => {
       this.flushInput(terminalId);
     }, 0);

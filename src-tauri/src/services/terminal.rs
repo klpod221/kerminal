@@ -173,7 +173,7 @@ impl TerminalManager {
         let (exit_tx, mut exit_rx) = mpsc::unbounded_channel::<TerminalExited>();
         let (latency_tx, mut latency_rx) = mpsc::unbounded_channel::<TerminalLatency>();
 
-        let buffer = crate::utils::output_buffer::TerminalOutputBuffer::new(4 * 1024 * 1024); // 4MB
+        let buffer = crate::utils::output_buffer::TerminalOutputBuffer::new(1024 * 1024); // 1MB
 
         {
             let mut buffers = self.output_buffers.write().await;

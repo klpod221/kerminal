@@ -21,15 +21,8 @@ import { useWorkspaceStore } from "../../stores/workspace";
 import { TerminalRegistry, InputBatcher, createTerminalOutputWriter, createTerminalRendererHealthWatchdog } from "../../core";
 import { getTerminalMetrics } from "../../services/terminal";
 
-// Expose global metrics fetcher
-(window as any).getTerminalMetrics = async (backendTerminalId: string) => {
-  try {
-    const metrics = await getTerminalMetrics(backendTerminalId);
-    console.table(metrics);
-    return metrics;
-  } catch (err) {
-    console.error('Failed to get metrics:', err);
-  }
+(window as any).getTerminalMetrics = async (id: string) => {
+  try { return await getTerminalMetrics(id); } catch (err) { console.error('Metrics error:', err); }
 };
 
 // Import Terminal component dynamically for creating instances
@@ -222,13 +215,15 @@ const ensureTerminalExists = async (terminalId: string): Promise<void> => {
 
   // Attach input handler
   const terminal = props.terminals.find((t) => t.id === terminalId);
-  if (terminal?.backendTerminalId) {
     TerminalRegistry.setInputHandler(terminal.id, (data) => {
       if (terminal.backendTerminalId) {
         inputBatcher.batchInput(terminal.backendTerminalId, data);
+        const managed = TerminalRegistry.getTerminal(terminal.id);
+        if (managed?.outputWriter) {
+          managed.outputWriter.flush();
+        }
       }
     });
-  }
 
   // Note: Fit will be done after mounting to panel (hidden host has no dimensions)
 
@@ -352,15 +347,9 @@ watch(
         TerminalRegistry.setInputHandler(terminal.id, (data) => {
           if (terminal.backendTerminalId) {
             inputBatcher.batchInput(terminal.backendTerminalId, data);
+            TerminalRegistry.getTerminal(terminal.id)?.outputWriter?.flush();
           }
         });
-        
-        // Log metrics usage once per terminal
-        if (!(window as any)[`_metrics_logged_${terminal.backendTerminalId}`]) {
-          (window as any)[`_metrics_logged_${terminal.backendTerminalId}`] = true;
-          console.log(`[Metrics] Debug metrics available for ${terminal.backendTerminalId}:`);
-          console.log(`          -> await window.getTerminalMetrics('${terminal.backendTerminalId}')`);
-        }
       }
     }
   },
@@ -466,51 +455,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.terminal-mount-point {
-  contain: layout size;
-}
-
-.terminal-mount-point :deep(.terminal-container) {
-  width: 100%;
-  height: 100%;
-}
-
-.terminal-mount-point :deep(.xterm) {
-  width: 100%;
-  height: 100%;
-  padding: 4px;
-}
-
-.terminal-mount-point :deep(.xterm-viewport) {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.terminal-mount-point :deep(.xterm-screen) {
-  width: 100%;
-  height: 100%;
-  user-select: text;
-}
-
-/* Terminal cursor blink enhancement */
-.terminal-mount-point :deep(.xterm-cursor) {
-  animation: terminalCursor 1s infinite;
-}
-
-@keyframes terminalCursor {
-  0%,
-  50% {
-    opacity: 1;
-  }
-
-  51%,
-  100% {
-    opacity: 0;
-  }
-}
-
-/* Terminal selection styling */
-.terminal-mount-point :deep(.xterm-selection) {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-}
+.terminal-mount-point { contain: layout size; }
+.terminal-mount-point :deep(.terminal-container) { width: 100%; height: 100%; }
+.terminal-mount-point :deep(.xterm) { width: 100%; height: 100%; padding: 4px; }
+.terminal-mount-point :deep(.xterm-viewport) { width: 100% !important; height: 100% !important; }
+.terminal-mount-point :deep(.xterm-screen) { width: 100%; height: 100%; user-select: text; }
+.terminal-mount-point :deep(.xterm-cursor) { animation: terminalCursor 1s infinite; }
+@keyframes terminalCursor { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+.terminal-mount-point :deep(.xterm-selection) { background-color: rgba(255, 255, 255, 0.2) !important; }
 </style>

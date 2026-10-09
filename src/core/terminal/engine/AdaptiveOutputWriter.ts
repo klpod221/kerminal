@@ -2,20 +2,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import type { TerminalRendererPerformanceTelemetry } from "./RendererPerformanceTelemetry";
-import {
-  discardForegroundRenderSettle,
-  writeForegroundTerminalChunk,
-  type ForegroundTerminalOutputTarget,
-} from "./ForegroundRenderSettle";
-import {
-  CURSOR_SHOW,
-  removeTransientCursorShowSequences,
-  TUI_SYNCHRONIZED_FLUSH_MAX_CHARS,
-  TUI_SYNCHRONIZED_FRAME_COALESCE_MS,
-  TUI_SYNCHRONIZED_FRAME_HOLD_MS,
-} from "./TuiCursorProtection";
+import { removeTransientCursorShowSequences } from "./TuiCursorProtection";
 
-type TerminalOutputSink = ForegroundTerminalOutputTarget;
+export interface TerminalOutputSink {
+  write(data: string, callback?: () => void): void;
+}
 
 export type TerminalOutputCadence = "focused" | "visible" | "hidden";
 export type TerminalOutputCallbackMode = "auto" | "required" | "unsupported";
@@ -42,28 +33,12 @@ export interface TerminalOutputWriterOptions {
 }
 
 export interface TerminalOutputWriterStats {
-  adaptationDecreaseCount: number;
-  adaptationIncreaseCount: number;
-  currentCharsPerFlush: number;
-  drainCount: number;
-  inFlight: boolean;
-  flushCount: number;
-  lastDrainMs?: number;
-  lastFlushChars: number;
-  lastFlushMs?: number;
-  lastSlowFlushAt?: number;
-  maxDrainMs: number;
-  maxFlushMs: number;
-  pendingBytes: number;
-  pendingChars: number;
-  pendingChunks: number;
-  pendingHighWaterChars: number;
-  slowFlushCount: number;
-  splitFrameCount: number;
-  targetWriteCallbackMs: number;
-  totalFlushChars: number;
-  writeErrorCount: number;
-  writeNowCount: number;
+  adaptationDecreaseCount: number; adaptationIncreaseCount: number; currentCharsPerFlush: number;
+  drainCount: number; inFlight: boolean; flushCount: number; lastDrainMs?: number; lastFlushChars: number;
+  lastFlushMs?: number; lastSlowFlushAt?: number; maxDrainMs: number; maxFlushMs: number;
+  pendingBytes: number; pendingChars: number; pendingChunks: number; pendingHighWaterChars: number;
+  slowFlushCount: number; splitFrameCount: number; targetWriteCallbackMs: number;
+  totalFlushChars: number; writeErrorCount: number; writeNowCount: number;
 }
 
 export interface TerminalOutputWriter {
@@ -78,14 +53,14 @@ export interface TerminalOutputWriter {
   writeNow(data: string): void;
 }
 
-const DEFAULT_MIN_CHARS_PER_FLUSH = 4 * 1024;
-const DEFAULT_INITIAL_CHARS_PER_FLUSH = 16 * 1024;
-const DEFAULT_MAX_CHARS_PER_FLUSH = 64 * 1024;
-const DEFAULT_TARGET_WRITE_CALLBACK_MS = 6;
-const DEFAULT_SLOW_FLUSH_MS = 16;
-const FRAME_FALLBACK_MS = 16;
+const DEFAULT_MIN_CHARS_PER_FLUSH = 16 * 1024;      // 16 KB
+const DEFAULT_INITIAL_CHARS_PER_FLUSH = 64 * 1024;  // 64 KB
+const DEFAULT_MAX_CHARS_PER_FLUSH = 512 * 1024;    // 512 KB
+const DEFAULT_TARGET_WRITE_CALLBACK_MS = 12;
+const DEFAULT_SLOW_FLUSH_MS = 24;
+const BACKLOG_PRESSURE_THRESHOLD_CHARS = 32 * 1024; // 32 KB
+const CRITICAL_PRESSURE_THRESHOLD_CHARS = 128 * 1024; // 128 KB
 const ADAPTATION_HYSTERESIS_SAMPLES = 2;
-const HIDDEN_PRESSURE_THRESHOLD_CHARS = 256 * 1024;
 
 const DEFAULT_CADENCE_DELAYS_MS: Record<TerminalOutputCadence, number> = {
   focused: 0,
@@ -94,11 +69,15 @@ const DEFAULT_CADENCE_DELAYS_MS: Record<TerminalOutputCadence, number> = {
 };
 
 const browserFrameScheduler: TerminalOutputScheduler = {
-  cancel: (handle) => globalThis.clearTimeout(handle),
+  cancel: (handle) => {
+    if (typeof globalThis.cancelAnimationFrame === "function") {
+      globalThis.cancelAnimationFrame(handle);
+    }
+    globalThis.clearTimeout(handle);
+  },
   request: (cb, delayMs = 0) => {
     if (delayMs <= 0 && typeof globalThis.requestAnimationFrame === "function") {
-      const id = globalThis.requestAnimationFrame(() => cb());
-      return id as unknown as number; // Hack to store both timeout and raf ids
+      return globalThis.requestAnimationFrame(() => cb()) as unknown as number;
     }
     return globalThis.setTimeout(cb, delayMs) as unknown as number;
   },
@@ -126,7 +105,6 @@ function utf8ByteLength(str: string): number {
 function safeSplitIndex(str: string, targetLength: number, allowEmpty: boolean): number {
   if (targetLength <= 0 && allowEmpty) return 0;
   if (targetLength >= str.length) return str.length;
-  // Don't split surrogate pairs
   let index = targetLength;
   if (index > 0 && index < str.length) {
     const code = str.charCodeAt(index - 1);
@@ -134,10 +112,8 @@ function safeSplitIndex(str: string, targetLength: number, allowEmpty: boolean):
       index -= 1;
     }
   }
-  // Don't split ANSI sequences if possible
   const lastEscape = str.lastIndexOf("\x1b", index - 1);
   if (lastEscape !== -1) {
-    // Check if the escape sequence is complete
     let isComplete = false;
     for (let i = lastEscape + 1; i < index; i++) {
       const c = str[i];
@@ -207,30 +183,20 @@ export function createTerminalOutputWriter(
   let disposed = false;
   let drainStartedAt: number | undefined;
   let inFlight = false;
+  let fastDrainPending = false;
   let pendingBytes = 0;
   let pendingChars = 0;
   let scheduledHandle: number | null = null;
-  let synchronizedOutputActive = false;
-  let tuiCoalescedFlushPending = false;
-  let tuiPostFrameCoalesceActive = false;
   let tuiCursorProtection = false;
-  const flushStats: Omit<TerminalOutputWriterStats, "currentCharsPerFlush" | "inFlight" | "pendingBytes" | "pendingChars" | "pendingChunks" | "targetWriteCallbackMs"> = {
-    adaptationDecreaseCount: 0,
-    adaptationIncreaseCount: 0,
-    drainCount: 0,
-    flushCount: 0,
-    lastDrainMs: undefined,
-    lastFlushChars: 0,
-    lastFlushMs: undefined,
-    lastSlowFlushAt: undefined,
-    maxDrainMs: 0,
-    maxFlushMs: 0,
-    pendingHighWaterChars: 0,
-    slowFlushCount: 0,
-    splitFrameCount: 0,
-    totalFlushChars: 0,
-    writeErrorCount: 0,
-    writeNowCount: 0,
+
+  const flushStats: Omit<
+    TerminalOutputWriterStats,
+    "currentCharsPerFlush" | "inFlight" | "pendingBytes" | "pendingChars" | "pendingChunks" | "targetWriteCallbackMs"
+  > = {
+    adaptationDecreaseCount: 0, adaptationIncreaseCount: 0, drainCount: 0, flushCount: 0,
+    lastDrainMs: undefined, lastFlushChars: 0, lastFlushMs: undefined, lastSlowFlushAt: undefined,
+    maxDrainMs: 0, maxFlushMs: 0, pendingHighWaterChars: 0, slowFlushCount: 0,
+    splitFrameCount: 0, totalFlushChars: 0, writeErrorCount: 0, writeNowCount: 0,
   };
 
   const callbackSupported =
@@ -240,10 +206,6 @@ export function createTerminalOutputWriter(
   const cancelScheduledFlush = () => {
     if (scheduledHandle === null) return;
     scheduler.cancel(scheduledHandle);
-    // Try to cancel RAF if it was RAF, clear timeout if timeout
-    if (typeof globalThis.cancelAnimationFrame === "function") {
-      globalThis.cancelAnimationFrame(scheduledHandle);
-    }
     scheduledHandle = null;
   };
 
@@ -260,27 +222,18 @@ export function createTerminalOutputWriter(
     if (disposed || inFlight || scheduledHandle !== null || pendingChars === 0) {
       return;
     }
-    const configuredDelay = Math.max(0, delayOverrideMs ?? cadenceDelaysMs[cadence] ?? 0);
-    const pressureDelay =
-      cadence === "hidden" && pendingChars >= HIDDEN_PRESSURE_THRESHOLD_CHARS
-        ? FRAME_FALLBACK_MS
-        : configuredDelay;
-    
-    // In Vue/Browser, requestAnimationFrame takes priority if delay is 0
-    if ((immediate || pressureDelay === 0) && typeof globalThis.requestAnimationFrame === "function") {
-      scheduledHandle = globalThis.requestAnimationFrame(flushFrame) as unknown as number;
-    } else {
-      scheduledHandle = globalThis.setTimeout(flushFrame, immediate ? 0 : pressureDelay) as unknown as number;
-    }
+    const hasBacklogPressure = pendingChars >= BACKLOG_PRESSURE_THRESHOLD_CHARS;
+    const isImmediate = immediate || fastDrainPending || (hasBacklogPressure && cadence === "focused");
+    const configuredDelay = isImmediate
+      ? 0
+      : Math.max(0, delayOverrideMs ?? cadenceDelaysMs[cadence] ?? 0);
+
+    scheduledHandle = scheduler.request(flushFrame, configuredDelay);
   };
 
   const schedulePendingFlush = () => {
-    if (tuiCursorProtection && synchronizedOutputActive) {
-      scheduleFlush(false, TUI_SYNCHRONIZED_FRAME_HOLD_MS);
-      return;
-    }
-    if (tuiCursorProtection && tuiPostFrameCoalesceActive) {
-      scheduleFlush(false, TUI_SYNCHRONIZED_FRAME_COALESCE_MS);
+    if (pendingChars >= CRITICAL_PRESSURE_THRESHOLD_CHARS || fastDrainPending) {
+      scheduleFlush(true);
       return;
     }
     scheduleFlush();
@@ -334,10 +287,22 @@ export function createTerminalOutputWriter(
 
   const applyAdaptation = (durationMs: number, batchChars: number) => {
     if (!adaptive) return;
+
+    // Never decrease batch size when backlog is piling up to prevent death spiral!
+    if (pendingChars >= BACKLOG_PRESSURE_THRESHOLD_CHARS) {
+      if (currentCharsPerFlush < maxCharsPerFlush) {
+        currentCharsPerFlush = Math.min(maxCharsPerFlush, Math.ceil(currentCharsPerFlush * 1.5));
+        flushStats.adaptationIncreaseCount += 1;
+      }
+      adaptationDirection = null;
+      adaptationStreak = 0;
+      return;
+    }
+
     let direction: "increase" | "decrease" | null = null;
-    if (durationMs > targetWriteCallbackMs * 1.25) {
+    if (durationMs > targetWriteCallbackMs * 2.0) {
       direction = "decrease";
-    } else if (durationMs < targetWriteCallbackMs * 0.65 && batchChars >= currentCharsPerFlush * 0.8) {
+    } else if (durationMs < targetWriteCallbackMs * 0.7 && batchChars >= currentCharsPerFlush * 0.8) {
       direction = "increase";
     }
 
@@ -357,11 +322,11 @@ export function createTerminalOutputWriter(
     adaptationStreak = 0;
     const next =
       direction === "increase"
-        ? Math.ceil(currentCharsPerFlush * 1.25)
-        : Math.floor(currentCharsPerFlush * 0.75);
+        ? Math.ceil(currentCharsPerFlush * 1.3)
+        : Math.floor(currentCharsPerFlush * 0.8);
     const clamped = Math.max(minCharsPerFlush, Math.min(maxCharsPerFlush, next));
     if (clamped === currentCharsPerFlush) return;
-    
+
     currentCharsPerFlush = clamped;
     if (direction === "increase") {
       flushStats.adaptationIncreaseCount += 1;
@@ -378,6 +343,7 @@ export function createTerminalOutputWriter(
     flushStats.maxDrainMs = Math.max(flushStats.maxDrainMs, drainMs);
     telemetry?.recordDuration("drainMs", drainMs);
     drainStartedAt = undefined;
+    fastDrainPending = false;
   };
 
   const recordCompletedWrite = (batch: string, startedAt: number, completedAt: number) => {
@@ -400,14 +366,11 @@ export function createTerminalOutputWriter(
     const protectedBatch = tuiCursorProtection
       ? removeTransientCursorShowSequences(batch)
       : batch;
-    const settleForegroundRender =
-      tuiCursorProtection &&
-      (batch.includes("\x1b[?2026") || batch.includes(CURSOR_SHOW));
-    
+
     inFlight = true;
     const startedAt = now();
     let completed = false;
-    
+
     const complete = () => {
       if (completed) return;
       completed = true;
@@ -429,14 +392,7 @@ export function createTerminalOutputWriter(
     };
 
     try {
-      if (callbackSupported && settleForegroundRender) {
-        writeForegroundTerminalChunk(terminal, protectedBatch, {
-          followupViewportRefresh: batch.includes(CURSOR_SHOW),
-          forceViewportRefresh: true,
-          onParsed: complete,
-          onWriteFailure: fail,
-        });
-      } else if (callbackSupported) {
+      if (callbackSupported) {
         terminal.write(protectedBatch, complete);
       } else {
         terminal.write(protectedBatch);
@@ -450,11 +406,13 @@ export function createTerminalOutputWriter(
   function flushFrame() {
     scheduledHandle = null;
     if (disposed || inFlight) return;
-    const batchLimit = tuiCoalescedFlushPending
-      ? Math.max(currentCharsPerFlush, Math.min(pendingChars, TUI_SYNCHRONIZED_FLUSH_MAX_CHARS))
+
+    // When fast draining or backlog pressure is active, flush full pending amount up to maxCharsPerFlush
+    const isAccelerated = fastDrainPending || pendingChars >= BACKLOG_PRESSURE_THRESHOLD_CHARS;
+    const batchLimit = isAccelerated
+      ? Math.max(currentCharsPerFlush, Math.min(pendingChars, maxCharsPerFlush))
       : currentCharsPerFlush;
-    tuiCoalescedFlushPending = false;
-    tuiPostFrameCoalesceActive = false;
+
     writeBatch(takeBatch(batchLimit));
   }
 
@@ -463,16 +421,19 @@ export function createTerminalOutputWriter(
       if (disposed) return;
       disposed = true;
       cancelScheduledFlush();
-      discardForegroundRenderSettle(terminal);
       chunks.length = 0;
       chunkHead = 0;
       pendingChars = 0;
       pendingBytes = 0;
+      fastDrainPending = false;
     },
     flush() {
-      if (disposed || pendingChars === 0 || inFlight) return;
-      cancelScheduledFlush();
-      flushFrame();
+      if (disposed || pendingChars === 0) return;
+      fastDrainPending = true;
+      if (!inFlight) {
+        cancelScheduledFlush();
+        flushFrame();
+      }
     },
     isTuiCursorProtectionActive: () => tuiCursorProtection,
     pendingLength: () => pendingChars,
@@ -488,11 +449,6 @@ export function createTerminalOutputWriter(
     },
     setTuiCursorProtection(active: boolean) {
       tuiCursorProtection = active;
-      if (!active) {
-        synchronizedOutputActive = false;
-        tuiCoalescedFlushPending = false;
-        tuiPostFrameCoalesceActive = false;
-      }
     },
     stats: () => ({
       ...flushStats,
