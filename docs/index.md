@@ -21,22 +21,22 @@ hero:
 features:
   - icon: 💻
     title: Terminal Emulator
-    details: Multiple tabs and split panes, native shell integration, WebGL-accelerated rendering with Unicode 11 support.
+    details: Multiple tabs, WebGL-accelerated rendering, Sixel image support, clickable links, and built-in Command Palette.
   - icon: 📡
     title: SSH Management
-    details: Profile organization with groups and colors, key authentication, proxy support, and jump host chains.
+    details: Profile organization, SSH key manager, proxy support, Jump Host Chains, and port forwarding (Local/Remote/Dynamic).
   - icon: 💾
-    title: Session Recording
-    details: Record sessions in asciicast format with playback controls. Command library with variable substitution.
+    title: Session & File Management
+    details: Record sessions in asciicast format, saved commands with syntax highlighting, and SFTP file transfer.
   - icon: 🔄
     title: Multi-Device Sync
     details: Sync via MySQL/PostgreSQL/MongoDB with AES-256-GCM encryption. Conflict resolution and auto-sync.
   - icon: 🔒
     title: Security First
-    details: Master password protection, device-specific keys, keychain integration, and auto-lock sessions.
+    details: Master password protection, device-specific keys, OS keychain integration, and session auto-lock.
   - icon: 🎨
     title: Modern UI
-    details: Beautiful dark theme, keyboard shortcuts, customizable colors, and real-time status indicators.
+    details: Customizable themes and fonts, native dark mode, keyboard shortcuts, and dashboard interface.
 ---
 
 ## 📸 Screenshots
@@ -72,6 +72,12 @@ xattr -rd com.apple.quarantine /path/to/Kerminal.app
 :::
 
 ### 🛠️ Alternative Installation
+#### 📦 Flatpak (Linux)
+
+Download the `.flatpak` file from the [Releases](https://github.com/klpod221/kerminal/releases/latest) page and run:
+```bash
+flatpak install /path/to/kerminal_*.flatpak
+```
 
 #### 🐧 Arch Linux (AUR)
 

@@ -21,22 +21,22 @@ hero:
 features:
   - icon: 💻
     title: Terminal Emulator
-    details: Hỗ trợ nhiều tab và chia màn hình, tích hợp shell gốc, render tăng tốc WebGL với hỗ trợ Unicode 11.
+    details: Đa màn hình (tabs, split panes), WebGL, hỗ trợ ảnh inline (Sixel), và Command Palette.
   - icon: 📡
-    title: Quản lý SSH
-    details: Tổ chức profile theo nhóm và màu sắc, xác thực bằng key, hỗ trợ proxy và jump host.
+    title: Quản lý SSH & Tunneling
+    details: Tổ chức profile, quản lý khóa SSH, hỗ trợ Proxy, Jump Host Chains, và Port forwarding.
   - icon: 💾
-    title: Ghi Session
-    details: Ghi session theo định dạng asciicast với điều khiển phát lại. Thư viện lệnh với thay thế biến.
+    title: Session & Files
+    details: Ghi hình session định dạng asciicast, thư viện lưu lệnh, và chuyển file SFTP.
   - icon: 🔄
     title: Đồng bộ đa thiết bị
-    details: Sync qua MySQL/PostgreSQL/MongoDB với mã hóa AES-256-GCM. Giải quyết xung đột và tự động đồng bộ.
+    details: Sync qua MySQL/PostgreSQL/MongoDB, mã hóa AES-256-GCM.
   - icon: 🔒
-    title: Bảo mật
-    details: Bảo vệ bằng master password, khóa riêng cho từng thiết bị, tích hợp keychain và tự động khóa.
+    title: Bảo mật tối đa
+    details: Bảo vệ bằng master password, khóa thiết bị, tích hợp OS keychain, và auto-lock.
   - icon: 🎨
     title: Giao diện hiện đại
-    details: Theme tối đẹp mắt, phím tắt, tùy chỉnh màu sắc và hiển thị trạng thái thời gian thực.
+    details: Tùy chỉnh theme, font chữ, Dark mode gốc, phím tắt linh hoạt, và Dashboard.
 ---
 
 ## 📸 Ảnh màn hình
@@ -72,6 +72,12 @@ xattr -rd com.apple.quarantine /path/to/Kerminal.app
 :::
 
 ### 🛠️ Cài đặt khác
+#### 📦 Flatpak (Linux)
+
+Tải file `.flatpak` từ trang [Releases](https://github.com/klpod221/kerminal/releases/latest) và chạy lệnh:
+```bash
+flatpak install /path/to/kerminal_*.flatpak
+```
 
 #### 🐧 Arch Linux (AUR)
 

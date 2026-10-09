@@ -72,30 +72,46 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 ## ✨ Features
 
 ### 💻 Terminal Emulator
-- Multiple tabs and split panes, native shell integration (bash, zsh, fish, PowerShell, etc.)
+- Multiple tabs and split panes
+- Native shell integration (bash, zsh, fish, PowerShell, etc.)
 - WebGL-accelerated rendering with Unicode 11 support
-- Search, clickable links, clipboard integration
+- Sixel graphics protocol support for inline images
+- Search, clickable links, and clipboard integration
+- Built-in Command Palette
 
 ### 📡 SSH Management & Tunneling
 - Profile organization with groups, colors, and descriptions
-- Authentication: password and keys (certificate, Kerberos, PKCS11, agent coming soon)
-- SSH key manager with import/export, connection testing, proxy support (HTTP, SOCKS4/5)
-- Jump Host Chain: Connect through multiple bastion hosts with automatic authentication
-- Port forwarding (Local/Remote/Dynamic) with auto-start and status monitoring
+- Authentication via password and SSH keys
+- Built-in SSH key manager (import, export, connection testing)
+- Proxy support (HTTP, SOCKS4/5)
+- Jump Host Chain for connecting through multiple bastion hosts
+- Port forwarding (Local, Remote, Dynamic SOCKS)
+- Automatic parsing of `~/.ssh/config`
 
-### 💾 Saved Commands & Session Recording
-- Command library with groups, usage tracking, favorites, and variable substitution
-- Record sessions in `asciicast` format with playback controls and export capabilities
+### 💾 Session & File Management
+- Record and playback sessions in `asciicast` format
+- Saved commands library with groups and syntax highlighting
+- SFTP file transfer integration
 
-### 🔄 Multi-Device Sync & Security
-- Sync via MySQL/PostgreSQL/MongoDB with AES-256-GCM encryption
-- Conflict resolution strategies, device management, auto-sync
-- Master password protection, device-specific keys, keychain integration, auto-lock sessions
+### 🔄 Security & Synchronization
+- Multi-device sync via MySQL/PostgreSQL/MongoDB
+- AES-256-GCM encryption with master password
+- Device-specific keys and OS keychain integration
+- Configurable session auto-lock
 
 ### 🎨 User Interface
-- Modern dark theme, keyboard shortcuts, customizable colors, real-time status indicators
+- Customizable terminal themes, color schemes, and fonts
+- Native dark theme and keyboard shortcuts
+- Dashboard interface and first-time user tour
 
-## Installation Guide
+## 📦 Installation Guide
+
+### Flatpak (Linux)
+
+You can download the `.flatpak` file from the [Releases](https://github.com/klpod221/kerminal/releases/latest) page and install it using:
+```bash
+flatpak install /path/to/kerminal_*.flatpak
+```
 
 ### Arch Linux (install from AUR)
 
@@ -226,35 +242,6 @@ If you encounter any issues or have questions:
 2. Create a new issue with detailed information
 3. Contact via email: klpod221@gmail.com
 
-## 🗺️ Roadmap
-
-### Completed
-- [x] Multiple tabs and split panes terminal
-- [x] WebGL-accelerated rendering with Unicode support
-- [x] AES-256-GCM encryption with master password
-- [x] SSH profile management with groups and colors
-- [x] SSH key manager with import/export
-- [x] Proxy support (HTTP, SOCKS4/5)
-- [x] Port forwarding (Local/Remote/Dynamic SOCKS)
-- [x] Multi-device sync (MySQL/PostgreSQL/MongoDB)
-- [x] Custom terminal themes and color schemes
-- [x] Custom terminal font settings
-- [x] Saved commands with syntax highlighting
-- [x] Session recording and playback (asciicast format)
-- [x] SFTP file transfer integration
-- [x] Auto-lock sessions and keychain integration
-- [x] Jump host chain support for SSH connections
-- [x] Support Sixel graphics protocol for inline images
-- [x] First user tour
-
-### Planned
-- [ ] Pin Drawer as sidebar
-- [ ] More SSH Authentication Methods (Agent, PKCS11, Kerberos)
-- [ ] Plugin system for extensions
-- [ ] Cloud backup integration
-- [ ] Homebrew install for macOS
-- [ ] Web-based version
-- [ ] Mobile app companion
 
 ## 👥 Contributors
 
