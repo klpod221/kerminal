@@ -1,1584 +1,493 @@
 <!--
-  - Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
-  - SPDX-License-Identifier: GPL-3.0-or-later
+  Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+  SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
 <template>
-  <div class="h-full flex flex-col bg-bg-primary relative">
-    <!-- Header with connection selector -->
-    <div
-      class="flex items-center justify-between px-4 py-2 border-b border-gray-800"
-    >
+  <div class="relative flex h-full flex-col bg-bg-primary font-mono text-xs text-gray-200">
+    <!-- Top Header Bar -->
+    <header class="flex items-center justify-between border-b border-gray-800 bg-bg-secondary px-4 py-2">
+      <!-- Connection controls -->
       <div class="flex items-center gap-3">
-        <Select
-          id="sftp-profile-select"
-          v-model="selectedProfileId"
-          :options="sshProfiles"
-          placeholder="Select SSH Profile"
-          :space="false"
-          :disabled="sftpStore.connecting"
-          @update:modelValue="handleProfileSelect"
-        />
+        <div class="w-64">
+          <Select
+            id="sftp-profile-select"
+            v-model="selectedProfileId"
+            :options="profileOptions"
+            placeholder="Select SSH Profile..."
+            :space="false"
+            :disabled="session.connecting.value"
+          />
+        </div>
+
         <Button
-          v-if="sftpStore.activeSessionId"
-          variant="danger"
+          v-if="!session.sessionId.value"
+          variant="primary"
           size="sm"
-          :disabled="sftpStore.connecting"
-          @click="handleDisconnect"
+          :disabled="!selectedProfileId || session.connecting.value"
+          :loading="session.connecting.value"
+          @click="handleConnect"
         >
-          Disconnect
+          <span>{{ session.connecting.value ? 'Connecting...' : 'Connect' }}</span>
+        </Button>
+        <Button v-else variant="danger" size="sm" @click="handleDisconnect">
+          <span>Disconnect</span>
         </Button>
       </div>
 
-      <div class="flex items-center gap-2">
-        <!-- Sync & Compare button -->
+      <!-- Center Quick Transfer between panes -->
+      <div v-if="session.sessionId.value" class="hidden md:flex items-center gap-2">
         <Button
-          v-if="sftpStore.activeSessionId"
-          variant="ghost"
+          variant="outline"
           size="sm"
-          :icon="GitCompare"
-          @click="handleSyncCompare"
-          title="Sync & Compare Directories"
+          :icon="Upload"
+          :disabled="localExplorer.selectedPaths.value.size === 0"
+          title="Upload selected files from Local to Server"
+          @click="queueUploads(Array.from(localExplorer.selectedPaths.value))"
         >
-          Sync
+          <span>Upload</span>
+          <span v-if="localExplorer.selectedPaths.value.size > 0" class="ml-1 text-cyan-400">
+            ({{ localExplorer.selectedPaths.value.size }})
+          </span>
         </Button>
 
-        <!-- Search button -->
         <Button
-          v-if="sftpStore.activeSessionId"
-          variant="ghost"
+          variant="outline"
           size="sm"
-          :icon="Search"
-          @click="openOverlay('sftp-file-search-modal')"
-          title="Search in files"
+          :icon="Download"
+          :disabled="remoteExplorer.selectedPaths.value.size === 0"
+          title="Download selected files from Server to Local"
+          @click="queueDownloads(Array.from(remoteExplorer.selectedPaths.value))"
         >
-          Search
-        </Button>
-
-        <!-- Transfer button -->
-        <Button
-          variant="ghost"
-          size="sm"
-          :icon="Activity"
-          @click="toggleTransferManager"
-          title="Transfer Manager"
-        >
-          <span class="flex items-center gap-1.5">
-            <span>Transfers</span>
-            <span
-              v-if="sftpStore.activeTransfers.length > 0"
-              class="px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs font-medium"
-            >
-              {{ sftpStore.activeTransfers.length }}
-            </span>
+          <span>Download</span>
+          <span v-if="remoteExplorer.selectedPaths.value.size > 0" class="ml-1 text-purple-400">
+            ({{ remoteExplorer.selectedPaths.value.size }})
           </span>
         </Button>
       </div>
+
+      <!-- Right Utility Actions -->
+      <div class="flex items-center gap-2">
+        <Button
+          v-if="session.sessionId.value"
+          variant="ghost"
+          size="sm"
+          :icon="GitCompare"
+          title="Compare & Sync directories"
+          @click="openOverlay('sftp-sync-compare-modal', { sessionId: session.sessionId.value, remotePath: remoteExplorer.currentPath.value, localPath: localExplorer.currentPath.value })"
+        >
+          <span class="hidden sm:inline">Sync</span>
+        </Button>
+
+        <Button
+          v-if="session.sessionId.value"
+          variant="ghost"
+          size="sm"
+          :icon="Search"
+          title="Search files on server"
+          @click="openOverlay('sftp-file-search-modal', { sessionId: session.sessionId.value, path: remoteExplorer.currentPath.value })"
+        >
+          <span class="hidden sm:inline">Search</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          :icon="ArrowUpDown"
+          title="Transfer Queue"
+          @click="transfers.isDrawerOpen.value = !transfers.isDrawerOpen.value"
+        >
+          <span class="hidden sm:inline">Transfers</span>
+          <span
+            v-if="transfers.activeCount.value > 0"
+            class="ml-1.5 rounded-full bg-blue-500/20 px-1.5 py-0.2 text-2xs text-blue-400 border border-blue-500/30"
+          >
+            {{ transfers.activeCount.value }}
+          </span>
+        </Button>
+      </div>
+    </header>
+
+    <!-- Error Banner -->
+    <div
+      v-if="session.error.value"
+      class="flex items-center justify-between border-b border-red-500/20 bg-red-500/10 px-4 py-2 text-xs text-red-400"
+    >
+      <div class="flex items-center gap-2">
+        <AlertTriangle class="h-4 w-4 shrink-0 text-red-400" />
+        <span>{{ session.error.value }}</span>
+      </div>
+      <button class="text-red-400 hover:text-white" @click="session.error.value = null">×</button>
     </div>
 
-    <!-- Dual-pane layout -->
-    <div class="flex-1 overflow-hidden">
-      <Splitpanes class="default-theme" @resize="onPaneResize">
-        <Pane
-          :size="sftpStore.activeSessionId || sftpStore.connecting ? 50 : 100"
-          :min-size="20"
-          :class="
-            isDraggingOverPane === 'local'
-              ? 'bg-blue-500/10 border-2 border-blue-500 border-dashed'
-              : ''
-          "
-        >
-          <!-- Local file browser -->
-          <div
-            class="h-full w-full"
-            @dragover="handlePaneDragOver('local', $event)"
-            @dragenter="handlePaneDragEnter('local', $event)"
-            @dragleave="handlePaneDragLeave('local', $event)"
-            @drop.prevent="handlePaneDrop('local', $event)"
-          >
-            <FileBrowser
-              :files="sftpStore.browserState.localFiles"
-              :current-path="sftpStore.browserState.localPath"
-              :loading="sftpStore.browserState.loading.local"
-              :selected-files="sftpStore.browserState.selectedLocalFiles"
-              @navigate="handleLocalNavigate"
-              @refresh="handleLocalRefresh"
-              @select="handleLocalSelect"
-              @upload="handleLocalUpload"
-              @drag-files="handleLocalDragFiles"
+    <!-- Main Body Area -->
+    <main class="relative flex-1 overflow-hidden">
+      <!-- Disconnected State -->
+      <div v-if="!session.sessionId.value" class="flex h-full items-center justify-center p-6 bg-bg-primary">
+        <EmptyState
+          :icon="Server"
+          title="SFTP Disconnected"
+          description="Select an SSH profile above and click Connect to start managing local and remote files."
+        />
+      </div>
+
+      <!-- Connected State: Dual-Pane Layout -->
+      <Splitpanes v-else class="default-theme h-full w-full">
+        <!-- Left Pane: Local File Browser -->
+        <Pane :size="50" :min-size="20" class="flex flex-col h-full bg-bg-primary overflow-hidden">
+          <PaneToolbar
+            :current-path="localExplorer.currentPath.value"
+            :loading="localExplorer.loading.value"
+            :can-go-back="localExplorer.canGoBack.value"
+            :can-go-forward="localExplorer.canGoForward.value"
+            :show-hidden="localExplorer.showHidden.value"
+            :search-query="localExplorer.searchQuery.value"
+            :is-remote="false"
+            :selected-count="localExplorer.selectedPaths.value.size"
+            @back="localExplorer.goBack()"
+            @forward="localExplorer.goForward()"
+            @up="localExplorer.goUp()"
+            @refresh="localExplorer.loadDirectory(localExplorer.currentPath.value)"
+            @navigate="localExplorer.navigateTo($event)"
+            @new-folder="openCreateModal(true, 'dir')"
+            @new-file="openCreateModal(true, 'file')"
+            @edit="handleToolbarAction('edit', true)"
+            @rename="handleToolbarAction('rename', true)"
+            @delete="handleToolbarAction('delete', true)"
+            @transfer-action="queueUploads(Array.from(localExplorer.selectedPaths.value))"
+            @toggle-hidden="localExplorer.showHidden.value = !localExplorer.showHidden.value"
+            @update:search-query="localExplorer.searchQuery.value = $event"
+          />
+
+          <div class="flex-1 overflow-hidden">
+            <FileListTable
+              :entries="localExplorer.filteredEntries.value"
+              :loading="localExplorer.loading.value"
+              :error="localExplorer.error.value"
+              :selected-paths="localExplorer.selectedPaths.value"
+              :sort-field="localExplorer.sortField.value"
+              :sort-asc="localExplorer.sortAsc.value"
+              :is-remote="false"
               @open="handleLocalOpen"
-              @edit="handleLocalEdit"
-              @rename="handleLocalRename"
-              @delete="handleLocalDelete"
-              @download="handleLocalDownload"
-              @create-directory="handleLocalCreateDirectory"
-              @create-file="handleLocalCreateFile"
-              @open-system="handleLocalOpenSystem"
+              @refresh="localExplorer.loadDirectory(localExplorer.currentPath.value)"
+              @sort="localExplorer.setSort"
+              @toggle-select="localExplorer.toggleSelect"
+              @toggle-select-all="localExplorer.selectAll"
+              @clear-selection="localExplorer.clearSelection()"
+              @action="(act, item) => handleAction(act, item, true)"
+              @drop-transfer="(d) => { if (d.isRemoteSource) queueDownloads(d.paths); }"
             />
           </div>
         </Pane>
 
-        <Pane
-          v-if="sftpStore.activeSessionId || sftpStore.connecting"
-          :size="50"
-          :min-size="20"
-          :class="
-            isDraggingOverPane === 'remote'
-              ? 'bg-blue-500/10 border-2 border-blue-500 border-dashed'
-              : ''
-          "
-        >
-          <!-- Remote file browser -->
-          <div
-            class="h-full w-full relative"
-            @dragover="handlePaneDragOver('remote', $event)"
-            @dragenter="handlePaneDragEnter('remote', $event)"
-            @dragleave="handlePaneDragLeave('remote', $event)"
-            @drop.prevent="handlePaneDrop('remote', $event)"
-          >
-            <!-- Connecting Overlay for Remote Panel -->
-            <div
-              v-if="sftpStore.connecting"
-              class="absolute inset-0 bg-bg-primary/95 flex items-center justify-center z-50"
-            >
-              <div class="flex flex-col items-center space-y-4">
-                <!-- Large spinning icon -->
-                <div class="relative">
-                  <div
-                    class="animate-spin rounded-full h-12 w-12 border-2 border-gray-600 border-t-blue-400"
-                  ></div>
-                  <!-- Pulse effect -->
-                  <div
-                    class="absolute inset-0 animate-ping rounded-full h-12 w-12 border border-blue-400/20"
-                  ></div>
-                </div>
-                <!-- Loading text -->
-                <div class="text-center">
-                  <p class="text-lg font-medium text-white mb-1">
-                    Connecting to SFTP...
-                  </p>
-                  <p class="text-sm text-gray-400">
-                    Please wait while establishing connection
-                  </p>
-                </div>
-              </div>
-            </div>
-            <FileBrowser
-              :files="sftpStore.browserState.remoteFiles"
-              :current-path="sftpStore.browserState.remotePath"
-              :loading="
-                sftpStore.browserState.loading.remote || sftpStore.connecting
-              "
+        <!-- Right Pane: Remote SFTP Browser -->
+        <Pane :size="50" :min-size="20" class="flex flex-col h-full bg-bg-primary overflow-hidden">
+          <PaneToolbar
+            :current-path="remoteExplorer.currentPath.value"
+            :loading="remoteExplorer.loading.value"
+            :can-go-back="remoteExplorer.canGoBack.value"
+            :can-go-forward="remoteExplorer.canGoForward.value"
+            :show-hidden="remoteExplorer.showHidden.value"
+            :search-query="remoteExplorer.searchQuery.value"
+            :is-remote="true"
+            :selected-count="remoteExplorer.selectedPaths.value.size"
+            @back="remoteExplorer.goBack()"
+            @forward="remoteExplorer.goForward()"
+            @up="remoteExplorer.goUp()"
+            @refresh="remoteExplorer.loadDirectory(remoteExplorer.currentPath.value)"
+            @navigate="remoteExplorer.navigateTo($event)"
+            @new-folder="openCreateModal(false, 'dir')"
+            @new-file="openCreateModal(false, 'file')"
+            @edit="handleToolbarAction('edit', false)"
+            @rename="handleToolbarAction('rename', false)"
+            @delete="handleToolbarAction('delete', false)"
+            @transfer-action="queueDownloads(Array.from(remoteExplorer.selectedPaths.value))"
+            @toggle-hidden="remoteExplorer.showHidden.value = !remoteExplorer.showHidden.value"
+            @update:search-query="remoteExplorer.searchQuery.value = $event"
+          />
+
+          <div class="flex-1 overflow-hidden">
+            <FileListTable
+              :entries="remoteExplorer.filteredEntries.value"
+              :loading="remoteExplorer.loading.value"
+              :error="remoteExplorer.error.value"
+              :selected-paths="remoteExplorer.selectedPaths.value"
+              :sort-field="remoteExplorer.sortField.value"
+              :sort-asc="remoteExplorer.sortAsc.value"
               :is-remote="true"
-              :selected-files="sftpStore.browserState.selectedRemoteFiles"
-              @navigate="handleRemoteNavigate"
-              @refresh="handleRemoteRefresh"
-              @select="handleRemoteSelect"
-              @download="handleRemoteDownload"
-              @delete="handleRemoteDelete"
-              @permissions="handleRemotePermissions"
-              @drag-files="handleRemoteDragFiles"
               @open="handleRemoteOpen"
-              @edit="handleRemoteEdit"
-              @rename="handleRemoteRename"
-              @create-directory="handleRemoteCreateDirectory"
-              @create-file="handleRemoteCreateFile"
-              @open-system="handleRemoteOpenSystem"
+              @refresh="remoteExplorer.loadDirectory(remoteExplorer.currentPath.value)"
+              @sort="remoteExplorer.setSort"
+              @toggle-select="remoteExplorer.toggleSelect"
+              @toggle-select-all="remoteExplorer.selectAll"
+              @clear-selection="remoteExplorer.clearSelection()"
+              @action="(act, item) => handleAction(act, item, false)"
+              @drop-transfer="(d) => { if (!d.isRemoteSource) queueUploads(d.paths); }"
             />
           </div>
         </Pane>
       </Splitpanes>
-    </div>
+    </main>
 
-    <!-- Modals -->
-    <TransferManager v-if="isOverlayVisible('sftp-transfer-manager-modal')" />
-    <FileRenameModal v-if="isOverlayVisible('sftp-file-rename-modal')" />
-    <FileDeleteModal v-if="isOverlayVisible('sftp-file-delete-modal')" />
-    <FilePermissionsModal
-      v-if="isOverlayVisible('sftp-file-permissions-modal')"
+    <!-- Bottom Transfer Drawer -->
+    <TransferDrawer
+      :is-open="transfers.isDrawerOpen.value"
+      :transfers="transfers.transferList.value"
+      @close="transfers.isDrawerOpen.value = false"
+      @refresh="transfers.refreshQueue"
+      @pause-all="transfers.pauseAll"
+      @resume-all="transfers.resumeAll"
+      @clear-completed="transfers.clearCompleted"
+      @pause="transfers.pauseTask"
+      @resume="transfers.resumeTask"
+      @cancel="transfers.cancelTask"
+      @retry="transfers.retryTask"
     />
-    <CreateDirectoryModal
-      v-if="isOverlayVisible('sftp-create-directory-modal')"
-    />
-    <CreateFileModal v-if="isOverlayVisible('sftp-create-file-modal')" />
-    <SyncCompareModal v-if="isOverlayVisible('sftp-sync-compare-modal')" />
-    <FileEditorModal v-if="isOverlayVisible('sftp-file-editor-modal')" />
-    <FilePreviewModal v-if="isOverlayVisible('sftp-file-preview-modal')" />
-    <FileSearchModal v-if="isOverlayVisible('sftp-file-search-modal')" />
+
+    <!-- Dialogs & Modals -->
+    <CreateDirectoryModal />
+    <CreateFileModal />
+    <FileRenameModal />
+    <FileDeleteModal />
+    <FilePermissionsModal />
+    <FileEditorModal />
+    <FilePreviewModal />
+    <FileSearchModal />
+    <SyncCompareModal />
   </div>
 </template>
 
 <script setup lang="ts">
-import {
-  ref,
-  computed,
-  watch,
-  onMounted,
-  onUnmounted,
-  defineAsyncComponent,
-} from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { Splitpanes, Pane } from "splitpanes";
-import "splitpanes/dist/splitpanes.css";
-import { Activity, GitCompare, Search } from "lucide-vue-next";
-import { useSFTPStore } from "../../stores/sftp";
 import { useSSHStore } from "../../stores/ssh";
-import { message } from "../../utils/message";
 import { useOverlay } from "../../composables/useOverlay";
-import FileBrowser from "./FileBrowser.vue";
+import {
+  useSftpSession,
+  useFileExplorer,
+  useFileOperations,
+  useTransferQueue,
+} from "../../composables/sftp";
+import { listSFTPDirectory } from "../../services/sftp";
+import { listLocalDirectory, getDefaultLocalPath } from "../../services/localFs";
+import type { FileEntry } from "../../types/sftp";
+
 import Button from "../ui/Button.vue";
 import Select from "../ui/Select.vue";
-import type { FileEntry } from "../../types/sftp";
-import { api } from "../../services/api";
-const remove = (path: string, options?: any) => api.callRaw("local_fs_remove", { path });
-const rename = (oldPath: string, newPath: string) => api.callRaw("local_fs_rename", { old_path: oldPath, new_path: newPath });
-const writeFile = (path: string, data: Uint8Array) => api.callRaw("local_fs_write_file", { path, contents: Array.from(data) });
-const mkdir = (path: string, options?: any) => api.callRaw("local_fs_mkdir", { path });
-interface LocalFileEntry { name: string; is_dir: boolean; is_file: boolean; size: number; modified: number | null; }
-const readDir = (path: string) => api.callRaw<LocalFileEntry[]>("local_fs_read_dir", { path });
-const stat = async (path: string) => { 
-  const res = await api.callRaw<any>("local_fs_stat", { path });
-  return { isDirectory: res.is_dir, isSymlink: false };
-};
-import { dirname, homeDir, tempDir, join } from "@tauri-apps/api/path";
-import * as sftpService from "../../services/sftp";
-import { canPreviewFile } from "../../utils/filePreview";
-import { openPath } from "@tauri-apps/plugin-opener";
-import { save, open } from "@tauri-apps/plugin-dialog";
+import EmptyState from "../ui/EmptyState.vue";
+import PaneToolbar from "./PaneToolbar.vue";
+import FileListTable from "./FileListTable.vue";
+import TransferDrawer from "./TransferDrawer.vue";
+import CreateDirectoryModal from "./CreateDirectoryModal.vue";
+import CreateFileModal from "./CreateFileModal.vue";
+import FileRenameModal from "./FileRenameModal.vue";
+import FileDeleteModal from "./FileDeleteModal.vue";
+import FilePermissionsModal from "./FilePermissionsModal.vue";
+import FileEditorModal from "./FileEditorModal.vue";
+import FilePreviewModal from "./FilePreviewModal.vue";
+import FileSearchModal from "./FileSearchModal.vue";
+import SyncCompareModal from "./SyncCompareModal.vue";
+import { message } from "../../utils/message";
+import { Server, Upload, Download, GitCompare, Search, ArrowUpDown, AlertTriangle } from "lucide-vue-next";
 
-// Async components to reduce bundle size
-const TransferManager = defineAsyncComponent(
-  () => import("./TransferManager.vue"),
-);
-const FileRenameModal = defineAsyncComponent(
-  () => import("./FileRenameModal.vue"),
-);
-const FileDeleteModal = defineAsyncComponent(
-  () => import("./FileDeleteModal.vue"),
-);
-const FilePermissionsModal = defineAsyncComponent(
-  () => import("./FilePermissionsModal.vue"),
-);
-const CreateDirectoryModal = defineAsyncComponent(
-  () => import("./CreateDirectoryModal.vue"),
-);
-const CreateFileModal = defineAsyncComponent(
-  () => import("./CreateFileModal.vue"),
-);
-const SyncCompareModal = defineAsyncComponent(
-  () => import("./SyncCompareModal.vue"),
-);
-const FileEditorModal = defineAsyncComponent(
-  () => import("./FileEditorModal.vue"),
-);
-const FilePreviewModal = defineAsyncComponent(
-  () => import("./FilePreviewModal.vue"),
-);
-const FileSearchModal = defineAsyncComponent(
-  () => import("./FileSearchModal.vue"),
-);
-
-const sftpStore = useSFTPStore();
 const sshStore = useSSHStore();
-const { openOverlay, closeOverlay, isOverlayVisible } = useOverlay();
+const { openOverlay } = useOverlay();
+const session = useSftpSession();
+const ops = useFileOperations();
+const transfers = useTransferQueue();
 
 const selectedProfileId = ref<string>("");
-const isDraggingOverPane = ref<"local" | "remote" | null>(null);
-const dragEnterCounter = ref<{ local: number; remote: number }>({
-  local: 0,
-  remote: 0,
-});
-
-watch(
-  () => sftpStore.activeTransfers.length,
-  (newLength, oldLength) => {
-    if (newLength > 0 && oldLength === 0) {
-      if (!isOverlayVisible("sftp-transfer-manager-modal")) {
-        openOverlay("sftp-transfer-manager-modal");
-      }
-    }
-  },
+const profileOptions = computed(() =>
+  sshStore.profiles.map((p) => ({
+    value: p.id,
+    label: `${p.name} (${p.username}@${p.host})`,
+  })),
 );
 
-function toggleTransferManager() {
-  if (isOverlayVisible("sftp-transfer-manager-modal")) {
-    closeOverlay("sftp-transfer-manager-modal");
-  } else {
-    openOverlay("sftp-transfer-manager-modal");
-  }
-}
-
-function handleSyncCompare() {
-  const localPath = sftpStore.browserState.localPath || "/";
-  const remotePath = sftpStore.browserState.remotePath || "/";
-  openOverlay("sftp-sync-compare-modal", {
-    localPath,
-    remotePath,
-  });
-}
-
-const sshProfiles = computed(() => {
-  return sshStore.profiles.map((p) => ({
-    value: p.id,
-    label: p.name,
-  }));
+// File Explorers: Local and Remote
+const localExplorer = useFileExplorer({
+  fetcher: listLocalDirectory,
+  initialPath: "/",
 });
 
+const remoteExplorer = useFileExplorer({
+  fetcher: (path: string) => listSFTPDirectory(session.sessionId.value!, path),
+  initialPath: "/",
+});
+
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+
+const modalEvents = ["sftp-create-directory", "sftp-create-file", "sftp-rename", "sftp-delete"];
+let unlistenTransferComplete: UnlistenFn | null = null;
+
 onMounted(async () => {
-  await sshStore.loadProfiles();
-
-  if (
-    !sftpStore.browserState.localPath ||
-    sftpStore.browserState.localFiles.length === 0
-  ) {
-    const homeDir = await getHomeDirectory();
-    await sftpStore.listLocalDirectory(homeDir);
-  }
-
-  if (sftpStore.activeSessionId && sftpStore.activeSession) {
-    selectedProfileId.value = sftpStore.activeSession.profileId;
-  }
-
-  watch(
-    () => sftpStore.activeSession,
-    (session) => {
-      if (session) {
-        selectedProfileId.value = session.profileId;
-      } else {
-        selectedProfileId.value = "";
-      }
-    },
-    { immediate: true },
-  );
-
-  watch(
-    () => sftpStore.activeSessionId,
-    () => {},
-  );
-
-  globalThis.addEventListener("sftp-rename", handleRenameSubmit);
-  globalThis.addEventListener("sftp-delete", handleDeleteSubmit);
-  globalThis.addEventListener("sftp-permissions", handlePermissionsSubmit);
-  globalThis.addEventListener(
-    "sftp-create-directory",
-    handleCreateDirectorySubmit,
-  );
-  globalThis.addEventListener("sftp-create-file", handleCreateFileSubmit);
+  if (sshStore.profiles.length === 0) await sshStore.loadProfiles();
+  const defaultLocal = await getDefaultLocalPath();
+  await localExplorer.loadDirectory(defaultLocal);
+  modalEvents.forEach((evt) => globalThis.addEventListener(evt, handleModalEvent));
+  unlistenTransferComplete = await listen("sftp_transfer_complete", () => {
+    localExplorer.loadDirectory(localExplorer.currentPath.value);
+    if (session.sessionId.value) {
+      remoteExplorer.loadDirectory(remoteExplorer.currentPath.value);
+    }
+  });
 });
 
 onUnmounted(() => {
-  globalThis.removeEventListener("sftp-rename", handleRenameSubmit);
-  globalThis.removeEventListener("sftp-delete", handleDeleteSubmit);
-  globalThis.removeEventListener("sftp-permissions", handlePermissionsSubmit);
-  globalThis.removeEventListener(
-    "sftp-create-directory",
-    handleCreateDirectorySubmit,
-  );
-  globalThis.removeEventListener("sftp-create-file", handleCreateFileSubmit);
+  if (unlistenTransferComplete) unlistenTransferComplete();
+  modalEvents.forEach((evt) => globalThis.removeEventListener(evt, handleModalEvent));
 });
 
-async function handleRenameSubmit(event: Event) {
-  const customEvent = event as CustomEvent<{
-    oldPath: string;
-    newPath: string;
-    isLocal?: boolean;
-  }>;
-
-  try {
-    if (customEvent.detail.isLocal) {
-      await rename(customEvent.detail.oldPath, customEvent.detail.newPath);
-
-      const dirPath = await dirname(customEvent.detail.newPath);
-      await sftpStore.listLocalDirectory(dirPath);
-      message.success("File renamed successfully");
-    } else {
-      if (!sftpStore.activeSessionId) return;
-
-      await sftpStore.renameFile(
-        sftpStore.activeSessionId,
-        customEvent.detail.oldPath,
-        customEvent.detail.newPath,
-      );
-      message.success("File renamed successfully");
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Failed to rename file:", errorMessage);
-    message.error(errorMessage);
+async function handleConnect() {
+  if (!selectedProfileId.value) return;
+  const ok = await session.connect(selectedProfileId.value);
+  if (ok && session.sessionId.value) {
+    await remoteExplorer.loadDirectory(session.homeDir.value || "/");
+    transfers.startPolling();
   }
 }
 
-async function handleDeleteSubmit(event: Event) {
-  const customEvent = event as CustomEvent<{
-    path: string;
-    isDirectory: boolean;
-    isLocal?: boolean;
-  }>;
-
-  try {
-    if (customEvent.detail.isLocal) {
-      const fileStat = await stat(customEvent.detail.path);
-      const isDirectory = fileStat.isDirectory;
-
-      if (isDirectory) {
-        await remove(customEvent.detail.path, { recursive: true });
-      } else {
-        await remove(customEvent.detail.path);
-      }
-
-      const dirPath = await dirname(customEvent.detail.path);
-      await sftpStore.listLocalDirectory(dirPath);
-      message.success("File deleted successfully");
-    } else {
-      if (!sftpStore.activeSessionId) return;
-
-      await sftpStore.deleteFile(
-        sftpStore.activeSessionId,
-        customEvent.detail.path,
-        customEvent.detail.isDirectory,
-      );
-      message.success("File deleted successfully");
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Failed to delete file:", errorMessage);
-    message.error(errorMessage);
-  }
-}
-
-async function handlePermissionsSubmit(event: Event) {
-  const customEvent = event as CustomEvent<{
-    path?: string;
-    paths?: string[];
-    mode: number;
-  }>;
-  if (!sftpStore.activeSessionId) return;
-
-  const paths =
-    customEvent.detail.paths ||
-    (customEvent.detail.path ? [customEvent.detail.path] : []);
-
-  if (paths.length === 0) return;
-
-  try {
-    for (const path of paths) {
-      await sftpStore.setPermissions(
-        sftpStore.activeSessionId,
-        path,
-        customEvent.detail.mode,
-      );
-    }
-
-    const dirPath =
-      paths.length > 0
-        ? paths[0].substring(0, paths[0].lastIndexOf("/")) || "/"
-        : sftpStore.browserState.remotePath || "/";
-
-    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, dirPath);
-
-    message.success(
-      `Permissions updated successfully for ${paths.length} item${paths.length > 1 ? "s" : ""}`,
-    );
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    message.error(`Failed to update permissions: ${errorMessage}`);
-  }
-}
-
-/**
- * Handle SSH profile selection and connect to SFTP
- * @param profileId - SSH profile ID to connect with
- */
-async function handleProfileSelect(profileId: string) {
-  if (!profileId || profileId === "") return;
-
-  const { homeDir } = await sftpStore.connect(profileId);
-
-  selectedProfileId.value = profileId;
-
-  if (!sftpStore.browserState.localPath) {
-    const homeDirLocal = await getHomeDirectory();
-    await sftpStore.listLocalDirectory(homeDirLocal);
-  }
-
-  if (sftpStore.activeSessionId) {
-    const profile = sshStore.profiles.find((p) => p.id === profileId);
-    // Priority: user-configured workingDir > server-resolved $HOME
-    const remotePath = profile?.workingDir || homeDir;
-    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, remotePath);
-  }
-}
-
-/**
- * Disconnect from SFTP
- */
 async function handleDisconnect() {
-  if (!sftpStore.activeSessionId) return;
-
-  await sftpStore.disconnect(sftpStore.activeSessionId);
-  message.success("SFTP disconnected");
-  selectedProfileId.value = "";
+  await session.disconnect();
+  remoteExplorer.clearSelection();
+  transfers.stopPolling();
 }
 
-async function getHomeDirectory(): Promise<string> {
-  return await homeDir();
-}
-
-function handleLocalNavigate(path: string) {
-  sftpStore.listLocalDirectory(path);
-}
-
-function handleLocalRefresh() {
-  if (sftpStore.browserState.localPath) {
-    sftpStore.listLocalDirectory(sftpStore.browserState.localPath);
-  }
-}
-
-function handleLocalSelect(path: string) {
-  const selected = sftpStore.browserState.selectedLocalFiles;
-  if (selected.has(path)) {
-    selected.delete(path);
+async function handleLocalOpen(item: FileEntry) {
+  if (item.fileType === "directory") {
+    await localExplorer.navigateTo(item.path);
   } else {
-    selected.add(path);
-  }
-}
-
-/**
- * Handle local file upload to remote SFTP server
- * @param files - FileList or File array to upload
- */
-async function handleLocalUpload(files: FileList | File[]) {
-  if (!sftpStore.activeSessionId) return;
-
-  const remotePath = sftpStore.browserState.remotePath || "/";
-  const fileArray = Array.from(files);
-  const tempFilesToCleanup: string[] = [];
-
-  try {
-    for (const file of fileArray) {
-      let filePath = "";
-      const fileWithPath = file as File & { path?: string };
-
-      if (fileWithPath.path) {
-        // File has a direct path
-        filePath = fileWithPath.path;
-      } else if (file instanceof File) {
-        const tempDirPath = await tempDir();
-        const tempFilePath = await join(
-          tempDirPath,
-          `sftp_upload_${Date.now()}_${file.name}`,
-        );
-
-        const arrayBuffer = await file.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-
-        await writeFile(tempFilePath, uint8Array);
-
-        filePath = tempFilePath;
-        tempFilesToCleanup.push(tempFilePath);
-      } else {
-        continue;
-      }
-
-      const normalizedRemotePath = remotePath.endsWith("/")
-        ? remotePath.slice(0, -1)
-        : remotePath;
-      const remoteFilePath = `${normalizedRemotePath}/${file.name}`;
-
-      await sftpStore.uploadFile(
-        sftpStore.activeSessionId,
-        filePath,
-        remoteFilePath,
-      );
-      message.success(`Uploading ${file.name}...`);
-    }
-
-    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, remotePath);
-  } finally {
-    if (tempFilesToCleanup.length > 0) {
-      setTimeout(async () => {
-        for (const tempPath of tempFilesToCleanup) {
-          try {
-            await remove(tempPath);
-          } catch (error) {
-            console.warn("Failed to cleanup temp file:", tempPath, error);
-          }
-        }
-      }, 5000);
+    try {
+      const { openPath } = await import("@tauri-apps/plugin-opener");
+      await openPath(item.path);
+    } catch {
+      openOverlay("sftp-file-editor-modal", { file: item, isLocal: true });
     }
   }
 }
 
-async function handleLocalOpen(file: FileEntry) {
-  if (file.fileType === "directory") {
-    handleLocalNavigate(file.path);
-  } else if (canPreviewFile(file)) {
-    openOverlay("sftp-file-preview-modal", {
-      file,
-      isLocal: true,
-      files: sftpStore.browserState.localFiles,
-    });
-  } else {
-    await openPath(file.path);
-  }
-}
+const TEXT_EXTS = new Set(["txt", "md", "log", "json", "js", "ts", "vue", "jsx", "tsx", "rs", "go", "py", "c", "cpp", "h", "hpp", "html", "css", "scss", "yaml", "yml", "sh", "bash", "zsh", "toml", "ini", "conf", "env", "sql", "xml", "csv", "dockerfile", "makefile", "gitignore"]);
+const MEDIA_EXTS = new Set(["jpg", "jpeg", "png", "gif", "svg", "webp", "mp4", "webm", "mp3", "wav", "ogg"]);
 
-function handleLocalEdit(file: FileEntry) {
-  if (file.fileType === "file") {
-    openOverlay("sftp-file-editor-modal", {
-      file,
-      isLocal: true,
-    });
-  }
-}
-
-function handleLocalRename(file: FileEntry) {
-  openOverlay("sftp-file-rename-modal", {
-    file,
-    isLocal: true,
-  });
-}
-
-function handleLocalDelete(files: FileEntry[]) {
-  if (files.length === 0) return;
-
-  if (files.length === 1) {
-    openOverlay("sftp-file-delete-modal", {
-      file: files[0],
-      isLocal: true,
-    });
-  } else {
-    deleteLocalFiles(files);
-  }
-}
-
-async function deleteLocalFiles(files: FileEntry[]) {
-  try {
-    for (const file of files) {
-      const fileStat = await stat(file.path);
-      const isDirectory = fileStat.isDirectory;
-
-      if (isDirectory) {
-        await remove(file.path, { recursive: true });
-      } else {
-        await remove(file.path);
-      }
-    }
-
-    const dirPath =
-      files.length > 0
-        ? await dirname(files[0].path)
-        : sftpStore.browserState.localPath || "/";
-
-    await sftpStore.listLocalDirectory(dirPath);
-    message.success(
-      `Deleted ${files.length} item${files.length > 1 ? "s" : ""} successfully`,
-    );
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    message.error(`Failed to delete: ${errorMessage}`);
-  }
-}
-
-function handleRemoteNavigate(path: string) {
-  if (!sftpStore.activeSessionId) return;
-  sftpStore.listRemoteDirectory(sftpStore.activeSessionId, path);
-}
-
-function handleRemoteRefresh() {
-  if (!sftpStore.activeSessionId || !sftpStore.browserState.remotePath) {
+async function handleRemoteOpen(item: FileEntry) {
+  if (item.fileType === "directory") {
+    await remoteExplorer.navigateTo(item.path);
     return;
   }
-  sftpStore.listRemoteDirectory(
-    sftpStore.activeSessionId,
-    sftpStore.browserState.remotePath,
-  );
-}
-
-function handleRemoteSelect(path: string) {
-  const selected = sftpStore.browserState.selectedRemoteFiles;
-  if (selected.has(path)) {
-    selected.delete(path);
+  const ext = item.name.split(".").pop()?.toLowerCase() || "";
+  if (MEDIA_EXTS.has(ext)) {
+    openOverlay("sftp-file-preview-modal", { file: item, sessionId: session.sessionId.value });
+  } else if (TEXT_EXTS.has(ext) || (!ext && (item.size || 0) < 500000)) {
+    openOverlay("sftp-file-editor-modal", { file: item, sessionId: session.sessionId.value, isLocal: false });
   } else {
-    selected.add(path);
+    // Binary, PDF, archive -> download to local current path
+    queueDownloads([item.path]);
   }
 }
 
-/**
- * Generate a unique filename by appending a number
- */
-async function generateUniqueLocalPath(
-  basePath: string,
-  fileName: string,
-): Promise<string> {
-  const baseName = fileName.substring(0, fileName.lastIndexOf(".")) || fileName;
-  const ext = fileName.includes(".")
-    ? fileName.substring(fileName.lastIndexOf("."))
-    : "";
-
-  let counter = 1;
-  let newPath =
-    basePath === "/"
-      ? await join("/", fileName)
-      : await join(basePath, fileName);
-
-  while (true) {
-    try {
-      await stat(newPath);
-      const newName = `${baseName} (${counter})${ext}`;
-      newPath =
-        basePath === "/"
-          ? await join("/", newName)
-          : await join(basePath, newName);
-      counter++;
-    } catch {
-      break;
-    }
-  }
-
-  return newPath;
+function openCreateModal(isLocal: boolean, type: "dir" | "file") {
+  const currentPath = isLocal ? localExplorer.currentPath.value : remoteExplorer.currentPath.value;
+  const modalId = type === "dir" ? "sftp-create-directory-modal" : "sftp-create-file-modal";
+  openOverlay(modalId, { currentPath, isLocal });
 }
 
-/**
- * Generate a unique remote filename by appending a number
- */
-async function generateUniqueRemotePath(
-  sessionId: string,
-  basePath: string,
-  fileName: string,
-): Promise<string> {
-  const baseName = fileName.substring(0, fileName.lastIndexOf(".")) || fileName;
-  const ext = fileName.includes(".")
-    ? fileName.substring(fileName.lastIndexOf("."))
-    : "";
-
-  let counter = 1;
-  let newPath = basePath === "/" ? `/${fileName}` : `${basePath}/${fileName}`;
-
-  while (true) {
-    try {
-      await sftpService.statSFTP(sessionId, newPath);
-      const newName = `${baseName} (${counter})${ext}`;
-      newPath = basePath === "/" ? `/${newName}` : `${basePath}/${newName}`;
-      counter++;
-    } catch {
-      break;
-    }
-  }
-
-  return newPath;
-}
-
-async function processSingleRemoteToLocal(file: FileEntry, localPath: string) {
-  if (file.fileType === "directory") {
-    try {
-      await downloadDirectoryRecursive(
-        sftpStore.activeSessionId!,
-        file.path,
-        localPath,
-        file.name,
-      );
-      message.success(`Downloading directory ${file.name}...`);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      message.error(
-        `Failed to download directory ${file.name}: ${errorMessage}`,
-      );
-    }
-  } else {
-    let localFilePath =
-      localPath === "/"
-        ? await join("/", file.name)
-        : await join(localPath, file.name);
-
-    try {
-      await stat(localFilePath);
-      localFilePath = await generateUniqueLocalPath(localPath, file.name);
-      message.info(
-        `${file.name} already exists, using ${localFilePath.split("/").pop()}`,
-      );
-    } catch {
-      // File doesn't exist, proceed
-    }
-
-    await sftpStore.downloadFile(
-      sftpStore.activeSessionId!,
-      file.path,
-      localFilePath,
-    );
-    message.success(`Downloading ${file.name}...`);
+function handleToolbarAction(action: "edit" | "rename" | "delete", isLocal: boolean) {
+  const explorer = isLocal ? localExplorer : remoteExplorer;
+  const paths = Array.from(explorer.selectedPaths.value);
+  if (paths.length === 0) return;
+  const items = explorer.filteredEntries.value.filter((e) => explorer.selectedPaths.value.has(e.path));
+  if (items.length === 0) return;
+  if (action === "edit" && items.length === 1 && items[0].fileType !== "directory") {
+    openOverlay("sftp-file-editor-modal", { file: items[0], sessionId: session.sessionId.value, isLocal });
+  } else if (action === "rename" && items.length === 1) {
+    openOverlay("sftp-file-rename-modal", { file: items[0], isLocal });
+  } else if (action === "delete") {
+    openOverlay("sftp-file-delete-modal", { file: items[0], files: items, isLocal });
   }
 }
 
-async function processRemoteToLocalDrop(
-  files: FileEntry[],
-  targetPath: string,
-) {
-  const localPath = targetPath || sftpStore.browserState.localPath || "/";
-  for (const file of files) {
-    await processSingleRemoteToLocal(file, localPath);
-  }
-  await sftpStore.listLocalDirectory(localPath);
+function handleAction(action: string, item: FileEntry, isLocal: boolean) {
+  const explorer = isLocal ? localExplorer : remoteExplorer;
+  const isMulti = explorer.selectedPaths.value.size > 1 && explorer.selectedPaths.value.has(item?.path);
+  const targetPaths = isMulti ? Array.from(explorer.selectedPaths.value) : (item?.path ? [item.path] : []);
+
+  if (action === "upload") queueUploads(targetPaths);
+  else if (action === "download") queueDownloads(targetPaths);
+  else if (action === "open-system") handleLocalOpen(item);
+  else if (action === "edit") openOverlay("sftp-file-editor-modal", { file: item, sessionId: session.sessionId.value, isLocal });
+  else if (action === "preview") openOverlay("sftp-file-preview-modal", { file: item, sessionId: session.sessionId.value });
+  else if (action === "permissions") openOverlay("sftp-file-permissions-modal", { file: item, sessionId: session.sessionId.value });
+  else if (action === "rename") openOverlay("sftp-file-rename-modal", { file: item, isLocal });
+  else if (action === "delete") {
+    const selected = isMulti ? explorer.filteredEntries.value.filter((e) => explorer.selectedPaths.value.has(e.path)) : (item ? [item] : []);
+    openOverlay("sftp-file-delete-modal", { file: item, files: selected, isLocal });
+  } else if (action === "copy-path") {
+    navigator.clipboard.writeText(targetPaths.join("\n"));
+    message.success(isMulti ? `Copied ${targetPaths.length} paths` : "Copied path");
+  } else if (action === "new-folder-current") openCreateModal(isLocal, "dir");
+  else if (action === "new-file-current") openCreateModal(isLocal, "file");
+  else if (action === "new-folder-inside" && item) openOverlay("sftp-create-directory-modal", { currentPath: item.path, isLocal });
+  else if (action === "new-file-inside" && item) openOverlay("sftp-create-file-modal", { currentPath: item.path, isLocal });
 }
 
-async function processSingleLocalMove(
-  file: FileEntry,
-  destinationPath: string,
-) {
-  try {
-    const currentDir = await dirname(file.path);
-    if (currentDir === destinationPath) {
-      message.info(`${file.name} is already in the target directory`);
-      return;
-    }
-
-    let newPath =
-      destinationPath === "/"
-        ? await join("/", file.name)
-        : await join(destinationPath, file.name);
-
-    try {
-      await stat(newPath);
-      newPath = await generateUniqueLocalPath(destinationPath, file.name);
-      message.info(
-        `${file.name} already exists, using ${newPath.split("/").pop()}`,
-      );
-    } catch {
-      // File doesn't exist, proceed
-    }
-
-    await rename(file.path, newPath);
-    message.success(`Moved ${file.name} to ${destinationPath}`);
-
-    // Refresh is done in bulk or by caller?
-    // In original code, it refreshed both dirs for EACH file.
-    // That's inefficient but ensures consistency. For complexity, we keep it here or move it out.
-    // To match original behavior strictly but safely, let's keep it but ideally we should batch refresh.
-    // For now, I'll keep individual refresh to be safe, but note it's slow.
-    await sftpStore.listLocalDirectory(currentDir);
-    await sftpStore.listLocalDirectory(destinationPath);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    message.error(`Failed to move ${file.name}: ${errorMessage}`);
+function queueUploads(localPaths: string[]) {
+  if (!session.sessionId.value) return;
+  const remoteTargetDir = remoteExplorer.currentPath.value.replace(/\/+$/, "");
+  for (const p of localPaths) {
+    const name = p.split(/[/\\]/).pop() || "upload";
+    transfers.addUploadTask(session.sessionId.value, p, `${remoteTargetDir}/${name}`);
   }
+  transfers.isDrawerOpen.value = true;
 }
 
-async function processLocalMoveDrop(files: FileEntry[], targetPath: string) {
-  const destinationPath = targetPath || sftpStore.browserState.localPath || "/";
-  for (const file of files) {
-    await processSingleLocalMove(file, destinationPath);
+function queueDownloads(remotePaths: string[]) {
+  if (!session.sessionId.value) return;
+  const localTargetDir = localExplorer.currentPath.value.replace(/\/+$/, "");
+  for (const p of remotePaths) {
+    const name = p.split(/[/\\]/).pop() || "download";
+    transfers.addDownloadTask(session.sessionId.value, p, `${localTargetDir}/${name}`);
   }
+  transfers.isDrawerOpen.value = true;
 }
 
-async function handleLocalDragFiles(payload: {
-  files: FileEntry[];
-  targetPath: string;
-  isSourceRemote: boolean;
-}) {
-  const { files, targetPath, isSourceRemote } = payload;
-  if (!sftpStore.activeSessionId && isSourceRemote) {
-    return;
+async function handleModalEvent(event: Event) {
+  const e = event as CustomEvent;
+  const { isLocal, path, name, oldPath, newPath, isDirectory } = e.detail;
+  if (e.type === "sftp-create-directory") {
+    const target = `${path.replace(/\/+$/, "")}/${name}`;
+    if (isLocal) await ops.createLocalDir(target);
+    else if (session.sessionId.value) await ops.createDirectory(session.sessionId.value, target);
+  } else if (e.type === "sftp-create-file") {
+    const target = `${path.replace(/\/+$/, "")}/${name}`;
+    if (isLocal) await ops.createLocalNewFile(target, "");
+    else if (session.sessionId.value) await ops.createFile(session.sessionId.value, target, "");
+  } else if (e.type === "sftp-rename") {
+    if (isLocal) await ops.renameLocal(oldPath, newPath);
+    else if (session.sessionId.value) await ops.renameItem(session.sessionId.value, oldPath, newPath);
+  } else if (e.type === "sftp-delete") {
+    if (isLocal) await ops.deleteLocalItems([path]);
+    else if (session.sessionId.value) await ops.deleteItems(session.sessionId.value, [path], isDirectory);
   }
 
-  if (isSourceRemote) {
-    await processRemoteToLocalDrop(files, targetPath);
-  } else {
-    await processLocalMoveDrop(files, targetPath);
-  }
-}
-
-async function processSingleLocalToRemote(file: FileEntry, remotePath: string) {
-  if (file.fileType === "directory") {
-    try {
-      await uploadDirectoryRecursive(
-        sftpStore.activeSessionId!,
-        file.path,
-        remotePath,
-        file.name,
-      );
-      message.success(`Uploading directory ${file.name}...`);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      message.error(`Failed to upload directory ${file.name}: ${errorMessage}`);
-    }
-  } else {
-    const normalizedRemotePath = remotePath.endsWith("/")
-      ? remotePath.slice(0, -1)
-      : remotePath;
-    let remoteFilePath = `${normalizedRemotePath}/${file.name}`;
-
-    try {
-      await sftpService.statSFTP(sftpStore.activeSessionId!, remoteFilePath);
-      remoteFilePath = await generateUniqueRemotePath(
-        sftpStore.activeSessionId!,
-        normalizedRemotePath,
-        file.name,
-      );
-      message.info(
-        `${file.name} already exists, using ${remoteFilePath.split("/").pop()}`,
-      );
-    } catch {
-      // File doesn't exist, proceed
-    }
-
-    await sftpStore.uploadFile(
-      sftpStore.activeSessionId!,
-      file.path,
-      remoteFilePath,
-    );
-    message.success(`Uploading ${file.name}...`);
-  }
-}
-
-async function processLocalToRemoteDrop(
-  files: FileEntry[],
-  targetPath: string,
-) {
-  const remotePath = targetPath || sftpStore.browserState.remotePath || "/";
-  for (const file of files) {
-    await processSingleLocalToRemote(file, remotePath);
-  }
-}
-
-async function processSingleRemoteMove(
-  file: FileEntry,
-  destinationPath: string,
-) {
-  try {
-    const currentDir =
-      file.path.substring(0, file.path.lastIndexOf("/")) || "/";
-    if (currentDir === destinationPath) {
-      message.info(`${file.name} is already in the target directory`);
-      return;
-    }
-
-    let newPath =
-      destinationPath === "/"
-        ? `/${file.name}`
-        : `${destinationPath}/${file.name}`;
-
-    try {
-      await sftpService.statSFTP(sftpStore.activeSessionId!, newPath);
-      newPath = await generateUniqueRemotePath(
-        sftpStore.activeSessionId!,
-        destinationPath,
-        file.name,
-      );
-      message.info(
-        `${file.name} already exists, using ${newPath.split("/").pop()}`,
-      );
-    } catch {
-      // File doesn't exist, proceed
-    }
-
-    await sftpStore.renameFile(sftpStore.activeSessionId!, file.path, newPath);
-    message.success(`Moved ${file.name} to ${destinationPath}`);
-
-    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId!, currentDir);
-    await sftpStore.listRemoteDirectory(
-      sftpStore.activeSessionId!,
-      destinationPath,
-    );
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    message.error(`Failed to move ${file.name}: ${errorMessage}`);
-  }
-}
-
-async function processRemoteMoveDrop(files: FileEntry[], targetPath: string) {
-  const destinationPath =
-    targetPath || sftpStore.browserState.remotePath || "/";
-  for (const file of files) {
-    await processSingleRemoteMove(file, destinationPath);
-  }
-}
-
-async function handleRemoteDragFiles(payload: {
-  files: FileEntry[];
-  targetPath: string;
-  isSourceRemote: boolean;
-}) {
-  const { files, targetPath, isSourceRemote } = payload;
-  if (!sftpStore.activeSessionId) {
-    return;
-  }
-
-  if (isSourceRemote) {
-    await processRemoteMoveDrop(files, targetPath);
-  } else {
-    await processLocalToRemoteDrop(files, targetPath);
-  }
-}
-
-async function handleSingleFileDownload(file: FileEntry) {
-  const localPathResult = await save({
-    defaultPath: file.name,
-  });
-
-  if (localPathResult) {
-    await sftpStore.downloadFile(
-      sftpStore.activeSessionId!,
-      file.path,
-      localPathResult,
-    );
-    const downloadDir = await dirname(localPathResult);
-    const currentLocalPath = sftpStore.browserState.localPath || "/";
-    if (downloadDir === currentLocalPath) {
-      await sftpStore.listLocalDirectory(currentLocalPath);
-    }
-    message.success("Download started");
-  }
-}
-
-async function handleMultiFileDownload(files: FileEntry[]) {
-  const selectedDir = await open({
-    directory: true,
-    multiple: false,
-  });
-
-  let targetDir: string | null = null;
-  if (selectedDir && typeof selectedDir === "string") {
-    targetDir = selectedDir;
-  } else if (Array.isArray(selectedDir) && selectedDir.length > 0) {
-    targetDir = selectedDir[0];
-  }
-
-  if (targetDir) {
-    for (const file of files) {
-      if (file.fileType === "file") {
-        const localFilePath = await join(targetDir, file.name);
-        await sftpStore.downloadFile(
-          sftpStore.activeSessionId!,
-          file.path,
-          localFilePath,
-        );
-      }
-    }
-
-    await sftpStore.listLocalDirectory(targetDir);
-    message.success(
-      `Downloading ${files.length} file${files.length > 1 ? "s" : ""}...`,
-    );
-  }
-}
-
-async function handleRemoteDownload(files: FileEntry[]) {
-  if (!sftpStore.activeSessionId || files.length === 0) return;
-
-  if (files.length === 1) {
-    await handleSingleFileDownload(files[0]);
-  } else {
-    await handleMultiFileDownload(files);
-  }
-}
-
-async function handleLocalDownload(_files: FileEntry[]) {
-  message.info("Local download not implemented");
-}
-
-function handleRemoteOpen(file: FileEntry) {
-  if (file.fileType === "directory") {
-    handleRemoteNavigate(file.path);
-  } else if (canPreviewFile(file)) {
-    openOverlay("sftp-file-preview-modal", {
-      file,
-      isLocal: false,
-      files: sftpStore.browserState.remoteFiles,
-    });
-  } else {
-    message.info("Please download the file to open it");
-  }
-}
-
-async function handleLocalOpenSystem(file: FileEntry) {
-  try {
-    if (file.fileType === "directory") {
-      handleLocalNavigate(file.path);
-    } else {
-      await openPath(file.path);
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    message.error(`Failed to open file: ${errorMessage}`);
-  }
-}
-
-async function handleRemoteOpenSystem(file: FileEntry) {
-  if (file.fileType === "directory") {
-    handleRemoteNavigate(file.path);
-    return;
-  }
-  if (!sftpStore.activeSessionId) return;
-
-  try {
-    const tempDirPath = await tempDir();
-    const array = new Uint32Array(1);
-    globalThis.crypto.getRandomValues(array);
-    const uniqueDir = `kerminal_sftp_${Date.now()}_${array[0].toString(36)}`;
-    const uniqueDirPath = await join(tempDirPath, uniqueDir);
-    await mkdir(uniqueDirPath, { recursive: true });
-
-    const localFilePath = await join(uniqueDirPath, file.name);
-
-    message.info(`Downloading ${file.name} to temp...`);
-    await sftpStore.downloadFile(
-      sftpStore.activeSessionId,
-      file.path,
-      localFilePath,
-    );
-
-    await openPath(localFilePath);
-    message.success(`Opened ${file.name}`);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    message.error(`Failed to open remote file: ${errorMessage}`);
-  }
-}
-
-function handleRemoteEdit(file: FileEntry) {
-  if (file.fileType === "file") {
-    openOverlay("sftp-file-editor-modal", {
-      file,
-      isLocal: false,
-    });
-  }
-}
-
-function handleRemoteRename(file: FileEntry) {
-  openOverlay("sftp-file-rename-modal", { file });
-}
-
-function handleRemoteDelete(files: FileEntry[]) {
-  if (files.length === 0) return;
-
-  if (files.length === 1) {
-    openOverlay("sftp-file-delete-modal", { file: files[0] });
-  } else {
-    deleteRemoteFiles(files);
-  }
-}
-
-async function deleteRemoteFiles(files: FileEntry[]) {
-  if (!sftpStore.activeSessionId) return;
-
-  try {
-    for (const file of files) {
-      await sftpStore.deleteFile(
-        sftpStore.activeSessionId,
-        file.path,
-        file.fileType === "directory",
-      );
-    }
-
-    const dirPath =
-      files.length > 0
-        ? files[0].path.substring(0, files[0].path.lastIndexOf("/")) || "/"
-        : sftpStore.browserState.remotePath || "/";
-
-    await sftpStore.listRemoteDirectory(sftpStore.activeSessionId, dirPath);
-    message.success(
-      `Deleted ${files.length} item${files.length > 1 ? "s" : ""} successfully`,
-    );
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    message.error(`Failed to delete: ${errorMessage}`);
-  }
-}
-
-function handleRemotePermissions(files: FileEntry[]) {
-  if (files.length === 0) return;
-
-  openOverlay("sftp-file-permissions-modal", { files });
-}
-
-function handleLocalCreateDirectory() {
-  const currentPath = sftpStore.browserState.localPath || "/";
-  openOverlay("sftp-create-directory-modal", { currentPath, isLocal: true });
-}
-
-function handleRemoteCreateDirectory() {
-  const currentPath = sftpStore.browserState.remotePath || "/";
-  openOverlay("sftp-create-directory-modal", { currentPath, isLocal: false });
-}
-
-async function handleCreateDirectorySubmit(event: Event) {
-  const customEvent = event as CustomEvent<{
-    path: string;
-    name: string;
-    isLocal?: boolean;
-  }>;
-
-  try {
-    if (customEvent.detail.isLocal) {
-      const directoryPath =
-        customEvent.detail.path === "/"
-          ? `/${customEvent.detail.name}`
-          : await join(customEvent.detail.path, customEvent.detail.name);
-
-      await mkdir(directoryPath);
-
-      await sftpStore.listLocalDirectory(customEvent.detail.path);
-      message.success("Directory created successfully");
-    } else {
-      if (!sftpStore.activeSessionId) return;
-
-      const directoryPath =
-        customEvent.detail.path === "/"
-          ? `/${customEvent.detail.name}`
-          : `${customEvent.detail.path}/${customEvent.detail.name}`;
-      await sftpStore.createDirectory(sftpStore.activeSessionId, directoryPath);
-      await sftpStore.listRemoteDirectory(
-        sftpStore.activeSessionId,
-        customEvent.detail.path,
-      );
-      message.success("Directory created successfully");
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Failed to create directory:", errorMessage);
-    message.error(errorMessage);
-  }
-}
-
-function handleLocalCreateFile() {
-  const currentPath = sftpStore.browserState.localPath || "/";
-  openOverlay("sftp-create-file-modal", { currentPath, isLocal: true });
-}
-
-function handleRemoteCreateFile() {
-  const currentPath = sftpStore.browserState.remotePath || "/";
-  openOverlay("sftp-create-file-modal", { currentPath, isLocal: false });
-}
-
-async function handleCreateFileSubmit(event: Event) {
-  const customEvent = event as CustomEvent<{
-    path: string;
-    name: string;
-    isLocal?: boolean;
-  }>;
-
-  try {
-    if (customEvent.detail.isLocal) {
-      const filePath =
-        customEvent.detail.path === "/"
-          ? `/${customEvent.detail.name}`
-          : await join(customEvent.detail.path, customEvent.detail.name);
-
-      await writeFile(filePath, new Uint8Array());
-
-      await sftpStore.listLocalDirectory(customEvent.detail.path);
-      message.success("File created successfully");
-    } else {
-      if (!sftpStore.activeSessionId) return;
-
-      const filePath =
-        customEvent.detail.path === "/"
-          ? `/${customEvent.detail.name}`
-          : `${customEvent.detail.path}/${customEvent.detail.name}`;
-
-      const tempDirPath = await tempDir();
-      const tempFilePath = await join(
-        tempDirPath,
-        `sftp_temp_${Date.now()}_${customEvent.detail.name}`,
-      );
-
-      await writeFile(tempFilePath, new Uint8Array());
-
-      await sftpStore.uploadFile(
-        sftpStore.activeSessionId,
-        tempFilePath,
-        filePath,
-      );
-
-      await remove(tempFilePath).catch(() => {});
-
-      await sftpStore.listRemoteDirectory(
-        sftpStore.activeSessionId,
-        customEvent.detail.path,
-      );
-
-      message.success("File created successfully");
-    }
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error("Failed to create file:", errorMessage);
-    message.error(errorMessage);
-  }
-}
-
-function onPaneResize() {}
-
-/**
- * Handle drag enter pane for visual feedback
- */
-function handlePaneDragEnter(pane: "local" | "remote", event: DragEvent) {
-  event.preventDefault();
-  if (!event.dataTransfer) return;
-
-  dragEnterCounter.value[pane]++;
-
-  if (event.dataTransfer.types.includes("application/x-filebrowser-files")) {
-    if (dragEnterCounter.value[pane] === 1) {
-      isDraggingOverPane.value = pane;
-    }
-    event.dataTransfer.dropEffect = "copy";
-  }
-}
-
-/**
- * Handle drag over pane for visual feedback
- */
-function handlePaneDragOver(pane: "local" | "remote", event: DragEvent) {
-  event.preventDefault();
-  if (!event.dataTransfer) return;
-
-  if (event.dataTransfer.types.includes("application/x-filebrowser-files")) {
-    isDraggingOverPane.value = pane;
-    event.dataTransfer.dropEffect = "copy";
-  }
-}
-
-/**
- * Handle drag leave pane
- */
-function handlePaneDragLeave(pane: "local" | "remote", event: DragEvent) {
-  event.preventDefault();
-  dragEnterCounter.value[pane]--;
-
-  if (dragEnterCounter.value[pane] === 0) {
-    isDraggingOverPane.value = null;
-  }
-}
-
-/**
- * Handle drop on pane wrapper
- */
-function handlePaneDrop(pane: "local" | "remote", event: DragEvent) {
-  event.preventDefault();
-  event.stopPropagation();
-
-  isDraggingOverPane.value = null;
-  dragEnterCounter.value[pane] = 0;
-
-  if (!event.dataTransfer) return;
-
-  const dragData = event.dataTransfer.getData(
-    "application/x-filebrowser-files",
-  );
-
-  if (dragData) {
-    try {
-      const data = JSON.parse(dragData) as {
-        files: Array<{
-          path: string;
-          name: string;
-          fileType: string;
-          size?: number | null;
-          modified?: string;
-        }>;
-        isRemote: boolean;
-        sourcePath: string;
-      };
-
-      const isSourceRemote = data.isRemote;
-      if (
-        (pane === "local" && isSourceRemote) ||
-        (pane === "remote" && !isSourceRemote)
-      ) {
-        const targetPath =
-          pane === "local"
-            ? sftpStore.browserState.localPath || "/"
-            : sftpStore.browserState.remotePath || "/";
-
-        const draggedFileEntries: FileEntry[] = data.files.map((f) => ({
-          name: f.name || "",
-          path: f.path || "",
-          fileType: (f.fileType || "file") as FileEntry["fileType"],
-          size: f.size ?? null,
-          modified: f.modified || new Date().toISOString(),
-          accessed: null,
-          permissions: 0o644,
-          symlinkTarget: null,
-          uid: null,
-          gid: null,
-        }));
-
-        if (pane === "local") {
-          handleLocalDragFiles({
-            files: draggedFileEntries,
-            targetPath,
-            isSourceRemote,
-          });
-        } else {
-          handleRemoteDragFiles({
-            files: draggedFileEntries,
-            targetPath,
-            isSourceRemote,
-          });
-        }
-      }
-    } catch (error) {
-      // NOSONAR
-      // Failed to process drop data
-    }
-  }
-}
-
-/**
- * Recursively collect all files from a local directory
- */
-async function collectLocalDirectoryFiles(
-  dirPath: string,
-  basePath: string,
-): Promise<Array<{ path: string; relativePath: string }>> {
-  const files: Array<{ path: string; relativePath: string }> = [];
-  const entries = await readDir(dirPath);
-
-  for (const entry of entries) {
-    const normalizedPath = dirPath.endsWith("/")
-      ? dirPath.slice(0, -1)
-      : dirPath;
-    const entryPath =
-      normalizedPath === "/"
-        ? `/${entry.name}`
-        : `${normalizedPath}/${entry.name}`;
-
-    try {
-      const relativePath = entryPath.replace(basePath, "").replace(/^\//, "");
-
-      if (entry.is_dir) {
-        const subFiles = await collectLocalDirectoryFiles(entryPath, basePath);
-        files.push(...subFiles);
-      } else if (entry.is_file) {
-        files.push({ path: entryPath, relativePath });
-      }
-    } catch (error) {
-      console.warn(`Failed to process ${entryPath}:`, error);
-    }
-  }
-
-  return files;
-}
-
-/**
- * Recursively collect all files from a remote directory
- */
-async function collectRemoteDirectoryFiles(
-  sessionId: string,
-  dirPath: string,
-  basePath: string,
-): Promise<Array<{ path: string; relativePath: string }>> {
-  const files: Array<{ path: string; relativePath: string }> = [];
-
-  const entries = await sftpService.listSFTPDirectory(sessionId, dirPath);
-
-  for (const entry of entries) {
-    if (entry.name === "." || entry.name === "..") {
-      continue;
-    }
-
-    const relativePath = entry.path.replace(basePath, "").replace(/^\//, "");
-
-    if (entry.fileType === "directory") {
-      const subFiles = await collectRemoteDirectoryFiles(
-        sessionId,
-        entry.path,
-        basePath,
-      );
-      files.push(...subFiles);
-    } else if (entry.fileType === "file") {
-      files.push({ path: entry.path, relativePath });
-    }
-  }
-
-  return files;
-}
-
-/**
- * Upload a directory recursively to remote
- */
-async function uploadDirectoryRecursive(
-  sessionId: string,
-  localDirPath: string,
-  remoteBasePath: string,
-  dirName: string,
-): Promise<void> {
-  const remoteDirPath = remoteBasePath.endsWith("/")
-    ? `${remoteBasePath}${dirName}`
-    : `${remoteBasePath}/${dirName}`;
-
-  try {
-    await sftpStore.createDirectory(sessionId, remoteDirPath);
-  } catch (error) {
-    // NOSONAR
-    // Create directory failed (may already exist)
-  }
-
-  const files = await collectLocalDirectoryFiles(localDirPath, localDirPath);
-
-  for (const file of files) {
-    const remoteFilePath = remoteDirPath.endsWith("/")
-      ? `${remoteDirPath}${file.relativePath}`
-      : `${remoteDirPath}/${file.relativePath}`;
-
-    const remoteParentDir = await dirname(remoteFilePath).catch(() => {
-      const parts = remoteFilePath.split("/");
-      parts.pop();
-      return parts.join("/") || "/";
-    });
-
-    try {
-      await sftpStore.createDirectory(sessionId, remoteParentDir);
-    } catch (error) {
-      // NOSONAR
-      // Create parent directory failed (may already exist)
-    }
-
-    await sftpStore.uploadFile(sessionId, file.path, remoteFilePath);
-  }
-}
-
-/**
- * Download a directory recursively from remote
- */
-async function downloadDirectoryRecursive(
-  sessionId: string,
-  remoteDirPath: string,
-  localBasePath: string,
-  dirName: string,
-): Promise<void> {
-  const localDirPath = await join(localBasePath, dirName);
-  try {
-    await mkdir(localDirPath, { recursive: true });
-  } catch (error) {
-    // NOSONAR
-    // Make local directory failed (may already exist)
-  }
-
-  const files = await collectRemoteDirectoryFiles(
-    sessionId,
-    remoteDirPath,
-    remoteDirPath,
-  );
-
-  for (const file of files) {
-    const localFilePath = await join(localDirPath, file.relativePath);
-
-    const localParentDir = await dirname(localFilePath).catch(() => {
-      const parts = localFilePath.split("/");
-      parts.pop();
-      return parts.join("/") || "/";
-    });
-
-    try {
-      await mkdir(localParentDir, { recursive: true });
-    } catch (error) {
-      // NOSONAR
-      // Make local parent directory failed (may already exist)
-    }
-
-    await sftpStore.downloadFile(sessionId, file.path, localFilePath);
-  }
+  if (isLocal) await localExplorer.loadDirectory(localExplorer.currentPath.value);
+  else if (session.sessionId.value) await remoteExplorer.loadDirectory(remoteExplorer.currentPath.value);
 }
 </script>
+
+<style scoped>
+@import "splitpanes/dist/splitpanes.css";
+
+:deep(.splitpanes__splitter) {
+  background-color: #1a1a1a;
+  border-left: 1px solid #262626;
+  border-right: 1px solid #262626;
+  position: relative;
+  width: 5px;
+  cursor: col-resize;
+  transition: background-color 0.2s;
+}
+
+:deep(.splitpanes__splitter:hover) {
+  background-color: #3b82f6;
+}
+</style>

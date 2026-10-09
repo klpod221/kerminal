@@ -9,6 +9,7 @@ pub mod sync;
 pub mod transfer;
 
 // Re-export FileType which is commonly used
+#[allow(unused_imports)]
 pub use file_entry::FileType;
 
 use serde::{Deserialize, Serialize};

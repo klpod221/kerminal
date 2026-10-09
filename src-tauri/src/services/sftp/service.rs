@@ -1,64 +1,39 @@
 // Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
 
-use crate::core::proxy::create_proxy_stream;
-use crate::models::sftp::search::SearchResult;
-use crate::models::sftp::{error::SFTPError, file_entry::FileEntry, FileType};
-use crate::models::ssh::AuthData;
-use crate::services::ssh::{SSHKeyService, SSHService};
-
-use crate::services::sftp::channel_stream::ChannelStream;
-use anyhow::Result;
-use async_trait::async_trait;
 use chrono::Utc;
-use russh::client::Config;
-use russh_keys::key::PublicKey;
-use russh_sftp::client::SftpSession;
+use russh_sftp::client::RawSftpSession;
+use russh_sftp::protocol::{FileAttributes, OpenFlags};
+use tokio::sync::Mutex;
 
-/// Simple handler for SFTP connections
-#[derive(Clone)]
-pub struct SFTPClientHandler {
-    host: String,
-    port: u16,
-    known_hosts_path: std::path::PathBuf,
-}
+use crate::models::sftp::file_entry::FileEntry;
+use crate::models::sftp::search::SearchResult;
+use crate::services::sftp::connection::{
+    establish_sftp_connection, SFTPClientHandler, SftpConnection, SftpConnectionManager,
+};
+use crate::services::sftp::edit;
+use crate::services::sftp::errors::SftpError;
+use crate::services::sftp::ops;
+use crate::services::sftp::search;
+use crate::services::ssh::SSHService;
+use crate::services::ssh::key::SSHKeyService;
 
-#[async_trait]
-impl russh::client::Handler for SFTPClientHandler {
-    type Error = russh::Error;
-
-    async fn check_server_key(
-        &mut self,
-        server_public_key: &PublicKey,
-    ) -> Result<bool, Self::Error> {
-        if !self.known_hosts_path.exists() {
-            return Ok(false);
-        }
-        
-        match russh_keys::check_known_hosts_path(&self.host, self.port, server_public_key, &self.known_hosts_path) {
-            Ok(true) => Ok(true),
-            _ => Ok(false),
-        }
-    }
-}
-
-/// Internal SFTP session data
+/// Compatibility session data for legacy transfer manager until Bước 3 & 4
+#[allow(dead_code)]
 pub struct SFTPSessionData {
-    pub sftp: SftpSession,
+    pub sftp: Arc<RawSftpSession>,
     pub client: Arc<russh::client::Handle<SFTPClientHandler>>,
-    last_used: chrono::DateTime<Utc>,
+    pub last_used: chrono::DateTime<Utc>,
 }
 
-/// SFTP Service for managing SFTP connections and file operations
+/// SFTP Service facade for managing connections and operations
 pub struct SFTPService {
     ssh_service: Arc<SSHService>,
     ssh_key_service: Arc<Mutex<SSHKeyService>>,
-    sessions: Arc<RwLock<HashMap<String, Arc<Mutex<SFTPSessionData>>>>>,
+    connection_manager: SftpConnectionManager,
 }
 
 impl SFTPService {
@@ -67,372 +42,98 @@ impl SFTPService {
         Self {
             ssh_service,
             ssh_key_service,
-            sessions: Arc::new(RwLock::new(HashMap::new())),
+            connection_manager: SftpConnectionManager::new(),
         }
     }
 
     /// Connect to SFTP server using SSH profile
-    pub async fn connect(&self, profile_id: String, known_hosts_path: std::path::PathBuf) -> Result<String, SFTPError> {
-        // Get profile from database
+    pub async fn connect(
+        &self,
+        profile_id: String,
+        known_hosts_path: PathBuf,
+    ) -> Result<String, SftpError> {
+        let session_key = format!("sftp:{}", profile_id);
+
+        if self.connection_manager.contains(&session_key).await {
+            return Ok(session_key);
+        }
+
         let profile = self
             .ssh_service
             .get_ssh_profile(&profile_id)
             .await
-            .map_err(|e| SFTPError::Other {
+            .map_err(|e| SftpError::Other {
                 message: format!("Failed to get SSH profile: {}", e),
             })?;
 
-        // Check if session already exists
-        let session_key = format!("sftp:{}", profile_id);
-        {
-            let sessions = self.sessions.read().await;
-            if sessions.contains_key(&session_key) {
-                return Ok(session_key.clone());
-            }
-        }
-
-        // Create SSH session
-        let keepalive_interval = if profile.keep_alive {
-            Some(std::time::Duration::from_secs(15))
-        } else {
-            None
-        };
-
-        let inactivity_timeout = profile
-            .timeout
-            .map(|t| std::time::Duration::from_secs(t as u64));
-
-        let mut config = Config {
-            inactivity_timeout,
-            keepalive_interval,
-            keepalive_max: 10,
-            ..Default::default()
-        };
-
-        config.window_size = 2097152;
-        config.maximum_packet_size = 32768;
-
-        let config = Arc::new(config);
-        let handler = SFTPClientHandler {
-            host: profile.host.clone(),
-            port: profile.port,
+        let (sftp, client, home_dir) = establish_sftp_connection(
+            &profile,
             known_hosts_path,
-        };
+            &self.ssh_key_service,
+        )
+        .await?;
 
-        let mut session = if let Some(proxy_config) = &profile.proxy {
-            let stream = create_proxy_stream(proxy_config, &profile.host, profile.port)
-                .await
-                .map_err(|e| SFTPError::SessionFailed {
-                    message: format!("Failed to create proxy connection: {}", e),
-                })?;
-
-            russh::client::connect_stream(config, stream, handler)
-                .await
-                .map_err(|e| SFTPError::SessionFailed {
-                    message: format!("Failed to connect via proxy: {}", e),
-                })?
-        } else {
-            russh::client::connect(config, (&profile.host as &str, profile.port), handler)
-                .await
-                .map_err(|e| SFTPError::SessionFailed {
-                    message: format!(
-                        "Failed to connect to {}:{}: {}",
-                        profile.host, profile.port, e
-                    ),
-                })?
-        };
-
-        // Authenticate
-        let authenticated = match &profile.auth_data {
-            AuthData::Password { password } => session
-                .authenticate_password(&profile.username, password)
-                .await
-                .map_err(|e| SFTPError::SessionFailed {
-                    message: format!("Password authentication failed: {}", e),
-                })?,
-            AuthData::KeyReference { key_id } => {
-                let key_service = self.ssh_key_service.lock().await;
-                let resolved_key = key_service
-                    .resolve_key_for_auth(key_id)
-                    .await
-                    .map_err(|e| SFTPError::SessionFailed {
-                        message: format!("Failed to resolve SSH key: {}", e),
-                    })?;
-
-                let key = if Path::new(&resolved_key.private_key).exists() {
-                    russh_keys::load_secret_key(
-                        &resolved_key.private_key,
-                        resolved_key.passphrase.as_deref(),
-                    )
-                    .map_err(|e| SFTPError::SessionFailed {
-                        message: format!("Failed to load SSH key: {}", e),
-                    })?
-                } else {
-                    russh_keys::decode_secret_key(
-                        &resolved_key.private_key,
-                        resolved_key.passphrase.as_deref(),
-                    )
-                    .map_err(|e| SFTPError::SessionFailed {
-                        message: format!("Failed to parse SSH key: {}", e),
-                    })?
-                };
-
-                session
-                    .authenticate_publickey(&profile.username, Arc::new(key))
-                    .await
-                    .map_err(|e| SFTPError::SessionFailed {
-                        message: format!("SSH key authentication failed: {}", e),
-                    })?
-            }
-            AuthData::Certificate {
-                certificate: _,
-                private_key,
-                ..
-            } => {
-                let key = if Path::new(private_key).exists() {
-                    russh_keys::load_secret_key(private_key, None).map_err(|e| {
-                        SFTPError::SessionFailed {
-                            message: format!("Failed to load certificate key: {}", e),
-                        }
-                    })?
-                } else {
-                    russh_keys::decode_secret_key(private_key, None).map_err(|e| {
-                        SFTPError::SessionFailed {
-                            message: format!("Failed to parse certificate key: {}", e),
-                        }
-                    })?
-                };
-
-                session
-                    .authenticate_publickey(&profile.username, Arc::new(key))
-                    .await
-                    .map_err(|e| SFTPError::SessionFailed {
-                        message: format!("Certificate authentication failed: {}", e),
-                    })?
-            }
-        };
-
-        if !authenticated {
-            return Err(SFTPError::SessionFailed {
-                message: "Authentication failed".to_string(),
-            });
-        }
-
-        // Open SFTP channel
-        let channel =
-            session
-                .channel_open_session()
-                .await
-                .map_err(|e| SFTPError::SessionFailed {
-                    message: format!("Failed to open SSH channel: {}", e),
-                })?;
-
-        // Request SFTP subsystem
-        channel
-            .request_subsystem(false, "sftp")
-            .await
-            .map_err(|e| SFTPError::SessionFailed {
-                message: format!("Failed to request SFTP subsystem: {}", e),
-            })?;
-
-        // Create SFTP session from channel stream
-        let stream = ChannelStream::new(channel);
-        let sftp = SftpSession::new(stream)
-            .await
-            .map_err(|e| SFTPError::SessionFailed {
-                message: format!("Failed to initialize SFTP session: {}", e),
-            })?;
-
-        let now = Utc::now();
-        let session_data = SFTPSessionData {
+        let conn = SftpConnection::new(
+            session_key.clone(),
+            profile_id,
+            profile.name,
             sftp,
-            client: Arc::new(session),
-            last_used: now,
-        };
+            home_dir,
+            client,
+        );
 
-        let session_arc = Arc::new(Mutex::new(session_data));
-        {
-            let mut sessions = self.sessions.write().await;
-            sessions.insert(session_key.clone(), session_arc);
-        }
-
+        self.connection_manager.insert(conn).await;
         Ok(session_key)
     }
 
-    /// Disconnect SFTP session
-    pub async fn disconnect(&self, session_id: String) -> Result<(), SFTPError> {
-        let mut sessions = self.sessions.write().await;
-        if sessions.remove(&session_id).is_some() {
+    /// Disconnect an active SFTP session
+    pub async fn disconnect(&self, session_id: String) -> Result<(), SftpError> {
+        if let Some(conn) = self.connection_manager.remove(&session_id).await {
+            conn.close().await?;
             Ok(())
         } else {
-            Err(SFTPError::SessionNotFound { session_id })
+            Err(SftpError::SessionNotFound { session_id })
         }
     }
 
-    /// Get SFTP session (internal helper)
+    /// Get connection handle
+    pub async fn get_connection(&self, session_id: &str) -> Result<SftpConnection, SftpError> {
+        self.connection_manager.get(session_id).await
+    }
+
+    /// Compatibility method for legacy transfer.rs
     pub async fn get_session(
         &self,
         session_id: &str,
-    ) -> Result<Arc<Mutex<SFTPSessionData>>, SFTPError> {
-        let sessions = self.sessions.read().await;
-        sessions
-            .get(session_id)
-            .cloned()
-            .ok_or_else(|| SFTPError::SessionNotFound {
-                session_id: session_id.to_string(),
-            })
+    ) -> Result<Arc<Mutex<SFTPSessionData>>, SftpError> {
+        let conn = self.get_connection(session_id).await?;
+        Ok(Arc::new(Mutex::new(SFTPSessionData {
+            sftp: conn.sftp.clone(),
+            client: conn.client.clone(),
+            last_used: conn.last_used_at(),
+        })))
     }
 
-    /// Resolve the remote user's home directory via SSH_FXP_REALPATH on "."
-    ///
-    /// This is the canonical way to get `$HOME` from the server — the SFTP
-    /// session starts in the user's home directory by default, so
-    /// `canonicalize(".")` returns the absolute path without any client-side
-    /// guessing or hardcoded `/home/<user>` conventions.
-    pub async fn get_home_directory(&self, session_id: String) -> Result<String, SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        data.sftp
-            .canonicalize(".")
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to resolve home directory: {}", e),
-            })
+    /// Resolve remote user's home directory
+    pub async fn get_home_directory(&self, session_id: String) -> Result<String, SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        Ok(conn.home_dir.clone())
     }
 
-    /// List directory contents
+    /// List directory contents (concurrent, lock-free)
     pub async fn list_directory(
         &self,
         session_id: String,
         path: String,
-    ) -> Result<Vec<FileEntry>, SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        let mut entries = Vec::new();
-        let mut read_dir = data
-            .sftp
-            .read_dir(&path)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to read directory {}: {}", path, e),
-            })?;
-
-        while let Some(dir_entry) = read_dir.next() {
-            let name = dir_entry.file_name();
-
-            let full_path = if path.ends_with('/') {
-                format!("{}{}", path, name)
-            } else {
-                format!("{}/{}", path, name)
-            };
-
-            let attrs = dir_entry.metadata();
-            let file_type = match attrs.file_type() {
-                russh_sftp::protocol::FileType::Dir => FileType::Directory,
-                russh_sftp::protocol::FileType::File => FileType::File,
-                russh_sftp::protocol::FileType::Symlink => FileType::Symlink,
-                _ => FileType::Unknown,
-            };
-
-            let symlink_target = if matches!(file_type, FileType::Symlink) {
-                data.sftp.read_link(&full_path).await.ok()
-            } else {
-                None
-            };
-
-            entries.push(FileEntry {
-                name: name.clone(),
-                path: full_path.clone(),
-                file_type,
-                size: attrs.size,
-                permissions: attrs.permissions.unwrap_or(0o644),
-                modified: attrs
-                    .mtime
-                    .map(|t| {
-                        chrono::DateTime::<Utc>::from_timestamp(t as i64, 0)
-                            .unwrap_or_else(|| Utc::now())
-                    })
-                    .unwrap_or_else(|| Utc::now()),
-                accessed: attrs
-                    .atime
-                    .map(|t| chrono::DateTime::<Utc>::from_timestamp(t as i64, 0))
-                    .flatten(),
-                symlink_target,
-                uid: attrs.uid,
-                gid: attrs.gid,
-            });
-        }
-
-        Ok(entries)
+    ) -> Result<Vec<FileEntry>, SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::list_directory(&conn.sftp, &path).await
     }
 
-    /// Get file attributes (stat)
-    pub async fn stat(&self, session_id: String, path: String) -> Result<FileEntry, SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        let attrs = data.sftp.metadata(&path).await.map_err(|e| {
-            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
-                SFTPError::FileNotFound { path: path.clone() }
-            } else {
-                SFTPError::Other {
-                    message: format!("Failed to get metadata for {}: {}", path, e),
-                }
-            }
-        })?;
-
-        let file_type = match attrs.file_type() {
-            russh_sftp::protocol::FileType::Dir => FileType::Directory,
-            russh_sftp::protocol::FileType::File => FileType::File,
-            russh_sftp::protocol::FileType::Symlink => FileType::Symlink,
-            _ => FileType::Unknown,
-        };
-
-        let name = Path::new(&path)
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or(&path)
-            .to_string();
-
-        let size = attrs.size;
-
-        let permissions = attrs.permissions.unwrap_or(0o644);
-
-        let modified = attrs
-            .mtime
-            .map(|t| {
-                chrono::DateTime::<Utc>::from_timestamp(t as i64, 0).unwrap_or_else(|| Utc::now())
-            })
-            .unwrap_or_else(|| Utc::now());
-
-        let accessed = attrs
-            .atime
-            .map(|t| chrono::DateTime::<Utc>::from_timestamp(t as i64, 0))
-            .flatten();
-
-        let symlink_target = if file_type == FileType::Symlink {
-            data.sftp.read_link(&path).await.ok()
-        } else {
-            None
-        };
-
-        Ok(FileEntry {
-            name,
-            path,
-            file_type,
-            size,
-            permissions,
-            modified,
-            accessed,
-            symlink_target,
-            uid: attrs.uid,
-            gid: attrs.gid,
-        })
+    /// Stat file or directory (concurrent, lock-free)
+    pub async fn stat(&self, session_id: String, path: String) -> Result<FileEntry, SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::stat_path(&conn.sftp, &path).await
     }
 
     /// Create directory
@@ -440,549 +141,205 @@ impl SFTPService {
         &self,
         session_id: String,
         path: String,
-    ) -> Result<(), SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        data.sftp.create_dir(&path).await.map_err(|e| {
-            if e.to_string().contains("already exists") {
-                SFTPError::FileExists { path }
-            } else {
-                SFTPError::Other {
-                    message: format!("Failed to create directory: {}", e),
-                }
-            }
-        })?;
-
-        Ok(())
+    ) -> Result<(), SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::create_directory(&conn.sftp, &path).await
     }
 
-    /// Rename/move file or directory
+    /// Rename file or directory
     pub async fn rename(
         &self,
         session_id: String,
         old_path: String,
         new_path: String,
-    ) -> Result<(), SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        data.sftp
-            .rename(&old_path, &new_path)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to rename {} to {}: {}", old_path, new_path, e),
-            })?;
-
-        Ok(())
+    ) -> Result<(), SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::rename_path(&conn.sftp, &old_path, &new_path).await
     }
 
-    /// Delete file or directory
+    /// Delete file or directory (iterative post-order when recursive)
     pub async fn delete(
         &self,
         session_id: String,
         path: String,
         recursive: bool,
-    ) -> Result<(), SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        if recursive {
-            // For directories, we need to delete recursively
-            let attrs = data.sftp.metadata(&path).await.map_err(|e| {
-                if e.to_string().contains("not found") {
-                    SFTPError::FileNotFound { path: path.clone() }
-                } else {
-                    SFTPError::Other {
-                        message: format!("Failed to get metadata for {}: {}", path, e),
-                    }
-                }
-            })?;
-
-            if attrs.file_type() == russh_sftp::protocol::FileType::Dir {
-                // List and delete contents
-                let mut read_dir =
-                    data.sftp
-                        .read_dir(&path)
-                        .await
-                        .map_err(|e| SFTPError::Other {
-                            message: format!("Failed to read directory {}: {}", path, e),
-                        })?;
-
-                while let Some(dir_entry) = read_dir.next() {
-                    let name = dir_entry.file_name();
-
-                    if name == "." || name == ".." {
-                        continue;
-                    }
-
-                    let full_path = if path.ends_with('/') {
-                        format!("{}{}", path, name)
-                    } else {
-                        format!("{}/{}", path, name)
-                    };
-
-                    // Recursive delete
-                    self.delete_internal(&mut data, &full_path, true).await?;
-                }
-            }
-        }
-
-        self.delete_internal(&mut data, &path, false).await
+    ) -> Result<(), SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::delete_path(&conn.sftp, &path, recursive).await
     }
 
-    /// Internal delete helper
-    async fn delete_internal(
-        &self,
-        data: &mut SFTPSessionData,
-        path: &str,
-        is_recursive_call: bool,
-    ) -> Result<(), SFTPError> {
-        let attrs = data.sftp.metadata(path).await.map_err(|e| {
-            if e.to_string().contains("not found") && !is_recursive_call {
-                SFTPError::FileNotFound {
-                    path: path.to_string(),
-                }
-            } else {
-                SFTPError::Other {
-                    message: format!("Failed to get metadata for {}: {}", path, e),
-                }
-            }
-        })?;
-
-        match attrs.file_type() {
-            russh_sftp::protocol::FileType::Dir => {
-                data.sftp
-                    .remove_dir(path)
-                    .await
-                    .map_err(|e| SFTPError::Other {
-                        message: format!("Failed to remove directory {}: {}", path, e),
-                    })?;
-            }
-            russh_sftp::protocol::FileType::File | russh_sftp::protocol::FileType::Symlink => {
-                data.sftp
-                    .remove_file(path)
-                    .await
-                    .map_err(|e| SFTPError::Other {
-                        message: format!("Failed to remove file {}: {}", path, e),
-                    })?;
-            }
-            _ => {
-                return Err(SFTPError::Other {
-                    message: format!("Unknown file type for {}", path),
-                });
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Set file permissions (chmod)
+    /// Set permissions (chmod)
     pub async fn set_permissions(
         &self,
         session_id: String,
         path: String,
-        mode: u32,
-    ) -> Result<(), SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        let mut attrs = data.sftp.metadata(&path).await.map_err(|e| {
-            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
-                SFTPError::FileNotFound { path: path.clone() }
-            } else {
-                SFTPError::Other {
-                    message: format!("Failed to get metadata for {}: {}", path, e),
-                }
-            }
-        })?;
-
-        // Mask mode to only include permission bits (0o777)
-        // This ensures we don't accidentally set file type bits
-        let permission_mode = mode & 0o777;
-
-        // Only update permissions, preserve all other attributes
-        attrs.permissions = Some(permission_mode);
-
-        data.sftp
-            .set_metadata(&path, attrs)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to set permissions on {}: {}", path, e),
-            })?;
-
-        Ok(())
+        permissions: u32,
+    ) -> Result<(), SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::set_permissions(&conn.sftp, &path, permissions).await
     }
 
     /// Create symlink
     pub async fn create_symlink(
         &self,
         session_id: String,
+        path: String,
         target: String,
-        link_path: String,
-    ) -> Result<(), SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        data.sftp
-            .symlink(&link_path, &target)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!(
-                    "Failed to create symlink {} -> {}: {}",
-                    link_path, target, e
-                ),
-            })?;
-
-        Ok(())
+    ) -> Result<(), SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::create_symlink(&conn.sftp, &path, &target).await
     }
 
-    /// Read symlink target
+    /// Read symlink
     pub async fn read_symlink(
         &self,
         session_id: String,
         path: String,
-    ) -> Result<String, SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        let target = data.sftp.read_link(&path).await.map_err(|e| {
-            if e.to_string().contains("not found") {
-                SFTPError::FileNotFound { path: path.clone() }
-            } else {
-                SFTPError::Other {
-                    message: format!("Failed to read symlink {}: {}", path, e),
-                }
-            }
-        })?;
-
-        Ok(target)
+    ) -> Result<String, SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        ops::read_symlink(&conn.sftp, &path).await
     }
 
-    /// Read file content as text
-    pub async fn read_file(&self, session_id: String, path: String) -> Result<String, SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        // Check if file exists and is a regular file
-        let attrs = data.sftp.metadata(&path).await.map_err(|e| {
-            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
-                SFTPError::FileNotFound { path: path.clone() }
-            } else {
-                SFTPError::Other {
-                    message: format!("Failed to get metadata for {}: {}", path, e),
-                }
-            }
-        })?;
-
-        if attrs.file_type() != russh_sftp::protocol::FileType::File {
-            return Err(SFTPError::Other {
-                message: format!("Path is not a regular file: {}", path),
-            });
-        }
-
-        // Check file size (limit to 10MB for text files)
-        let file_size = attrs.size.unwrap_or(0);
-        if file_size > 10 * 1024 * 1024 {
-            return Err(SFTPError::Other {
-                message: format!(
-                    "File too large to edit ({} bytes). Maximum size is 10MB",
-                    file_size
-                ),
-            });
-        }
-
-        // Open and read file
-        let mut remote_file = data.sftp.open(&path).await.map_err(|e| SFTPError::Other {
-            message: format!("Failed to open file {}: {}", path, e),
-        })?;
-
-        use tokio::io::AsyncReadExt;
-        let mut buffer = Vec::with_capacity(file_size as usize);
-        remote_file
-            .read_to_end(&mut buffer)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to read file {}: {}", path, e),
-            })?;
-
-        // Try to decode as UTF-8
-        String::from_utf8(buffer).map_err(|e| SFTPError::Other {
-            message: format!("File {} is not valid UTF-8: {}", path, e),
-        })
-    }
-
-    /// Search for files containing text using grep
+    /// Search for text using bounded grep
     pub async fn search(
         &self,
         session_id: String,
         path: String,
         query: String,
-    ) -> Result<Vec<SearchResult>, SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-
-        // Clone client handle to avoid holding lock during search
-        let client = {
-            let mut data = session_data.lock().await;
-            data.last_used = Utc::now();
-            data.client.clone()
-        };
-
-        // Open a new channel for the search command
-        let mut channel = client
-            .channel_open_session()
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to open channel for search: {}", e),
-            })?;
-
-        // Escape query to prevent command injection
-        // This is a basic escaping, ideally we'd use a robust shell escaping library
-        let escaped_query = query.replace("\"", "\\\"");
-        let command = format!("grep -rInH \"{}\" \"{}\"", escaped_query, path);
-
-        channel
-            .exec(true, command)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to execute search command: {}", e),
-            })?;
-
-        // Read stdout
-        let output = {
-            let mut stdout = channel.make_reader();
-            use tokio::io::AsyncReadExt;
-            let mut buffer = Vec::new();
-            stdout
-                .read_to_end(&mut buffer)
-                .await
-                .map_err(|e| SFTPError::Other {
-                    message: format!("Failed to read search output: {}", e),
-                })?;
-            String::from_utf8_lossy(&buffer).to_string()
-        };
-
-        let mut results = Vec::new();
-        for line in output.lines() {
-            // Grep output format: filename:line:content
-            // Note: filename might contain colons, so we should look for the first two colons carefully
-            // But standard grep output puts filename first.
-            // Split by colon, limit 3 parts? No, content might have colons.
-
-            let parts: Vec<&str> = line.splitn(3, ':').collect();
-            if parts.len() >= 3 {
-                let file_path = parts[0].to_string();
-                if let Ok(line_number) = parts[1].parse::<u64>() {
-                    // content is rest
-                    let content = parts[2].to_string();
-                    results.push(SearchResult {
-                        file_path,
-                        line_number,
-                        content,
-                    });
-                }
-            }
-        }
-
-        Ok(results)
+    ) -> Result<Vec<SearchResult>, SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        search::execute_search(&conn.client, &path, &query, None).await
     }
 
-    /// Write file content as text
+    /// Read text file with default limit
+    pub async fn read_file(&self, session_id: String, path: String) -> Result<String, SftpError> {
+        let resp = self
+            .read_text_file(session_id, path, edit::DEFAULT_MAX_TEXT_BYTES)
+            .await?;
+        if resp.is_binary {
+            return Err(SftpError::Other {
+                message: "File appears to be binary, not text".to_string(),
+            });
+        }
+        Ok(resp.content)
+    }
+
+    /// Read text file with revision and binary detection
+    pub async fn read_text_file(
+        &self,
+        session_id: String,
+        path: String,
+        max_bytes: usize,
+    ) -> Result<edit::ReadTextFileResponse, SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        edit::read_text_file(&conn.sftp, &path, max_bytes).await
+    }
+
+    /// Write text file with safe temporary file and atomic replace
     pub async fn write_file(
         &self,
         session_id: String,
         path: String,
         content: String,
-    ) -> Result<(), SFTPError> {
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        use russh_sftp::protocol::OpenFlags;
-        use tokio::io::AsyncWriteExt;
-
-        // Open file for writing (create if not exists, truncate if exists)
-        let mut remote_file = data
-            .sftp
-            .open_with_flags(
-                &path,
-                OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE,
-            )
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to open file for writing {}: {}", path, e),
-            })?;
-
-        // Write content
-        remote_file
-            .write_all(content.as_bytes())
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to write file {}: {}", path, e),
-            })?;
-
-        // Flush to ensure data is written
-        remote_file.flush().await.map_err(|e| SFTPError::Other {
-            message: format!("Failed to flush file {}: {}", path, e),
-        })?;
-
+    ) -> Result<(), SftpError> {
+        self.write_text_file(edit::WriteTextFileRequest {
+            session_id,
+            path,
+            content,
+            expected_revision: None,
+            overwrite: true,
+        })
+        .await?;
         Ok(())
     }
 
-    /// Upload local file to remote (binary safe)
-    /// Used by sync operations
+    /// Write text file with optimistic revision concurrency check
+    pub async fn write_text_file(
+        &self,
+        request: edit::WriteTextFileRequest,
+    ) -> Result<edit::WriteTextFileResponse, SftpError> {
+        let conn = self.get_connection(&request.session_id).await?;
+        edit::write_text_file(&conn.sftp, request).await
+    }
+
+    /// Upload local file bytes to remote destination (used by sync service)
     pub async fn upload_file_bytes(
         &self,
         session_id: String,
         local_path: String,
         remote_path: String,
-    ) -> Result<(), SFTPError> {
-        use russh_sftp::protocol::OpenFlags;
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-        // Read local file
-        let mut local_file =
-            tokio::fs::File::open(&local_path)
-                .await
-                .map_err(|e| SFTPError::IoError {
-                    message: format!("Failed to open local file {}: {}", local_path, e),
-                })?;
-
-        let mut buffer = Vec::new();
-        local_file
-            .read_to_end(&mut buffer)
+    ) -> Result<(), SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        let bytes = tokio::fs::read(&local_path)
             .await
-            .map_err(|e| SFTPError::IoError {
+            .map_err(|e| SftpError::IoError {
                 message: format!("Failed to read local file {}: {}", local_path, e),
             })?;
 
-        // Get session and write to remote
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        // Ensure parent directory exists
-        if let Some(parent) = Path::new(&remote_path).parent() {
-            if let Some(parent_str) = parent.to_str() {
-                if !parent_str.is_empty() && parent_str != "/" {
-                    // Try to create parent, ignore error if exists
-                    let _ = data.sftp.create_dir(parent_str).await;
-                }
-            }
-        }
-
-        // Open remote file for writing
-        let mut remote_file = data
+        let handle = conn
             .sftp
-            .open_with_flags(
+            .open(
                 &remote_path,
                 OpenFlags::CREATE | OpenFlags::TRUNCATE | OpenFlags::WRITE,
+                FileAttributes::empty(),
             )
             .await
-            .map_err(|e| SFTPError::Other {
-                message: format!(
-                    "Failed to open remote file for writing {}: {}",
-                    remote_path, e
-                ),
-            })?;
+            .map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?
+            .handle;
 
-        // Write content
-        remote_file
-            .write_all(&buffer)
-            .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to write to remote file {}: {}", remote_path, e),
-            })?;
+        let write_res = conn.sftp.write(&handle, 0, bytes).await;
+        let _ = conn.sftp.close(&handle).await;
 
-        remote_file.flush().await.map_err(|e| SFTPError::Other {
-            message: format!("Failed to flush remote file {}: {}", remote_path, e),
-        })?;
-
+        write_res.map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?;
         Ok(())
     }
 
-    /// Download remote file to local (binary safe)
-    /// Used by sync operations
+    /// Download remote file to local destination (used by sync service)
     pub async fn download_file_bytes(
         &self,
         session_id: String,
         remote_path: String,
         local_path: String,
-    ) -> Result<(), SFTPError> {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-
-        // Get session and read from remote
-        let session_data = self.get_session(&session_id).await?;
-        let mut data = session_data.lock().await;
-        data.last_used = Utc::now();
-
-        // Check if remote file exists
-        let _attrs = data.sftp.metadata(&remote_path).await.map_err(|e| {
-            if e.to_string().contains("not found") || e.to_string().contains("No such file") {
-                SFTPError::FileNotFound {
-                    path: remote_path.clone(),
-                }
-            } else {
-                SFTPError::Other {
-                    message: format!("Failed to get metadata for {}: {}", remote_path, e),
-                }
-            }
-        })?;
-
-        // Open and read remote file
-        let mut remote_file = data
+    ) -> Result<(), SftpError> {
+        let conn = self.get_connection(&session_id).await?;
+        let handle = conn
             .sftp
-            .open(&remote_path)
+            .open(
+                &remote_path,
+                OpenFlags::READ,
+                FileAttributes::empty(),
+            )
             .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to open remote file {}: {}", remote_path, e),
-            })?;
+            .map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?
+            .handle;
 
-        let mut buffer = Vec::new();
-        remote_file
-            .read_to_end(&mut buffer)
+        let meta = conn
+            .sftp
+            .fstat(&handle)
             .await
-            .map_err(|e| SFTPError::Other {
-                message: format!("Failed to read remote file {}: {}", remote_path, e),
-            })?;
+            .map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?
+            .attrs;
+        let size = meta.size.unwrap_or(0);
 
-        // Release session lock before file I/O
-        drop(data);
+        let read_res = conn.sftp.read(&handle, 0, size as u32).await;
+        let _ = conn.sftp.close(&handle).await;
 
-        // Ensure local parent directory exists
-        if let Some(parent) = Path::new(&local_path).parent() {
+        let data = read_res.map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?;
+
+        // Ensure parent directory exists locally
+        if let Some(parent) = std::path::Path::new(&local_path).parent() {
             tokio::fs::create_dir_all(parent)
                 .await
-                .map_err(|e| SFTPError::IoError {
-                    message: format!("Failed to create local directory: {}", e),
+                .map_err(|e| SftpError::IoError {
+                    message: format!("Failed to create local parent directory: {}", e),
                 })?;
         }
 
-        // Write to local file
-        let mut local_file =
-            tokio::fs::File::create(&local_path)
-                .await
-                .map_err(|e| SFTPError::IoError {
-                    message: format!("Failed to create local file {}: {}", local_path, e),
-                })?;
-
-        local_file
-            .write_all(&buffer)
+        tokio::fs::write(&local_path, &data.data)
             .await
-            .map_err(|e| SFTPError::IoError {
-                message: format!("Failed to write to local file {}: {}", local_path, e),
+            .map_err(|e| SftpError::IoError {
+                message: format!("Failed to create local file {}: {}", local_path, e),
             })?;
-
-        local_file.flush().await.map_err(|e| SFTPError::IoError {
-            message: format!("Failed to flush local file {}: {}", local_path, e),
-        })?;
 
         Ok(())
     }

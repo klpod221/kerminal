@@ -274,3 +274,10 @@ export async function searchSFTP(
 ): Promise<SearchResult[]> {
   return await api.call("sftp_search", { sessionId, path, query });
 }
+
+/**
+ * Clear completed transfers from manager
+ */
+export async function clearCompletedTransfers(): Promise<void> {
+  return await api.call("sftp_clear_completed_transfers");
+}

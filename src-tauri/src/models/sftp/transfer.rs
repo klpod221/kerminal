@@ -71,6 +71,7 @@ pub enum TransferDirection {
 
 impl TransferProgress {
     /// Check if transfer is active (queued or in progress)
+    #[allow(dead_code)]
     pub fn is_active(&self) -> bool {
         matches!(
             self.status,

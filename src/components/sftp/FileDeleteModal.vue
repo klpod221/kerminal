@@ -6,7 +6,7 @@
 <template>
   <Modal
     id="sftp-file-delete-modal"
-    title="Delete File"
+    :title="isMultiple ? `Delete ${files?.length} Items` : 'Delete File'"
     :icon="Trash2"
     icon-background="bg-red-500/20"
     icon-color="text-red-400"
@@ -14,13 +14,20 @@
   >
     <div class="space-y-4">
       <p class="text-gray-300">
-        Are you sure you want to delete
-        <span class="font-medium text-white">{{ file?.name }}</span
-        >?
+        <template v-if="isMultiple">
+          Are you sure you want to delete
+          <span class="font-medium text-white">{{ files?.length }} selected items</span>?
+        </template>
+        <template v-else>
+          Are you sure you want to delete
+          <span class="font-medium text-white">{{ file?.name }}</span>?
+        </template>
       </p>
       <p class="text-sm text-gray-500">
         {{
-          file?.fileType === "directory"
+          isMultiple
+            ? "This will delete all selected files and directories. This action cannot be undone."
+            : file?.fileType === "directory"
             ? "This will delete the directory and all its contents."
             : "This action cannot be undone."
         }}
@@ -37,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { Trash2 } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
@@ -55,8 +62,18 @@ const file = getOverlayProp<FileEntry | null>(
   null,
 );
 
+const files = getOverlayProp<FileEntry[] | null>(
+  "sftp-file-delete-modal",
+  "files",
+  null,
+  null,
+);
+
+const isMultiple = computed(() => !!(files.value && files.value.length > 1));
+
 async function handleSubmit() {
-  if (!file.value || loading.value) return;
+  const itemsToDelete = files.value && files.value.length > 0 ? files.value : (file.value ? [file.value] : []);
+  if (itemsToDelete.length === 0 || loading.value) return;
 
   loading.value = true;
   const isLocal = getOverlayProp<boolean>(
@@ -66,15 +83,17 @@ async function handleSubmit() {
     false,
   );
 
-  // Emit event to parent to handle delete
-  const event = new CustomEvent("sftp-delete", {
-    detail: {
-      path: file.value.path,
-      isDirectory: file.value.fileType === "directory",
-      isLocal: isLocal.value,
-    },
-  });
-  globalThis.dispatchEvent(event);
+  for (const item of itemsToDelete) {
+    const event = new CustomEvent("sftp-delete", {
+      detail: {
+        path: item.path,
+        isDirectory: item.fileType === "directory",
+        isLocal: isLocal.value,
+      },
+    });
+    globalThis.dispatchEvent(event);
+  }
+
   closeModal();
   loading.value = false;
 }

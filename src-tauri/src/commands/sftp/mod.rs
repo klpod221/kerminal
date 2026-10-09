@@ -1,7 +1,6 @@
 // Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use crate::models::sftp::error::SFTPError;
 use crate::models::sftp::file_entry::FileEntry;
 use crate::models::sftp::requests::{
     CancelTransferRequest, CompareDirectoriesRequest, ConnectSFTPRequest, CreateDirectoryRequest,
@@ -19,12 +18,7 @@ use crate::models::sftp::ConnectResponse;
 use crate::state::AppState;
 use tauri::State;
 
-/// Convert SFTPError to String for Tauri compatibility
-impl From<SFTPError> for String {
-    fn from(error: SFTPError) -> Self {
-        error.to_string()
-    }
-}
+// From<SftpError> for String is implemented in crate::services::sftp::errors
 
 /// Error conversion macro for SFTP operations
 macro_rules! sftp_result {
@@ -414,4 +408,13 @@ pub async fn sftp_search(
             .search(request.session_id, request.path, request.query)
             .await
     )
+}
+
+/// Clear completed transfers from manager
+#[tauri::command]
+pub async fn sftp_clear_completed_transfers(
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state.sftp_transfer_manager.clear_completed().await;
+    Ok(())
 }

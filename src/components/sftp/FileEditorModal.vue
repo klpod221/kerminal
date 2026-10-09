@@ -57,7 +57,7 @@ import { message } from "../../utils/message";
 import { useSFTPStore } from "../../stores/sftp";
 import type { FileEntry } from "../../types/sftp";
 import { api } from "../../services/api";
-
+import { readSFTPFile, writeSFTPFile } from "../../services/sftp";
 import type { editor } from "monaco-editor";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
@@ -74,6 +74,17 @@ const file = getOverlayProp<FileEntry | null>(
   "file",
   null,
   null,
+);
+
+const overlaySessionId = getOverlayProp<string | null>(
+  "sftp-file-editor-modal",
+  "sessionId",
+  null,
+  null,
+);
+
+const activeSessionId = computed(
+  () => overlaySessionId.value || sftpStore.activeSessionId,
 );
 
 const initialLine = getOverlayProp<number | undefined>(
@@ -162,13 +173,11 @@ async function loadFileContent() {
 
       content.value = decoded;
     } else {
-      if (!sftpStore.activeSessionId) {
+      const sid = activeSessionId.value;
+      if (!sid) {
         throw new Error("No active SFTP session");
       }
-      content.value = await sftpStore.readFile(
-        sftpStore.activeSessionId,
-        file.value.path,
-      );
+      content.value = await readSFTPFile(sid, file.value.path);
     }
 
     // Scroll to line if specified
@@ -221,23 +230,13 @@ async function saveLocalFile() {
 
 async function saveRemoteFile() {
   if (!file.value || !content.value) return;
-  if (!sftpStore.activeSessionId) {
+  const sid = activeSessionId.value;
+  if (!sid) {
     throw new Error("No active SFTP session");
   }
 
-  await sftpStore.writeFile(
-    sftpStore.activeSessionId,
-    file.value.path,
-    content.value,
-  );
+  await writeSFTPFile(sid, file.value.path, content.value);
   message.success("File saved successfully");
-
-  if (sftpStore.activeSessionId && sftpStore.browserState.remotePath) {
-    await sftpStore.listRemoteDirectory(
-      sftpStore.activeSessionId,
-      sftpStore.browserState.remotePath,
-    );
-  }
 }
 
 /**

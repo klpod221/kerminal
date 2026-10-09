@@ -151,6 +151,7 @@ pub fn main() {
             commands::sftp::sftp_read_file,
             commands::sftp::sftp_write_file,
             commands::sftp::sftp_search,
+            commands::sftp::sftp_clear_completed_transfers,
             commands::history::get_terminal_history,
             commands::history::search_history,
             commands::history::export_history,
