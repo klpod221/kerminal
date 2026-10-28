@@ -6,45 +6,28 @@
 <template>
   <Teleport to="body">
     <!-- Overlay -->
-    <Transition
-      enter-active-class="transition-opacity duration-300 ease-out"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-200 ease-in"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="isVisible"
-        class="fixed top-[30px] left-0 right-0 bottom-0 z-40 bg-black/50 backdrop-blur"
-        @click="handleBackdropClick"
-      ></div>
-    </Transition>
+    <div
+      v-if="isVisible"
+      class="fixed top-[30px] left-0 right-0 bottom-0 z-40 bg-black/50"
+      @click="handleBackdropClick"
+    ></div>
 
     <!-- Modal Content -->
-    <Transition
-      enter-active-class="transition-all duration-300 ease-out"
-      enter-from-class="opacity-0 scale-95 translate-y-4"
-      enter-to-class="opacity-100 scale-100 translate-y-0"
-      leave-active-class="transition-all duration-200 ease-in"
-      leave-from-class="opacity-100 scale-100 translate-y-0"
-      leave-to-class="opacity-0 scale-95 translate-y-4"
+    <div
+      v-if="isVisible"
+      class="fixed left-0 right-0 bottom-0 z-50 flex items-center justify-center pointer-events-none sm:top-9 modal-wrapper"
+      :class="isMobile ? 'top-[30px]' : 'top-[30px]'"
     >
       <div
-        v-if="isVisible"
-        class="fixed left-0 right-0 bottom-0 z-50 flex items-center justify-center pointer-events-none sm:top-9"
-        :class="isMobile ? 'top-[30px]' : 'top-[30px]'"
+        class="relative bg-bg-tertiary border border-gray-700 overflow-hidden pointer-events-auto"
+        :class="[
+          sizeClass,
+          isMobile
+            ? 'w-full h-full rounded-none'
+            : 'w-full mx-4 max-h-[90vh] rounded-lg',
+        ]"
+        @click.stop
       >
-        <div
-          class="relative bg-bg-tertiary border border-gray-700 shadow-2xl overflow-hidden pointer-events-auto"
-          :class="[
-            sizeClass,
-            isMobile
-              ? 'w-full h-full rounded-none'
-              : 'w-full mx-4 max-h-[90vh] rounded-lg',
-          ]"
-          @click.stop
-        >
           <!-- Header -->
           <div
             v-if="title || $slots.header || showCloseButton"
@@ -109,7 +92,6 @@
           </div>
         </div>
       </div>
-    </Transition>
   </Teleport>
 </template>
 
@@ -310,5 +292,14 @@ onUnmounted(() => {
 .modal-content-leave-to {
   opacity: 0;
   transform: scale(0.95) translateY(1rem);
+}
+
+.modal-wrapper {
+  contain: layout paint;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+  -webkit-perspective: 1000px;
 }
 </style>

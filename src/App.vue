@@ -3,24 +3,6 @@
   - SPDX-License-Identifier: GPL-3.0-or-later
 -->
 
-<!--
- * Kerminal - Modern Terminal Emulator & SSH Manager
- * Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
--->
-
 <template>
   <div class="h-screen w-screen flex flex-col bg-bg-primary overflow-hidden">
     <!-- Global Terminal Host for DOM teleportation -->
@@ -39,11 +21,20 @@
       <MasterPasswordManager />
 
       <template v-if="authStore.isAuthenticated">
-        <Dashboard v-if="viewState.activeView === 'dashboard'" />
+        <Dashboard
+          v-if="visitedViews.dashboard"
+          v-show="viewState.activeView === 'dashboard'"
+        />
 
-        <Workspace v-if="viewState.activeView === 'workspace'" />
+        <Workspace
+          v-if="visitedViews.workspace"
+          v-show="viewState.activeView === 'workspace'"
+        />
 
-        <SFTPBrowser v-if="viewState.activeView === 'sftp'" />
+        <SFTPBrowser
+          v-if="visitedViews.sftp"
+          v-show="viewState.activeView === 'sftp'"
+        />
 
         <SSHProfileManager />
 
@@ -69,7 +60,14 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch, defineAsyncComponent } from "vue";
+import {
+  onMounted,
+  onUnmounted,
+  watch,
+  defineAsyncComponent,
+  ref,
+  nextTick,
+} from "vue";
 import { message } from "./utils/message";
 
 import TopBar from "./components/TopBar.vue";
@@ -129,6 +127,27 @@ const viewState = useViewStateStore();
 const authStore = useAuthStore();
 const updaterStore = useUpdaterStore();
 const tourStore = useTourStore();
+
+const visitedViews = ref<Record<"dashboard" | "workspace" | "sftp", boolean>>({
+  dashboard: viewState.activeView === "dashboard",
+  workspace: viewState.activeView === "workspace",
+  sftp: viewState.activeView === "sftp",
+});
+
+watch(
+  () => viewState.activeView,
+  (view) => {
+    if (view && !visitedViews.value[view]) {
+      visitedViews.value[view] = true;
+    }
+    if (view === "workspace") {
+      nextTick(() => {
+        window.dispatchEvent(new Event("resize"));
+      });
+    }
+  },
+  { immediate: true },
+);
 
 const { openOverlay, closeAllOverlays } = useOverlay();
 const { useLegacyRenderer, getStatusLabel } = useSystemMetrics();

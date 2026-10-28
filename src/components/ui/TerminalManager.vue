@@ -37,9 +37,8 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 
 import { getTerminalTheme } from "../../utils/terminalTheme";
-import { loadWebGLRenderer } from "../../utils/terminalRenderer";
+import { loadCanvasRenderer } from "../../utils/terminalRenderer";
 import { useSettingsStore } from "../../stores/settings";
-import { message } from "../../utils/message";
 
 interface TerminalManagerProps {
   terminals: TerminalInstance[];
@@ -97,18 +96,16 @@ const createTerminalInstance = async (
     theme: theme,
   });
 
-  const webglAddon = await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
-  if (webglAddon) {
+  const canvasAddon = await loadCanvasRenderer(term);
+  if (canvasAddon) {
     createTerminalRendererHealthWatchdog({
       container: container,
       renderer: {
-        backend: "webgl",
+        backend: "canvas",
         getTrackedCanvases: () => Array.from(container.querySelectorAll("canvas")),
         reportHealth: (signal) => {
           if (signal !== "healthy") {
-            message.warning("WebGL context lost! Falling back to DOM renderer.");
-            settingsStore.useWebGLRenderer = false;
-            try { webglAddon.dispose(); } catch (e) {}
+            try { canvasAddon.dispose(); } catch (e) {}
           }
         }
       }
@@ -460,12 +457,18 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.terminal-mount-point { contain: layout size; }
-.terminal-mount-point :deep(.terminal-container) { width: 100%; height: 100%; }
+.terminal-mount-point {
+  contain: strict;
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  isolation: isolate;
+}
+.terminal-mount-point :deep(.terminal-container) {
+  width: 100%;
+  height: 100%;
+  transform: translate3d(0, 0, 0);
+}
 .terminal-mount-point :deep(.xterm) { width: 100%; height: 100%; padding: 4px; }
 .terminal-mount-point :deep(.xterm-viewport) { width: 100% !important; height: 100% !important; }
-.terminal-mount-point :deep(.xterm-screen) { width: 100%; height: 100%; user-select: text; }
-.terminal-mount-point :deep(.xterm-cursor) { animation: terminalCursor 1s infinite; }
-@keyframes terminalCursor { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
 .terminal-mount-point :deep(.xterm-selection) { background-color: rgba(255, 255, 255, 0.2) !important; }
 </style>

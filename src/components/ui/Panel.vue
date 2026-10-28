@@ -5,7 +5,7 @@
 
 <template>
   <div
-    class="flex flex-col h-full cursor-pointer relative bg-bg-primary panel transition-all duration-200"
+    class="flex flex-col h-full cursor-pointer relative bg-bg-primary panel transition-[box-shadow,ring] duration-200"
     :class="{
       'ring-1 ring-amber-500/60 shadow-lg shadow-amber-950/20': broadcastStore.isBroadcastEnabled,
     }"
@@ -18,28 +18,12 @@
     <!-- Broadcast Indicator Badge -->
     <div
       v-if="broadcastStore.isBroadcastEnabled"
-      class="absolute top-9 right-3 z-30 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/50 text-[10px] font-bold text-amber-300 pointer-events-none select-none tracking-wider animate-pulse backdrop-blur-xs shadow-md"
+      class="absolute top-9 right-3 z-30 flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/50 text-[10px] font-bold text-amber-300 pointer-events-none select-none tracking-wider animate-pulse shadow-md"
     >
       <Radio class="w-3 h-3 text-amber-400" />
       <span>BROADCASTING</span>
     </div>
 
-    <!-- Active panel background overlay -->
-    <div
-      class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
-      :class="{
-        'opacity-100 bg-linear-to-br from-slate-900 to-bg-primary': isActive,
-        'opacity-0 bg-bg-primary': !isActive,
-      }"
-    ></div>
-    <!-- Active panel blue tint -->
-    <div
-      class="absolute inset-0 transition-opacity duration-200 pointer-events-none"
-      :class="{
-        'opacity-100 bg-blue-500/5': isActive,
-        'opacity-0': !isActive,
-      }"
-    ></div>
 
     <!-- Drop Zones Overlay -->
     <DropZones
@@ -80,7 +64,7 @@
       
       <!-- Server Tools Drawer -->
       <div 
-        class="absolute top-0 right-0 h-full w-[400px] bg-bg-secondary border-l border-gray-800 shadow-2xl transition-transform duration-300 ease-in-out z-20 flex flex-col"
+        class="absolute top-0 right-0 h-full w-[400px] bg-bg-secondary border-l border-gray-800 shadow-2xl transition-transform duration-300 ease-in-out z-20 flex flex-col will-change-transform transform-gpu"
         :class="isServerToolsOpen ? 'translate-x-0' : 'translate-x-full'"
       >
         <div class="flex items-center justify-between p-3 border-b border-gray-800 bg-bg-primary">

@@ -51,9 +51,9 @@
 
     <!-- File Table -->
     <table v-else class="w-full border-collapse text-left">
-      <thead class="sticky top-0 z-10 border-b border-gray-800 bg-bg-secondary text-gray-400 font-medium select-none">
+      <thead class="sticky top-0 z-10 border-b border-gray-800 bg-bg-secondary text-gray-400 font-medium select-none text-xs">
         <tr>
-          <th class="w-8 px-2 py-1.5 text-center">
+          <th class="w-8 px-2 py-2 text-center">
             <input
               type="checkbox"
               :checked="isAllSelected"
@@ -62,7 +62,7 @@
             />
           </th>
           <th
-            class="cursor-pointer px-3 py-1.5 hover:text-white"
+            class="cursor-pointer px-3 py-2 hover:text-white"
             @click="$emit('sort', 'name')"
           >
             <div class="flex items-center gap-1">
@@ -71,7 +71,7 @@
             </div>
           </th>
           <th
-            class="w-24 cursor-pointer px-3 py-1.5 hover:text-white"
+            class="w-28 cursor-pointer px-3 py-2 hover:text-white"
             @click="$emit('sort', 'size')"
           >
             <div class="flex items-center gap-1">
@@ -80,13 +80,13 @@
             </div>
           </th>
           <th
-            class="w-20 cursor-pointer px-3 py-1.5 hover:text-white"
+            class="w-24 cursor-pointer px-3 py-2 hover:text-white"
             @click="$emit('sort', 'type')"
           >
             <span>Perms</span>
           </th>
           <th
-            class="w-36 cursor-pointer px-3 py-1.5 hover:text-white"
+            class="w-44 cursor-pointer px-3 py-2 hover:text-white whitespace-nowrap"
             @click="$emit('sort', 'modified')"
           >
             <div class="flex items-center gap-1">
@@ -96,7 +96,7 @@
           </th>
         </tr>
       </thead>
-      <tbody class="divide-y divide-gray-800/40">
+      <tbody class="divide-y divide-gray-800/40 text-xs">
         <tr
           v-for="item in entries"
           :key="item.path"
@@ -108,7 +108,7 @@
           @contextmenu.prevent.stop="handleContextMenu($event, item)"
           @dragstart="onDragStart($event, item)"
         >
-          <td class="px-2 py-1.5 text-center" @click.stop>
+          <td class="px-2 py-2 text-center" @click.stop>
             <input
               type="checkbox"
               :checked="selectedPaths.has(item.path)"
@@ -118,32 +118,32 @@
           </td>
 
           <!-- File Name & Icon -->
-          <td class="px-3 py-1.5">
+          <td class="px-3 py-2">
             <div class="flex items-center gap-2">
-              <Folder v-if="item.fileType === 'directory'" class="h-4 w-4 shrink-0 text-blue-400" />
-              <Link2 v-else-if="item.fileType === 'symlink'" class="h-4 w-4 shrink-0 text-yellow-400" />
-              <component :is="getFileIcon(item.name)" v-else class="h-4 w-4 shrink-0 text-gray-400 group-hover:text-gray-200" />
+              <Folder v-if="item.fileType === 'directory'" class="h-4.5 w-4.5 shrink-0 text-blue-400" />
+              <Link2 v-else-if="item.fileType === 'symlink'" class="h-4.5 w-4.5 shrink-0 text-yellow-400" />
+              <component :is="getFileIcon(item.name)" v-else class="h-4.5 w-4.5 shrink-0 text-gray-400 group-hover:text-gray-200" />
 
-              <span class="truncate" :title="item.name">{{ item.name }}</span>
+              <span class="truncate text-sm font-medium" :title="item.name">{{ item.name }}</span>
 
-              <span v-if="item.symlinkTarget" class="text-2xs text-gray-500 truncate">
+              <span v-if="item.symlinkTarget" class="text-xs text-gray-500 truncate">
                 → {{ item.symlinkTarget }}
               </span>
             </div>
           </td>
 
           <!-- Size -->
-          <td class="px-3 py-1.5 text-gray-400 font-mono">
+          <td class="px-3 py-2 text-gray-400 font-mono text-xs whitespace-nowrap">
             {{ item.fileType === 'directory' ? '--' : formatBytes(item.size || 0) }}
           </td>
 
           <!-- Permissions -->
-          <td class="px-3 py-1.5 text-2xs text-gray-500 font-mono">
+          <td class="px-3 py-2 text-gray-400 font-mono text-xs whitespace-nowrap">
             {{ formatPermissions(item.permissions) }}
           </td>
 
           <!-- Modified Date -->
-          <td class="px-3 py-1.5 text-2xs text-gray-400">
+          <td class="px-3 py-2 text-gray-300 font-mono text-xs whitespace-nowrap">
             {{ formatDate(item.modified) }}
           </td>
         </tr>
@@ -450,7 +450,13 @@ function formatPermissions(mode: number): string {
 function formatDate(iso: string): string {
   try {
     const d = new Date(iso);
-    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    if (isNaN(d.getTime())) return iso;
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
   } catch {
     return iso;
   }

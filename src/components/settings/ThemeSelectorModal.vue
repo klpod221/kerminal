@@ -35,15 +35,6 @@
       </Button>
     </div>
 
-    <Card custom-class="mb-2">
-      <Checkbox
-        id="use-webgl-renderer"
-        v-model="useWebGLRenderer"
-        label="Use WebGL terminal renderer (restart required)"
-        helper-text="May improve performance, but can cause input lag or issues on some Linux systems."
-        class="mt-0.5 mb-0!"
-      />
-    </Card>
 
     <!-- Custom Themes Section -->
     <div v-if="settingsStore.customThemes.length > 0" class="space-y-2 mb-6">
@@ -245,13 +236,6 @@ const customThemesList = computed(() => {
 
 const builtInThemesList = computed(() => {
   return settingsStore.builtInThemes;
-});
-
-const useWebGLRenderer = computed({
-  get: () => settingsStore.useWebGLRenderer,
-  set: (enabled: boolean) => {
-    settingsStore.setUseWebGLRenderer(enabled);
-  },
 });
 
 const selectTheme = async (theme: string) => {

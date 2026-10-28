@@ -7,11 +7,9 @@
   <div
     :class="[
       'bg-linear-to-br from-zinc-800 to-border-dark rounded-xl border border-gray-600',
-      'transition-all duration-300 relative overflow-hidden',
+      'transition-[border-color] duration-150 relative overflow-hidden',
       {
-        'hover:border-gray-500 hover:shadow-lg cursor-pointer hover:-translate-y-0.5 hover:scale-[1.02]':
-          hover,
-        'card-ripple': hover,
+        'hover:border-gray-500 cursor-pointer': hover,
         'p-4': !noPadding,
         'p-6': size === 'sm' && !noPadding,
         'p-8': size === 'lg' && !noPadding,
@@ -32,9 +30,8 @@
       <div
         v-if="icon || $slots.icon"
         :class="[
-          'rounded-lg p-3 transition-all duration-300',
+          'rounded-lg p-3 transition-colors duration-150',
           center ? 'w-fit mx-auto mb-3' : 'mr-4',
-          'hover:scale-105',
           iconBackground || 'bg-blue-500/20',
         ]"
       >

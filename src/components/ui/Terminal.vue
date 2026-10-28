@@ -185,7 +185,7 @@ import { writeText, readText } from "@tauri-apps/plugin-clipboard-manager";
 import Button from "./Button.vue";
 import HistorySearchModal from "../history/HistorySearchModal.vue";
 import { getTerminalTheme } from "../../utils/terminalTheme";
-import { loadWebGLRenderer } from "../../utils/terminalRenderer";
+import { loadCanvasRenderer } from "../../utils/terminalRenderer";
 import { useSettingsStore } from "../../stores/settings";
 import { useOverlayStore } from "../../stores/overlay";
 import type { PanelLayout, Tab } from "../../types/panel";
@@ -226,7 +226,7 @@ let term: Terminal;
 let fitAddon: FitAddon;
 let outputWriter: TerminalOutputWriter;
 let healthWatchdog: TerminalRendererHealthWatchdog | null = null;
-let webglAddonInstance: any = null;
+let canvasAddonInstance: any = null;
 
 const workspaceStore = useWorkspaceStore();
 const settingsStore = useSettingsStore();
@@ -653,7 +653,7 @@ onMounted(async () => {
     theme: theme,
   });
 
-  webglAddonInstance = await loadWebGLRenderer(term, settingsStore.useWebGLRenderer);
+  canvasAddonInstance = await loadCanvasRenderer(term);
 
   fitAddon = new FitAddon();
   term.loadAddon(fitAddon);
@@ -666,25 +666,24 @@ onMounted(async () => {
   // Enable TUI cursor protection for vim/htop
   outputWriter.setTuiCursorProtection(true);
 
-  if (webglAddonInstance && terminalRef.value) {
+  if (canvasAddonInstance && terminalRef.value) {
     healthWatchdog = createTerminalRendererHealthWatchdog({
       container: terminalRef.value,
       renderer: {
-        backend: "webgl",
+        backend: "canvas",
         getTrackedCanvases: () => {
           if (!terminalRef.value) return [];
           return Array.from(terminalRef.value.querySelectorAll("canvas"));
         },
         reportHealth: (signal: TerminalRendererHealthSignal) => {
           if (signal !== "healthy") {
-            console.warn(`[WebGL Watchdog] Health signal: ${signal}. Falling back to DOM renderer.`);
-            if (webglAddonInstance) {
-              try { webglAddonInstance.dispose(); } catch (e) {}
-              webglAddonInstance = null;
+            if (canvasAddonInstance) {
+              try { canvasAddonInstance.dispose(); } catch (e) {}
+              canvasAddonInstance = null;
             }
           }
-        }
-      }
+        },
+      },
     });
   }
 

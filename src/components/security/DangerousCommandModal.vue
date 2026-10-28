@@ -7,7 +7,7 @@
   <Transition name="fade">
     <div
       v-if="confirmation"
-      class="fixed inset-0 z-9999 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4"
+      class="fixed inset-0 z-9999 flex items-center justify-center bg-black/80 p-4 will-change-transform transform-gpu"
       @keydown.esc="handleCancel"
     >
       <div

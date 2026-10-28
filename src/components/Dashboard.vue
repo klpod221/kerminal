@@ -13,7 +13,7 @@
       :status="integrityStatus"
       @close="isOptimizingDisplay = false"
     />
-    <div class="container mx-auto animate-fade-in">
+    <div class="container mx-auto">
       <div :class="isMobile ? 'mt-2 mb-8' : 'mt-4 mb-12'">
         <img
           src="../assets/images/logo_500.png"

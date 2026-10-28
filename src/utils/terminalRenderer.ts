@@ -3,38 +3,22 @@
 
 import type { Terminal } from "@xterm/xterm";
 
-type NavigatorWithUAData = Navigator & {
-  userAgentData?: {
-    platform?: string;
-  };
-};
-
-const getPlatformHint = (): string => {
-  if (typeof navigator === "undefined") return "";
-
-  const nav = navigator as NavigatorWithUAData;
-
-  return nav.userAgentData?.platform || navigator.userAgent || "";
-};
-
-export const isLinuxPlatform = (): boolean =>
-  getPlatformHint().toLowerCase().includes("linux");
-
-export const getDefaultUseWebGLRenderer = (): boolean => !isLinuxPlatform();
-
-export const loadWebGLRenderer = async (
+/**
+ * Loads the Canvas 2D renderer for xterm.
+ * The CanvasAddon renders terminal contents to a single 2D HTML5 canvas.
+ * It is fast, stable, and avoids the compositor stalls and high DOM node count
+ * of WebGL or DOM renderers on Linux/Tauri.
+ */
+export const loadCanvasRenderer = async (
   term: Terminal,
-  enabled: boolean,
 ): Promise<any | null> => {
-  if (!enabled) return null;
-
   try {
-    const { WebglAddon } = await import("@xterm/addon-webgl");
-    const webglAddon = new WebglAddon();
-    term.loadAddon(webglAddon);
-    return webglAddon;
+    const { CanvasAddon } = await import("@xterm/addon-canvas");
+    const canvasAddon = new CanvasAddon();
+    term.loadAddon(canvasAddon);
+    return canvasAddon;
   } catch (error) {
-    console.warn("WebGL renderer failed, falling back", error);
+    console.warn("Canvas renderer failed, falling back to DOM", error);
     return null;
   }
 };

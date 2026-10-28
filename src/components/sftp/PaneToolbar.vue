@@ -9,13 +9,13 @@
     <div class="flex items-center justify-between pb-1.5">
       <div class="flex items-center gap-2">
         <span
-          class="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-2xs font-semibold uppercase tracking-wider"
+          class="inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold uppercase tracking-wider"
           :class="isRemote ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'"
         >
-          <component :is="isRemote ? Server : HardDrive" class="h-3 w-3" />
+          <component :is="isRemote ? Server : HardDrive" class="h-3.5 w-3.5" />
           {{ isRemote ? 'Remote Server' : 'Local Machine' }}
         </span>
-        <span v-if="selectedCount && selectedCount > 0" class="text-2xs text-gray-400 font-mono">
+        <span v-if="selectedCount && selectedCount > 0" class="text-xs text-gray-400 font-mono">
           ({{ selectedCount }} selected)
         </span>
       </div>
@@ -154,7 +154,7 @@
         <input
           v-model="pathInput"
           type="text"
-          class="w-full rounded border border-gray-800 bg-bg-primary px-2.5 py-1 font-mono text-xs text-gray-200 outline-none transition-colors focus:border-blue-500/80"
+          class="w-full rounded border border-gray-800 bg-bg-primary px-2.5 py-1 font-mono text-sm text-gray-200 outline-none transition-colors focus:border-blue-500/80"
           placeholder="/path/to/directory"
           @keydown.enter="handlePathSubmit"
         />
@@ -162,12 +162,12 @@
 
       <!-- Quick Search Filter -->
       <div class="relative w-28 sm:w-36 shrink-0">
-        <Search class="absolute left-2 top-1.5 h-3 w-3 text-gray-500" />
+        <Search class="absolute left-2 top-2 h-3.5 w-3.5 text-gray-500" />
         <input
           v-model="searchModel"
           type="text"
           placeholder="Filter..."
-          class="w-full rounded border border-gray-800 bg-bg-primary py-1 pl-6 pr-2 text-xs text-gray-200 outline-none transition-colors focus:border-blue-500/80"
+          class="w-full rounded border border-gray-800 bg-bg-primary py-1 pl-7 pr-2 text-sm text-gray-200 outline-none transition-colors focus:border-blue-500/80"
         />
       </div>
     </div>

@@ -6,43 +6,22 @@
 <template>
   <Teleport to="body">
     <!-- Overlay -->
-    <Transition
-      enter-active-class="transition-opacity duration-300"
-      enter-from-class="opacity-0"
-      enter-to-class="opacity-100"
-      leave-active-class="transition-opacity duration-300"
-      leave-from-class="opacity-100"
-      leave-to-class="opacity-0"
-    >
-      <div
-        v-if="isVisible"
-        class="fixed inset-0 bg-black/50 z-40 top-[30px] backdrop-blur"
-        @click="handleOverlayClick"
-      ></div>
-    </Transition>
+    <div
+      v-if="isVisible"
+      class="fixed inset-0 bg-black/50 z-40 top-[30px]"
+      @click="handleOverlayClick"
+    ></div>
 
     <!-- Drawer -->
-    <Transition
-      :enter-active-class="`transition-transform duration-300 ease-out`"
-      :enter-from-class="
-        position === 'left' ? '-translate-x-full' : 'translate-x-full'
-      "
-      :enter-to-class="'translate-x-0'"
-      :leave-active-class="`transition-transform duration-300 ease-in`"
-      :leave-from-class="'translate-x-0'"
-      :leave-to-class="
-        position === 'left' ? '-translate-x-full' : 'translate-x-full'
-      "
+    <div
+      v-if="isVisible"
+      class="no-drag fixed z-50 bg-bg-tertiary border-gray-700 flex flex-col sm:top-9 h-[calc(100vh-30px)] drawer-panel"
+      :class="[
+        position === 'left' ? 'left-0 border-r' : 'right-0 border-l',
+        widthClass,
+        isMobile ? 'top-[30px] w-full' : 'top-[30px]',
+      ]"
     >
-      <div
-        v-if="isVisible"
-        class="no-drag fixed z-50 bg-bg-tertiary border-gray-700 flex flex-col sm:top-9 h-[calc(100vh-30px)] shadow-2xl"
-        :class="[
-          position === 'left' ? 'left-0 border-r' : 'right-0 border-l',
-          widthClass,
-          isMobile ? 'top-[30px] w-full' : 'top-[30px]',
-        ]"
-      >
         <!-- Header -->
         <div
           class="flex items-center justify-between border-b border-gray-700 shrink-0"
@@ -98,7 +77,6 @@
           <slot name="footer" />
         </div>
       </div>
-    </Transition>
   </Teleport>
 </template>
 
@@ -251,3 +229,14 @@ watch(isVisible, (visible) => {
   }
 });
 </script>
+
+<style scoped>
+.drawer-panel {
+  contain: layout paint;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+  -webkit-perspective: 1000px;
+}
+</style>

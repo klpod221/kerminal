@@ -6,15 +6,16 @@
 <template>
   <div class="relative flex h-full flex-col bg-bg-primary font-mono text-xs text-gray-200">
     <!-- Top Header Bar -->
-    <header class="flex items-center justify-between border-b border-gray-800 bg-bg-secondary px-4 py-2">
+    <header class="relative flex items-center justify-between border-b border-gray-800 bg-bg-secondary px-4 py-2">
       <!-- Connection controls -->
-      <div class="flex items-center gap-3">
-        <div class="w-64">
+      <div class="flex items-center gap-2.5">
+        <div class="w-48 sm:w-52">
           <Select
             id="sftp-profile-select"
             v-model="selectedProfileId"
             :options="profileOptions"
             placeholder="Select SSH Profile..."
+            size="sm"
             :space="false"
             :disabled="session.connecting.value"
           />
@@ -35,8 +36,11 @@
         </Button>
       </div>
 
-      <!-- Center Quick Transfer between panes -->
-      <div v-if="session.sessionId.value" class="hidden md:flex items-center gap-2">
+      <!-- Center Quick Transfer between panes (True Absolute Center) -->
+      <div
+        v-if="session.sessionId.value"
+        class="hidden md:flex items-center gap-2 absolute left-1/2 -translate-x-1/2"
+      >
         <Button
           variant="outline"
           size="sm"

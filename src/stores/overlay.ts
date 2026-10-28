@@ -102,14 +102,11 @@ export const useOverlayStore = defineStore("overlay", () => {
       overlay.visible = true;
       overlay.lastAccessedAt = Date.now();
       activeOverlayId.value = id;
+      overlay.transitioning = false;
 
-      setTimeout(() => {
-        overlay.transitioning = false;
-
-        if (overlay.config.onOpened) {
-          overlay.config.onOpened();
-        }
-      }, 300); // Match animation duration
+      if (overlay.config.onOpened) {
+        overlay.config.onOpened();
+      }
     } catch (error) {
       console.error(`❌ Error opening overlay ${id}:`, error);
       overlay.transitioning = false;
@@ -124,7 +121,7 @@ export const useOverlayStore = defineStore("overlay", () => {
 
   const close = async (
     id?: string,
-    clearPropsDelay: number = 300,
+    clearPropsDelay: number = 0,
   ): Promise<void> => {
     const targetId = id || activeOverlayId.value;
     if (!targetId) return;
@@ -179,17 +176,12 @@ export const useOverlayStore = defineStore("overlay", () => {
         }
       }
 
-      setTimeout(() => {
-        const currentOverlay = overlays.value.get(targetId);
-        if (currentOverlay && !currentOverlay.visible) {
-          currentOverlay.config.props = {};
-          currentOverlay.transitioning = false;
+      overlay.config.props = {};
+      overlay.transitioning = false;
 
-          if (currentOverlay.config.onClosed) {
-            currentOverlay.config.onClosed();
-          }
-        }
-      }, clearPropsDelay);
+      if (overlay.config.onClosed) {
+        overlay.config.onClosed();
+      }
     } catch (error) {
       console.error(`❌ Error closing overlay ${targetId}:`, error);
       overlay.transitioning = false;

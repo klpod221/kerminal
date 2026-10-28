@@ -11,7 +11,6 @@ import { getSystemInfo as getSystemInfoService } from "../services/dashboard";
 import type { TerminalTheme } from "../utils/terminalTheme";
 import { handleError, type ErrorContext } from "../utils/errorHandler";
 import { message } from "../utils/message";
-import { getDefaultUseWebGLRenderer } from "../utils/terminalRenderer";
 
 export interface CustomTheme {
   id: string;
@@ -61,7 +60,6 @@ export const useSettingsStore = defineStore("settings", () => {
   // Terminal font preferences
   const fontFamily = ref<string>("FiraCode Nerd Font");
   const fontSize = ref<number>(13);
-  const useWebGLRenderer = ref<boolean>(getDefaultUseWebGLRenderer());
 
   // Available built-in themes
   const builtInThemes = getAvailableThemes();
@@ -105,11 +103,6 @@ export const useSettingsStore = defineStore("settings", () => {
         fontSize.value = savedFontSize;
       }
 
-      const savedUseWebGLRenderer =
-        await storeInstance.get<boolean>("use-webgl-renderer");
-      if (typeof savedUseWebGLRenderer === "boolean") {
-        useWebGLRenderer.value = savedUseWebGLRenderer;
-      }
     } catch (error) {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
@@ -131,7 +124,6 @@ export const useSettingsStore = defineStore("settings", () => {
       await storeInstance.set("terminal-theme", terminalTheme.value);
       await storeInstance.set("font-family", fontFamily.value);
       await storeInstance.set("font-size", fontSize.value);
-      await storeInstance.set("use-webgl-renderer", useWebGLRenderer.value);
       await storeInstance.save();
     } catch (error) {
       const errorMessage = handleError(error, context);
@@ -214,11 +206,6 @@ export const useSettingsStore = defineStore("settings", () => {
 
   const setFontSize = async (size: number) => {
     fontSize.value = size;
-    await saveSettings();
-  };
-
-  const setUseWebGLRenderer = async (enabled: boolean) => {
-    useWebGLRenderer.value = enabled;
     await saveSettings();
   };
 
@@ -306,12 +293,10 @@ export const useSettingsStore = defineStore("settings", () => {
     builtInThemes,
     fontFamily,
     fontSize,
-    useWebGLRenderer,
     isLoading,
     setTerminalTheme,
     setFontFamily,
     setFontSize,
-    setUseWebGLRenderer,
     loadSettings,
     createCustomTheme,
     updateCustomTheme,
