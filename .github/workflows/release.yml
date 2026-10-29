@@ -131,6 +131,8 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           # Find AppImage files
           APPIMAGE=$(find src-tauri/target/release/bundle/appimage -name "*.AppImage" -type f | head -1)
@@ -154,9 +156,12 @@ jobs:
             fi
 
             # Re-sign and upload signature if signing keys are available
-            if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] && [ -f "$APPIMAGE_SIG" ]; then
-              gh release delete-asset "$TAG_NAME" "${APPIMAGE_NAME}.sig" --yes 2>/dev/null || true
-              gh release upload "$TAG_NAME" "$APPIMAGE_SIG" --clobber
+            if [ -n "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+              echo "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" | npx @tauri-apps/cli signer sign -k "$TAURI_SIGNING_PRIVATE_KEY" "$APPIMAGE" || true
+              if [ -f "$APPIMAGE_SIG" ]; then
+                gh release delete-asset "$TAG_NAME" "${APPIMAGE_NAME}.sig" --yes 2>/dev/null || true
+                gh release upload "$TAG_NAME" "$APPIMAGE_SIG" --clobber
+              fi
             fi
 
             echo "Fixed AppImage uploaded successfully"

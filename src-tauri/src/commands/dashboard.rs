@@ -83,91 +83,97 @@ pub fn verify_system_integrity() -> SystemIntegrityStatus {
 }
 
 #[tauri::command]
-pub fn get_system_info() -> SystemInfo {
-    let mut sys = System::new_all();
-    sys.refresh_all();
+pub async fn get_system_info() -> Result<SystemInfo, String> {
+    tokio::task::spawn_blocking(move || {
+        let mut sys = System::new_all();
+        sys.refresh_all();
 
-    let cpus = sys
-        .cpus()
-        .iter()
-        .map(|cpu| CPUInfo {
-            model: cpu.brand().to_string(),
-            speed: cpu.frequency(),
-            usage: cpu.cpu_usage(),
-        })
-        .collect();
+        let cpus = sys
+            .cpus()
+            .iter()
+            .map(|cpu| CPUInfo {
+                model: cpu.brand().to_string(),
+                speed: cpu.frequency(),
+                usage: cpu.cpu_usage(),
+            })
+            .collect();
 
-    let networks = Networks::new_with_refreshed_list();
-    let network_interfaces = networks
-        .iter()
-        .map(|(interface_name, data)| NetworkInterface {
-            name: interface_name.clone(),
-            address: data
-                .ip_networks()
-                .iter()
-                .map(|ip| ip.to_string())
-                .collect::<Vec<_>>()
-                .join(", "),
-            mac: data.mac_address().to_string(),
-            status: if data.mac_address().to_string().is_empty() {
-                "down".to_string()
-            } else {
-                "up".to_string()
-            },
-        })
-        .collect();
+        let networks = Networks::new_with_refreshed_list();
+        let network_interfaces = networks
+            .iter()
+            .map(|(interface_name, data)| NetworkInterface {
+                name: interface_name.clone(),
+                address: data
+                    .ip_networks()
+                    .iter()
+                    .map(|ip| ip.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", "),
+                mac: data.mac_address().to_string(),
+                status: if data.mac_address().to_string().is_empty() {
+                    "down".to_string()
+                } else {
+                    "up".to_string()
+                },
+            })
+            .collect();
 
-    let disks = Disks::new_with_refreshed_list();
-    let disks_info: Vec<DiskInfo> = disks
-        .iter()
-        .map(|disk| DiskInfo {
-            name: disk.name().to_string_lossy().to_string(),
-            total_space: disk.total_space(),
-            available_space: disk.available_space(),
-            file_system: disk.file_system().to_string_lossy().to_string(),
-            mount_point: disk.mount_point().to_string_lossy().to_string(),
-        })
-        .collect();
+        let disks = Disks::new_with_refreshed_list();
+        let disks_info: Vec<DiskInfo> = disks
+            .iter()
+            .map(|disk| DiskInfo {
+                name: disk.name().to_string_lossy().to_string(),
+                total_space: disk.total_space(),
+                available_space: disk.available_space(),
+                file_system: disk.file_system().to_string_lossy().to_string(),
+                mount_point: disk.mount_point().to_string_lossy().to_string(),
+            })
+            .collect();
 
-    let components = Components::new_with_refreshed_list();
-    let components_info: Vec<ComponentInfo> = components
-        .iter()
-        .map(|component| ComponentInfo {
-            label: component.label().to_string(),
-            temperature: component.temperature().unwrap_or(0.0),
-            max: component.max().unwrap_or(0.0),
-        })
-        .collect();
+        let components = Components::new_with_refreshed_list();
+        let components_info: Vec<ComponentInfo> = components
+            .iter()
+            .map(|component| ComponentInfo {
+                label: component.label().to_string(),
+                temperature: component.temperature().unwrap_or(0.0),
+                max: component.max().unwrap_or(0.0),
+            })
+            .collect();
 
-    let load_avg = System::load_average();
+        let load_avg = System::load_average();
 
-    SystemInfo {
-        platform: System::name().unwrap_or_else(|| "N/A".to_string()),
-        release: System::os_version().unwrap_or_else(|| "N/A".to_string()),
-        cpu_arch: System::cpu_arch().to_string(),
-        hostname: System::host_name().unwrap_or_else(|| "N/A".to_string()),
-        uptime: System::uptime(),
-        total_memory: sys.total_memory(),
-        free_memory: sys.free_memory(),
-        load_average: (load_avg.one, load_avg.five, load_avg.fifteen),
-        cpus,
-        os_version: Some(System::long_os_version().unwrap_or_else(|| "N/A".to_string())),
-        cpu_info: Some(format!(
-            "{} Cores / {} Threads",
-            System::physical_core_count().unwrap_or(0),
-            sys.cpus().len()
-        )),
-        memory_info: Some(format!(
-            "Used: {} MB / Total: {} MB",
-            (sys.used_memory() / 1024 / 1024),
-            (sys.total_memory() / 1024 / 1024)
-        )),
-        gpu_info: None,
-        resolution: None,
-        network_interfaces: Some(network_interfaces),
-        disks_info: Some(disks_info),
-        components_info: Some(components_info),
-    }
+        SystemInfo {
+            platform: System::name().unwrap_or_else(|| "N/A".to_string()),
+            release: System::os_version().unwrap_or_else(|| "N/A".to_string()),
+            cpu_arch: System::cpu_arch().to_string(),
+            hostname: System::host_name().unwrap_or_else(|| "N/A".to_string()),
+            uptime: System::uptime(),
+            total_memory: sys.total_memory(),
+            used_memory: sys.used_memory(),
+            free_memory: sys.free_memory(),
+            available_memory: sys.available_memory(),
+            load_average: (load_avg.one, load_avg.five, load_avg.fifteen),
+            cpus,
+            os_version: Some(System::long_os_version().unwrap_or_else(|| "N/A".to_string())),
+            cpu_info: Some(format!(
+                "{} Cores / {} Threads",
+                System::physical_core_count().unwrap_or(0),
+                sys.cpus().len()
+            )),
+            memory_info: Some(format!(
+                "Used: {} MB / Total: {} MB",
+                (sys.used_memory() / 1024 / 1024),
+                (sys.total_memory() / 1024 / 1024)
+            )),
+            gpu_info: None,
+            resolution: None,
+            network_interfaces: Some(network_interfaces),
+            disks_info: Some(disks_info),
+            components_info: Some(components_info),
+        }
+    })
+    .await
+    .map_err(|e| format!("Failed to collect system info: {}", e))
 }
 
 // STUB for Docker Management
@@ -251,8 +257,17 @@ pub async fn execute_remote_docker_command(
         return Ok(containers);
     } else if action == "start" || action == "stop" {
         if let Some(id) = container_id {
-            let cmd = format!("docker {} {}", action, id);
-            execute_ssh_command(&profile_id, &cmd, &app_state, &app_handle).await?;
+            if !id.is_empty()
+                && id.len() <= 128
+                && id
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '-')
+            {
+                let cmd = format!("docker {} {}", action, id);
+                execute_ssh_command(&profile_id, &cmd, &app_state, &app_handle).await?;
+            } else {
+                return Err("Invalid container ID format".into());
+            }
         }
         return Ok(vec![]);
     }
@@ -283,33 +298,63 @@ pub async fn get_remote_server_metrics(
     app_handle: tauri::AppHandle,
 ) -> Result<ServerMetrics, String> {
     log::info!("Fetching remote metrics for profile {}", profile_id);
-    
-    // CPU: run top -bn1 | grep 'Cpu(s)' 
-    let cpu_out = execute_ssh_command(&profile_id, "top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'", &app_state, &app_handle).await?;
-    let cpu: u8 = cpu_out.trim().parse::<f32>().unwrap_or(0.0) as u8;
 
-    // CPU Name:
-    let cpu_name_out = execute_ssh_command(&profile_id, "cat /proc/cpuinfo | grep 'model name' | head -n 1 | awk -F: '{print $2}'", &app_state, &app_handle).await?;
-    let mut cpu_name = cpu_name_out.trim().to_string();
-    if cpu_name.is_empty() {
-        cpu_name = "CPU".to_string();
+    // Batch CPU, CPU Name, RAM, and Disk into a single SSH exec
+    let batch_cmd = "printf '___CPU___\\n'; top -bn1 2>/dev/null | grep 'Cpu(s)' | awk '{print $2 + $4}'; \
+                     printf '___CPUNAME___\\n'; cat /proc/cpuinfo 2>/dev/null | grep 'model name' | head -n 1 | awk -F: '{print $2}'; \
+                     printf '___RAM___\\n'; free -m 2>/dev/null | grep Mem | awk '{print $3\",\"$2}'; \
+                     printf '___DISK___\\n'; df -h / 2>/dev/null | tail -n 1 | awk '{print $5}' | sed 's/%//'";
+
+    let batch_out = execute_ssh_command(&profile_id, batch_cmd, &app_state, &app_handle).await.unwrap_or_default();
+
+    let mut cpu: u8 = 0;
+    let mut cpu_name = "CPU".to_string();
+    let mut ram_used_mb = 0.0f32;
+    let mut ram_total_mb = 0.0f32;
+    let mut disk: u8 = 0;
+
+    let mut current_section = "";
+    for line in batch_out.lines() {
+        let trimmed = line.trim();
+        if trimmed == "___CPU___" {
+            current_section = "cpu";
+        } else if trimmed == "___CPUNAME___" {
+            current_section = "cpuname";
+        } else if trimmed == "___RAM___" {
+            current_section = "ram";
+        } else if trimmed == "___DISK___" {
+            current_section = "disk";
+        } else if !trimmed.is_empty() {
+            match current_section {
+                "cpu" => {
+                    cpu = trimmed.parse::<f32>().unwrap_or(0.0) as u8;
+                }
+                "cpuname" => {
+                    if !trimmed.is_empty() {
+                        cpu_name = trimmed.to_string();
+                    }
+                }
+                "ram" => {
+                    if let Some((u, t)) = trimmed.split_once(',') {
+                        ram_used_mb = u.parse::<f32>().unwrap_or(0.0);
+                        ram_total_mb = t.parse::<f32>().unwrap_or(0.0);
+                    }
+                }
+                "disk" => {
+                    disk = trimmed.parse().unwrap_or(0);
+                }
+                _ => {}
+            }
+        }
     }
 
-    // RAM: run free -m
-    let ram_out = execute_ssh_command(&profile_id, "free -m | grep Mem | awk '{print $3\",\"$2}'", &app_state, &app_handle).await?;
-    let mut ram_used_mb = 0.0;
-    let mut ram_total_mb = 0.0;
-    if let Some((u, t)) = ram_out.trim().split_once(',') {
-        ram_used_mb = u.parse::<f32>().unwrap_or(0.0);
-        ram_total_mb = t.parse::<f32>().unwrap_or(0.0);
-    }
-    let ram: u8 = if ram_total_mb > 0.0 { ((ram_used_mb / ram_total_mb) * 100.0) as u8 } else { 0 };
+    let ram: u8 = if ram_total_mb > 0.0 {
+        ((ram_used_mb / ram_total_mb) * 100.0) as u8
+    } else {
+        0
+    };
     let ram_used = format!("{:.1}", ram_used_mb / 1024.0);
     let ram_total = format!("{:.1}", ram_total_mb / 1024.0);
-
-    // Disk: run df -h /
-    let disk_out = execute_ssh_command(&profile_id, "df -h / | tail -n 1 | awk '{print $5}' | sed 's/%//'", &app_state, &app_handle).await?;
-    let disk: u8 = disk_out.trim().parse().unwrap_or(0);
 
     // GPU: nvidia-smi (NVIDIA) or rocm-smi (AMD)
     let mut has_gpu = false;

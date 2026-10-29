@@ -27,7 +27,7 @@ const SECRET_RULES: SecretRule[] = [
   {
     type: "AWS Access Key",
     description: "Amazon Web Services Access Key ID",
-    regex: /\b(AKIA[0-9A-Z]{16})\b/g,
+    regex: /\b(A[KS]IA[0-9A-Z]{16})\b/g,
     recommendation: "Use AWS credentials file or environment variables ($AWS_ACCESS_KEY_ID).",
   },
   {
@@ -51,7 +51,7 @@ const SECRET_RULES: SecretRule[] = [
   {
     type: "Inline Password",
     description: "Plain text password assignment or flag in command",
-    regex: /(?:(?:password|passwd|pass|pwd)\s*[:=]\s*["']?([^\s"']{4,})["']?|(?:-p|--password)[=\s]["']?([^\s"']{4,})["']?)/gi,
+    regex: /(?:(?:password|passwd|pwd)\s*[:=]\s*["']?([^\s"']{4,})["']?|--password[=\s]["']?([^\s"']{4,})["']?|(?:mysql|mariadb|sshpass|mysqldump)\s+-[a-zA-Z0-9]*p\s*["']?([^\s"']{4,})["']?)/gi,
     recommendation: "Prompt for password interactively or use credentials manager.",
   },
   {
@@ -108,7 +108,7 @@ export function maskSecrets(commandText: string): string {
   );
 
   // Mask AWS Keys
-  masked = masked.replace(/\b(AKIA[0-9A-Z]{16})\b/g, "{{AWS_ACCESS_KEY_ID}}");
+  masked = masked.replace(/\b(A[KS]IA[0-9A-Z]{16})\b/g, "{{AWS_ACCESS_KEY_ID}}");
 
   // Mask GitHub tokens
   masked = masked.replace(
@@ -119,14 +119,24 @@ export function maskSecrets(commandText: string): string {
   // Mask OpenAI keys
   masked = masked.replace(/\b(sk-[a-zA-Z0-9]{20,48})\b/g, "{{OPENAI_API_KEY}}");
 
+  // Mask Generic API Key / Token
+  masked = masked.replace(
+    /((?:api[_-]?key|token|auth|bearer)\s*[:=]\s*["']?)[a-zA-Z0-9_\-\.]{24,}(["']?)/gi,
+    "$1{{API_KEY}}$2",
+  );
+
   // Mask inline passwords
   masked = masked.replace(
-    /((?:password|passwd|pass|pwd)\s*[:=]\s*["']?)[^\s"']+(["']?)/gi,
+    /((?:password|passwd|pwd)\s*[:=]\s*["']?)[^\s"']+(["']?)/gi,
     "$1{{PASSWORD}}$2",
   );
   masked = masked.replace(
-    /(-p|--password)[=\s]["']?[^\s"']+["']?/gi,
-    "$1 \"{{PASSWORD}}\"",
+    /(--password[=\s]["']?)[^\s"']+(["']?)/gi,
+    "$1{{PASSWORD}}$2",
+  );
+  masked = masked.replace(
+    /((?:mysql|mariadb|sshpass|mysqldump)\s+-[a-zA-Z0-9]*p\s*["']?)[^\s"']+(["']?)/gi,
+    "$1{{PASSWORD}}$2",
   );
 
   // Mask database URIs

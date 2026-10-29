@@ -170,9 +170,12 @@ import Checkbox from "../ui/Checkbox.vue";
 import Button from "../ui/Button.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { message } from "../../utils/message";
+import { useSFTPStore } from "../../stores/sftp";
+import { extractErrorMessage } from "../../utils/errorHandler";
 import type { FileEntry } from "../../types/sftp";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
+const sftpStore = useSFTPStore();
 
 const loading = ref(false);
 const octalPermissions = ref("0644");
@@ -189,6 +192,13 @@ const files = getOverlayProp<FileEntry[]>(
   "files",
   [],
   [],
+);
+
+const sessionId = getOverlayProp<string | null>(
+  "sftp-file-permissions-modal",
+  "sessionId",
+  null,
+  null,
 );
 
 // Use files array if available, otherwise fall back to single file
@@ -300,18 +310,30 @@ async function handleSubmit() {
   const mode = Number.parseInt(match[1], 8);
 
   loading.value = true;
+  try {
+    const sid = sessionId.value || sftpStore.activeSessionId;
+    if (sid) {
+      for (const f of actualFiles.value) {
+        await sftpStore.setPermissions(sid, f.path, mode);
+      }
+      message.success("File permissions updated successfully");
+    }
 
-  // Emit event to parent to handle permissions change
-  // If multiple files, emit array of paths
-  const event = new CustomEvent("sftp-permissions", {
-    detail: {
-      paths: actualFiles.value.map((f: FileEntry) => f.path),
-      mode,
-    },
-  });
-  globalThis.dispatchEvent(event);
-  closeModal();
-  loading.value = false;
+    // Emit event to parent to handle permissions change if needed
+    const event = new CustomEvent("sftp-permissions", {
+      detail: {
+        paths: actualFiles.value.map((f: FileEntry) => f.path),
+        mode,
+      },
+    });
+    globalThis.dispatchEvent(event);
+    closeModal();
+  } catch (err) {
+    const errorMsg = extractErrorMessage(err);
+    message.error(`Failed to update permissions: ${errorMsg}`);
+  } finally {
+    loading.value = false;
+  }
 }
 
 function closeModal() {

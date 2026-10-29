@@ -203,6 +203,7 @@ import SkeletonText from "../ui/SkeletonText.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import { useSFTPStore } from "../../stores/sftp";
 import { message } from "../../utils/message";
+import { extractErrorMessage } from "../../utils/errorHandler";
 import type {
   DiffEntry,
   DiffType,
@@ -275,14 +276,19 @@ async function handleCompare() {
   }
 
   comparing.value = true;
-  const results = await sftpStore.compareDirectories(
-    sftpStore.activeSessionId,
-    localPath.value,
-    remotePath.value,
-  );
-  diffs.value = results;
-  message.success(`Comparison complete: ${results.length} files analyzed`);
-  comparing.value = false;
+  try {
+    const results = await sftpStore.compareDirectories(
+      sftpStore.activeSessionId,
+      localPath.value,
+      remotePath.value,
+    );
+    diffs.value = results;
+    message.success(`Comparison complete: ${results.length} files analyzed`);
+  } catch (err) {
+    message.error(`Compare failed: ${extractErrorMessage(err)}`);
+  } finally {
+    comparing.value = false;
+  }
 }
 
 async function handleSync() {
@@ -295,16 +301,21 @@ async function handleSync() {
   if (!isValid) return;
 
   syncing.value = true;
-  const operation: SyncOperation = {
-    direction: syncDirection.value,
-    localPath: localPath.value,
-    remotePath: remotePath.value,
-    ...syncOptions.value,
-  };
-  await sftpStore.syncDirectories(sftpStore.activeSessionId, operation);
-  message.success("Sync completed successfully");
-  await handleCompare();
-  syncing.value = false;
+  try {
+    const operation: SyncOperation = {
+      direction: syncDirection.value,
+      localPath: localPath.value,
+      remotePath: remotePath.value,
+      ...syncOptions.value,
+    };
+    await sftpStore.syncDirectories(sftpStore.activeSessionId, operation);
+    message.success("Sync completed successfully");
+    await handleCompare();
+  } catch (err) {
+    message.error(`Sync failed: ${extractErrorMessage(err)}`);
+  } finally {
+    syncing.value = false;
+  }
 }
 
 /**

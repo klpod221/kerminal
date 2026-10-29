@@ -11,6 +11,10 @@
       sizeClasses,
       additionalClasses,
     ]"
+    :style="{
+      width: width,
+      height: height,
+    }"
   >
     <div v-if="showShimmer" class="shimmer-overlay"></div>
   </div>

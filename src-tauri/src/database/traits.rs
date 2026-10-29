@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 /// Core database trait that all providers must implement
 #[async_trait]
-#[allow(dead_code)]
+#[allow(dead_code, clippy::double_must_use)]
 pub trait Database: Send + Sync {
     /// Connect to the database
     async fn connect(&mut self) -> DatabaseResult<()>;

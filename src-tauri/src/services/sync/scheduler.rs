@@ -45,7 +45,7 @@ impl SyncScheduler {
         drop(is_running);
 
         let scheduler = self.clone_for_task();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             scheduler.run_loop().await;
         });
 

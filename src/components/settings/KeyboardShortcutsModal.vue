@@ -382,6 +382,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  document.removeEventListener("keydown", handleKeyCapture, true);
   document.removeEventListener("keydown", handleKeyCapture);
 });
 

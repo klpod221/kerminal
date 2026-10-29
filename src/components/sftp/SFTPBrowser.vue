@@ -321,7 +321,7 @@ const remoteExplorer = useFileExplorer({
 
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
-const modalEvents = ["sftp-create-directory", "sftp-create-file", "sftp-rename", "sftp-delete"];
+const modalEvents = ["sftp-create-directory", "sftp-create-file", "sftp-rename", "sftp-delete", "sftp-permissions"];
 let unlistenTransferComplete: UnlistenFn | null = null;
 
 onMounted(async () => {
@@ -419,8 +419,11 @@ function handleAction(action: string, item: FileEntry, isLocal: boolean) {
   else if (action === "download") queueDownloads(targetPaths);
   else if (action === "open-system") handleLocalOpen(item);
   else if (action === "edit") openOverlay("sftp-file-editor-modal", { file: item, sessionId: session.sessionId.value, isLocal });
-  else if (action === "preview") openOverlay("sftp-file-preview-modal", { file: item, sessionId: session.sessionId.value });
-  else if (action === "permissions") openOverlay("sftp-file-permissions-modal", { file: item, sessionId: session.sessionId.value });
+  else if (action === "preview") openOverlay("sftp-file-preview-modal", { file: item, sessionId: session.sessionId.value, isLocal });
+  else if (action === "permissions") {
+    const selected = isMulti ? explorer.filteredEntries.value.filter((e) => explorer.selectedPaths.value.has(e.path)) : (item ? [item] : []);
+    openOverlay("sftp-file-permissions-modal", { file: item, files: selected, sessionId: session.sessionId.value });
+  }
   else if (action === "rename") openOverlay("sftp-file-rename-modal", { file: item, isLocal });
   else if (action === "delete") {
     const selected = isMulti ? explorer.filteredEntries.value.filter((e) => explorer.selectedPaths.value.has(e.path)) : (item ? [item] : []);
@@ -471,6 +474,8 @@ async function handleModalEvent(event: Event) {
   } else if (e.type === "sftp-delete") {
     if (isLocal) await ops.deleteLocalItems([path]);
     else if (session.sessionId.value) await ops.deleteItems(session.sessionId.value, [path], isDirectory);
+  } else if (e.type === "sftp-permissions") {
+    if (session.sessionId.value) await remoteExplorer.loadDirectory(remoteExplorer.currentPath.value);
   }
 
   if (isLocal) await localExplorer.loadDirectory(localExplorer.currentPath.value);

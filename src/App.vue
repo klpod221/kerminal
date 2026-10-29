@@ -52,6 +52,8 @@
 
         <CommandPaletteManager />
 
+        <HistorySearchModal />
+
         <!-- Tour Overlay -->
         <TourOverlay />
       </template>
@@ -109,6 +111,9 @@ const TerminalProfileManager = defineAsyncComponent(
 );
 const CommandPaletteManager = defineAsyncComponent(
   () => import("./components/CommandPaletteManager.vue"),
+);
+const HistorySearchModal = defineAsyncComponent(
+  () => import("./components/history/HistorySearchModal.vue"),
 );
 const TourOverlay = defineAsyncComponent(
   () => import("./components/tour/TourOverlay.vue"),
@@ -214,6 +219,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (unlisten) unlisten();
+  updaterStore.stopListening();
+  authStore.cleanup();
 });
 
 watch(
@@ -237,9 +244,6 @@ watch(
   { immediate: false },
 );
 
-onUnmounted(() => {
-  authStore.cleanup();
-});
 
 watch(
   () => authStore.isAuthenticated,

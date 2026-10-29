@@ -58,10 +58,11 @@ pub struct SSHProfile {
 }
 
 /// Authentication methods supported
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "PascalCase")]
 pub enum AuthMethod {
     /// Password authentication
+    #[default]
     Password,
     /// Reference to stored SSH key (centralized key management)
     KeyReference,
@@ -367,6 +368,7 @@ impl CreateSSHProfileRequest {
         profile.timeout = self.timeout.or(Some(30));
         profile.keep_alive = self.keep_alive.unwrap_or(true);
         profile.compression = self.compression.unwrap_or(false);
+        profile.proxy = self.proxy;
         profile.jump_hosts = self.jump_hosts;
         profile.color = self.color;
         profile.description = self.description;
@@ -394,6 +396,8 @@ pub struct UpdateSSHProfileRequest {
     pub timeout: Option<Option<u32>>,
     pub keep_alive: Option<bool>,
     pub compression: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_optional_field")]
+    pub proxy: Option<Option<ProxyConfig>>,
     #[serde(default, deserialize_with = "deserialize_optional_field")]
     pub jump_hosts: Option<Option<Vec<JumpHostConfig>>>, // None = no change, Some(None) = remove
     #[serde(default, deserialize_with = "deserialize_optional_field")]
@@ -491,6 +495,9 @@ impl UpdateSSHProfileRequest {
         if let Some(compression) = self.compression {
             profile.compression = compression;
         }
+        if let Some(proxy) = self.proxy {
+            profile.proxy = proxy;
+        }
         if let Some(jump_hosts) = self.jump_hosts {
             profile.jump_hosts = jump_hosts;
         }
@@ -548,12 +555,6 @@ mod encrypted_option_string {
         D: Deserializer<'de>,
     {
         Option::<String>::deserialize(deserializer)
-    }
-}
-
-impl Default for AuthMethod {
-    fn default() -> Self {
-        Self::Password
     }
 }
 

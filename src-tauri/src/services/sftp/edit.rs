@@ -102,6 +102,57 @@ pub fn sha256_hex(bytes: &[u8]) -> String {
     result.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
+async fn read_sftp_chunks(
+    sftp: &Arc<RawSftpSession>,
+    handle: &str,
+    mut total_to_read: usize,
+) -> Result<Vec<u8>, SftpError> {
+    let mut buffer = Vec::new();
+    let mut offset = 0u64;
+    const CHUNK_SIZE: u32 = 32768;
+
+    while total_to_read > 0 {
+        let to_read = (total_to_read as u32).min(CHUNK_SIZE);
+        let res = sftp.read(handle.to_string(), offset, to_read).await;
+        match res {
+            Ok(data) => {
+                if data.data.is_empty() {
+                    break;
+                }
+                let len = data.data.len();
+                buffer.extend_from_slice(&data.data);
+                offset += len as u64;
+                if len >= total_to_read {
+                    break;
+                }
+                total_to_read -= len;
+            }
+            Err(RusshSftpError::Status(status)) if status.status_code == StatusCode::Eof => {
+                break;
+            }
+            Err(e) => return Err(SftpError::from_russh_sftp(e, None)),
+        }
+    }
+    Ok(buffer)
+}
+
+async fn write_sftp_chunks(
+    sftp: &Arc<RawSftpSession>,
+    handle: &str,
+    bytes: &[u8],
+) -> Result<(), SftpError> {
+    let mut offset = 0u64;
+    const CHUNK_SIZE: usize = 32768;
+
+    for chunk in bytes.chunks(CHUNK_SIZE) {
+        sftp.write(handle.to_string(), offset, chunk.to_vec())
+            .await
+            .map_err(|e| SftpError::from_russh_sftp(e, None))?;
+        offset += chunk.len() as u64;
+    }
+    Ok(())
+}
+
 /// Get the current revision of a remote file
 pub async fn get_file_revision(
     sftp: &Arc<RawSftpSession>,
@@ -124,11 +175,11 @@ pub async fn get_file_revision(
             .map_err(|e| SftpError::from_russh_sftp(e, Some(path)))?
             .handle;
 
-        let read_res = sftp.read(&handle, 0, size as u32).await;
+        let read_res = read_sftp_chunks(sftp, &handle, size as usize).await;
         let _ = sftp.close(&handle).await;
 
         match read_res {
-            Ok(data) => Some(sha256_hex(&data.data)),
+            Ok(data) => Some(sha256_hex(&data)),
             Err(_) => None,
         }
     } else {
@@ -172,15 +223,14 @@ pub async fn read_text_file(
         .map_err(|e| SftpError::from_russh_sftp(e, Some(path)))?
         .handle;
 
-    // Read up to limit + 1 to detect truncation
+    // Read up to limit + 1 to detect truncation in chunks
     let read_target = (limit + 1).min(file_size as usize + 1);
-    let read_res = sftp.read(&handle, 0, read_target as u32).await;
+    let read_res = read_sftp_chunks(sftp, &handle, read_target).await;
     let _ = sftp.close(&handle).await;
 
     let mut buffer = match read_res {
-        Ok(data) => data.data.to_vec(),
-        Err(RusshSftpError::Status(status)) if status.status_code == StatusCode::Eof => Vec::new(),
-        Err(e) => return Err(SftpError::from_russh_sftp(e, Some(path))),
+        Ok(data) => data,
+        Err(e) => return Err(e),
     };
 
     let truncated = buffer.len() > limit;
@@ -297,10 +347,10 @@ pub async fn write_text_file(
         .map_err(|e| SftpError::from_russh_sftp(e, Some(&temp_path)))?
         .handle;
 
-    let write_res = sftp.write(&handle, 0, bytes.to_vec()).await;
+    let write_res = write_sftp_chunks(sftp, &handle, bytes).await;
     let _ = sftp.close(&handle).await;
 
-    write_res.map_err(|e| SftpError::from_russh_sftp(e, Some(&temp_path)))?;
+    write_res?;
 
     // Apply preserved permissions to temp file
     if let Some(mode) = existing_mode {

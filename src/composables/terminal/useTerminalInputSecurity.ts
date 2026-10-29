@@ -103,9 +103,10 @@ export function useTerminalInputSecurity() {
       return;
     }
 
-    // Regular typing: accumulate printable chars into buffer
-    if (data.length < 50 && !data.includes("\x1b")) {
-      lineBuffers.set(terminalId, currentLine + data);
+    // Regular typing or paste: accumulate printable chars into buffer
+    if (!data.includes("\x1b")) {
+      const newLine = (currentLine + data).slice(-4096);
+      lineBuffers.set(terminalId, newLine);
     }
 
     dispatchToTargets(terminalId, backendTerminalId, data, options);

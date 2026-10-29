@@ -15,13 +15,28 @@ pub enum ProxyError {
     Io(#[from] std::io::Error),
 }
 
+fn validate_host_or_target(val: &str) -> Result<(), ProxyError> {
+    if val.is_empty()
+        || val.len() > 255
+        || !val
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '-' || c == ':')
+    {
+        return Err(ProxyError::InvalidConfig(format!("Invalid hostname or IP: {}", val)));
+    }
+    Ok(())
+}
+
+fn validate_safe_credential(val: &str) -> Result<(), ProxyError> {
+    if val.chars().any(|c| c == ';' || c == '&' || c == '|' || c == '`' || c == '$' || c == '\n' || c == '\r' || c == '"' || c == '\'') {
+        return Err(ProxyError::InvalidConfig("Proxy credentials contain forbidden shell characters".to_string()));
+    }
+    Ok(())
+}
+
 /// Validate proxy configuration
 pub fn validate_proxy_config(proxy_config: &ProxyConfig) -> Result<(), ProxyError> {
-    if proxy_config.host.is_empty() {
-        return Err(ProxyError::InvalidConfig(
-            "Proxy host cannot be empty".to_string(),
-        ));
-    }
+    validate_host_or_target(&proxy_config.host)?;
 
     if proxy_config.port == 0 {
         return Err(ProxyError::InvalidConfig(
@@ -30,11 +45,10 @@ pub fn validate_proxy_config(proxy_config: &ProxyConfig) -> Result<(), ProxyErro
     }
 
     if let Some(username) = &proxy_config.username {
-        if username.is_empty() {
-            return Err(ProxyError::InvalidConfig(
-                "Proxy username cannot be empty if provided".to_string(),
-            ));
-        }
+        validate_safe_credential(username)?;
+    }
+    if let Some(password) = &proxy_config.password {
+        validate_safe_credential(password)?;
     }
 
     Ok(())
@@ -47,6 +61,7 @@ pub fn create_proxy_command(
     target_port: u16,
 ) -> Result<String, ProxyError> {
     validate_proxy_config(proxy_config)?;
+    validate_host_or_target(target_host)?;
 
     match proxy_config.proxy_type {
         ProxyType::Http => create_http_proxy_command(proxy_config, target_host, target_port),

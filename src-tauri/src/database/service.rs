@@ -8,7 +8,6 @@ use tokio::sync::RwLock;
 use crate::database::{
     config::MasterPasswordConfig,
     encryption::{
-        device_keys::MasterPasswordEntry,
         master_password::{
             MasterPasswordStatus, SetupMasterPasswordRequest, VerifyMasterPasswordRequest,
         },
@@ -234,6 +233,25 @@ impl DatabaseService {
             .await?
             .ok_or_else(|| DatabaseError::MasterPasswordRequired)?;
 
+        // Decrypt all existing profiles and keys using the old key before changing password
+        let mut decrypted_profiles = Vec::new();
+        let mut decrypted_keys = Vec::new();
+        {
+            let old_mp = self.master_password_manager.read().await;
+            for mut profile in local_db.find_all_ssh_profiles().await? {
+                if profile.has_encrypted_data() {
+                    profile.decrypt_fields(&*old_mp)?;
+                }
+                decrypted_profiles.push(profile);
+            }
+            for mut key in local_db.find_all_ssh_keys().await? {
+                if key.has_encrypted_data() {
+                    key.decrypt_fields(&*old_mp)?;
+                }
+                decrypted_keys.push(key);
+            }
+        }
+
         let mut mp_manager = self.master_password_manager.write().await;
         let new_entry = mp_manager
             .change_master_password(old_password, new_password, &entry)
@@ -246,68 +264,25 @@ impl DatabaseService {
         updated_device.update_last_seen();
         local_db.save_device(&updated_device).await?;
 
-        self.re_encrypt_all_data(&new_entry).await?;
+        // Re-encrypt profiles and keys with the new master password manager
+        for mut profile in decrypted_profiles {
+            if profile.has_encrypted_data() {
+                profile.encrypt_fields(&*mp_manager)?;
+                profile.base.updated_at = chrono::Utc::now();
+                local_db.update_ssh_profile(&profile).await?;
+            }
+        }
+        for mut key in decrypted_keys {
+            if key.has_encrypted_data() {
+                key.encrypt_fields(&*mp_manager)?;
+                key.base.updated_at = chrono::Utc::now();
+                local_db.save_ssh_key(&key).await?;
+            }
+        }
 
         self.lock_session().await;
 
         Ok(())
-    }
-
-    /// Re-encrypt all sensitive data after password change
-    async fn re_encrypt_all_data(&self, new_entry: &MasterPasswordEntry) -> DatabaseResult<()> {
-        let local_db = self.local_db.read().await;
-
-        match self.re_encrypt_ssh_profiles(&*local_db, new_entry).await {
-            Ok(_) => {}
-            Err(e) => {
-                return Err(crate::database::error::DatabaseError::Internal(
-                    anyhow::anyhow!("Failed to re-encrypt SSH profiles: {}", e),
-                ));
-            }
-        }
-
-        Ok(())
-    }
-
-    /// Re-encrypt all SSH profiles with encrypted data
-    async fn re_encrypt_ssh_profiles(
-        &self,
-        local_db: &dyn crate::database::traits::Database,
-        _new_entry: &MasterPasswordEntry,
-    ) -> DatabaseResult<usize> {
-        use crate::database::traits::Encryptable;
-
-        let profiles = local_db.find_all_ssh_profiles().await?;
-        let mut re_encrypted_count = 0;
-        let mut errors = Vec::new();
-
-        let _old_mp_manager = self.master_password_manager.read().await;
-
-        for mut profile in profiles {
-            if profile.has_encrypted_data() {
-                profile.base.updated_at = chrono::Utc::now();
-
-                match local_db.update_ssh_profile(&profile).await {
-                    Ok(_) => {
-                        re_encrypted_count += 1;
-                    }
-                    Err(e) => {
-                        errors.push(format!("Profile '{}' save failed: {}", profile.name, e));
-                    }
-                }
-            }
-        }
-
-        if !errors.is_empty() {
-            return Err(crate::database::error::DatabaseError::Internal(
-                anyhow::anyhow!(
-                    "Failed to re-encrypt some SSH profiles: {}",
-                    errors.join("; ")
-                ),
-            ));
-        }
-
-        Ok(re_encrypted_count)
     }
 
     /// Reset master password (removes all encrypted data and configurations)
@@ -676,10 +651,8 @@ impl DatabaseService {
         duplicate.base = crate::models::base::BaseModel::new(self.current_device.device_id.clone());
         duplicate.name = new_name;
 
-        if duplicate.has_encrypted_data() {
-            let mp_manager = self.master_password_manager.read().await;
-            duplicate.encrypt_fields(&*mp_manager)?;
-        }
+        // Note: original from find_ssh_profile_by_id already has its sensitive fields encrypted,
+        // so we DO NOT call encrypt_fields again here to avoid double-encryption.
 
         local_db.save_ssh_profile(&duplicate).await?;
 

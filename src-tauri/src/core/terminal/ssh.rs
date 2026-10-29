@@ -20,6 +20,8 @@ use tokio::sync::{mpsc, Mutex};
 pub struct ClientHandler {
     output_sender: Arc<tokio::sync::Mutex<Option<Arc<crate::utils::output_buffer::TerminalOutputBuffer>>>>,
     exit_sender: Arc<Mutex<Option<mpsc::UnboundedSender<crate::models::terminal::TerminalExited>>>>,
+    title_sender: Arc<Mutex<Option<mpsc::UnboundedSender<String>>>>,
+    title_detector: Arc<Mutex<crate::core::title_detector::TitleDetector>>,
     terminal_id: Arc<Mutex<String>>,
     host: String,
     port: u16,
@@ -31,6 +33,8 @@ impl ClientHandler {
         Self {
             output_sender: Arc::new(Mutex::new(None)),
             exit_sender: Arc::new(Mutex::new(None)),
+            title_sender: Arc::new(Mutex::new(None)),
+            title_detector: Arc::new(Mutex::new(crate::core::title_detector::TitleDetector::new())),
             terminal_id: Arc::new(Mutex::new(terminal_id)),
             host,
             port,
@@ -47,6 +51,10 @@ impl ClientHandler {
         sender: mpsc::UnboundedSender<crate::models::terminal::TerminalExited>,
     ) {
         *self.exit_sender.lock().await = Some(sender);
+    }
+
+    async fn set_title_sender(&self, sender: mpsc::UnboundedSender<String>) {
+        *self.title_sender.lock().await = Some(sender);
     }
 }
 
@@ -77,6 +85,11 @@ impl Handler for ClientHandler {
         if let Some(sender) = self.output_sender.lock().await.as_ref() {
             sender.push_async(data).await;
         }
+        if let Some(sender) = self.title_sender.lock().await.as_ref() {
+            if let Some(new_title) = self.title_detector.lock().await.process_output(data) {
+                let _ = sender.send(new_title);
+            }
+        }
         Ok(())
     }
 
@@ -89,6 +102,11 @@ impl Handler for ClientHandler {
     ) -> Result<(), Self::Error> {
         if let Some(sender) = self.output_sender.lock().await.as_ref() {
             sender.push_async(data).await;
+        }
+        if let Some(sender) = self.title_sender.lock().await.as_ref() {
+            if let Some(new_title) = self.title_detector.lock().await.process_output(data) {
+                let _ = sender.send(new_title);
+            }
         }
         Ok(())
     }
@@ -308,18 +326,25 @@ impl SSHTerminal {
         // Handle command, working directory, and environment variables
         let mut command_parts: Vec<String> = Vec::new();
 
-        // Inject environment variables via export commands
+        // Inject environment variables via export commands safely
         if let Some(env) = &self.ssh_profile.env {
             for (key, value) in env {
-                // Escape single quotes in value
-                let escaped_value = value.replace("'", "'\\''");
-                command_parts.push(format!("export {}='{}'", key, escaped_value));
+                // Ensure key is a valid POSIX shell variable identifier
+                if !key.is_empty()
+                    && !key.starts_with(|c: char| c.is_ascii_digit())
+                    && key.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+                {
+                    // Escape single quotes in value
+                    let escaped_value = value.replace('\'', "'\\''");
+                    command_parts.push(format!("export {}='{}'", key, escaped_value));
+                }
             }
         }
 
         if let Some(wd) = &self.ssh_profile.working_dir {
             if !wd.is_empty() {
-                command_parts.push(format!("cd \"{}\"", wd));
+                let escaped_wd = wd.replace('\'', "'\\''");
+                command_parts.push(format!("cd '{}'", escaped_wd));
             }
         }
 
@@ -534,7 +559,7 @@ impl SSHTerminal {
         jump_hosts: &[crate::models::ssh::profile::JumpHostConfig],
         config: Arc<russh::client::Config>,
         handler: ClientHandler,
-        _resolved_key: Option<ResolvedSSHKey>,
+        resolved_key: Option<ResolvedSSHKey>,
     ) -> Result<Handle<ClientHandler>, AppError> {
         // We need to chain connections through jump hosts
         // Support profile_id references and inline config
@@ -615,8 +640,7 @@ impl SSHTerminal {
             .await?;
 
         // Chain through remaining jump hosts
-        for i in 1..jump_profiles.len() {
-            let next_jump = &jump_profiles[i];
+        for next_jump in jump_profiles.iter().skip(1) {
             let jump_handler = ClientHandler::new(
                 format!("jump-{}", next_jump.host),
                 next_jump.host.clone(),
@@ -683,7 +707,7 @@ impl SSHTerminal {
                 })?;
 
         // Authenticate with the final target
-        self.authenticate_with_resolved_data(&mut final_session, None)
+        self.authenticate_with_resolved_data(&mut final_session, resolved_key)
             .await?;
 
         Ok(final_session)
@@ -861,11 +885,14 @@ impl SSHTerminal {
     pub async fn start_read_loop(
         &mut self,
         sender: Arc<crate::utils::output_buffer::TerminalOutputBuffer>,
-        _title_sender: Option<mpsc::UnboundedSender<String>>,
+        title_sender: Option<mpsc::UnboundedSender<String>>,
         exit_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalExited>>,
         latency_sender: Option<mpsc::UnboundedSender<crate::models::terminal::TerminalLatency>>,
     ) -> Result<(), AppError> {
         self.handler.set_output_sender(sender).await;
+        if let Some(title_sender) = title_sender {
+            self.handler.set_title_sender(title_sender).await;
+        }
         if let Some(exit_sender) = exit_sender {
             self.handler.set_exit_sender(exit_sender).await;
         }
@@ -876,10 +903,14 @@ impl SSHTerminal {
                 let session_handle = session.clone();
                 let terminal_id = self.handler.terminal_id.lock().await.clone();
 
-                tokio::spawn(async move {
+                tauri::async_runtime::spawn(async move {
                     let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
                     loop {
                         interval.tick().await;
+
+                        if session_handle.is_closed() {
+                            break;
+                        }
 
                         let start = std::time::Instant::now();
                         // Use channel_open_session as a ping mechanism
@@ -898,7 +929,11 @@ impl SSHTerminal {
                                     break;
                                 }
                             }
-                            Err(_) => {}
+                            Err(_) => {
+                                if session_handle.is_closed() {
+                                    break;
+                                }
+                            }
                         }
                     }
                 });

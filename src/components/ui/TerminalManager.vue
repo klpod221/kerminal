@@ -10,11 +10,142 @@
       ref="mountPointRef"
       class="terminal-mount-point w-full h-full absolute inset-0"
     />
+
+    <!-- Latency Badge -->
+    <div
+      v-if="
+        currentTerminal?.latency !== undefined &&
+        !isConnecting &&
+        !showDisconnectedOverlay &&
+        !showErrorOverlay
+      "
+      class="absolute top-2 right-2 z-10 bg-black/50 backdrop-blur-sm rounded-md px-2 py-1 flex items-center gap-1.5 border border-white/10 transition-all duration-300 hover:bg-black/70 group select-none pointer-events-none"
+    >
+      <Wifi :size="14" :class="getLatencyColor(currentTerminal.latency)" />
+      <span
+        class="text-xs font-mono font-medium"
+        :class="getLatencyColor(currentTerminal.latency)"
+      >
+        {{ currentTerminal.latency }}ms
+      </span>
+    </div>
+
+    <!-- SSH Connecting Overlay -->
+    <div
+      v-if="isConnecting"
+      class="absolute inset-0 bg-bg-secondary/95 flex items-center justify-center z-50"
+    >
+      <div class="flex flex-col items-center space-y-4">
+        <div class="relative">
+          <div
+            class="animate-spin rounded-full h-12 w-12 border-2 border-gray-600 border-t-blue-400"
+          ></div>
+          <div
+            class="absolute inset-0 animate-ping rounded-full h-12 w-12 border border-blue-400/20"
+          ></div>
+        </div>
+        <div class="text-center">
+          <p class="text-lg font-medium text-white mb-1">
+            Connecting to SSH...
+          </p>
+          <p class="text-sm text-gray-400">
+            Please wait while establishing connection
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connection Lost Overlay with Reconnect -->
+    <div
+      v-if="showDisconnectedOverlay"
+      class="absolute inset-0 bg-bg-secondary/95 flex items-center justify-center z-50"
+    >
+      <div class="flex flex-col items-center space-y-6 max-w-md px-4">
+        <div class="relative">
+          <div
+            class="rounded-full h-16 w-16 border-2 border-red-500/50 bg-red-500/10 flex items-center justify-center"
+          >
+            <XCircle class="h-8 w-8 text-red-400" />
+          </div>
+        </div>
+        <div class="text-center">
+          <p class="text-lg font-medium text-white mb-2">
+            {{ disconnectMessage.title }}
+          </p>
+          <p class="text-sm text-gray-400">
+            {{ disconnectMessage.message }}
+          </p>
+        </div>
+        <div class="flex gap-3">
+          <Button
+            v-if="canReconnect"
+            variant="primary"
+            size="md"
+            :icon="RefreshCw"
+            @click="handleReconnect"
+          >
+            Reconnect
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            :icon="X"
+            @click="handleCloseTab"
+          >
+            Close Tab
+          </Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Overlay for SSH Connection Errors -->
+    <div
+      v-if="showErrorOverlay"
+      class="absolute inset-0 bg-bg-secondary/95 flex items-center justify-center z-50"
+    >
+      <div class="flex flex-col items-center space-y-6 max-w-lg px-4">
+        <div class="relative">
+          <div
+            class="rounded-full h-16 w-16 border-2 border-red-500/50 bg-red-500/10 flex items-center justify-center"
+          >
+            <XCircle class="h-8 w-8 text-red-400" />
+          </div>
+        </div>
+        <div class="text-center">
+          <p class="text-lg font-medium text-white mb-2">Connection Failed</p>
+          <p class="text-sm text-gray-400 mb-4">
+            {{ formattedErrorMessage }}
+          </p>
+        </div>
+        <div class="flex gap-3">
+          <Button
+            v-if="canReconnect"
+            variant="primary"
+            size="md"
+            :icon="RefreshCw"
+            @click="handleReconnect"
+          >
+            Reconnect
+          </Button>
+          <Button
+            variant="secondary"
+            size="md"
+            :icon="X"
+            @click="handleCloseTab"
+          >
+            Close Tab
+          </Button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import { Wifi, XCircle, RefreshCw, X } from "lucide-vue-next";
+import Button from "./Button.vue";
+import { extractErrorMessage } from "../../utils/errorHandler";
 import { debounce } from "../../utils/helpers";
 import type { TerminalInstance } from "../../types/panel";
 import { useWorkspaceStore } from "../../stores/workspace";
@@ -62,6 +193,98 @@ let outputUnlisten: (() => void) | null = null;
 
 // Track currently mounted terminal
 const currentMountedId = ref<string | null>(null);
+
+const currentTerminal = computed(() =>
+  props.terminals.find((t) => t.id === props.activeTerminalId),
+);
+
+const isConnecting = computed(() => !!currentTerminal.value?.isSSHConnecting);
+
+const showDisconnectedOverlay = computed(
+  () =>
+    (currentTerminal.value?.disconnectReason === "connection-lost" ||
+      currentTerminal.value?.disconnectReason === "server-disconnect" ||
+      currentTerminal.value?.disconnectReason === "connection-error") &&
+    !currentTerminal.value?.hasError,
+);
+
+const disconnectMessage = computed(() => {
+  switch (currentTerminal.value?.disconnectReason) {
+    case "server-disconnect":
+      return {
+        title: "Server Disconnected",
+        message: "The server has closed the connection",
+      };
+    case "connection-error":
+      return {
+        title: "Connection Error",
+        message: "Connection timeout - No response from server",
+      };
+    case "connection-lost":
+    default:
+      return {
+        title: "Connection Lost",
+        message: "The terminal connection was unexpectedly closed",
+      };
+  }
+});
+
+const showErrorOverlay = computed(
+  () =>
+    Boolean(
+      currentTerminal.value?.hasError &&
+        currentTerminal.value?.errorMessage &&
+        !isConnecting.value,
+    ),
+);
+
+const formattedErrorMessage = computed(() => {
+  const errorMsg = currentTerminal.value?.errorMessage;
+  return errorMsg ? extractErrorMessage(errorMsg) : "";
+});
+
+const canReconnect = computed(
+  () =>
+    Boolean(
+      currentTerminal.value?.canReconnect &&
+        (currentTerminal.value?.sshProfileId ||
+          currentTerminal.value?.sshConfigHost),
+    ),
+);
+
+const getLatencyColor = (latency: number) => {
+  if (latency < 100) return "text-green-400";
+  if (latency < 300) return "text-yellow-400";
+  return "text-red-400";
+};
+
+const handleReconnect = () => {
+  if (!currentTerminal.value || !props.activeTerminalId) return;
+
+  if (currentTerminal.value.hasError) {
+    const managed = TerminalRegistry.getTerminal(props.activeTerminalId);
+    managed?.term?.clear();
+  }
+
+  if (currentTerminal.value.sshProfileId) {
+    workspaceStore.reconnectSSH(
+      props.activeTerminalId,
+      currentTerminal.value.sshProfileId,
+    );
+  } else if (currentTerminal.value.sshConfigHost) {
+    workspaceStore.reconnectSSHConfig(
+      props.activeTerminalId,
+      currentTerminal.value.sshConfigHost,
+      currentTerminal.value.sshConfigPassword,
+    );
+  }
+};
+
+const handleCloseTab = () => {
+  if (props.activeTerminalId) {
+    workspaceStore.closeTerminal(props.activeTerminalId);
+  }
+};
 
 const emit = defineEmits(["terminal-ready"]);
 
@@ -158,7 +381,7 @@ const createTerminalInstance = async (
         (async () => {
           const clipboardText = await readText();
           if (clipboardText) {
-            term.write(clipboardText);
+            term.paste(clipboardText);
           }
         })();
         return false;

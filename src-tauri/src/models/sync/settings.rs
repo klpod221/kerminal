@@ -33,12 +33,9 @@ impl std::str::FromStr for SyncDirection {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "Push" => Ok(SyncDirection::Push),
-            "Pull" => Ok(SyncDirection::Pull),
-            "Both" => Ok(SyncDirection::Both),
-            "push" => Ok(SyncDirection::Push),
-            "pull" => Ok(SyncDirection::Pull),
-            "both" => Ok(SyncDirection::Both),
+            "Push" | "push" => Ok(SyncDirection::Push),
+            "Pull" | "pull" => Ok(SyncDirection::Pull),
+            "Both" | "both" | "Bidirectional" | "bidirectional" => Ok(SyncDirection::Both),
             _ => Err(format!("Unknown sync direction: {}", s)),
         }
     }

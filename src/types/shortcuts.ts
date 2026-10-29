@@ -39,6 +39,11 @@ export enum ShortcutAction {
   OpenSavedCommands = "openSavedCommands",
   OpenCommandPalette = "openCommandPalette",
 
+  // Display / Zoom
+  ZoomIn = "zoomIn",
+  ZoomOut = "zoomOut",
+  ResetZoom = "resetZoom",
+
   // Help
   StartTour = "startTour",
 }

@@ -84,6 +84,7 @@ impl Database for SQLiteProvider {
                 timeout INTEGER,
                 keep_alive BOOLEAN NOT NULL DEFAULT true,
                 compression BOOLEAN NOT NULL DEFAULT false,
+                proxy TEXT,
                 command TEXT,
                 working_dir TEXT,
                 env TEXT,
@@ -450,6 +451,12 @@ impl Database for SQLiteProvider {
 
         // Add jump_hosts column migration
         sqlx::query("ALTER TABLE ssh_profiles ADD COLUMN jump_hosts TEXT")
+            .execute(&*pool)
+            .await
+            .ok();
+
+        // Add proxy column migration
+        sqlx::query("ALTER TABLE ssh_profiles ADD COLUMN proxy TEXT")
             .execute(&*pool)
             .await
             .ok();

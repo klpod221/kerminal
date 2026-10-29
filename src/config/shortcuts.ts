@@ -201,6 +201,32 @@ export const DEFAULT_SHORTCUTS: KeyboardShortcut[] = [
     customizable: true,
   },
 
+  // Display / Zoom
+  {
+    id: ShortcutAction.ZoomIn,
+    label: "Zoom In (UI Scale)",
+    category: "Display",
+    defaultKey: "=",
+    defaultModifiers: { ctrlKey: true },
+    customizable: true,
+  },
+  {
+    id: ShortcutAction.ZoomOut,
+    label: "Zoom Out (UI Scale)",
+    category: "Display",
+    defaultKey: "-",
+    defaultModifiers: { ctrlKey: true },
+    customizable: true,
+  },
+  {
+    id: ShortcutAction.ResetZoom,
+    label: "Reset Zoom (100%)",
+    category: "Display",
+    defaultKey: "0",
+    defaultModifiers: { ctrlKey: true },
+    customizable: true,
+  },
+
   // Help
   {
     id: ShortcutAction.StartTour,

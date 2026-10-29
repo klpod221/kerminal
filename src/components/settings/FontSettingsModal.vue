@@ -6,8 +6,8 @@
 <template>
   <Modal
     id="font-settings-modal"
-    title="Terminal Font Settings"
-    :icon="Type"
+    title="Display & Font Settings"
+    :icon="Monitor"
     icon-background="bg-blue-500/20"
     icon-color="text-blue-400"
     size="md"
@@ -127,6 +127,61 @@
 
       <div class="border-t border-gray-700" />
 
+      <!-- UI Display Scale (HiDPI / 2K / 4K) -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-medium text-gray-300 flex items-center gap-2">
+            <component :is="Monitor" class="w-4 h-4 text-blue-400" />
+            UI Display Scale (HiDPI)
+          </div>
+          <span class="text-xs font-mono font-medium text-blue-400">
+            {{ uiScaleValue }}%
+          </span>
+        </div>
+
+        <!-- Scale Presets -->
+        <div class="grid grid-cols-5 gap-1.5">
+          <button
+            v-for="preset in scalePresets"
+            :key="preset.scale"
+            type="button"
+            class="px-2 py-1.5 rounded-lg border text-center transition-all duration-200 cursor-pointer"
+            :class="
+              uiScaleValue === preset.scale
+                ? 'border-blue-500 bg-blue-500/20 text-blue-400'
+                : 'border-gray-600 bg-gray-800 text-gray-400 hover:border-gray-500 hover:bg-gray-700'
+            "
+            @click="setPresetScale(preset.scale)"
+          >
+            <div class="text-xs font-medium">{{ preset.scale }}%</div>
+            <div class="text-[9px] opacity-70 truncate">{{ preset.label }}</div>
+          </button>
+        </div>
+
+        <!-- UI Scale Slider -->
+        <Slider
+          v-model="uiScaleValue"
+          label="Interface Scale"
+          :icon="ZoomIn"
+          :min="75"
+          :max="200"
+          :step="5"
+          unit="%"
+          :show-value="true"
+          :show-input="true"
+          :show-marks="true"
+          :marks="[100, 125, 150, 200]"
+          @change="updateUiScale"
+        />
+
+        <div class="text-[11px] text-gray-400 flex items-center justify-between px-1">
+          <span>Scale whole application interface</span>
+          <span class="font-mono text-gray-400">Ctrl + / Ctrl - / Ctrl 0</span>
+        </div>
+      </div>
+
+      <div class="border-t border-gray-700" />
+
       <!-- Font Family -->
       <div class="space-y-3">
         <div class="flex items-center justify-between">
@@ -225,7 +280,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
-import { Type, Check, Search, Maximize2, Eye } from "lucide-vue-next";
+import { Type, Check, Search, Maximize2, Eye, Monitor, ZoomIn } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";
@@ -241,11 +296,20 @@ const availableFonts = ref<string[]>([]);
 const searchQuery = ref("");
 const debouncedSearchQuery = useDebounce(searchQuery, { delay: 300 });
 const fontSizeValue = ref(settingsStore.fontSize);
+const uiScaleValue = ref(settingsStore.uiScale);
 
 const sizePresets = [
   { label: "Small", size: 11 },
   { label: "Medium", size: 13 },
   { label: "Large", size: 16 },
+];
+
+const scalePresets = [
+  { label: "Default", scale: 100 },
+  { label: "2K / QHD", scale: 125 },
+  { label: "4K / UHD", scale: 150 },
+  { label: "Large", scale: 175 },
+  { label: "Max", scale: 200 },
 ];
 
 onMounted(async () => {
@@ -256,6 +320,13 @@ watch(
   () => settingsStore.fontSize,
   (newSize) => {
     fontSizeValue.value = newSize;
+  },
+);
+
+watch(
+  () => settingsStore.uiScale,
+  (newScale) => {
+    uiScaleValue.value = newScale;
   },
 );
 
@@ -294,16 +365,32 @@ const setPresetSize = async (size: number) => {
   await updateFontSize();
 };
 
+const updateUiScale = async () => {
+  try {
+    await settingsStore.setUiScale(uiScaleValue.value);
+  } catch (error) {
+    console.error("Failed to set UI scale:", error);
+    message.error("Failed to change UI scale");
+  }
+};
+
+const setPresetScale = async (scale: number) => {
+  uiScaleValue.value = scale;
+  await updateUiScale();
+};
+
 // Reset to defaults
 const resetToDefaults = async () => {
   try {
     await settingsStore.setFontFamily("FiraCode Nerd Font");
     await settingsStore.setFontSize(13);
     fontSizeValue.value = 13;
-    message.success("Font settings reset to defaults");
+    await settingsStore.resetZoom();
+    uiScaleValue.value = 100;
+    message.success("Display & font settings reset to defaults");
   } catch (error) {
-    console.error("Failed to reset font settings:", error);
-    message.error("Failed to reset font settings");
+    console.error("Failed to reset settings:", error);
+    message.error("Failed to reset settings");
   }
 };
 </script>

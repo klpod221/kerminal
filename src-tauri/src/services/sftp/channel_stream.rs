@@ -22,7 +22,7 @@ impl ChannelStream {
         let (write_tx, mut write_rx) = mpsc::unbounded_channel::<Vec<u8>>();
 
         // Spawn background task to handle both read and write
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut channel = channel;
             loop {
                 tokio::select! {

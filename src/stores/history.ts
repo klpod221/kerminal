@@ -125,16 +125,17 @@ export const useHistoryStore = defineStore("history", () => {
    * Clear cache for a terminal
    */
   const clearCache = async (terminalId?: string) => {
-    // Note: This is a frontend-only cache clear
-    // The backend cache will be cleared automatically when terminal is closed
     if (terminalId) {
-      // Clear search results for this terminal
+      for (const key of historyCache.value.keys()) {
+        if (key.startsWith(`${terminalId}-`)) {
+          historyCache.value.delete(key);
+        }
+      }
       if (searchResults.value) {
         searchResults.value = null;
       }
-      // Frontend cache is managed by backend, so we just clear search results
     } else {
-      // Clear all search results
+      historyCache.value.clear();
       searchResults.value = null;
     }
   };

@@ -169,6 +169,9 @@ fn bson_document_to_json(doc: &Document) -> DatabaseResult<Value> {
     if let Some(obj) = json.as_object() {
         let mut camel_obj = serde_json::Map::new();
         for (key, val) in obj {
+            if key == "_id" {
+                continue;
+            }
             let camel_key = to_camel_case(key);
             camel_obj.insert(camel_key, val.clone());
         }
@@ -187,7 +190,9 @@ fn to_camel_case(s: &str) -> String {
         if ch == '_' {
             capitalize_next = true;
         } else if capitalize_next {
-            result.push(ch.to_uppercase().next().unwrap());
+            for c in ch.to_uppercase() {
+                result.push(c);
+            }
             capitalize_next = false;
         } else {
             result.push(ch);

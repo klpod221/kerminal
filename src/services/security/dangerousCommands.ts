@@ -13,7 +13,7 @@ export const DANGEROUS_PATTERNS: DangerousCommandPattern[] = [
   {
     id: "rm-root-all",
     name: "Recursive Force Delete Root/System",
-    pattern: /(?:^|[;&|]\s*)(?:sudo\s+)?rm\s+-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*\s+(?:\/|\/\*|~|\*|\.\*|\.\.\/)(?:\s+.*)?$/i,
+    pattern: /(?:^|[;&|]\s*)(?:sudo\s+)?rm\s+(?:-[a-zA-Z0-9_-]+\s+)*(?:-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*-?|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*-?|--recursive|--force)\s+(?:-[a-zA-Z0-9_-]+\s+)*(?:\/|\/\*|~|\*|\.\*|\.\.\/)(?:\s+.*)?$/i,
     severity: "critical",
     description: "Permanently deletes files recursively across root, home, or wildcards.",
   },
@@ -27,7 +27,7 @@ export const DANGEROUS_PATTERNS: DangerousCommandPattern[] = [
   {
     id: "dd-disk-overwrite",
     name: "Raw Disk Direct Write (dd)",
-    pattern: /(?:^|[;&|]\s*)(?:sudo\s+)?dd\s+.*of=\/dev\/(?:sd[a-z]|nvme[0-9]n[0-9]|hd[a-z]|vd[a-z]|loop[0-9]|null|zero)/i,
+    pattern: /(?:^|[;&|]\s*)(?:sudo\s+)?dd\s+.*of=\/dev\/(?:sd[a-z]|nvme[0-9]n[0-9]|hd[a-z]|vd[a-z]|loop[0-9]|mmcblk[0-9])/i,
     severity: "critical",
     description: "Writes raw stream directly to storage device, corrupting partition tables and data.",
   },
@@ -41,14 +41,14 @@ export const DANGEROUS_PATTERNS: DangerousCommandPattern[] = [
   {
     id: "chmod-777-root",
     name: "Full Permissive Permissions (chmod 777)",
-    pattern: /(?:^|[;&|]\s*)(?:sudo\s+)?chmod\s+-[a-zA-Z]*R[a-zA-Z]*\s+777\s+(?:\/|~|\/etc|\/usr|\/var|\/bin|\/sbin)/i,
+    pattern: /(?:^|[;&|]\s*)(?:sudo\s+)?chmod\s+(?:-[a-zA-Z]*R[a-zA-Z]*\s+)?(?:777|0777|a\+rwx)(?:\s+-[a-zA-Z]*R[a-zA-Z]*)?\s+(?:\/(?:\s|$)|~(?:\s|$)|(?:\/etc|\/usr|\/var|\/bin|\/sbin)(?:\/|\s|$))/i,
     severity: "high",
     description: "Gives unrestricted read/write/execute permissions to all users across system directories.",
   },
   {
     id: "fork-bomb",
     name: "Shell Fork Bomb",
-    pattern: /:\(\)\s*\{\s*:\|:&\s*\};:/i,
+    pattern: /(?:^|[;&|]\s*)(?::\(\)\s*\{\s*:\|:&\s*\};:|([a-zA-Z_0-9]+)\(\)\s*\{\s*\1\s*\|\s*\1\s*&\s*\}\s*;\s*\1)/i,
     severity: "critical",
     description: "Spawns infinite recursive background processes, exhausting OS process table (DoS).",
   },

@@ -49,6 +49,7 @@ impl ProgressTracker {
     }
 
     /// Get current transferred bytes
+    #[allow(dead_code)]
     pub fn current_bytes(&self) -> u64 {
         self.transferred.load(Ordering::Relaxed)
     }

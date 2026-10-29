@@ -38,7 +38,7 @@ pub enum SessionLockReason {
 pub struct AuthSessionManager {
     database_service: Arc<Mutex<DatabaseService>>,
     event_sender: broadcast::Sender<AuthEvent>,
-    session_check_handle: Option<tokio::task::JoinHandle<()>>,
+    session_check_handle: Option<tauri::async_runtime::JoinHandle<()>>,
     app_handle: Option<tauri::AppHandle>,
 }
 
@@ -117,7 +117,7 @@ impl AuthSessionManager {
         let event_sender = self.event_sender.clone();
         let app_handle = self.app_handle.clone();
 
-        let session_check_task = tokio::spawn(async move {
+        let session_check_task = tauri::async_runtime::spawn(async move {
             let mut check_interval = interval(Duration::from_secs(30));
 
             loop {

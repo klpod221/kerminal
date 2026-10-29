@@ -287,10 +287,18 @@ impl SFTPService {
             .map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?
             .handle;
 
-        let write_res = conn.sftp.write(&handle, 0, bytes).await;
+        let mut offset = 0u64;
+        let mut write_res = Ok(());
+        for chunk in bytes.chunks(32768) {
+            if let Err(e) = conn.sftp.write(&handle, offset, chunk.to_vec()).await {
+                write_res = Err(SftpError::from_russh_sftp(e, Some(&remote_path)));
+                break;
+            }
+            offset += chunk.len() as u64;
+        }
         let _ = conn.sftp.close(&handle).await;
 
-        write_res.map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?;
+        write_res?;
         Ok(())
     }
 
@@ -321,10 +329,31 @@ impl SFTPService {
             .attrs;
         let size = meta.size.unwrap_or(0);
 
-        let read_res = conn.sftp.read(&handle, 0, size as u32).await;
+        let mut file_data = Vec::with_capacity(size.min(10 * 1024 * 1024) as usize);
+        let mut offset = 0u64;
+        let mut read_err = None;
+
+        while offset < size {
+            let to_read = (size - offset).min(32768) as u32;
+            match conn.sftp.read(&handle, offset, to_read).await {
+                Ok(chunk) => {
+                    if chunk.data.is_empty() {
+                        break;
+                    }
+                    offset += chunk.data.len() as u64;
+                    file_data.extend_from_slice(&chunk.data);
+                }
+                Err(e) => {
+                    read_err = Some(SftpError::from_russh_sftp(e, Some(&remote_path)));
+                    break;
+                }
+            }
+        }
         let _ = conn.sftp.close(&handle).await;
 
-        let data = read_res.map_err(|e| SftpError::from_russh_sftp(e, Some(&remote_path)))?;
+        if let Some(err) = read_err {
+            return Err(err);
+        }
 
         // Ensure parent directory exists locally
         if let Some(parent) = std::path::Path::new(&local_path).parent() {
@@ -335,7 +364,7 @@ impl SFTPService {
                 })?;
         }
 
-        tokio::fs::write(&local_path, &data.data)
+        tokio::fs::write(&local_path, &file_data)
             .await
             .map_err(|e| SftpError::IoError {
                 message: format!("Failed to create local file {}: {}", local_path, e),

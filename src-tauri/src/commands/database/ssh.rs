@@ -141,10 +141,12 @@ pub async fn duplicate_ssh_profile(
 /// Test SSH connection with a profile
 #[tauri::command]
 pub async fn test_ssh_connection(
+    app_handle: tauri::AppHandle,
     state: State<'_, AppState>,
     request: TestSSHConnectionRequest,
 ) -> Result<(), String> {
-    app_result!(state.ssh_service.test_ssh_connection(request).await)
+    let known_hosts_path = crate::commands::ssh_host_key::get_known_hosts_path(&app_handle);
+    app_result!(state.ssh_service.test_ssh_connection(request, known_hosts_path).await)
 }
 
 /// DTO for delete group action from frontend
@@ -186,6 +188,12 @@ pub async fn create_ssh_key(
 pub async fn get_ssh_keys(state: State<'_, AppState>) -> Result<Vec<SSHKey>, String> {
     let service = state.ssh_key_service.lock().await;
     app_result!(service.get_ssh_keys().await)
+}
+
+#[tauri::command]
+pub async fn get_ssh_key(state: State<'_, AppState>, id: String) -> Result<SSHKey, String> {
+    let service = state.ssh_key_service.lock().await;
+    app_result!(service.get_ssh_key(&id).await)
 }
 
 /// Update SSH key (all provided fields)

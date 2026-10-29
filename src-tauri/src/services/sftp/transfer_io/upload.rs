@@ -96,6 +96,8 @@ where
     }
 
     let mut current_offset = start_offset;
+    let mut contiguous_offset = start_offset;
+    let mut completed_chunks: std::collections::BTreeMap<u64, u64> = std::collections::BTreeMap::new();
     let mut inflight = FuturesUnordered::new();
     let mut cancelled = false;
 
@@ -125,7 +127,7 @@ where
 
                     inflight.push(async move {
                         let res = raw_clone.write(&handle_clone, offset, buf).await;
-                        (res, chunk_len)
+                        (res, offset, chunk_len)
                     });
 
                     current_offset += chunk_len;
@@ -140,9 +142,15 @@ where
         }
 
         // Await next write completion from pipeline
-        if let Some((write_res, bytes_done)) = inflight.next().await {
+        if let Some((write_res, offset, bytes_done)) = inflight.next().await {
             match write_res {
                 Ok(_) => {
+                    completed_chunks.insert(offset, bytes_done);
+                    while let Some(&len) = completed_chunks.get(&contiguous_offset) {
+                        completed_chunks.remove(&contiguous_offset);
+                        contiguous_offset += len;
+                    }
+
                     tracker.add_bytes(bytes_done);
                     if let Some(snap) = tracker.check_emit(false) {
                         on_progress(snap);
@@ -163,7 +171,7 @@ where
         return Ok(UploadResult {
             final_path: options.remote_path,
             partial_path,
-            bytes_transferred: tracker.current_bytes(),
+            bytes_transferred: contiguous_offset,
             total_bytes,
             completed: false,
         });

@@ -177,8 +177,8 @@ impl HistoryManager {
             }
 
             // Zsh format: `: <timestamp>:<duration>;<command>`
-            if line.starts_with(": ") {
-                let parts: Vec<&str> = line[2..].splitn(2, ';').collect();
+            if let Some(rest) = line.strip_prefix(": ") {
+                let parts: Vec<&str> = rest.splitn(2, ';').collect();
                 if parts.len() == 2 {
                     let timestamp_part = parts[0];
                     let command = parts[1].trim();
@@ -511,8 +511,8 @@ impl HistoryManager {
             }
 
             // Try zsh format first
-            if line.starts_with(": ") {
-                let parts: Vec<&str> = line[2..].splitn(2, ';').collect();
+            if let Some(rest) = line.strip_prefix(": ") {
+                let parts: Vec<&str> = rest.splitn(2, ';').collect();
                 if parts.len() == 2 {
                     let timestamp_part = parts[0];
                     let command = parts[1].trim();

@@ -382,7 +382,10 @@ impl DeviceKeyManager {
             return Err(EncryptionError::MasterPasswordVerificationFailed);
         }
 
-        self.create_master_password(new_password, config)
+        let new_entry = self.create_master_password(new_password, config)?;
+        self.device_keys.remove("__shared__");
+        self.ensure_shared_device_key(new_password, &new_entry)?;
+        Ok(new_entry)
     }
 
     /// Clear all device keys from memory

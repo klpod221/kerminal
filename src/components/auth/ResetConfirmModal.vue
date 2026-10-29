@@ -12,6 +12,7 @@
     :icon="AlertTriangle"
     icon-background="bg-red-500/20"
     icon-color="text-red-400"
+    @close="handleCancel"
   >
     <div class="flex flex-col gap-4">
       <div

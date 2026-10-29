@@ -36,20 +36,9 @@ export class TerminalCache {
   private static instance: TerminalCache | null = null;
 
   private readonly terminalInfoCache = new Map<string, CacheEntry<TerminalInfo>>();
-  private bufferStatsCache: CacheEntry<{
-    lines: number;
-    cols: number;
-    cursorRow: number;
-    cursorCol: number;
-    totalTerminals?: number;
-    totalLines?: number;
-    memoryUsage?: number;
-  }> | null = null;
   private terminalListCache: CacheEntry<TerminalInfo[]> | null = null;
-  private readonly bufferHasCache = new Map<string, CacheEntry<boolean>>();
 
   private readonly DEFAULT_TTL = 5000; // 5 seconds
-  private readonly BUFFER_STATS_TTL = 3000; // 3 seconds for stats
   private readonly TERMINAL_LIST_TTL = 2000; // 2 seconds for list
 
   private readonly stats = {
@@ -96,49 +85,6 @@ export class TerminalCache {
   }
 
   /**
-   * Get buffer statistics with caching
-   * @returns Promise of buffer statistics
-   */
-  async getBufferStats(): Promise<{
-    lines: number;
-    cols: number;
-    cursorRow: number;
-    cursorCol: number;
-    totalTerminals?: number;
-    totalLines?: number;
-    memoryUsage?: number;
-  }> {
-    if (
-      this.bufferStatsCache &&
-      this.isEntryValid(this.bufferStatsCache, this.BUFFER_STATS_TTL)
-    ) {
-      this.stats.hits++;
-      return this.bufferStatsCache.data;
-    }
-
-    this.stats.misses++;
-    try {
-      const data = await api.call<{
-        lines: number;
-        cols: number;
-        cursorRow: number;
-        cursorCol: number;
-        totalTerminals?: number;
-        totalLines?: number;
-        memoryUsage?: number;
-      }>("get_buffer_stats");
-      this.bufferStatsCache = {
-        data,
-        timestamp: Date.now(),
-      };
-      return data;
-    } catch (error) {
-      console.error("Failed to get buffer stats:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Get terminal list with caching
    * @returns Promise of terminal list
    */
@@ -166,55 +112,12 @@ export class TerminalCache {
   }
 
   /**
-   * Check if terminal has buffer with caching
-   * Note: This is cached with shorter TTL as buffer state changes frequently
-   * @param terminalId - Terminal identifier
-   * @returns Promise of boolean
-   */
-  async hasTerminalBuffer(terminalId: string): Promise<boolean> {
-    const cacheKey = `buffer_has_${terminalId}`;
-    const cached = this.bufferHasCache.get(cacheKey);
-
-    if (cached && this.isEntryValid(cached, 1000)) {
-      this.stats.hits++;
-      return cached.data;
-    }
-
-    this.stats.misses++;
-    try {
-      const data = await api.call<boolean>("has_terminal_buffer", {
-        terminalId: terminalId,
-      });
-      this.bufferHasCache.set(cacheKey, {
-        data,
-        timestamp: Date.now(),
-      });
-      return data;
-    } catch (error) {
-      console.error(
-        `Failed to check buffer for terminal ${terminalId}:`,
-        error,
-      );
-      throw error;
-    }
-  }
-
-  /**
    * Invalidate cache for a specific terminal
    * @param terminalId - Terminal identifier
    */
   invalidateTerminal(terminalId: string): void {
     this.terminalInfoCache.delete(terminalId);
-    this.terminalInfoCache.delete(`buffer_has_${terminalId}`);
-
     this.terminalListCache = null;
-  }
-
-  /**
-   * Invalidate buffer-related caches
-   */
-  invalidateBufferStats(): void {
-    this.bufferStatsCache = null;
   }
 
   /**
@@ -229,7 +132,6 @@ export class TerminalCache {
    */
   invalidateAll(): void {
     this.terminalInfoCache.clear();
-    this.bufferStatsCache = null;
     this.terminalListCache = null;
   }
 
@@ -249,7 +151,6 @@ export class TerminalCache {
       hitRate,
       totalEntries:
         this.terminalInfoCache.size +
-        (this.bufferStatsCache ? 1 : 0) +
         (this.terminalListCache ? 1 : 0),
       memoryUsage,
     };
@@ -271,13 +172,6 @@ export class TerminalCache {
       if (!this.isEntryValid(entry, this.DEFAULT_TTL)) {
         this.terminalInfoCache.delete(key);
       }
-    }
-
-    if (
-      this.bufferStatsCache &&
-      !this.isEntryValid(this.bufferStatsCache, this.BUFFER_STATS_TTL)
-    ) {
-      this.bufferStatsCache = null;
     }
 
     if (
@@ -308,11 +202,6 @@ export class TerminalCache {
     for (const [key, entry] of this.terminalInfoCache.entries()) {
       size += key.length * 2; // UTF-16 characters
       size += JSON.stringify(entry.data).length * 2;
-      size += 8; // timestamp
-    }
-
-    if (this.bufferStatsCache) {
-      size += JSON.stringify(this.bufferStatsCache.data).length * 2;
       size += 8; // timestamp
     }
 

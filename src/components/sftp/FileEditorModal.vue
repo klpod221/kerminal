@@ -216,7 +216,7 @@ function formatFileSize(bytes: number): string {
  * Supports both local and remote file saving
  */
 async function saveLocalFile() {
-  if (!file.value || !content.value) return;
+  if (!file.value || content.value === undefined || content.value === null) return;
 
   const encoder = new TextEncoder();
   const fileContent = encoder.encode(content.value);
@@ -229,7 +229,7 @@ async function saveLocalFile() {
 }
 
 async function saveRemoteFile() {
-  if (!file.value || !content.value) return;
+  if (!file.value || content.value === undefined || content.value === null) return;
   const sid = activeSessionId.value;
   if (!sid) {
     throw new Error("No active SFTP session");
@@ -244,7 +244,7 @@ async function saveRemoteFile() {
  * Supports both local and remote file saving
  */
 async function handleSave() {
-  if (!file.value || !content.value) return;
+  if (!file.value || content.value === undefined || content.value === null) return;
 
   saving.value = true;
 
@@ -257,13 +257,9 @@ async function handleSave() {
 
     closeModal();
   } catch (err) {
-    if (isLocal.value) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      console.error("Failed to save file:", errorMessage);
-      message.error(errorMessage);
-    } else {
-      throw err;
-    }
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error("Failed to save file:", errorMessage);
+    message.error(`Failed to save file: ${errorMessage}`);
   } finally {
     saving.value = false;
   }
@@ -288,10 +284,4 @@ watch(
   },
   { immediate: true },
 );
-
-onMounted(() => {
-  if (file.value) {
-    loadFileContent();
-  }
-});
 </script>

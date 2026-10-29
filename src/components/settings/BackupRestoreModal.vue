@@ -9,114 +9,112 @@
     :show-close-button="true"
     title="Backup & Restore"
     :icon="Archive"
-    icon-background="bg-blue-500/20"
-    icon-color="text-blue-400"
-    size="lg"
+    icon-background="bg-gray-800"
+    icon-color="text-gray-200"
+    size="md"
   >
-    <div class="space-y-6">
+    <div class="space-y-4">
       <!-- Export Section -->
       <Card
         title="Export Backup"
         :icon="Download"
-        icon-background="bg-gradient-to-br from-blue-500/20 to-cyan-500/20"
-        icon-color="text-blue-400"
-        class="border-blue-500/20"
+        icon-background="bg-zinc-800"
+        icon-color="text-zinc-200"
+        custom-class="border-zinc-700/60"
       >
-        <template #description>
-          <p class="text-sm text-gray-400 leading-relaxed">
-            Create a complete backup of your SSH profiles, keys, tunnels, and
-            saved commands. Optionally encrypt with a password for enhanced
-            security.
-          </p>
+        <template #icon>
+          <Download class="w-5 h-5 text-zinc-200" />
+        </template>
+        <template #header>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Export Backup</h3>
+            <p class="text-xs text-zinc-400">
+              Backup SSH profiles, keys, tunnels, and commands to a file.
+            </p>
+          </div>
         </template>
 
-        <div class="space-y-4 mt-4">
+        <div class="space-y-3">
           <!-- Encryption Toggle Card -->
           <div
-            class="rounded-lg border transition-all duration-300"
+            class="rounded-lg border p-3 transition-colors"
             :class="
               useEncryption
-                ? 'border-blue-500/40 bg-blue-500/5'
-                : 'border-gray-700/50 bg-gray-800/30'
+                ? 'border-zinc-600 bg-zinc-800/60'
+                : 'border-zinc-700/60 bg-zinc-900/40'
             "
           >
-            <div class="p-4">
-              <div class="flex items-start gap-3">
-                <div class="shrink-0 mt-0.5">
-                  <Checkbox
-                    id="use-encryption"
-                    v-model="useEncryption"
-                    class="mb-0!"
-                  />
-                </div>
-                <div class="flex-1 min-w-0">
-                  <div class="flex items-center gap-2 mb-1">
-                    <Shield class="w-4 h-4 text-blue-400" />
-                    <span class="text-sm font-medium text-gray-200">
-                      Password Protection
-                    </span>
-                  </div>
-                  <p class="text-xs text-gray-500">
-                    Encrypt your backup with AES-256-GCM encryption
-                  </p>
-                </div>
+            <div class="flex items-start gap-2.5">
+              <div class="shrink-0 mt-0.5">
+                <Checkbox
+                  id="use-encryption"
+                  v-model="useEncryption"
+                  class="mb-0!"
+                />
               </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                  <Shield class="w-3.5 h-3.5 text-zinc-400" />
+                  <span class="text-xs font-medium text-zinc-200">
+                    Password Protection
+                  </span>
+                </div>
+                <p class="text-2xs text-zinc-400">
+                  Encrypt your backup with AES-256-GCM encryption
+                </p>
+              </div>
+            </div>
 
-              <!-- Password Fields (animated) -->
-              <Transition
-                enter-active-class="transition-all duration-300 ease-out"
-                enter-from-class="opacity-0 max-h-0"
-                enter-to-class="opacity-100 max-h-96"
-                leave-active-class="transition-all duration-200 ease-in"
-                leave-from-class="opacity-100 max-h-96"
-                leave-to-class="opacity-0 max-h-0"
+            <!-- Password Fields -->
+            <Transition
+              enter-active-class="transition-all duration-200 ease-out"
+              enter-from-class="opacity-0 max-h-0"
+              enter-to-class="opacity-100 max-h-96"
+              leave-active-class="transition-all duration-150 ease-in"
+              leave-from-class="opacity-100 max-h-96"
+              leave-to-class="opacity-0 max-h-0"
+            >
+              <div
+                v-if="useEncryption"
+                class="mt-3 pt-3 border-t border-zinc-700/60 space-y-2.5 overflow-hidden"
               >
-                <div
-                  v-if="useEncryption"
-                  class="mt-4 space-y-3 overflow-hidden"
-                >
-                  <div class="relative">
-                    <Input
-                      id="export-password"
-                      v-model="exportPassword"
-                      type="password"
-                      placeholder="Enter a strong password"
-                      class="mb-0!"
-                      :left-icon="Lock"
-                    />
-                  </div>
-                  <div class="relative">
-                    <Input
-                      id="export-password-confirm"
-                      v-model="exportPasswordConfirm"
-                      type="password"
-                      placeholder="Confirm your password"
-                      class="mb-0!"
-                      :left-icon="LockKeyhole"
-                    />
-                  </div>
+                <Input
+                  id="export-password"
+                  v-model="exportPassword"
+                  type="password"
+                  placeholder="Enter a strong password"
+                  class="mb-0!"
+                  :left-icon="Lock"
+                />
+                <Input
+                  id="export-password-confirm"
+                  v-model="exportPasswordConfirm"
+                  type="password"
+                  placeholder="Confirm your password"
+                  class="mb-0!"
+                  :left-icon="LockKeyhole"
+                />
 
-                  <!-- Password Strength Indicator -->
+                <!-- Password Strength Indicator -->
+                <div
+                  v-if="exportPassword"
+                  class="flex items-center gap-2 text-xs pt-1"
+                >
                   <div
-                    v-if="exportPassword"
-                    class="flex items-center gap-2 text-xs"
+                    class="flex-1 h-1.5 bg-zinc-700 rounded-full overflow-hidden"
                   >
                     <div
-                      class="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden"
-                    >
-                      <div
-                        class="h-full transition-all duration-300"
-                        :class="passwordStrengthClass"
-                        :style="{ width: passwordStrength + '%' }"
-                      ></div>
-                    </div>
-                    <span class="text-gray-500 min-w-[60px]">{{
-                      passwordStrengthText
-                    }}</span>
+                      class="h-full transition-all duration-300"
+                      :class="passwordStrengthClass"
+                      :style="{ width: passwordStrength + '%' }"
+                    ></div>
                   </div>
+                  <span class="text-2xs text-zinc-400 min-w-[50px]">{{
+                    passwordStrengthText
+                  }}</span>
                 </div>
-              </Transition>
-            </div>
+              </div>
+            </Transition>
           </div>
 
           <!-- Export Button -->
@@ -125,25 +123,15 @@
             :icon="Download"
             :loading="exporting"
             @click="handleExport"
-            class="w-full justify-center group"
+            class="w-full justify-center"
           >
-            <span class="flex items-center gap-2">
-              <span>Export {{ useEncryption ? "Encrypted" : "" }} Backup</span>
-              <ArrowRight
-                class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
-              />
-            </span>
+            Export {{ useEncryption ? "Encrypted " : "" }}Backup
           </Button>
 
           <!-- Info Badge -->
-          <div class="flex items-center gap-2 text-xs text-gray-500">
-            <Info class="w-3.5 h-3.5" />
-            <span>
-              File format:
-              <code class="text-blue-400 font-mono">
-                .{{ useEncryption ? "kbak" : "json" }}
-              </code>
-            </span>
+          <div class="flex items-center gap-1.5 text-2xs text-zinc-400 px-0.5">
+            <Info class="w-3 h-3 text-zinc-400 shrink-0" />
+            <span>Format: <code class="font-mono text-zinc-300">.{{ useEncryption ? "kbak" : "json" }}</code></span>
           </div>
         </div>
       </Card>
@@ -152,42 +140,41 @@
       <Card
         title="Import Backup"
         :icon="Upload"
-        icon-background="bg-gradient-to-br from-yellow-500/20 to-orange-500/20"
-        icon-color="text-yellow-400"
-        class="border-yellow-500/20"
+        icon-background="bg-zinc-800"
+        icon-color="text-zinc-200"
+        custom-class="border-zinc-700/60"
       >
-        <template #description>
-          <p class="text-sm text-gray-400 leading-relaxed">
-            Restore your data from a backup file. Supports both plain and
-            encrypted backups. Existing data will be updated.
-          </p>
+        <template #icon>
+          <Upload class="w-5 h-5 text-zinc-200" />
+        </template>
+        <template #header>
+          <div>
+            <h3 class="text-sm font-semibold text-white">Import Backup</h3>
+            <p class="text-xs text-zinc-400">
+              Restore your data from a plain JSON or encrypted backup file.
+            </p>
+          </div>
         </template>
 
-        <div class="space-y-4 mt-4">
+        <div class="space-y-3">
           <!-- Encrypted Backup Detected -->
           <Transition
-            enter-active-class="transition-all duration-300 ease-out"
-            enter-from-class="opacity-0 -translate-y-2"
+            enter-active-class="transition-all duration-200 ease-out"
+            enter-from-class="opacity-0 -translate-y-1"
             enter-to-class="opacity-100 translate-y-0"
-            leave-active-class="transition-all duration-200 ease-in"
+            leave-active-class="transition-all duration-150 ease-in"
             leave-from-class="opacity-100 translate-y-0"
-            leave-to-class="opacity-0 -translate-y-2"
+            leave-to-class="opacity-0 -translate-y-1"
           >
             <div
               v-if="importRequiresPassword"
-              class="rounded-lg border border-yellow-500/40 bg-yellow-500/5 p-4"
+              class="rounded-lg border border-zinc-700 bg-zinc-800/40 p-3 space-y-2"
             >
-              <div class="flex items-start gap-3 mb-3">
-                <ShieldCheck class="w-5 h-5 text-yellow-400 mt-0.5 shrink-0" />
-                <div>
-                  <div class="text-sm font-medium text-yellow-300 mb-1">
-                    Encrypted Backup Detected
-                  </div>
-                  <p class="text-xs text-yellow-400/80">
-                    This backup is password-protected. Please enter the password
-                    to continue.
-                  </p>
-                </div>
+              <div class="flex items-center gap-2">
+                <ShieldCheck class="w-4 h-4 text-zinc-300" />
+                <span class="text-xs font-medium text-zinc-200">
+                  Password Required
+                </span>
               </div>
               <Input
                 id="import-password"
@@ -202,32 +189,26 @@
 
           <!-- Import Button -->
           <Button
-            variant="warning"
+            variant="secondary"
             :icon="Upload"
             :loading="importing"
             @click="handleImport"
-            class="w-full justify-center group"
+            class="w-full justify-center"
           >
-            <span class="flex items-center gap-2">
-              <span>{{
-                importRequiresPassword
-                  ? "Decrypt & Import"
-                  : "Select Backup File"
-              }}</span>
-              <ArrowRight
-                class="w-4 h-4 group-hover:translate-x-0.5 transition-transform"
-              />
-            </span>
+            {{
+              importRequiresPassword
+                ? "Decrypt & Import"
+                : "Select Backup File"
+            }}
           </Button>
 
-          <!-- Warning Badge -->
+          <!-- Warning Note -->
           <div
-            class="flex items-start gap-2 p-3 rounded-lg bg-orange-500/5 border border-orange-500/20"
+            class="flex items-start gap-2 p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-400 leading-relaxed"
           >
-            <AlertTriangle class="w-4 h-4 text-orange-400 mt-0.5 shrink-0" />
-            <p class="text-xs text-orange-400/90 leading-relaxed">
-              Importing will update existing data with matching IDs. The app
-              will reload after import completes.
+            <AlertTriangle class="w-3.5 h-3.5 text-amber-400/80 mt-0.5 shrink-0" />
+            <p class="text-2xs text-zinc-400">
+              Importing will update existing records with matching IDs. The app will reload after import completes.
             </p>
           </div>
         </div>
@@ -249,15 +230,14 @@ import {
   ShieldCheck,
   Info,
   AlertTriangle,
-  ArrowRight,
 } from "lucide-vue-next";
 
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { api } from "../../services/api";
 import { message } from "../../utils/message";
 import Modal from "../ui/Modal.vue";
-import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";
+import Button from "../ui/Button.vue";
 import Input from "../ui/Input.vue";
 import Checkbox from "../ui/Checkbox.vue";
 import { useOverlay } from "../../composables/useOverlay";
@@ -275,6 +255,7 @@ const exportPasswordConfirm = ref("");
 // Import state
 const importPassword = ref("");
 const importRequiresPassword = ref(false);
+const selectedImportFilePath = ref<string | null>(null);
 
 // Password strength calculation
 const passwordStrength = computed(() => {
@@ -370,26 +351,33 @@ const handleImport = async () => {
   try {
     importing.value = true;
 
-    const filePath = await open({
-      filters: [
-        {
-          name: "Kerminal Backup",
-          extensions: ["json", "kbak"],
-        },
-      ],
-    });
+    let targetPath = selectedImportFilePath.value;
+    if (!targetPath) {
+      const chosen = await open({
+        filters: [
+          {
+            name: "Kerminal Backup",
+            extensions: ["json", "kbak"],
+          },
+        ],
+      });
+      if (chosen && typeof chosen === "string") {
+        targetPath = chosen;
+      }
+    }
 
-    if (filePath && typeof filePath === "string") {
-      const content = await api.callRaw<string>("local_fs_read_text_file", { path: filePath });
+    if (targetPath) {
+      const content = await api.callRaw<string>("local_fs_read_text_file", { path: targetPath });
 
       // Auto-detect if backup is encrypted (Base64 vs JSON)
       const isEncrypted = !content.trim().startsWith("{");
 
       if (isEncrypted && !importRequiresPassword.value) {
-        // First time detecting encrypted file - show password field
+        // First time detecting encrypted file - remember path and show password field
+        selectedImportFilePath.value = targetPath;
         importRequiresPassword.value = true;
         importing.value = false;
-        message.info("This backup is encrypted. Please enter the password.");
+        message.info("This backup is encrypted. Please enter the password and click Import Backup.");
         return;
       }
 
@@ -409,6 +397,7 @@ const handleImport = async () => {
       // Reset form
       importPassword.value = "";
       importRequiresPassword.value = false;
+      selectedImportFilePath.value = null;
 
       closeOverlay("backup-restore-modal");
 

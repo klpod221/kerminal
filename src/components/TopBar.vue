@@ -82,7 +82,7 @@
       </div>
 
       <!-- line -->
-      <div class="w-px h-[20px] bg-gray-700" />
+      <div class="w-px h-5 bg-gray-700" />
 
       <!-- SSH Profiles button -->
       <div
@@ -301,6 +301,20 @@
             class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full border border-bg-primary animate-pulse"
           />
         </div>
+
+        <!-- About & Sponsors -->
+        <Button
+          title="About & Sponsors"
+          variant="ghost"
+          size="sm"
+          :icon="Info"
+          :class="
+            isOverlayVisible('about-modal')
+              ? 'bg-gray-800 text-gray-400 hover:text-white'
+              : ''
+          "
+          @click="toggleOverlay('about-modal')"
+        />
       </template>
     </div>
 
@@ -441,6 +455,7 @@ import {
   FileCode,
   Archive,
   Download,
+  Info,
 } from "lucide-vue-next";
 import Button from "./ui/Button.vue";
 import SyncStatusIndicator from "./sync/SyncStatusIndicator.vue";

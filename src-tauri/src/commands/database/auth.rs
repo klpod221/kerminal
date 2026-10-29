@@ -33,7 +33,7 @@ pub async fn setup_master_password(
     match result {
         Ok(()) => {
             let app_clone = app.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 app_clone.restart();
             });
@@ -60,7 +60,7 @@ pub async fn verify_master_password(
     {
         Ok(()) => {
             let sync_service = state.sync_service.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 if let Err(e) = auto_connect_sync_databases(sync_service).await {
                     error!(
                         "verify_master_password: Failed to auto-connect databases: {}",

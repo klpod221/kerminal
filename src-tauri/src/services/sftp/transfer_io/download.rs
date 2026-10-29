@@ -104,6 +104,8 @@ where
     }
 
     let mut request_offset = start_offset;
+    let mut contiguous_offset = start_offset;
+    let mut completed_chunks: std::collections::BTreeMap<u64, u64> = std::collections::BTreeMap::new();
     let mut inflight = FuturesUnordered::new();
     let mut cancelled = false;
 
@@ -156,6 +158,12 @@ where
                             message: format!("Failed to write to local file: {}", e),
                         })?;
 
+                    completed_chunks.insert(offset, chunk_len);
+                    while let Some(&len) = completed_chunks.get(&contiguous_offset) {
+                        completed_chunks.remove(&contiguous_offset);
+                        contiguous_offset += len;
+                    }
+
                     tracker.add_bytes(chunk_len);
                     if let Some(snap) = tracker.check_emit(false) {
                         on_progress(snap);
@@ -177,7 +185,7 @@ where
         return Ok(DownloadResult {
             final_path: options.local_path,
             partial_path,
-            bytes_transferred: tracker.current_bytes(),
+            bytes_transferred: contiguous_offset,
             total_bytes,
             completed: false,
         });

@@ -696,6 +696,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           id: newTabId,
           ready: false,
           shouldFocusOnReady: true,
+          profileId: sourceTerminal?.profileId,
+          shell: sourceTerminal?.shell,
+          workingDir: sourceTerminal?.workingDir,
+          env: sourceTerminal?.env,
+          command: sourceTerminal?.command,
+          sshConfigPassword: sourceTerminal?.sshConfigPassword,
           sshProfileId: sourceTerminal?.sshProfileId || activeTab.profileId,
           sshConfigHost: sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost,
           isSSHConnecting: !!(sourceTerminal?.sshProfileId || activeTab.profileId || sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost),
@@ -762,6 +768,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           id: newTabId,
           ready: false,
           shouldFocusOnReady: true,
+          profileId: sourceTerminal?.profileId,
+          shell: sourceTerminal?.shell,
+          workingDir: sourceTerminal?.workingDir,
+          env: sourceTerminal?.env,
+          command: sourceTerminal?.command,
+          sshConfigPassword: sourceTerminal?.sshConfigPassword,
           sshProfileId: sourceTerminal?.sshProfileId || activeTab.profileId,
           sshConfigHost: sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost,
           isSSHConnecting: !!(sourceTerminal?.sshProfileId || activeTab.profileId || sourceTerminal?.sshConfigHost || (activeTab as any).sshConfigHost),
@@ -806,13 +818,14 @@ export const useWorkspaceStore = defineStore("workspace", () => {
    * Close a panel
    * @param panelId - The panel ID to close
    */
-  const closePanel = (panelId: string): void => {
+  const closePanel = async (panelId: string): Promise<void> => {
     const panel = findPanelInLayout(panelLayout.value, panelId);
     if (!panel) return;
 
     const tabIds = panel.tabs.map((tab) => tab.id);
 
     for (const tabId of tabIds) {
+      await removeTerminalInstance(tabId);
       const terminalIndex = terminals.value.findIndex(
         (terminal) => terminal.id === tabId,
       );
@@ -923,7 +936,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           fromPanel.tabs[Math.min(tabIndex, fromPanel.tabs.length - 1)].id;
       } else {
         fromPanel.activeTabId = "";
+        autoClosePanel(fromPanel.id);
       }
+    } else if (fromPanel.tabs.length === 0) {
+      autoClosePanel(fromPanel.id);
     }
     toPanel.activeTabId = tabId;
     setActivePanel(toPanel.id);
@@ -1014,6 +1030,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       id: newTabId,
       ready: false,
       shouldFocusOnReady: true, // Focus duplicated tabs when ready
+      profileId: sourceTerminal?.profileId,
+      shell: sourceTerminal?.shell,
+      workingDir: sourceTerminal?.workingDir,
+      env: sourceTerminal?.env,
+      command: sourceTerminal?.command,
+      sshConfigPassword: sourceTerminal?.sshConfigPassword,
       sshProfileId: sourceTerminal?.sshProfileId || sourceTab.profileId,
       sshConfigHost: sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost,
       isSSHConnecting: !!(sourceTerminal?.sshProfileId || sourceTab.profileId || sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost),
@@ -1162,6 +1184,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       id: newTabId,
       ready: false,
       shouldFocusOnReady: true,
+      profileId: sourceTerminal?.profileId,
+      shell: sourceTerminal?.shell,
+      workingDir: sourceTerminal?.workingDir,
+      env: sourceTerminal?.env,
+      command: sourceTerminal?.command,
+      sshConfigPassword: sourceTerminal?.sshConfigPassword,
       sshProfileId: sourceTerminal?.sshProfileId || sourceTab.profileId,
       sshConfigHost: sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost,
       isSSHConnecting: !!(sourceTerminal?.sshProfileId || sourceTab.profileId || sourceTerminal?.sshConfigHost || (sourceTab as any).sshConfigHost),
@@ -1259,7 +1287,10 @@ export const useWorkspaceStore = defineStore("workspace", () => {
           sourcePanel.tabs[Math.min(tabIndex, sourcePanel.tabs.length - 1)].id;
       } else {
         sourcePanel.activeTabId = "";
+        autoClosePanel(sourcePanel.id);
       }
+    } else if (sourcePanel.tabs.length === 0) {
+      autoClosePanel(sourcePanel.id);
     }
 
     splitPanelInLayout(panelLayout.value, panelId, newPanel, "horizontal");

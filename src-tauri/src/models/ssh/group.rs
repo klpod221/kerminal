@@ -125,18 +125,13 @@ impl UpdateSSHGroupRequest {
 }
 
 /// Enum to handle profiles when deleting a group
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum DeleteGroupAction {
     /// Move profiles to another group
     MoveToGroup(String),
     /// Move profiles to ungrouped
+    #[default]
     MoveToUngrouped,
     /// Delete all profiles in group
     DeleteProfiles,
-}
-
-impl Default for DeleteGroupAction {
-    fn default() -> Self {
-        Self::MoveToUngrouped
-    }
 }

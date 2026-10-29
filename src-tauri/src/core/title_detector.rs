@@ -30,7 +30,7 @@ impl TitleDetector {
     pub fn process_output(&mut self, data: &[u8]) -> Option<String> {
         // Heuristic: heavy data transfer usually fills the buffer (64KB).
         // Prompts are usually small. Skip expensive regex if buffer is large and has no escape.
-        if data.len() > 1024 && !data.iter().any(|&b| b == 0x1b) {
+        if data.len() > 1024 && !data.contains(&0x1b) {
             return None;
         }
 

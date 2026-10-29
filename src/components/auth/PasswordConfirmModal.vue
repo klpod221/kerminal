@@ -12,6 +12,7 @@
     :icon="Key"
     icon-background="bg-blue-500/20"
     icon-color="text-blue-400"
+    @close="handleCancel"
   >
     <Form
       ref="passwordConfirmForm"

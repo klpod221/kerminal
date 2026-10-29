@@ -162,6 +162,13 @@ impl SyncEngine {
             stats.total_synced += count;
         }
 
+        let tunnels = local_guard.find_all_ssh_tunnels().await?;
+        let json_tunnels: Vec<_> = tunnels.iter().filter_map(|t| t.to_json().ok()).collect();
+        if !json_tunnels.is_empty() {
+            let count = remote.push_records("ssh_tunnels", json_tunnels).await?;
+            stats.total_synced += count;
+        }
+
         Ok(stats)
     }
 
@@ -223,6 +230,14 @@ impl SyncEngine {
             }
         }
 
+        let json_tunnels = remote.pull_records("ssh_tunnels", last_sync).await?;
+        for json in json_tunnels {
+            if let Ok(tunnel) = crate::models::ssh::SSHTunnel::from_json(&json) {
+                local_guard.save_ssh_tunnel(&tunnel).await?;
+                stats.total_synced += 1;
+            }
+        }
+
         Ok(stats)
     }
 
@@ -250,10 +265,11 @@ impl SyncEngine {
 
         // Parallel sync: SSH tables can be synced together, command tables can be synced together
         // Using try_join! to run syncs in parallel and fail fast on first error
-        let (profile_stats, group_stats, key_stats) = tokio::try_join!(
+        let (profile_stats, group_stats, key_stats, tunnel_stats) = tokio::try_join!(
             self.sync_table_bidirectional(&remote, "ssh_profiles", last_sync, strategy),
             self.sync_table_bidirectional(&remote, "ssh_groups", last_sync, strategy),
             self.sync_table_bidirectional(&remote, "ssh_keys", last_sync, strategy),
+            self.sync_table_bidirectional(&remote, "ssh_tunnels", last_sync, strategy),
         )?;
 
         let (cmd_group_stats, cmd_stats) = tokio::try_join!(
@@ -266,6 +282,7 @@ impl SyncEngine {
         stats.merge(profile_stats);
         stats.merge(group_stats);
         stats.merge(key_stats);
+        stats.merge(tunnel_stats);
         stats.merge(cmd_group_stats);
         stats.merge(cmd_stats);
 
@@ -328,6 +345,13 @@ impl SyncEngine {
                         .filter_map(|c| c.to_json().ok())
                         .collect::<Vec<_>>()
                 }
+                "ssh_tunnels" => {
+                    let tunnels = local_guard.find_all_ssh_tunnels().await?;
+                    tunnels
+                        .iter()
+                        .filter_map(|t| t.to_json().ok())
+                        .collect::<Vec<_>>()
+                }
                 _ => vec![],
             }
         };
@@ -350,8 +374,25 @@ impl SyncEngine {
             })
             .collect();
 
+        let remote_records_map: HashMap<String, Value> = remote_records
+            .into_iter()
+            .filter_map(|r| {
+                let id = r.get("id").and_then(|v| v.as_str())?.to_string();
+                Some((id, r))
+            })
+            .collect();
+
         let mut records_to_push = Vec::new();
-        let mut _records_to_pull: Vec<Value> = Vec::new();
+        let mut ids_remote_should_apply = std::collections::HashSet::new();
+
+        let parse_ts = |record: &Value, camel: &str, snake: &str| -> Option<DateTime<Utc>> {
+            record
+                .get(camel)
+                .or_else(|| record.get(snake))
+                .and_then(|v| v.as_str())
+                .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+                .map(|dt| dt.with_timezone(&Utc))
+        };
 
         for local_record in local_records {
             if let Some(id) = local_record.get("id").and_then(|v| v.as_str()) {
@@ -361,53 +402,48 @@ impl SyncEngine {
                     if local_version > remote_version {
                         records_to_push.push(local_record);
                     } else if remote_version > local_version {
+                        let remote_record = remote_records_map.get(id);
+
                         match strategy {
                             ConflictResolutionStrategy::LocalWins => {
                                 records_to_push.push(local_record);
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::RemoteWins => {
+                                ids_remote_should_apply.insert(id.to_string());
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::LastWriteWins => {
-                                let local_updated = local_record
-                                    .get("updated_at")
-                                    .and_then(|v| v.as_str())
-                                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                                    .map(|dt| dt.with_timezone(&Utc));
+                                let local_updated = parse_ts(&local_record, "updatedAt", "updated_at");
+                                let remote_updated = remote_record.and_then(|r| parse_ts(r, "updatedAt", "updated_at"));
 
-                                // For LastWriteWins, we need to compare with remote's updated_at
-                                // Since we're in a conflict (remote_version > local_version),
-                                // but we want to check timestamps, we need remote record
-                                // For now, if local has updated_at and local_version indicates local changes,
-                                // push local. Otherwise defer to remote.
-                                // TODO: Fetch remote record's updated_at for proper comparison
-                                if local_updated.is_some() && local_version > 0 {
-                                    // Local has changes, push it
-                                    records_to_push.push(local_record);
+                                match (local_updated, remote_updated) {
+                                    (Some(l), Some(r)) if l >= r => {
+                                        records_to_push.push(local_record);
+                                    }
+                                    _ => {
+                                        ids_remote_should_apply.insert(id.to_string());
+                                    }
                                 }
-                                // If local has no updated_at, remote wins (we do nothing, remote will be pulled)
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::FirstWriteWins => {
-                                let local_created = local_record
-                                    .get("created_at")
-                                    .and_then(|v| v.as_str())
-                                    .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
-                                    .map(|dt| dt.with_timezone(&Utc));
+                                let local_created = parse_ts(&local_record, "createdAt", "created_at");
+                                let remote_created = remote_record.and_then(|r| parse_ts(r, "createdAt", "created_at"));
 
-                                // For FirstWriteWins, the record that was created first should win
-                                // If local was created earlier, push local
-                                // If remote was created earlier, let remote win (do nothing)
-                                // TODO: Fetch remote record's created_at for proper comparison
-                                if local_created.is_some() && local_version > 0 {
-                                    // Assume local is older if it exists, push it
-                                    records_to_push.push(local_record);
+                                match (local_created, remote_created) {
+                                    (Some(l), Some(r)) if l <= r => {
+                                        records_to_push.push(local_record);
+                                    }
+                                    _ => {
+                                        ids_remote_should_apply.insert(id.to_string());
+                                    }
                                 }
                                 stats.conflicts_resolved += 1;
                             }
                             ConflictResolutionStrategy::Manual => {
-                                continue;
+                                stats.manual_conflicts += 1;
+                                // In manual mode, neither push nor overwrite until user resolves
                             }
                         }
                     }
@@ -422,62 +458,67 @@ impl SyncEngine {
             stats.total_synced += count;
         }
 
-        for remote_record in remote_records {
-            if let Some(id) = remote_record.get("id").and_then(|v| v.as_str()) {
-                let remote_version = remote_record
-                    .get("version")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(0);
-                let local_version = local_versions.get(id).copied().unwrap_or(0);
+        for (id, remote_record) in &remote_records_map {
+            // Apply if remote record is new (not in local) or explicitly chosen to win
+            let should_apply = !local_versions.contains_key(id) || ids_remote_should_apply.contains(id);
 
-                if remote_version >= local_version {
-                    let local_guard = local.write().await;
+            if should_apply {
+                let local_guard = local.write().await;
 
-                    match table {
-                        "ssh_profiles" => {
-                            if let Ok(profile) =
-                                crate::models::ssh::SSHProfile::from_json(&remote_record)
-                            {
-                                local_guard.save_ssh_profile(&profile).await?;
-                                stats.total_synced += 1;
-                            }
+                match table {
+                    "ssh_profiles" => {
+                        if let Ok(profile) =
+                            crate::models::ssh::SSHProfile::from_json(remote_record)
+                        {
+                            local_guard.save_ssh_profile(&profile).await?;
+                            stats.total_synced += 1;
                         }
-                        "ssh_groups" => {
-                            if let Ok(group) =
-                                crate::models::ssh::SSHGroup::from_json(&remote_record)
-                            {
-                                local_guard.save_ssh_group(&group).await?;
-                                stats.total_synced += 1;
-                            }
-                        }
-                        "ssh_keys" => {
-                            if let Ok(key) = crate::models::ssh::SSHKey::from_json(&remote_record) {
-                                local_guard.save_ssh_key(&key).await?;
-                                stats.total_synced += 1;
-                            }
-                        }
-                        "saved_command_groups" => {
-                            if let Ok(group) =
-                                crate::models::saved_command::SavedCommandGroup::from_json(
-                                    &remote_record,
-                                )
-                            {
-                                local_guard.save_saved_command_group(&group).await?;
-                                stats.total_synced += 1;
-                            }
-                        }
-                        "saved_commands" => {
-                            if let Ok(command) =
-                                crate::models::saved_command::SavedCommand::from_json(
-                                    &remote_record,
-                                )
-                            {
-                                local_guard.save_saved_command(&command).await?;
-                                stats.total_synced += 1;
-                            }
-                        }
-                        _ => {}
                     }
+                    "ssh_groups" => {
+                        if let Ok(group) =
+                            crate::models::ssh::SSHGroup::from_json(remote_record)
+                        {
+                            local_guard.save_ssh_group(&group).await?;
+                            stats.total_synced += 1;
+                        }
+                    }
+                    "ssh_keys" => {
+                        if let Ok(key) = crate::models::ssh::SSHKey::from_json(remote_record) {
+                            local_guard.save_ssh_key(&key).await?;
+                            stats.total_synced += 1;
+                        }
+                    }
+                    "saved_command_groups" => {
+                        if let Ok(group) =
+                            crate::models::saved_command::SavedCommandGroup::from_json(
+                                remote_record,
+                            )
+                        {
+                            local_guard.save_saved_command_group(&group).await?;
+                            stats.total_synced += 1;
+                        }
+                    }
+                    "saved_commands" => {
+                        if let Ok(command) =
+                            crate::models::saved_command::SavedCommand::from_json(
+                                remote_record,
+                            )
+                        {
+                            local_guard.save_saved_command(&command).await?;
+                            stats.total_synced += 1;
+                        }
+                    }
+                    "ssh_tunnels" => {
+                        if let Ok(tunnel) =
+                            crate::models::ssh::SSHTunnel::from_json(
+                                remote_record,
+                            )
+                        {
+                            local_guard.save_ssh_tunnel(&tunnel).await?;
+                            stats.total_synced += 1;
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

@@ -18,9 +18,9 @@ pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> 
         r#"
         INSERT INTO ssh_profiles (
             id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts,
-            description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at,
+            description, color, timeout, keep_alive, compression, proxy, command, working_dir, env, created_at, updated_at,
             device_id, version, sync_status
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
             name = excluded.name,
             host = excluded.host,
@@ -35,6 +35,7 @@ pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> 
             timeout = excluded.timeout,
             keep_alive = excluded.keep_alive,
             compression = excluded.compression,
+            proxy = excluded.proxy,
             command = excluded.command,
             working_dir = excluded.working_dir,
             env = excluded.env,
@@ -58,6 +59,7 @@ pub async fn save_ssh_profile(provider: &SQLiteProvider, model: &SSHProfile) -> 
     .bind(model.timeout.map(|t| t as i32))
     .bind(model.keep_alive)
     .bind(model.compression)
+    .bind(model.proxy.as_ref().map(|p| serde_json::to_string(p).unwrap_or_default()))
     .bind(&model.command)
     .bind(&model.working_dir)
     .bind(serde_json::to_string(&model.env).unwrap_or_default())
@@ -81,7 +83,7 @@ pub async fn find_ssh_profile_by_id(
     let pool = pool.read().await;
 
     let row = sqlx::query(
-        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts, description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
+        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts, description, color, timeout, keep_alive, compression, proxy, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles WHERE id = ?"
     )
     .bind(id)
     .fetch_optional(&*pool)
@@ -119,7 +121,9 @@ pub async fn find_ssh_profile_by_id(
             timeout: row.get::<Option<i32>, _>("timeout").map(|t| t as u32),
             keep_alive: row.get("keep_alive"),
             compression: row.get("compression"),
-            proxy: None,
+            proxy: row
+                .get::<Option<String>, _>("proxy")
+                .and_then(|s| serde_json::from_str(&s).ok()),
             jump_hosts: row
                 .get::<Option<String>, _>("jump_hosts")
                 .and_then(|s| serde_json::from_str(&s).ok()),
@@ -140,7 +144,7 @@ pub async fn find_all_ssh_profiles(provider: &SQLiteProvider) -> DatabaseResult<
     let pool = pool.read().await;
 
     let rows = sqlx::query(
-        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts, description, color, timeout, keep_alive, compression, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY name"
+        "SELECT id, name, host, port, username, group_id, auth_method, auth_data, jump_hosts, description, color, timeout, keep_alive, compression, proxy, command, working_dir, env, created_at, updated_at, device_id, version, sync_status FROM ssh_profiles ORDER BY name"
     )
     .fetch_all(&*pool)
     .await
@@ -178,7 +182,9 @@ pub async fn find_all_ssh_profiles(provider: &SQLiteProvider) -> DatabaseResult<
             timeout: row.get::<Option<i32>, _>("timeout").map(|t| t as u32),
             keep_alive: row.get("keep_alive"),
             compression: row.get("compression"),
-            proxy: None,
+            proxy: row
+                .get::<Option<String>, _>("proxy")
+                .and_then(|s| serde_json::from_str(&s).ok()),
             jump_hosts: row
                 .get::<Option<String>, _>("jump_hosts")
                 .and_then(|s| serde_json::from_str(&s).ok()),
@@ -500,9 +506,11 @@ pub async fn count_profiles_using_key(
     let count = sqlx::query_scalar::<_, i64>(
         r#"
         SELECT COUNT(*) FROM ssh_profiles
-        WHERE auth_data LIKE '%"key_id":"' || ? || '"%'
+        WHERE auth_data LIKE '%"keyId":"' || ? || '"%'
+           OR auth_data LIKE '%"key_id":"' || ? || '"%'
     "#,
     )
+    .bind(key_id)
     .bind(key_id)
     .fetch_one(&*pool)
     .await

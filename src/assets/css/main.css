@@ -38,14 +38,14 @@ body {
   :root {
     --ui-zoom: 1.2;
   }
+}
 
-  html {
-    zoom: var(--ui-zoom);
-  }
+html {
+  zoom: var(--ui-zoom);
+}
 
-  .terminal-container {
-    zoom: calc(1 / var(--ui-zoom));
-  }
+.terminal-container {
+  zoom: calc(1 / var(--ui-zoom));
 }
 
 /* Custom backdrop blur for overlay */

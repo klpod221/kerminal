@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, useAttrs } from "vue";
+import { computed, useAttrs, useSlots } from "vue";
 import type { Component } from "vue";
 
 interface ButtonProps {
@@ -86,9 +86,11 @@ const props = withDefaults(defineProps<ButtonProps>(), {
 
 const emit = defineEmits(["click"]);
 const attrs = useAttrs();
+const slots = useSlots();
 
 const sizeClasses = computed(() => {
-  const hasOnlyIcon = props.icon && !props.text;
+  const hasContent = Boolean(props.text || slots.default);
+  const hasOnlyIcon = props.icon && !hasContent;
   switch (props.size) {
     case "sm":
       return hasOnlyIcon

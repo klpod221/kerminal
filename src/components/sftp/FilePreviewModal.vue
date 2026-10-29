@@ -74,11 +74,13 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { Eye, RotateCw, AlertTriangle } from "lucide-vue-next";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import { useOverlay } from "../../composables/useOverlay";
 import type { FileEntry } from "../../types/sftp";
 import { readSFTPFile } from "../../services/sftp";
+import { api } from "../../services/api";
 
 const { closeOverlay, getOverlayProp } = useOverlay();
 
@@ -94,6 +96,13 @@ const sessionId = getOverlayProp<string>(
   "sessionId",
   "",
   "",
+);
+
+const isLocal = getOverlayProp<boolean>(
+  "sftp-file-preview-modal",
+  "isLocal",
+  false,
+  false,
 );
 
 const loading = ref(false);
@@ -115,19 +124,38 @@ const previewType = computed(() => {
 });
 
 async function loadContent() {
-  if (!file.value || !sessionId.value) return;
+  if (!file.value) return;
   loading.value = true;
   error.value = null;
+  textContent.value = "";
+  mediaSrc.value = "";
 
   try {
-    if (previewType.value === "text") {
-      const data = await readSFTPFile(sessionId.value, file.value.path);
-      textContent.value = data;
+    if (isLocal.value) {
+      if (previewType.value === "text") {
+        const fileContent = await api.callRaw<number[]>("local_fs_read_file", {
+          path: file.value.path,
+        });
+        const decoder = new TextDecoder();
+        textContent.value = decoder.decode(new Uint8Array(fileContent));
+      } else {
+        mediaSrc.value = convertFileSrc(file.value.path);
+      }
     } else {
-      textContent.value = "(Tệp đa phương tiện không hỗ trợ hiển thị văn bản)";
+      if (!sessionId.value) {
+        throw new Error("No active SFTP session");
+      }
+      if (previewType.value === "text") {
+        const data = await readSFTPFile(sessionId.value, file.value.path);
+        textContent.value = data;
+      } else {
+        throw new Error(
+          "Remote media streaming preview is not supported. Please download the file to preview.",
+        );
+      }
     }
   } catch (e: any) {
-    error.value = e?.message || "Không thể đọc nội dung file";
+    error.value = e?.message || "Failed to read file content";
   } finally {
     loading.value = false;
   }

@@ -61,6 +61,23 @@ export const useSettingsStore = defineStore("settings", () => {
   const fontFamily = ref<string>("FiraCode Nerd Font");
   const fontSize = ref<number>(13);
 
+  // UI display scale (75% to 200%)
+  const uiScale = ref<number>(100);
+
+  /**
+   * Apply UI scale to document root and trigger resize
+   */
+  const applyUiScale = (scale: number) => {
+    const clamped = Math.min(Math.max(Math.round(scale), 75), 200);
+    uiScale.value = clamped;
+    if (typeof document !== "undefined") {
+      const zoomFactor = clamped / 100;
+      document.documentElement.style.setProperty("--ui-zoom", String(zoomFactor));
+      document.documentElement.style.zoom = String(zoomFactor);
+      window.dispatchEvent(new Event("resize"));
+    }
+  };
+
   // Available built-in themes
   const builtInThemes = getAvailableThemes();
 
@@ -103,6 +120,21 @@ export const useSettingsStore = defineStore("settings", () => {
         fontSize.value = savedFontSize;
       }
 
+      const savedUiScale = await storeInstance.get<number>("ui-scale");
+      if (typeof savedUiScale === "number" && !isNaN(savedUiScale)) {
+        applyUiScale(savedUiScale);
+      } else if (
+        typeof window !== "undefined" &&
+        window.matchMedia &&
+        window.matchMedia(
+          "(min-resolution: 144dpi), (-webkit-min-device-pixel-ratio: 1.5)",
+        ).matches
+      ) {
+        applyUiScale(120);
+      } else {
+        applyUiScale(100);
+      }
+
     } catch (error) {
       const errorMessage = handleError(error, context);
       message.error(errorMessage);
@@ -124,6 +156,7 @@ export const useSettingsStore = defineStore("settings", () => {
       await storeInstance.set("terminal-theme", terminalTheme.value);
       await storeInstance.set("font-family", fontFamily.value);
       await storeInstance.set("font-size", fontSize.value);
+      await storeInstance.set("ui-scale", uiScale.value);
       await storeInstance.save();
     } catch (error) {
       const errorMessage = handleError(error, context);
@@ -207,6 +240,23 @@ export const useSettingsStore = defineStore("settings", () => {
   const setFontSize = async (size: number) => {
     fontSize.value = size;
     await saveSettings();
+  };
+
+  const setUiScale = async (scale: number) => {
+    applyUiScale(scale);
+    await saveSettings();
+  };
+
+  const zoomIn = async () => {
+    await setUiScale(Math.min(uiScale.value + 10, 200));
+  };
+
+  const zoomOut = async () => {
+    await setUiScale(Math.max(uiScale.value - 10, 75));
+  };
+
+  const resetZoom = async () => {
+    await setUiScale(100);
   };
 
   const upsertCustomTheme = (theme: CustomTheme) => {
@@ -293,10 +343,15 @@ export const useSettingsStore = defineStore("settings", () => {
     builtInThemes,
     fontFamily,
     fontSize,
+    uiScale,
     isLoading,
     setTerminalTheme,
     setFontFamily,
     setFontSize,
+    setUiScale,
+    zoomIn,
+    zoomOut,
+    resetZoom,
     loadSettings,
     createCustomTheme,
     updateCustomTheme,

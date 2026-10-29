@@ -262,6 +262,14 @@ pub async fn get_container_list(
     Ok(containers)
 }
 
+fn is_valid_container_id(id: &str) -> bool {
+    !id.is_empty()
+        && id.len() <= 128
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '.' || c == '-')
+}
+
 #[tauri::command]
 pub async fn execute_container_action(
     profile_id: Option<String>,
@@ -274,8 +282,8 @@ pub async fn execute_container_action(
     let pid = profile_id.as_deref();
     let bin = resolve_engine(pid, engine.as_deref(), &app_state, &app_handle).await?;
 
-    // Validate container_id to avoid malicious command injection
-    if container_id.contains(';') || container_id.contains('&') || container_id.contains('|') {
+    // Validate container_id strictly against alphanumeric + [_.-]
+    if !is_valid_container_id(&container_id) {
         return Err("Invalid container ID format.".to_string());
     }
 
@@ -304,6 +312,10 @@ pub async fn get_container_logs(
 ) -> Result<String, String> {
     let pid = profile_id.as_deref();
     let bin = resolve_engine(pid, engine.as_deref(), &app_state, &app_handle).await?;
+
+    if !is_valid_container_id(&container_id) {
+        return Err("Invalid container ID format.".to_string());
+    }
 
     let tail_lines = tail.unwrap_or(200);
     let cmd = format!("{} logs --tail {} {}", bin, tail_lines, container_id);

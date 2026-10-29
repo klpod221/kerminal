@@ -49,6 +49,7 @@
       @duplicate-tab="duplicateTab"
       @move-tab-to-new-panel="moveTabToNewPanel"
       @toggle-server-tools="toggleServerTools"
+      @add-tab-with-profile="addTabWithProfile"
     />
 
     <!-- Panel Content -->
@@ -125,6 +126,7 @@ interface PanelEmits {
   selectTab: [panelId: string, tabId: string];
   closeTab: [panelId: string, tabId: string];
   addTab: [panelId: string];
+  addTabWithProfile: [panelId: string, profile: any];
   splitHorizontal: [panelId: string];
   splitVertical: [panelId: string];
   closePanel: [panelId: string];
@@ -202,6 +204,11 @@ const closeTab = (panelId: string, tabId: string): void => {
 const addTab = (panelId: string): void => {
   emit("addTab", panelId);
   emit("setActivePanel", panelId); // Make this panel active when adding tab
+};
+
+const addTabWithProfile = (panelId: string, profile: any): void => {
+  emit("addTabWithProfile", panelId, profile);
+  emit("setActivePanel", panelId);
 };
 
 const splitHorizontal = (panelId: string): void => {

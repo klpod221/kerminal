@@ -24,6 +24,7 @@ pub struct TunnelService {
     database_service: Arc<Mutex<DatabaseService>>,
     active_tunnels: Arc<RwLock<HashMap<String, TunnelHandle>>>,
     ssh_sessions: Arc<RwLock<HashMap<String, Arc<Mutex<Handle<SSHClientHandler>>>>>>,
+    forward_targets: Arc<RwLock<HashMap<String, Arc<RwLock<HashMap<u32, (String, u16)>>>>>>,
 }
 
 /// Handle for an active tunnel
@@ -40,6 +41,7 @@ pub struct SSHClientHandler {
     host: String,
     port: u16,
     known_hosts_path: std::path::PathBuf,
+    forward_targets: Arc<RwLock<HashMap<u32, (String, u16)>>>,
 }
 
 #[async_trait]
@@ -59,6 +61,33 @@ impl russh::client::Handler for SSHClientHandler {
             _ => Ok(false),
         }
     }
+
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: russh::Channel<russh::client::Msg>,
+        _connected_address: &str,
+        connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        _session: &mut russh::client::Session,
+    ) -> Result<(), Self::Error> {
+        let targets = self.forward_targets.read().await;
+        if let Some((target_host, target_port)) = targets.get(&connected_port).cloned() {
+            tauri::async_runtime::spawn(async move {
+                if let Ok(local_stream) = tokio::net::TcpStream::connect((target_host.as_str(), target_port)).await {
+                    let (mut local_read, mut local_write) = local_stream.into_split();
+                    let channel_stream = channel.into_stream();
+                    let (mut ch_read, mut ch_write) = tokio::io::split(channel_stream);
+
+                    let _ = tokio::select! {
+                        _ = tokio::io::copy(&mut local_read, &mut ch_write) => {},
+                        _ = tokio::io::copy(&mut ch_read, &mut local_write) => {},
+                    };
+                }
+            });
+        }
+        Ok(())
+    }
 }
 
 impl TunnelService {
@@ -68,6 +97,7 @@ impl TunnelService {
             database_service,
             active_tunnels: Arc::new(RwLock::new(HashMap::new())),
             ssh_sessions: Arc::new(RwLock::new(HashMap::new())),
+            forward_targets: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -76,7 +106,7 @@ impl TunnelService {
         let service = Self::new(database_service);
 
         let service_clone = service.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
             if let Err(e) = service_clone.start_auto_start_tunnels().await {
@@ -231,10 +261,12 @@ impl TunnelService {
         let tunnel_clone = tunnel.clone();
         let profile_clone = profile.clone();
         let sessions_arc = self.ssh_sessions.clone();
+        let forward_targets_arc = self.forward_targets.clone();
+        let database_service_arc = self.database_service.clone();
         let tunnel_id_clone = tunnel_id.clone();
         let active_tunnels_arc = self.active_tunnels.clone();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             match Self::run_tunnel(
                 tunnel_clone,
                 profile_clone,
@@ -242,7 +274,9 @@ impl TunnelService {
                 status.clone(),
                 error_message.clone(),
                 sessions_arc,
+                forward_targets_arc,
                 known_hosts_path,
+                database_service_arc,
             )
             .await
             {
@@ -340,9 +374,19 @@ impl TunnelService {
         status: Arc<RwLock<TunnelStatus>>,
         error_message: Arc<RwLock<Option<String>>>,
         sessions: Arc<RwLock<HashMap<String, Arc<Mutex<Handle<SSHClientHandler>>>>>>,
+        forward_targets_map: Arc<RwLock<HashMap<String, Arc<RwLock<HashMap<u32, (String, u16)>>>>>>,
         known_hosts_path: std::path::PathBuf,
+        database_service: Arc<Mutex<DatabaseService>>,
     ) -> Result<()> {
-        let session = match Self::get_or_create_ssh_session(&profile, sessions, known_hosts_path).await {
+        let (session, targets) = match Self::get_or_create_ssh_session(
+            &profile,
+            sessions,
+            forward_targets_map,
+            known_hosts_path,
+            database_service,
+        )
+        .await
+        {
             Ok(s) => s,
             Err(e) => {
                 let mut error_msg = error_message.write().await;
@@ -377,6 +421,7 @@ impl TunnelService {
                     tunnel.remote_host.clone().unwrap_or_default(),
                     tunnel.remote_port.unwrap_or(22),
                     session,
+                    targets,
                     cancel_token,
                 )
                 .await
@@ -412,15 +457,33 @@ impl TunnelService {
     async fn get_or_create_ssh_session(
         profile: &SSHProfile,
         sessions: Arc<RwLock<HashMap<String, Arc<Mutex<Handle<SSHClientHandler>>>>>>,
+        forward_targets_map: Arc<RwLock<HashMap<String, Arc<RwLock<HashMap<u32, (String, u16)>>>>>>,
         known_hosts_path: std::path::PathBuf,
-    ) -> Result<Arc<Mutex<Handle<SSHClientHandler>>>> {
+        database_service: Arc<Mutex<DatabaseService>>,
+    ) -> Result<(Arc<Mutex<Handle<SSHClientHandler>>>, Arc<RwLock<HashMap<u32, (String, u16)>>>)> {
         let session_key = format!("{}:{}@{}", profile.username, profile.port, profile.host);
 
         {
             let sessions_guard = sessions.read().await;
             if let Some(session) = sessions_guard.get(&session_key) {
-                return Ok(session.clone());
+                let guard = session.lock().await;
+                if !guard.is_closed() {
+                    let targets = {
+                        let ft_guard = forward_targets_map.read().await;
+                        ft_guard
+                            .get(&session_key)
+                            .cloned()
+                            .unwrap_or_else(|| Arc::new(RwLock::new(HashMap::new())))
+                    };
+                    return Ok((session.clone(), targets));
+                }
             }
+        }
+
+        let targets = Arc::new(RwLock::new(HashMap::new()));
+        {
+            let mut ft_guard = forward_targets_map.write().await;
+            ft_guard.insert(session_key.clone(), targets.clone());
         }
 
         let config = Arc::new(Config::default());
@@ -428,6 +491,7 @@ impl TunnelService {
             host: profile.host.clone(),
             port: profile.port,
             known_hosts_path,
+            forward_targets: targets.clone(),
         };
         let mut session =
             russh::client::connect(config, (&profile.host as &str, profile.port), handler).await?;
@@ -444,15 +508,35 @@ impl TunnelService {
                     }
                 }
             }
-            AuthData::KeyReference { .. } => {
-                return Err(anyhow::anyhow!(
-                    "Key-based authentication not supported for tunnels"
-                ));
+            AuthData::KeyReference { key_id } => {
+                let key = {
+                    let db = database_service.lock().await;
+                    db.get_ssh_key(key_id).await.map_err(|e| anyhow::anyhow!("Failed to get SSH key: {}", e))?
+                };
+                let secret_key = if std::path::Path::new(&key.private_key).exists() {
+                    russh_keys::load_secret_key(&key.private_key, key.passphrase.as_deref())
+                        .map_err(|e| anyhow::anyhow!("Failed to load secret key file: {}", e))?
+                } else {
+                    russh_keys::decode_secret_key(&key.private_key, key.passphrase.as_deref())
+                        .map_err(|e| anyhow::anyhow!("Failed to parse secret key: {}", e))?
+                };
+                session
+                    .authenticate_publickey(&profile.username, Arc::new(secret_key))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Public key auth error: {}", e))?
             }
-            AuthData::Certificate { .. } => {
-                return Err(anyhow::anyhow!(
-                    "Certificate-based authentication not supported for tunnels"
-                ));
+            AuthData::Certificate { private_key, .. } => {
+                let secret_key = if std::path::Path::new(private_key).exists() {
+                    russh_keys::load_secret_key(private_key, None)
+                        .map_err(|e| anyhow::anyhow!("Failed to load certificate key file: {}", e))?
+                } else {
+                    russh_keys::decode_secret_key(private_key, None)
+                        .map_err(|e| anyhow::anyhow!("Failed to parse certificate key: {}", e))?
+                };
+                session
+                    .authenticate_publickey(&profile.username, Arc::new(secret_key))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Certificate auth error: {}", e))?
             }
         };
 
@@ -468,7 +552,7 @@ impl TunnelService {
             sessions_guard.insert(session_key, session_arc.clone());
         }
 
-        Ok(session_arc)
+        Ok((session_arc, targets))
     }
 
     /// Start local port forwarding
@@ -500,7 +584,7 @@ impl TunnelService {
                                 ).await?
                             };
 
-                            tokio::spawn(Self::proxy_connection(stream, session.clone(), channel, cancel_token.clone()));
+                            tauri::async_runtime::spawn(Self::proxy_connection(stream, session.clone(), channel, cancel_token.clone()));
                         }
                         Err(e) => {
                             error!("Failed to accept connection: {}", e);
@@ -520,6 +604,7 @@ impl TunnelService {
         remote_host: String,
         remote_port: u16,
         session: Arc<Mutex<Handle<SSHClientHandler>>>,
+        targets: Arc<RwLock<HashMap<u32, (String, u16)>>>,
         cancel_token: CancellationToken,
     ) -> Result<()> {
         // For remote forwarding, bind address should be empty string or "0.0.0.0"
@@ -552,6 +637,11 @@ impl TunnelService {
             remote_port
         };
 
+        targets
+            .write()
+            .await
+            .insert(actual_port as u32, (local_host.clone(), local_port));
+
         info!(
             "✅ Remote port forwarding established: {}:{} -> {}:{}",
             bind_address, actual_port, local_host, local_port
@@ -565,6 +655,7 @@ impl TunnelService {
         loop {
             tokio::select! {
                 _ = cancel_token.cancelled() => {
+                    targets.write().await.remove(&(actual_port as u32));
                     let cancel_result = {
                         let session_guard = session.lock().await;
                         session_guard.cancel_tcpip_forward(&bind_address_clone, actual_port as u32).await
@@ -631,7 +722,7 @@ impl TunnelService {
                 result = listener.accept() => {
                     match result {
                         Ok((stream, _)) => {
-                            tokio::spawn(Self::handle_socks_connection(stream, session.clone(), cancel_token.clone()));
+                            tauri::async_runtime::spawn(Self::handle_socks_connection(stream, session.clone(), cancel_token.clone()));
                         }
                         Err(e) => {
                             error!("Failed to accept SOCKS connection: {}", e);

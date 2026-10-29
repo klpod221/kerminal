@@ -50,6 +50,10 @@ impl TerminalOutputBuffer {
         let mut offset = 0;
         while offset < data.len() {
             loop {
+                let drain_notified = self.notify_drain.notified();
+                tokio::pin!(drain_notified);
+                drain_notified.as_mut().enable();
+
                 let available = {
                     let buf = self.buffer.lock().unwrap();
                     if buf.len() < self.max_size {
@@ -74,13 +78,17 @@ impl TerminalOutputBuffer {
                 }
 
                 // Buffer full, wait for pop_all to drain it
-                self.notify_drain.notified().await;
+                drain_notified.await;
             }
         }
     }
 
     pub async fn pop_all(&self) -> (Vec<u8>, usize) {
         loop {
+            let notify_future = self.notify.notified();
+            tokio::pin!(notify_future);
+            notify_future.as_mut().enable();
+
             let (data, dropped, eof) = {
                 let mut buf = self.buffer.lock().unwrap();
                 let mut unreported_lock = self.unreported_dropped_bytes.lock().unwrap();
@@ -96,7 +104,8 @@ impl TerminalOutputBuffer {
                     metrics.flush_count += 1;
                     metrics.total_bytes_sent += buf.len();
 
-                    (Some(std::mem::take(&mut *buf)), dropped_count, eof)
+                    let drained_data = std::mem::replace(&mut *buf, Vec::with_capacity(65536));
+                    (Some(drained_data), dropped_count, eof)
                 }
             };
 
@@ -108,7 +117,7 @@ impl TerminalOutputBuffer {
                 return (Vec::new(), dropped);
             }
 
-            self.notify.notified().await;
+            notify_future.await;
         }
     }
 

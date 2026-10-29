@@ -19,12 +19,13 @@ pub struct Device {
     pub is_current: bool, // True for current device
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum DeviceType {
     Desktop,
     Laptop,
     Mobile,
     Server,
+    #[default]
     Unknown,
 }
 
@@ -102,12 +103,6 @@ impl Device {
                 .unwrap_or_else(|| "Unknown".to_string()),
             _ => "Unknown".to_string(),
         }
-    }
-}
-
-impl Default for DeviceType {
-    fn default() -> Self {
-        Self::Unknown
     }
 }
 

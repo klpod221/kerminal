@@ -26,12 +26,12 @@
       </Button>
       <Button
         variant="outline"
-        :icon="Type"
+        :icon="Monitor"
         size="sm"
         class="flex-1"
         @click="openFontSettings"
       >
-        Font Settings
+        Display & Fonts
       </Button>
     </div>
 
@@ -216,7 +216,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { Palette, Check, Plus, Edit2, Trash2, Type } from "lucide-vue-next";
+import { Palette, Check, Plus, Edit2, Trash2, Type, Monitor } from "lucide-vue-next";
 import Modal from "../ui/Modal.vue";
 import Button from "../ui/Button.vue";
 import Card from "../ui/Card.vue";

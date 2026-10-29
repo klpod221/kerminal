@@ -8,6 +8,7 @@ import { useWorkspaceStore } from "../stores/workspace";
 import { useViewStateStore } from "../stores/viewState";
 import { useTourStore } from "../stores/tour";
 import { useBroadcastStore } from "../stores/broadcast";
+import { useSettingsStore } from "../stores/settings";
 import { useOverlay } from "./useOverlay";
 
 // Singleton flag to ensure only one listener is registered
@@ -23,6 +24,7 @@ export function useGlobalShortcuts() {
   const workspaceStore = useWorkspaceStore();
   const viewState = useViewStateStore();
   const tourStore = useTourStore();
+  const settingsStore = useSettingsStore();
   const { openOverlay } = useOverlay();
 
   /**
@@ -95,6 +97,28 @@ export function useGlobalShortcuts() {
   };
 
   const handleKeydown = (event: KeyboardEvent): void => {
+    // Global UI scale / zoom shortcuts (active everywhere including inputs/terminals)
+    if (event.ctrlKey || event.metaKey) {
+      if (event.key === "=" || event.key === "+") {
+        event.preventDefault();
+        event.stopPropagation();
+        settingsStore.zoomIn();
+        return;
+      }
+      if (event.key === "-" || event.key === "_") {
+        event.preventDefault();
+        event.stopPropagation();
+        settingsStore.zoomOut();
+        return;
+      }
+      if (event.key === "0") {
+        event.preventDefault();
+        event.stopPropagation();
+        settingsStore.resetZoom();
+        return;
+      }
+    }
+
     if (shouldIgnoreInput(event)) return;
 
     // Check all active shortcuts
@@ -231,6 +255,15 @@ export function useGlobalShortcuts() {
     },
     [ShortcutAction.OpenCommandPalette]: () => {
       openOverlay("command-palette");
+    },
+    [ShortcutAction.ZoomIn]: () => {
+      settingsStore.zoomIn();
+    },
+    [ShortcutAction.ZoomOut]: () => {
+      settingsStore.zoomOut();
+    },
+    [ShortcutAction.ResetZoom]: () => {
+      settingsStore.resetZoom();
     },
     [ShortcutAction.StartTour]: () => {
       tourStore.startTour();

@@ -50,7 +50,7 @@ impl TransferManager {
     /// Start processing the transfer queue in a background loop
     pub fn start_queue_processor(&self, app_handle: tauri::AppHandle) {
         let manager = self.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             loop {
                 manager.process_queue(app_handle.clone()).await;
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
@@ -192,7 +192,7 @@ impl TransferManager {
                 .values()
                 .filter(|t| t.status == TransferStatus::Queued)
                 .collect();
-            list.sort_by(|a, b| b.priority.cmp(&a.priority));
+            list.sort_by_key(|a| std::cmp::Reverse(a.priority));
             list.into_iter().take(slots).map(|t| t.transfer_id.clone()).collect::<Vec<_>>()
         };
 
@@ -209,7 +209,7 @@ impl TransferManager {
 
             let manager = self.clone();
             let app_h = app_handle.clone();
-            tokio::spawn(async move {
+            tauri::async_runtime::spawn(async move {
                 manager.execute_transfer(transfer_id, token, app_h).await;
             });
         }
@@ -316,13 +316,23 @@ impl TransferManager {
                         "transferId": transfer_id,
                     }));
                 } else {
-                    // Paused or interrupted: save checkpoint
-                    self.checkpoints.update(&transfer_id, transferred, &partial_path, total).await;
-                    let mut transfers = self.active_transfers.write().await;
-                    if let Some(t) = transfers.get_mut(&transfer_id) {
-                        if t.status == TransferStatus::InProgress {
-                            t.status = TransferStatus::Paused;
+                    let is_cancelled = {
+                        let transfers = self.active_transfers.read().await;
+                        transfers.get(&transfer_id).map(|t| t.status == TransferStatus::Cancelled).unwrap_or(false)
+                    };
+
+                    if !is_cancelled {
+                        // Paused or interrupted: save checkpoint
+                        self.checkpoints.update(&transfer_id, transferred, &partial_path, total).await;
+                        let mut transfers = self.active_transfers.write().await;
+                        if let Some(t) = transfers.get_mut(&transfer_id) {
+                            if t.status == TransferStatus::InProgress {
+                                t.status = TransferStatus::Paused;
+                            }
                         }
+                    } else {
+                        // Clean up partial file on cancel if local
+                        let _ = tokio::fs::remove_file(&partial_path).await;
                     }
                 }
             }
@@ -442,7 +452,7 @@ impl TransferManager {
     /// Get transfer progress
     pub async fn get_progress(&self, transfer_id: String) -> Result<TransferProgress, SFTPError> {
         let transfers = self.active_transfers.read().await;
-        transfers.get(&transfer_id).cloned().ok_or_else(|| SFTPError::TransferNotFound { transfer_id })
+        transfers.get(&transfer_id).cloned().ok_or(SFTPError::TransferNotFound { transfer_id })
     }
 
     /// Get all transfers with optional status filter

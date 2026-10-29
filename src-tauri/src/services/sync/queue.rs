@@ -120,7 +120,7 @@ impl Drop for SyncGuard {
 
         // Use block_on for synchronous drop
         // This is safe because we're just updating a small mutex
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut guard = in_progress.lock().await;
             guard.retain(|id| id != &database_id);
         });

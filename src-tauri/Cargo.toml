@@ -1,11 +1,19 @@
 [package]
 name = "Kerminal"
-version = "2.6.9"
+version = "2.7.0"
 description = "Modern Terminal with SSH, Tunneling & Cross-Device Sync"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/klpod221/kerminal"
 authors = ["klpod221 <klpod221@gmail.com>"]
 edition = "2021"
+
+[lints.clippy]
+type_complexity = "allow"
+too_many_arguments = "allow"
+upper_case_acronyms = "allow"
+module_inception = "allow"
+wrong_self_convention = "allow"
+double_must_use = "allow"
 
 [lib]
 name = "kerminal"

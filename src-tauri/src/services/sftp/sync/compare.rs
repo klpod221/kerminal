@@ -146,43 +146,50 @@ pub fn compare_trees(
 ) -> Vec<DiffEntry> {
     let mut diffs = Vec::new();
 
+    // Index files by normalized relative path
+    let local_by_rel: HashMap<String, &FileEntry> = local_files
+        .iter()
+        .map(|(path, entry)| (relative_path(local_base, path).replace('\\', "/"), entry))
+        .collect();
+
+    let remote_by_rel: HashMap<String, &FileEntry> = remote_files
+        .iter()
+        .map(|(path, entry)| (relative_path(remote_base, path).replace('\\', "/"), entry))
+        .collect();
+
     // Files only in local
-    for (path, local_entry) in local_files {
-        let rel_path = relative_path(local_base, path);
-        if !remote_files.contains_key(path) {
+    for (rel_path, local_entry) in &local_by_rel {
+        if !remote_by_rel.contains_key(rel_path) {
             diffs.push(DiffEntry {
-                path: rel_path,
+                path: rel_path.clone(),
                 diff_type: DiffType::OnlyLocal,
-                local_entry: Some(local_entry.clone()),
+                local_entry: Some((*local_entry).clone()),
                 remote_entry: None,
             });
         }
     }
 
     // Files only in remote
-    for (path, remote_entry) in remote_files {
-        let rel_path = relative_path(remote_base, path);
-        if !local_files.contains_key(path) {
+    for (rel_path, remote_entry) in &remote_by_rel {
+        if !local_by_rel.contains_key(rel_path) {
             diffs.push(DiffEntry {
-                path: rel_path,
+                path: rel_path.clone(),
                 diff_type: DiffType::OnlyRemote,
                 local_entry: None,
-                remote_entry: Some(remote_entry.clone()),
+                remote_entry: Some((*remote_entry).clone()),
             });
         }
     }
 
     // Compare common files
-    for (path, local_entry) in local_files {
-        if let Some(remote_entry) = remote_files.get(path) {
-            let rel_path = relative_path(local_base, path);
-
+    for (rel_path, local_entry) in &local_by_rel {
+        if let Some(remote_entry) = remote_by_rel.get(rel_path) {
             if local_entry.size != remote_entry.size {
                 diffs.push(DiffEntry {
-                    path: rel_path,
+                    path: rel_path.clone(),
                     diff_type: DiffType::SizeDiffers,
-                    local_entry: Some(local_entry.clone()),
-                    remote_entry: Some(remote_entry.clone()),
+                    local_entry: Some((*local_entry).clone()),
+                    remote_entry: Some((*remote_entry).clone()),
                 });
                 continue;
             }
@@ -194,29 +201,29 @@ pub fn compare_trees(
 
             if time_diff > skew_tolerance {
                 diffs.push(DiffEntry {
-                    path: rel_path,
+                    path: rel_path.clone(),
                     diff_type: DiffType::TimeDiffers,
-                    local_entry: Some(local_entry.clone()),
-                    remote_entry: Some(remote_entry.clone()),
+                    local_entry: Some((*local_entry).clone()),
+                    remote_entry: Some((*remote_entry).clone()),
                 });
                 continue;
             }
 
             if local_entry.permissions != remote_entry.permissions {
                 diffs.push(DiffEntry {
-                    path: rel_path,
+                    path: rel_path.clone(),
                     diff_type: DiffType::PermissionsDiffer,
-                    local_entry: Some(local_entry.clone()),
-                    remote_entry: Some(remote_entry.clone()),
+                    local_entry: Some((*local_entry).clone()),
+                    remote_entry: Some((*remote_entry).clone()),
                 });
                 continue;
             }
 
             diffs.push(DiffEntry {
-                path: rel_path,
+                path: rel_path.clone(),
                 diff_type: DiffType::Identical,
-                local_entry: Some(local_entry.clone()),
-                remote_entry: Some(remote_entry.clone()),
+                local_entry: Some((*local_entry).clone()),
+                remote_entry: Some((*remote_entry).clone()),
             });
         }
     }

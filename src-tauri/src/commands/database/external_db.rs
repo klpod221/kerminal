@@ -151,8 +151,10 @@ pub async fn test_external_database_connection(
     let database_service = app_state.database_service.lock().await;
 
     let connection_details =
-        if request.connection_details.password.is_empty() && request.database_id.is_some() {
-            let db_id = request.database_id.as_ref().unwrap();
+        if let (true, Some(db_id)) = (
+            request.connection_details.password.is_empty(),
+            request.database_id.as_deref(),
+        ) {
             let config = database_service
                 .find_external_database_by_id(db_id)
                 .await

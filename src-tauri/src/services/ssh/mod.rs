@@ -137,6 +137,7 @@ impl SSHService {
     pub async fn test_ssh_connection(
         &self,
         request: TestSSHConnectionRequest,
+        known_hosts_path: std::path::PathBuf,
     ) -> DatabaseResult<()> {
         use crate::core::terminal::ssh::SSHTerminal;
         use crate::models::ssh::profile::AuthData;
@@ -180,7 +181,7 @@ impl SSHService {
             config,
             profile,
             Some(self.database_service.clone()),
-            std::path::PathBuf::from("known_hosts"),
+            known_hosts_path,
         )
         .map_err(|e| {
             crate::database::error::DatabaseError::Internal(anyhow::anyhow!(e.to_string()))

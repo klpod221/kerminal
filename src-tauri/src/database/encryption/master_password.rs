@@ -103,15 +103,7 @@ impl MasterPasswordManager {
         self.config.auto_unlock = request.auto_unlock && request.use_keychain;
         self.config.use_keychain = request.use_keychain;
         self.config.session_timeout_minutes =
-            request.auto_lock_timeout.and_then(
-                |timeout| {
-                    if timeout == 0 {
-                        None
-                    } else {
-                        Some(timeout)
-                    }
-                },
-            );
+            request.auto_lock_timeout.filter(|&timeout| timeout != 0);
 
         let mut manager = self.device_key_manager.write().await;
         let entry = manager.create_master_password(&request.password, &self.config)?;
@@ -280,7 +272,7 @@ impl MasterPasswordManager {
         self.config.require_on_startup = !auto_unlock;
 
         self.config.session_timeout_minutes =
-            auto_lock_timeout.and_then(|timeout| if timeout == 0 { None } else { Some(timeout) });
+            auto_lock_timeout.filter(|&timeout| timeout != 0);
 
         if !auto_unlock {
             if let Err(e) = self
@@ -312,7 +304,7 @@ impl MasterPasswordManager {
         self.config.require_on_startup = !auto_unlock;
 
         self.config.session_timeout_minutes =
-            auto_lock_timeout.and_then(|timeout| if timeout == 0 { None } else { Some(timeout) });
+            auto_lock_timeout.filter(|&timeout| timeout != 0);
 
         if !auto_unlock {
             if let Err(e) = self

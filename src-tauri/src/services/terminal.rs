@@ -18,10 +18,6 @@ use uuid::Uuid;
 
 pub struct TerminalManager {
     terminals: Arc<RwLock<HashMap<String, Arc<Mutex<TerminalWrapper>>>>>,
-    output_senders: Arc<RwLock<HashMap<String, mpsc::UnboundedSender<Vec<u8>>>>>,
-    #[allow(dead_code)]
-    output_receiver: Arc<Mutex<Option<mpsc::UnboundedReceiver<TerminalData>>>>,
-    output_sender: mpsc::UnboundedSender<TerminalData>,
     database_service: Arc<Mutex<DatabaseService>>,
     ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
     pub recorders: Arc<RwLock<HashMap<String, Arc<SessionRecorder>>>>,
@@ -34,13 +30,8 @@ impl TerminalManager {
         database_service: Arc<Mutex<DatabaseService>>,
         ssh_key_service: Arc<Mutex<SSHKeyService>>,
     ) -> Self {
-        let (output_sender, output_receiver) = mpsc::unbounded_channel();
-
         Self {
             terminals: Arc::new(RwLock::new(HashMap::new())),
-            output_senders: Arc::new(RwLock::new(HashMap::new())),
-            output_receiver: Arc::new(Mutex::new(Some(output_receiver))),
-            output_sender,
             database_service,
             ssh_key_service: Some(ssh_key_service),
             recorders: Arc::new(RwLock::new(HashMap::new())),
@@ -190,11 +181,10 @@ impl TerminalManager {
             .await?;
 
         let terminal_id_clone = terminal_id.clone();
-        let output_sender = self.output_sender.clone();
         let app_handle_clone = app_handle.clone();
         let recorders_clone = self.recorders.clone();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             let mut decoder = crate::utils::utf8::IncrementalUtf8Decoder::new();
             loop {
                 let (data, dropped_count) = buffer.pop_all().await;
@@ -231,10 +221,6 @@ impl TerminalManager {
                 if let Some(handle) = &app_handle_clone {
                     let _ = handle.emit("terminal-output", &terminal_data);
                 }
-
-                if output_sender.send(terminal_data).is_err() {
-                    break;
-                }
             }
         });
 
@@ -243,7 +229,7 @@ impl TerminalManager {
         let titles_clone = self.titles.clone();
         let should_lock_title = request.config.terminal_profile_id.is_some();
 
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             while let Some(new_title) = title_rx.recv().await {
                 if should_lock_title {
                     continue;
@@ -266,7 +252,7 @@ impl TerminalManager {
         });
 
         let app_handle_clone = app_handle.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             while let Some(exit_event) = exit_rx.recv().await {
                 if let Some(handle) = &app_handle_clone {
                     let _ = handle.emit("terminal-exited", &exit_event);
@@ -275,7 +261,7 @@ impl TerminalManager {
         });
 
         let app_handle_clone = app_handle.clone();
-        tokio::spawn(async move {
+        tauri::async_runtime::spawn(async move {
             while let Some(latency_event) = latency_rx.recv().await {
                 if let Some(handle) = &app_handle_clone {
                     let _ = handle.emit("terminal-latency", &latency_event);
@@ -335,11 +321,6 @@ impl TerminalManager {
             let mut terminals = self.terminals.write().await;
             terminals.remove(&terminal_id)
         };
-
-        {
-            let mut senders = self.output_senders.write().await;
-            senders.remove(&terminal_id);
-        }
 
         {
             let mut buffers = self.output_buffers.write().await;

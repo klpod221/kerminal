@@ -10,6 +10,23 @@ use crate::database::error::{DatabaseError, DatabaseResult};
 
 use super::PostgreSQLProvider;
 
+const ALLOWED_TABLES: &[&str] = &[
+    "ssh_profiles",
+    "ssh_groups",
+    "ssh_keys",
+    "ssh_tunnels",
+    "saved_commands",
+    "saved_command_groups",
+];
+
+fn validate_table_name(table: &str) -> DatabaseResult<()> {
+    if ALLOWED_TABLES.contains(&table) {
+        Ok(())
+    } else {
+        Err(DatabaseError::ValidationError(format!("Invalid table name: {}", table)))
+    }
+}
+
 /// Convert camelCase to snake_case for PostgreSQL column names
 fn to_snake_case(s: &str) -> String {
     let mut result = String::new();
@@ -19,6 +36,25 @@ fn to_snake_case(s: &str) -> String {
                 result.push('_');
             }
             result.push(ch.to_lowercase().next().unwrap());
+        } else {
+            result.push(ch);
+        }
+    }
+    result
+}
+
+/// Convert snake_case to camelCase
+fn to_camel_case(s: &str) -> String {
+    let mut result = String::new();
+    let mut capitalize_next = false;
+    for ch in s.chars() {
+        if ch == '_' {
+            capitalize_next = true;
+        } else if capitalize_next {
+            for c in ch.to_uppercase() {
+                result.push(c);
+            }
+            capitalize_next = false;
         } else {
             result.push(ch);
         }
@@ -44,6 +80,7 @@ pub async fn push_records(
     table: &str,
     records: Vec<Value>,
 ) -> DatabaseResult<usize> {
+    validate_table_name(table)?;
     if records.is_empty() {
         return Ok(0);
     }
@@ -108,12 +145,13 @@ pub async fn pull_records(
     table: &str,
     since: Option<DateTime<Utc>>,
 ) -> DatabaseResult<Vec<Value>> {
+    validate_table_name(table)?;
     let pool = provider.get_pool()?;
     let pool = pool.read().await;
 
-    let sql = if let Some(_since_time) = since {
+    let sql = if since.is_some() {
         format!(
-            "SELECT * FROM {} WHERE updated_at > ? ORDER BY updated_at ASC",
+            "SELECT * FROM {} WHERE updated_at > $1 ORDER BY updated_at ASC",
             table
         )
     } else {
@@ -145,6 +183,7 @@ pub async fn get_record_versions(
     table: &str,
     ids: Vec<String>,
 ) -> DatabaseResult<HashMap<String, u64>> {
+    validate_table_name(table)?;
     if ids.is_empty() {
         return Ok(HashMap::new());
     }
@@ -215,12 +254,31 @@ fn row_to_json(row: &sqlx::postgres::PgRow) -> DatabaseResult<Value> {
 
     for (idx, col) in row.columns().iter().enumerate() {
         let col_name = col.name().to_string();
-        let value: Option<String> = row.try_get(idx).ok();
+        let camel_key = to_camel_case(&col_name);
 
-        if let Some(v) = value {
-            obj.insert(col_name, Value::String(v));
+        let val = if let Ok(Some(b)) = row.try_get::<Option<bool>, _>(idx) {
+            Value::Bool(b)
+        } else if let Ok(Some(i)) = row.try_get::<Option<i64>, _>(idx) {
+            Value::Number(serde_json::Number::from(i))
+        } else if let Ok(Some(i)) = row.try_get::<Option<i32>, _>(idx) {
+            Value::Number(serde_json::Number::from(i))
+        } else if let Ok(Some(f)) = row.try_get::<Option<f64>, _>(idx) {
+            serde_json::Number::from_f64(f)
+                .map(Value::Number)
+                .unwrap_or(Value::Null)
+        } else if let Ok(Some(s)) = row.try_get::<Option<String>, _>(idx) {
+            if (s.starts_with('{') && s.ends_with('}')) || (s.starts_with('[') && s.ends_with(']')) {
+                serde_json::from_str(&s).unwrap_or(Value::String(s))
+            } else {
+                Value::String(s)
+            }
         } else {
-            obj.insert(col_name, Value::Null);
+            Value::Null
+        };
+
+        obj.insert(camel_key, val.clone());
+        if !obj.contains_key(&col_name) {
+            obj.insert(col_name, val);
         }
     }
 

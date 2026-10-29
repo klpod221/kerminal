@@ -75,9 +75,7 @@ impl LocalTerminal {
 
         let mut cmd = CommandBuilder::new(&shell);
 
-        if shell.contains("zsh") {
-            cmd.arg("-l");
-        } else if shell.contains("bash") {
+        if shell.contains("zsh") || shell.contains("bash") {
             cmd.arg("-l");
         }
 
