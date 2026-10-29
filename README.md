@@ -31,10 +31,11 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [✨ Features](#-features)
   - [💻 Terminal Emulator](#-terminal-emulator)
   - [📡 SSH Management \& Tunneling](#-ssh-management--tunneling)
-  - [💾 Saved Commands \& Session Recording](#-saved-commands--session-recording)
-  - [🔄 Multi-Device Sync \& Security](#-multi-device-sync--security)
+  - [💾 Session \& File Management](#-session--file-management)
+  - [🔄 Security \& Synchronization](#-security--synchronization)
   - [🎨 User Interface](#-user-interface)
-- [Installation Guide](#installation-guide)
+- [📦 Installation Guide](#-installation-guide)
+  - [Flatpak (Linux)](#flatpak-linux)
   - [Arch Linux (install from AUR)](#arch-linux-install-from-aur)
   - [Other Platforms (Windows, macOS, Linux)](#other-platforms-windows-macos-linux)
 - [🚀 Development](#-development)
@@ -49,9 +50,6 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 - [👤 Author](#-author)
 - [🙏 Acknowledgments](#-acknowledgments)
 - [📮 Support](#-support)
-- [🗺️ Roadmap](#️-roadmap)
-  - [Completed](#completed)
-  - [Planned](#planned)
 - [👥 Contributors](#-contributors)
 - [⭐ Star History](#-star-history)
 
@@ -211,7 +209,6 @@ Contributions are welcome! Please follow these guidelines:
 
 - Limited support for some SSH authentication methods
 - MacOS version is **not signed/notarized yet** due to Apple Developer Program restrictions (it takes **99 USD/year!**) So please build from source if you want to use on MacOS or run unsigned app with `xattr -rd com.apple.quarantine /path/to/Kerminal.app` after first launch.
-- Android version is currently not working (some how it works on my device (Xiaomi Redmi Note 12) but not on other devices).
 
 ## 📝 License
 
