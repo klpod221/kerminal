@@ -281,9 +281,12 @@ export function handleError(
 
   switch (category) {
     case "network":
-      return context
-        ? `Network error during ${context.operation.toLowerCase()}. Please check your connection.`
-        : "Network error. Please check your connection.";
+      return (
+        enhancedError.message ||
+        (context
+          ? `Network error during ${context.operation.toLowerCase()}. Please check your connection.`
+          : "Network error. Please check your connection.")
+      );
     case "authentication":
       return "Authentication failed. Please check your credentials.";
     case "authorization":

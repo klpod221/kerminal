@@ -28,7 +28,7 @@ Kerminal hoàn hảo cho:
 |-----------|-------|
 | Nhiều Tab | Làm việc với nhiều terminal cùng lúc |
 | Chia màn hình | Chia không gian làm việc theo chiều ngang hoặc dọc |
-| Render WebGL | Render terminal tăng tốc phần cứng |
+| Render Canvas 2D | Render terminal tăng tốc phần cứng mượt mà |
 | Hỗ trợ Unicode | Hỗ trợ đầy đủ ký tự Unicode 11 |
 
 ### Tính năng SSH

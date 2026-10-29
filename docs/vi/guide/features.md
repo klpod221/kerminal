@@ -10,9 +10,9 @@ Kerminal được trang bị đầy đủ các tính năng được thiết kế
 - Kéo thả tab để sắp xếp lại
 - Tích hợp shell gốc (bash, zsh, fish, PowerShell, v.v.)
 
-### Render tăng tốc WebGL
-- Render terminal tăng tốc phần cứng
-- Cuộn và animation mượt mà
+### Render tăng tốc phần cứng Canvas 2D
+- Render terminal tăng tốc phần cứng thông qua Canvas 2D
+- Cuộn mượt mà và tiết kiệm tài nguyên, không bị giật lag compositor
 - Hỗ trợ Unicode 11 với render emoji đúng
 - Tùy chỉnh font và màu sắc
 

@@ -6,8 +6,8 @@ import type { Terminal } from "@xterm/xterm";
 /**
  * Loads the Canvas 2D renderer for xterm.
  * The CanvasAddon renders terminal contents to a single 2D HTML5 canvas.
- * It is fast, stable, and avoids the compositor stalls and high DOM node count
- * of WebGL or DOM renderers on Linux/Tauri.
+ * It is fast, stable, and avoids the compositor stalls and high DOM node overhead
+ * on Linux/Tauri.
  */
 export const loadCanvasRenderer = async (
   term: Terminal,

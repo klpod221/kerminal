@@ -3,7 +3,7 @@
 
 
 
-export type TerminalRendererHealthSignal = "healthy" | "canvas-detached" | "canvas-zero-sized" | "webgl-context-lost";
+export type TerminalRendererHealthSignal = "healthy" | "canvas-detached" | "canvas-zero-sized" | "context-lost";
 
 export interface TerminalRendererHealthWatchdogScheduler {
   cancel(handle: number): void;
@@ -19,7 +19,7 @@ export interface CreateTerminalRendererHealthWatchdogOptions {
   container: HTMLElement;
   intervalMs?: number;
   renderer: {
-    backend: "dom" | "canvas" | "webgl";
+    backend: "dom" | "canvas";
     getTrackedCanvases(): HTMLCanvasElement[];
     reportHealth(signal: TerminalRendererHealthSignal): void;
   };
@@ -50,7 +50,7 @@ export function createTerminalRendererHealthWatchdog({
 
   const check = () => {
     if (disposed) return;
-    if (renderer.backend !== "webgl") return;
+    if (renderer.backend !== "canvas") return;
     
     const canvases = renderer.getTrackedCanvases();
     const signal = resolveCanvasHealthSignal(container, canvases);
@@ -67,12 +67,12 @@ export function createTerminalRendererHealthWatchdog({
     if (!contextLostListener) {
       contextLostListener = (e: Event) => {
         e.preventDefault();
-        renderer.reportHealth("webgl-context-lost");
+        renderer.reportHealth("context-lost");
       };
     }
     for (const canvas of canvases) {
-      canvas.removeEventListener("webglcontextlost", contextLostListener);
-      canvas.addEventListener("webglcontextlost", contextLostListener, false);
+      canvas.removeEventListener("contextlost", contextLostListener);
+      canvas.addEventListener("contextlost", contextLostListener, false);
     }
   };
 
@@ -90,7 +90,7 @@ export function createTerminalRendererHealthWatchdog({
       if (contextLostListener) {
         const canvases = renderer.getTrackedCanvases();
         for (const canvas of canvases) {
-          canvas.removeEventListener("webglcontextlost", contextLostListener);
+          canvas.removeEventListener("contextlost", contextLostListener);
         }
       }
     },

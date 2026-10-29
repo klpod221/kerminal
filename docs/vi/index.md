@@ -21,7 +21,7 @@ hero:
 features:
   - icon: 💻
     title: Terminal Emulator
-    details: Đa màn hình (tabs, split panes), WebGL, hỗ trợ ảnh inline (Sixel), và Command Palette.
+    details: Đa màn hình (tabs, split panes), render Canvas 2D mượt mà, hỗ trợ ảnh inline (Sixel), và Command Palette.
   - icon: 📡
     title: Quản lý SSH & Tunneling
     details: Tổ chức profile, quản lý khóa SSH, hỗ trợ Proxy, Jump Host Chains, và Port forwarding.

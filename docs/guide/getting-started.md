@@ -28,7 +28,7 @@ Kerminal is perfect for:
 |---------|-------------|
 | Multiple Tabs | Work with multiple terminals simultaneously |
 | Split Panes | Divide your workspace horizontally or vertically |
-| WebGL Rendering | Hardware-accelerated terminal rendering |
+| Canvas 2D Rendering | Hardware-accelerated terminal rendering |
 | Unicode Support | Full Unicode 11 character support |
 
 ### SSH Features

@@ -74,7 +74,7 @@ Perfect for developers, DevOps engineers, system administrators, and anyone who 
 ### 💻 Terminal Emulator
 - Multiple tabs and split panes
 - Native shell integration (bash, zsh, fish, PowerShell, etc.)
-- WebGL-accelerated rendering with Unicode 11 support
+- Hardware-accelerated Canvas 2D rendering with Unicode 11 support
 - Sixel graphics protocol support for inline images
 - Search, clickable links, and clipboard integration
 - Built-in Command Palette
@@ -168,7 +168,7 @@ The application will be available in `src-tauri/target/release/bundle/`.
 
 - **Frontend**: Vue 3 with Composition API, Pinia stores, TypeScript
 - **Backend**: Rust with Tauri v2, async/await with Tokio
-- **Terminal**: xterm.js with WebGL renderer and addons
+- **Terminal**: xterm.js with Canvas 2D renderer and addons
 - **Recording**: asciicast v2 format with asciinema-player for playback
 - **SSH**: russh library for SSH protocol implementation
 - **Database**: SQLx for SQL databases, MongoDB driver for NoSQL

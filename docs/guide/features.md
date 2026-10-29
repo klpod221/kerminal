@@ -10,9 +10,9 @@ Kerminal comes packed with features designed to enhance your terminal experience
 - Drag and drop tabs to reorganize
 - Native shell integration (bash, zsh, fish, PowerShell, etc.)
 
-### WebGL-Accelerated Rendering
-- Hardware-accelerated terminal rendering
-- Smooth scrolling and animations
+### Hardware-Accelerated Canvas 2D Rendering
+- Hardware-accelerated terminal rendering via Canvas 2D
+- Smooth scrolling and high-efficiency rendering without compositor stalls
 - Unicode 11 support with proper emoji rendering
 - Customizable fonts and colors
 

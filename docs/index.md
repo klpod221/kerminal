@@ -21,7 +21,7 @@ hero:
 features:
   - icon: 💻
     title: Terminal Emulator
-    details: Multiple tabs, WebGL-accelerated rendering, Sixel image support, clickable links, and built-in Command Palette.
+    details: Multiple tabs, Canvas 2D accelerated rendering, Sixel image support, clickable links, and built-in Command Palette.
   - icon: 📡
     title: SSH Management
     details: Profile organization, SSH key manager, proxy support, Jump Host Chains, and port forwarding (Local/Remote/Dynamic).

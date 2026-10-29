@@ -141,7 +141,7 @@ sha256sum -c kerminal_x.x.x_amd64.deb.sha256
 | RAM | 512 MB+ |
 | Storage | SSD recommended |
 | Display | 1920x1080+ |
-| GPU | WebGL 2.0 capable |
+| GPU | Hardware accelerated 2D/Canvas capable |
 
 ## Next Steps
 

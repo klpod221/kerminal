@@ -62,29 +62,38 @@ pub struct ConnectionDetails {
 impl ConnectionDetails {
     /// Build connection string for the database type
     pub fn to_connection_string(&self, db_type: &DatabaseType) -> String {
-        let protocol = self.protocol.as_deref().unwrap_or(match db_type {
-            DatabaseType::MySQL => "mysql",
-            DatabaseType::PostgreSQL => "postgresql",
-            DatabaseType::MongoDB => "mongodb",
-        });
+        let protocol = self
+            .protocol
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .unwrap_or(match db_type {
+                DatabaseType::MySQL => "mysql",
+                DatabaseType::PostgreSQL => "postgresql",
+                DatabaseType::MongoDB => "mongodb",
+            });
+
+        let host = self.host.trim();
+        let database_name = self.database_name.trim();
 
         // Build base URL with or without port
         let base_url = if self.port == 0 || protocol.contains("+srv") {
             format!(
                 "{}://{}:{}@{}/{}",
-                protocol, self.username, self.password, self.host, self.database_name
+                protocol, self.username, self.password, host, database_name
             )
         } else {
             format!(
                 "{}://{}:{}@{}:{}/{}",
-                protocol, self.username, self.password, self.host, self.port, self.database_name
+                protocol, self.username, self.password, host, self.port, database_name
             )
         };
 
         // Add options if provided
         if let Some(options) = &self.options {
-            if !options.is_empty() {
-                return format!("{}?{}", base_url, options);
+            let trimmed = options.trim();
+            if !trimmed.is_empty() {
+                return format!("{}?{}", base_url, trimmed);
             }
         }
 

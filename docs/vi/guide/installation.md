@@ -141,7 +141,7 @@ sha256sum -c kerminal_x.x.x_amd64.deb.sha256
 | RAM | 512 MB+ |
 | Bộ nhớ | SSD khuyến nghị |
 | Màn hình | 1920x1080+ |
-| GPU | Hỗ trợ WebGL 2.0 |
+| GPU | Hỗ trợ tăng tốc Canvas 2D / GPU rendering |
 
 ## Bước tiếp theo
 

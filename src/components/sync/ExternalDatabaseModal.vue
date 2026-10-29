@@ -106,11 +106,14 @@
         id="db-options"
         v-model="connectionDetails.options"
         label="Connection Options (Optional)"
-        placeholder="retryWrites=true&w=majority&appName=Cluster0"
+        :placeholder="optionsPlaceholder"
       />
       <div class="text-xs text-gray-400 -mt-2">
-        Query parameters for the connection string (e.g., sslmode=require,
-        retryWrites=true)
+        {{
+          database.dbType === 'mongodb'
+            ? 'Query parameters (e.g. retryWrites=true&w=majority)'
+            : 'Optional parameters (e.g. sslmode=disable). Leave empty for defaults.'
+        }}
       </div>
     </Form>
 
@@ -227,6 +230,19 @@ const defaultProtocol = computed(() => {
   }
 });
 
+const optionsPlaceholder = computed(() => {
+  switch (database.value.dbType) {
+    case "postgresql":
+      return "sslmode=disable";
+    case "mysql":
+      return "ssl-mode=DISABLED";
+    case "mongodb":
+      return "retryWrites=true&w=majority&appName=Cluster0";
+    default:
+      return "";
+  }
+});
+
 watch(
   () => database.value.dbType,
   () => {
@@ -287,15 +303,27 @@ const loadDatabase = async () => {
   }
 };
 
+const getCleanConnectionDetails = (): ConnectionDetails => {
+  return {
+    ...connectionDetails.value,
+    protocol: connectionDetails.value.protocol?.trim() || defaultProtocol.value,
+    options: connectionDetails.value.options?.trim() || "",
+    host: connectionDetails.value.host?.trim() || "",
+    username: connectionDetails.value.username?.trim() || "",
+    databaseName: connectionDetails.value.databaseName?.trim() || "",
+  };
+};
+
 const testConnection = async () => {
   const isValid = await databaseForm.value?.validate();
   if (!isValid) return;
 
   isTesting.value = true;
   try {
+    const cleanDetails = getCleanConnectionDetails();
     const success = await syncStore.testConnection(
       database.value.dbType,
-      connectionDetails.value,
+      cleanDetails,
       databaseId.value || undefined,
     );
 
@@ -315,6 +343,7 @@ const handleSubmit = async () => {
 
   isLoading.value = true;
   try {
+    const cleanDetails = getCleanConnectionDetails();
     const dbData = {
       name: database.value.name,
       dbType: database.value.dbType,
@@ -345,8 +374,8 @@ const handleSubmit = async () => {
           syncSettings.value.conflictResolutionStrategy,
       };
 
-      if (connectionDetails.value.password) {
-        updatePayload.connectionDetails = connectionDetails.value;
+      if (cleanDetails.password) {
+        updatePayload.connectionDetails = cleanDetails;
       }
 
       await syncStore.updateDatabase(databaseId.value, updatePayload);
@@ -354,7 +383,7 @@ const handleSubmit = async () => {
     } else {
       await syncStore.addDatabase(
         dbData,
-        connectionDetails.value,
+        cleanDetails,
         syncSettings.value,
       );
       message.success("Database added successfully");
