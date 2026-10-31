@@ -3,7 +3,7 @@
 
 use crate::models::ssh::{
     CreateSSHGroupRequest, CreateSSHKeyRequest, CreateSSHProfileRequest, DeleteGroupAction,
-    SSHConfigHost, SSHGroup, SSHKey, SSHProfile, TestSSHConnectionRequest, UpdateSSHGroupRequest,
+    SSHConfigHost, SSHGroup, SSHKey, SSHProfile, UpdateSSHGroupRequest,
     UpdateSSHKeyRequest, UpdateSSHProfileRequest,
 };
 use crate::services::ssh_config_parser;
@@ -136,17 +136,6 @@ pub async fn duplicate_ssh_profile(
     new_name: String,
 ) -> Result<SSHProfile, String> {
     app_result!(state.ssh_service.duplicate_ssh_profile(&id, new_name).await)
-}
-
-/// Test SSH connection with a profile
-#[tauri::command]
-pub async fn test_ssh_connection(
-    app_handle: tauri::AppHandle,
-    state: State<'_, AppState>,
-    request: TestSSHConnectionRequest,
-) -> Result<(), String> {
-    let known_hosts_path = crate::commands::ssh_host_key::get_known_hosts_path(&app_handle);
-    app_result!(state.ssh_service.test_ssh_connection(request, known_hosts_path).await)
 }
 
 /// DTO for delete group action from frontend

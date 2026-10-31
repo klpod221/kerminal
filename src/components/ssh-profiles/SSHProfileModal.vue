@@ -306,14 +306,6 @@
         </Button>
         <div class="flex gap-2">
           <Button
-            type="button"
-            variant="outline"
-            @click="testConnection"
-            :loading="isTesting"
-          >
-            Test Connection
-          </Button>
-          <Button
             type="submit"
             variant="primary"
             :loading="sshStore.isLoading"
@@ -378,7 +370,6 @@ const groupId = getOverlayProp(
 );
 
 const sshProfileForm = ref<InstanceType<typeof Form> | null>(null);
-const isTesting = ref(false);
 const isLoadingProfile = ref(false);
 const activeTab = ref("basic");
 
@@ -596,60 +587,6 @@ const buildProxyConfig = () => {
 const buildJumpHostsConfig = () => {
   if (!enableJumpHost.value || !selectedJumpHostId.value) return null;
   return [{ profileId: selectedJumpHostId.value }];
-};
-
-const buildTestRequest = async () => {
-  const authData = sshProfileId.value
-    ? buildAuthData() ||
-      (await sshService.getSSHProfile(sshProfileId.value))?.authData
-    : buildAuthData();
-
-  if (!authData) {
-    throw new Error("Cannot test connection without authentication data");
-  }
-
-  return {
-    host: sshProfile.value.host,
-    port: sshProfile.value.port,
-    username: sshProfile.value.username,
-    authMethod: sshProfile.value.authMethod,
-    authData,
-    timeout: sshProfile.value.timeout || (sshProfileId.value ? 30 : 5),
-    keepAlive: sshProfile.value.keepAlive ?? true,
-    compression: sshProfile.value.compression ?? false,
-    proxy: buildProxyConfig(),
-    jumpHosts: buildJumpHostsConfig(),
-  };
-};
-
-const testConnection = async () => {
-  const isValid = await sshProfileForm.value?.validate();
-  if (!isValid || !sshProfile.value) return;
-
-  isTesting.value = true;
-  try {
-    const testRequest = await buildTestRequest();
-
-    if (!testRequest.host || !testRequest.username || !testRequest.authMethod) {
-      throw new Error("Missing required fields for connection test");
-    }
-
-    await sshStore.testConnection({
-      host: testRequest.host,
-      port: testRequest.port || 22,
-      username: testRequest.username,
-      authMethod: testRequest.authMethod,
-      authData: testRequest.authData,
-      timeout: testRequest.timeout,
-      keepAlive: testRequest.keepAlive,
-      compression: testRequest.compression,
-      proxy: testRequest.proxy,
-      jumpHosts: testRequest.jumpHosts,
-    });
-    message.success("SSH connection test successful!");
-  } finally {
-    isTesting.value = false;
-  }
 };
 
 const handleSubmit = async () => {

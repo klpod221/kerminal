@@ -66,7 +66,6 @@ pub fn main() {
             commands::database::ssh::delete_ssh_profile,
             commands::database::ssh::move_profile_to_group,
             commands::database::ssh::duplicate_ssh_profile,
-            commands::database::ssh::test_ssh_connection,
             commands::database::ssh::create_ssh_key,
             commands::database::ssh::get_ssh_keys,
             commands::database::ssh::get_ssh_key,

@@ -23,41 +23,6 @@ import {
 import { message } from "../utils/message";
 
 /**
- * Test SSH connection with error handling
- * @param request - SSH connection test request
- * @throws Enhanced error if test fails
- */
-async function testConnection(request: {
-  host: string;
-  port: number;
-  username: string;
-  authMethod: string;
-  authData: any;
-  timeout?: number;
-  keepAlive?: boolean;
-  compression?: boolean;
-  proxy?: any;
-  jumpHosts?: any;
-}): Promise<void> {
-  const context: ErrorContext = {
-    operation: "Test SSH Connection",
-    context: { host: request.host, username: request.username },
-  };
-
-  try {
-    await withRetry(
-      () => sshService.testSSHConnection(request),
-      { maxRetries: 1 },
-      context,
-    );
-  } catch (error) {
-    const errorMessage = handleError(error, context);
-    message.error(errorMessage);
-    throw new Error(errorMessage);
-  }
-}
-
-/**
  * SSH Profiles and Groups Store
  * Manages SSH profiles and groups with reactive state management and caching
  */
@@ -624,8 +589,6 @@ export const useSSHStore = defineStore("ssh", () => {
     loadAll,
     refresh,
     clearAll,
-
-    testConnection,
 
     startRealtime,
     stopRealtime,

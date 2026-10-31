@@ -11,8 +11,7 @@ pub use config_host::SSHConfigHost;
 pub use group::{CreateSSHGroupRequest, DeleteGroupAction, SSHGroup, UpdateSSHGroupRequest};
 pub use key::{CreateSSHKeyRequest, SSHKey, UpdateSSHKeyRequest};
 pub use profile::{
-    AuthData, CreateSSHProfileRequest, SSHProfile, TestSSHConnectionRequest,
-    UpdateSSHProfileRequest,
+    AuthData, CreateSSHProfileRequest, SSHProfile, UpdateSSHProfileRequest,
 };
 pub use tunnel::{
     CreateSSHTunnelRequest, SSHTunnel, TunnelStatus, TunnelType, TunnelWithStatus,
