@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri": "tauri --config src/tauri/tauri.conf.json",
+    "tauri": "tauri",
     "pretty": "prettier --write \"./**/*.{ts,vue,css}\"",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

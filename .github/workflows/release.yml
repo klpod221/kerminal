@@ -15,16 +15,16 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest" # for Arm-based Macs (M1 and above).
-            args: "--config src/tauri/tauri.conf.json --target aarch64-apple-darwin"
+            args: "--target aarch64-apple-darwin"
             target: "aarch64-apple-darwin"
           - platform: "macos-latest" # for Intel-based Macs.
-            args: "--config src/tauri/tauri.conf.json --target x86_64-apple-darwin"
+            args: "--target x86_64-apple-darwin"
             target: "x86_64-apple-darwin"
           - platform: "ubuntu-22.04"
-            args: "--config src/tauri/tauri.conf.json"
+            args: ""
             target: ""
           - platform: "windows-latest"
-            args: "--config src/tauri/tauri.conf.json"
+            args: ""
             target: ""
 
     runs-on: ${{ matrix.platform }}
