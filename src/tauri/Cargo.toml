@@ -1,0 +1,64 @@
+[package]
+name = "kerminal-tauri"
+version = "2.7.1"
+description = "Modern Terminal with SSH, Tunneling & Cross-Device Sync (Tauri v2 Desktop App)"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/klpod221/kerminal"
+authors = ["klpod221 <klpod221@gmail.com>"]
+edition = "2021"
+
+[lints.clippy]
+type_complexity = "allow"
+too_many_arguments = "allow"
+upper_case_acronyms = "allow"
+module_inception = "allow"
+wrong_self_convention = "allow"
+double_must_use = "allow"
+
+[lib]
+name = "kerminal"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "Kerminal"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+kerminal-core = { path = "../core" }
+
+tauri = { version = "2", features = ["unstable", "image-png"] }
+tauri-plugin-opener = "2"
+tauri-plugin-process = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-store = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-log = "2"
+
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1.0"
+tokio = { version = "1", features = ["full"] }
+chrono = { version = "0.4", features = ["serde"] }
+log = "0.4.29"
+semver = "1.0"
+sysinfo = "0.37"
+base64 = "0.22"
+uuid = { version = "1", features = ["v4"] }
+reqwest = { version = "0.12.25", features = ["json", "rustls-tls"] }
+gethostname = "0.4"
+pbkdf2 = "0.12"
+sha2 = "0.10"
+hmac = "0.12"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+glib = "0.18"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+winreg = "0.52"

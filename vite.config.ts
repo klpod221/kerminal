@@ -11,15 +11,15 @@ export default defineConfig(async () => ({
   plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(__dirname, "./src/vue"),
     },
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/monaco-editor")) {
-            return "monaco-editor";
+          if (id.includes("node_modules/codemirror") || id.includes("node_modules/@codemirror")) {
+            return "codemirror";
           }
           if (id.includes("node_modules/@xterm")) {
             return "xterm";
@@ -45,7 +45,7 @@ export default defineConfig(async () => ({
         }
       : undefined,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      ignored: ["**/crates/**", "**/target/**"],
     },
   },
   define: {

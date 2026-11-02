@@ -96,14 +96,22 @@ npm install
 
 ### Development Mode
 
+#### Option 1: Tauri + Vue 3 (Default)
 ```bash
 npm run tauri dev
 ```
 
 This will:
 1. Start the Vite dev server (hot reload)
-2. Compile the Rust backend
-3. Launch the Tauri window
+2. Compile the `kerminal-tauri` backend
+3. Launch the Tauri desktop window
+
+#### Option 2: Native Pure-Rust GUI (Iced)
+```bash
+cargo run -p kerminal-gui
+# Or using npm script
+npm run gui:dev
+```
 
 ### Production Build
 
@@ -111,29 +119,30 @@ This will:
 npm run tauri build
 ```
 
-Output will be in `src-tauri/target/release/bundle/`.
+Output will be in `target/release/bundle/`.
 
 ## Project Structure
 
+Kerminal is organized into a clean `src/` modular workspace:
+
 ```
 kerminal/
-├── src/                    # Vue 3 frontend
-│   ├── components/         # Vue components
-│   ├── stores/             # Pinia stores
-│   ├── views/              # Page views
-│   ├── composables/        # Vue composables
-│   └── assets/             # Static assets
-├── src-tauri/              # Rust backend
-│   ├── src/
-│   │   ├── commands/       # Tauri commands
-│   │   ├── models/         # Data models
-│   │   ├── services/       # Business logic
-│   │   └── main.rs         # Entry point
-│   ├── Cargo.toml          # Rust dependencies
-│   └── tauri.conf.json     # Tauri configuration
-├── docs/                   # VitePress documentation
-├── public/                 # Public assets
-└── package.json            # Node.js dependencies
+├── Cargo.toml                  # Root Cargo Workspace definition
+├── src/
+│   ├── core/                   # Core domain & business logic (pure Rust, no Tauri dependency)
+│   │   └── src/
+│   │       ├── core/           # PTY, SSH, Host key verification
+│   │       ├── database/       # SQLite, Postgres, MySQL, MongoDB providers & sync
+│   │       ├── services/       # SFTP, Sync, Recording, Tunnel, Terminal services
+│   │       ├── models/         # Domain models & requests/responses
+│   │       └── events.rs       # CoreEventEmitter trait & implementations
+│   ├── tauri/                  # Tauri v2 adapter & IPC command layer
+│   │   ├── src/commands/       # Tauri IPC commands & binary streaming
+│   │   └── tauri.conf.json     # Tauri app configuration
+│   └── vue/                    # Vue 3 frontend (Xterm.js Canvas, Pinia, TailwindCSS)
+├── docs/                       # VitePress documentation
+├── public/                     # Public assets
+└── package.json                # Node.js dependencies
 ```
 
 ## Key Technologies
@@ -193,8 +202,11 @@ npm run test
 ### Backend Tests
 
 ```bash
-cd src-tauri
-cargo test
+# Run tests across all workspace crates
+cargo test --workspace
+
+# Or test specific crate
+cargo test -p kerminal-core
 ```
 
 ## Contributing

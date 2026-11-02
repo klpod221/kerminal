@@ -1,0 +1,388 @@
+// Copyright (C) 2026 Bùi Thanh Xuân (klpod221)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+use crate::core::terminal::{TerminalFactory, TerminalWrapper};
+use crate::database::service::DatabaseService;
+use crate::error::AppError;
+use crate::events::CoreEventEmitter;
+use crate::models::terminal::{
+    CreateTerminalRequest, CreateTerminalResponse, ResizeTerminalRequest,
+    TerminalExited, TerminalInfo, TerminalLatency, TerminalTitleChanged, WriteTerminalRequest,
+};
+use crate::services::recording::SessionRecorder;
+use crate::services::ssh::SSHKeyService;
+use std::collections::HashMap;
+use std::sync::Arc;
+use tokio::sync::{mpsc, Mutex, RwLock};
+use uuid::Uuid;
+
+pub struct TerminalManager {
+    terminals: Arc<RwLock<HashMap<String, Arc<Mutex<TerminalWrapper>>>>>,
+    database_service: Arc<Mutex<DatabaseService>>,
+    ssh_key_service: Option<Arc<Mutex<SSHKeyService>>>,
+    pub recorders: Arc<RwLock<HashMap<String, Arc<SessionRecorder>>>>,
+    titles: Arc<RwLock<HashMap<String, String>>>,
+    output_buffers: Arc<RwLock<HashMap<String, Arc<crate::utils::output_buffer::TerminalOutputBuffer>>>>,
+}
+
+impl TerminalManager {
+    pub fn new_with_ssh_key_service(
+        database_service: Arc<Mutex<DatabaseService>>,
+        ssh_key_service: Arc<Mutex<SSHKeyService>>,
+    ) -> Self {
+        Self {
+            terminals: Arc::new(RwLock::new(HashMap::new())),
+            database_service,
+            ssh_key_service: Some(ssh_key_service),
+            recorders: Arc::new(RwLock::new(HashMap::new())),
+            titles: Arc::new(RwLock::new(HashMap::new())),
+            output_buffers: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    pub async fn create_terminal(
+        &self,
+        request: CreateTerminalRequest,
+        emitter: Option<Arc<dyn CoreEventEmitter>>,
+    ) -> Result<CreateTerminalResponse, AppError> {
+        let terminal_id = Uuid::new_v4().to_string();
+
+        let mut config = request.config.clone();
+
+        // Apply terminal profile if specified
+        if let Some(profile_id) = &config.terminal_profile_id {
+            let db_service = self.database_service.lock().await;
+            if let Ok(profile) = db_service.get_terminal_profile(profile_id).await {
+                if matches!(
+                    config.terminal_type,
+                    crate::models::terminal::TerminalType::Local
+                ) {
+                    let mut local_config = config.local_config.unwrap_or_default();
+
+                    if local_config.shell.is_none() {
+                        local_config.shell = Some(profile.shell);
+                    }
+
+                    if local_config.working_dir.is_none() && profile.working_dir.is_some() {
+                        local_config.working_dir = profile.working_dir;
+                    }
+
+                    if let Some(profile_env) = profile.env {
+                        let mut env = local_config.env_vars.unwrap_or_default();
+                        for (k, v) in profile_env {
+                            env.entry(k).or_insert(v);
+                        }
+                        local_config.env_vars = Some(env);
+                    }
+
+                    if local_config.command.is_none() && profile.command.is_some() {
+                        local_config.command = profile.command;
+                    }
+
+                    config.local_config = Some(local_config);
+                }
+            }
+        }
+
+        let mut terminal = TerminalFactory::create_terminal(
+            terminal_id.clone(),
+            config.clone(),
+            Some(self.database_service.clone()),
+            None,
+        )
+        .await?;
+
+        let resolved_key = if matches!(
+            request.config.terminal_type,
+            crate::models::terminal::TerminalType::SSH
+        ) {
+            if let Some(ssh_key_service) = &self.ssh_key_service {
+                if let Some(ssh_profile_id) = &request.config.ssh_profile_id {
+                    let ssh_profile = {
+                        let db_service = self.database_service.lock().await;
+                        db_service
+                            .get_ssh_profile(ssh_profile_id)
+                            .await
+                            .map_err(|e| AppError::Database(e.to_string()))?
+                    };
+
+                    if let crate::models::ssh::profile::AuthData::KeyReference { key_id } =
+                        &ssh_profile.auth_data
+                    {
+                        let key_service = ssh_key_service.lock().await;
+                        Some(
+                            key_service
+                                .resolve_key_for_auth(key_id)
+                                .await
+                                .map_err(|e| AppError::Database(e.to_string()))?,
+                        )
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        let connect_result = if let Some(resolved_key) = resolved_key {
+            terminal
+                .connect_with_resolved_data(Some(resolved_key))
+                .await
+        } else {
+            terminal.connect().await
+        };
+
+        if let Err(e) = connect_result {
+            if let Some(emitter) = &emitter {
+                let error_event = TerminalExited {
+                    terminal_id: terminal_id.clone(),
+                    exit_code: Some(1),
+                    reason: Some("error".to_string()),
+                };
+                if let Ok(val) = serde_json::to_value(&error_event) {
+                    emitter.emit_event("terminal-exited", val);
+                }
+            }
+
+            return Err(e);
+        } else if matches!(
+            request.config.terminal_type,
+            crate::models::terminal::TerminalType::SSH
+                | crate::models::terminal::TerminalType::SSHConfig
+        ) {
+            if let Some(emitter) = &emitter {
+                emitter.emit_event(
+                    "ssh-connected",
+                    serde_json::json!({ "terminalId": terminal_id }),
+                );
+            }
+        }
+
+        let (title_tx, mut title_rx) = mpsc::unbounded_channel::<String>();
+        let (exit_tx, mut exit_rx) = mpsc::unbounded_channel::<TerminalExited>();
+        let (latency_tx, mut latency_rx) = mpsc::unbounded_channel::<TerminalLatency>();
+
+        let buffer = crate::utils::output_buffer::TerminalOutputBuffer::new(1024 * 1024); // 1MB
+
+        {
+            let mut buffers = self.output_buffers.write().await;
+            buffers.insert(terminal_id.clone(), buffer.clone());
+        }
+
+        terminal
+            .start_read_loop(
+                buffer.clone(),
+                Some(title_tx),
+                Some(exit_tx),
+                Some(latency_tx),
+            )
+            .await?;
+
+        let terminal_id_clone = terminal_id.clone();
+        let emitter_clone = emitter.clone();
+        let recorders_clone = self.recorders.clone();
+
+        crate::utils::spawn(async move {
+            loop {
+                let (data, dropped_count) = buffer.pop_all().await;
+                if data.is_empty() {
+                    break; // EOF
+                }
+
+                // Record output if recording is active (always record raw output)
+                if let Some(recorder) = recorders_clone.read().await.get(&terminal_id_clone) {
+                    let _ = recorder.record_output(&data).await;
+                }
+
+                if let Some(emitter) = &emitter_clone {
+                    if dropped_count > 0 {
+                        let warning_msg = format!(
+                            "\r\n\x1b[31m[Kerminal Warning: output too fast, dropped {} bytes]\x1b[0m\r\n",
+                            dropped_count
+                        );
+                        emitter.send_terminal_output(&terminal_id_clone, warning_msg.as_bytes());
+                    }
+
+                    emitter.send_terminal_output(&terminal_id_clone, &data);
+                }
+            }
+        });
+
+        let terminal_id_clone = terminal_id.clone();
+        let emitter_clone = emitter.clone();
+        let titles_clone = self.titles.clone();
+        let should_lock_title = request.config.terminal_profile_id.is_some();
+
+        crate::utils::spawn(async move {
+            while let Some(new_title) = title_rx.recv().await {
+                if should_lock_title {
+                    continue;
+                }
+
+                {
+                    let mut titles = titles_clone.write().await;
+                    titles.insert(terminal_id_clone.clone(), new_title.clone());
+                }
+
+                let title_event = TerminalTitleChanged {
+                    terminal_id: terminal_id_clone.clone(),
+                    title: new_title,
+                };
+
+                if let Some(emitter) = &emitter_clone {
+                    if let Ok(val) = serde_json::to_value(&title_event) {
+                        emitter.emit_event("terminal-title-changed", val);
+                    }
+                }
+            }
+        });
+
+        let emitter_clone = emitter.clone();
+        crate::utils::spawn(async move {
+            while let Some(exit_event) = exit_rx.recv().await {
+                if let Some(emitter) = &emitter_clone {
+                    if let Ok(val) = serde_json::to_value(&exit_event) {
+                        emitter.emit_event("terminal-exited", val);
+                    }
+                }
+            }
+        });
+
+        let emitter_clone = emitter.clone();
+        crate::utils::spawn(async move {
+            while let Some(latency_event) = latency_rx.recv().await {
+                if let Some(emitter) = &emitter_clone {
+                    if let Ok(val) = serde_json::to_value(&latency_event) {
+                        emitter.emit_event("terminal-latency", val);
+                    }
+                }
+            }
+        });
+
+        let terminal_info = TerminalInfo {
+            id: terminal_id.clone(),
+            config: request.config,
+            state: terminal.get_state(),
+            created_at: chrono::Utc::now(),
+            title: request.title,
+        };
+
+        {
+            let mut terminals = self.terminals.write().await;
+            terminals.insert(terminal_id.clone(), Arc::new(Mutex::new(terminal)));
+        }
+
+        if let Some(title) = &terminal_info.title {
+            let mut titles = self.titles.write().await;
+            titles.insert(terminal_id.clone(), title.clone());
+        }
+
+        Ok(CreateTerminalResponse {
+            terminal_id,
+            info: terminal_info,
+        })
+    }
+
+    pub async fn write_to_terminal(&self, request: WriteTerminalRequest) -> Result<(), AppError> {
+        let terminals = self.terminals.read().await;
+
+        if let Some(terminal) = terminals.get(&request.terminal_id) {
+            let mut terminal_guard = terminal.lock().await;
+            terminal_guard.write(request.data.as_bytes()).await?;
+            Ok(())
+        } else {
+            Err(AppError::TerminalNotFound(request.terminal_id))
+        }
+    }
+
+    pub async fn resize_terminal(&self, request: ResizeTerminalRequest) -> Result<(), AppError> {
+        let terminals = self.terminals.read().await;
+
+        if let Some(terminal) = terminals.get(&request.terminal_id) {
+            let mut terminal_guard = terminal.lock().await;
+            terminal_guard.resize(request.cols, request.rows).await?;
+            Ok(())
+        } else {
+            Err(AppError::TerminalNotFound(request.terminal_id))
+        }
+    }
+
+    pub async fn close_terminal(&self, terminal_id: String) -> Result<(), AppError> {
+        let terminal = {
+            let mut terminals = self.terminals.write().await;
+            terminals.remove(&terminal_id)
+        };
+
+        {
+            let mut buffers = self.output_buffers.write().await;
+            buffers.remove(&terminal_id);
+        }
+
+        {
+            let mut titles = self.titles.write().await;
+            titles.remove(&terminal_id);
+        }
+
+        if let Some(terminal) = terminal {
+            let mut terminal_guard = terminal.lock().await;
+            terminal_guard.disconnect().await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn get_terminal_info(&self, terminal_id: String) -> Result<TerminalInfo, AppError> {
+        let terminals = self.terminals.read().await;
+
+        if let Some(terminal) = terminals.get(&terminal_id) {
+            let terminal_guard = terminal.lock().await;
+            let titles = self.titles.read().await;
+            let title = titles.get(&terminal_id).cloned();
+
+            Ok(TerminalInfo {
+                id: terminal_id,
+                config: terminal_guard.get_config().clone(),
+                state: terminal_guard.get_state(),
+                created_at: chrono::Utc::now(),
+                title,
+            })
+        } else {
+            Err(AppError::TerminalNotFound(terminal_id))
+        }
+    }
+
+    pub async fn list_terminals(&self) -> Result<Vec<TerminalInfo>, AppError> {
+        let terminals = self.terminals.read().await;
+        let mut terminal_infos = Vec::new();
+
+        for (terminal_id, terminal) in terminals.iter() {
+            let terminal_guard = terminal.lock().await;
+            let titles = self.titles.read().await;
+            let title = titles.get(terminal_id).cloned();
+
+            terminal_infos.push(TerminalInfo {
+                id: terminal_id.clone(),
+                config: terminal_guard.get_config().clone(),
+                state: terminal_guard.get_state(),
+                created_at: chrono::Utc::now(),
+                title,
+            });
+        }
+
+        Ok(terminal_infos)
+    }
+
+    pub async fn get_terminal_metrics(&self, terminal_id: String) -> Result<crate::utils::output_buffer::TerminalMetrics, AppError> {
+        let buffers = self.output_buffers.read().await;
+        if let Some(buffer) = buffers.get(&terminal_id) {
+            Ok(buffer.get_metrics())
+        } else {
+            Err(AppError::TerminalNotFound(terminal_id))
+        }
+    }
+}

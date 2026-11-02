@@ -14,6 +14,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
+    "@codemirror/language-data": "^6.5.2",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.0",
     "@tauri-apps/plugin-dialog": "^2.4.2",
@@ -30,12 +31,10 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
     "asciinema-player": "^3.12.1",
+    "codemirror": "^6.0.2",
     "date-fns": "^4.1.0",
     "lucide-vue-next": "^0.544.0",
-    "monaco-editor": "^0.54.0",
-    "monaco-editor-vue3": "^1.0.4",
     "pinia": "^3.0.3",
-    "prismjs": "^1.30.0",
     "splitpanes": "^4.0.4",
     "uuid": "^13.0.0",
     "vue": "^3.5.13"
@@ -43,7 +42,6 @@
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.13",
     "@tauri-apps/cli": "^2",
-    "@types/prismjs": "^1.26.5",
     "@vitejs/plugin-vue": "^5.2.1",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.13",

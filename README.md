@@ -151,26 +151,30 @@ npm install
 ```
 
 3. Run in development mode
+
 ```bash
+# Option A: Tauri v2 + Vue 3 (Default)
 npm run tauri dev
+
+# Option B: Native Pure-Rust GUI (Iced)
+npm run gui:dev
 ```
 
 4. Build for production
+
 ```bash
 npm run tauri build
 ```
 
-The application will be available in `src-tauri/target/release/bundle/`.
+The application will be available in `target/release/bundle/`.
 
 ### Project Structure
 
-- **Frontend**: Vue 3 with Composition API, Pinia stores, TypeScript
-- **Backend**: Rust with Tauri v2, async/await with Tokio
-- **Terminal**: xterm.js with Canvas 2D renderer and addons
-- **Recording**: asciicast v2 format with asciinema-player for playback
-- **SSH**: russh library for SSH protocol implementation
-- **Database**: SQLx for SQL databases, MongoDB driver for NoSQL
-- **Encryption**: AES-GCM with Argon2 key derivation
+Kerminal is organized into a clean `src/` modular workspace:
+
+- **`src/core`**: Core business domain (PTY, SSH/russh, SFTP, multi-engine Database, Encryption, Sync, History, Recording) without any framework dependencies.
+- **`src/tauri`**: Tauri v2 desktop & mobile adapter with direct binary streaming IPC and lifecycle management.
+- **`src/vue`**: Vue 3 frontend (Composition API, Pinia, TailwindCSS, xterm.js with Canvas 2D renderer).
 
 ### Key Technologies
 

@@ -96,14 +96,22 @@ npm install
 
 ### Chế độ phát triển
 
+#### Lựa chọn 1: Tauri + Vue 3 (Mặc định)
 ```bash
 npm run tauri dev
 ```
 
 Lệnh này sẽ:
 1. Khởi động Vite dev server (hot reload)
-2. Compile backend Rust
-3. Mở cửa sổ Tauri
+2. Compile backend `kerminal-tauri`
+3. Mở cửa sổ ứng dụng Tauri
+
+#### Lựa chọn 2: Giao diện Native thuần Rust (Iced)
+```bash
+cargo run -p kerminal-gui
+# Hoặc dùng script npm
+npm run gui:dev
+```
 
 ### Build production
 
@@ -111,29 +119,30 @@ Lệnh này sẽ:
 npm run tauri build
 ```
 
-Output sẽ ở `src-tauri/target/release/bundle/`.
+Output sẽ ở `target/release/bundle/`.
 
 ## Cấu trúc dự án
 
+Kerminal được tổ chức thành cấu trúc module `src/` hiện đại và tinh gọn:
+
 ```
 kerminal/
-├── src/                    # Vue 3 frontend
-│   ├── components/         # Vue components
-│   ├── stores/             # Pinia stores
-│   ├── views/              # Page views
-│   ├── composables/        # Vue composables
-│   └── assets/             # Static assets
-├── src-tauri/              # Rust backend
-│   ├── src/
-│   │   ├── commands/       # Tauri commands
-│   │   ├── models/         # Data models
-│   │   ├── services/       # Business logic
-│   │   └── main.rs         # Entry point
-│   ├── Cargo.toml          # Rust dependencies
-│   └── tauri.conf.json     # Cấu hình Tauri
-├── docs/                   # VitePress documentation
-├── public/                 # Public assets
-└── package.json            # Node.js dependencies
+├── Cargo.toml                  # Định nghĩa Root Cargo Workspace
+├── src/
+│   ├── core/                   # Domain core & business logic (thuần Rust, không phụ thuộc Tauri)
+│   │   └── src/
+│   │       ├── core/           # PTY, SSH, Xác minh Host key
+│   │       ├── database/       # Providers SQLite, Postgres, MySQL, MongoDB & sync
+│   │       ├── services/       # SFTP, Sync, Recording, Tunnel, Terminal services
+│   │       ├── models/         # Domain models & requests/responses
+│   │       └── events.rs       # CoreEventEmitter trait & implementations
+│   ├── tauri/                  # Tầng adapter Tauri v2 & IPC binary streaming
+│   │   ├── src/commands/       # Tauri IPC commands & binary streaming
+│   │   └── tauri.conf.json     # Cấu hình app Tauri
+│   └── vue/                    # Frontend Vue 3 (Xterm.js Canvas, Pinia, TailwindCSS)
+├── docs/                       # Tài liệu VitePress
+├── public/                     # Tài nguyên tĩnh
+└── package.json                # Node.js dependencies
 ```
 
 ## Công nghệ chính
@@ -193,8 +202,11 @@ npm run test
 ### Backend Tests
 
 ```bash
-cd src-tauri
-cargo test
+# Chạy tests cho toàn bộ workspace crates
+cargo test --workspace
+
+# Hoặc test riêng crate kerminal-core
+cargo test -p kerminal-core
 ```
 
 ## Đóng góp
