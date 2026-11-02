@@ -92,10 +92,10 @@ fi
 
 echo ""
 echo "✨ Creating new tag: $TAG"
-git tag "$TAG"
+git tag -f "$TAG"
 
 echo "📤 Pushing tag to remote..."
-git push origin "$TAG"
+git push origin "$TAG" --force
 
 echo ""
 echo "✅ Done! Version updated and tag recreated."
