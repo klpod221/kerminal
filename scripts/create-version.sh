@@ -35,20 +35,17 @@ echo "🔄 Updating version to $VERSION in relevant files..."
 # Update version in package.json
 sed -i.bak -E "s/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"version\": \"$VERSION\"/" package.json
 
-# Update version in crates/kerminal-core/Cargo.toml
-sed -i.bak -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$VERSION\"/" crates/kerminal-core/Cargo.toml
+# Update version in src/core/Cargo.toml
+sed -i.bak -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$VERSION\"/" src/core/Cargo.toml
 
-# Update version in crates/kerminal-tauri/Cargo.toml
-sed -i.bak -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$VERSION\"/" crates/kerminal-tauri/Cargo.toml
+# Update version in src/tauri/Cargo.toml
+sed -i.bak -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$VERSION\"/" src/tauri/Cargo.toml
 
-# Update version in crates/kerminal-gui/Cargo.toml
-sed -i.bak -E "s/^version = \"[0-9]+\.[0-9]+\.[0-9]+\"/version = \"$VERSION\"/" crates/kerminal-gui/Cargo.toml
-
-# update version in crates/kerminal-tauri/tauri.conf.json
-sed -i.bak -E "s/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"version\": \"$VERSION\"/" crates/kerminal-tauri/tauri.conf.json
+# update version in src/tauri/tauri.conf.json
+sed -i.bak -E "s/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"version\": \"$VERSION\"/" src/tauri/tauri.conf.json
 
 # Clean up backup files
-rm -f package.json.bak crates/kerminal-core/Cargo.toml.bak crates/kerminal-tauri/Cargo.toml.bak crates/kerminal-gui/Cargo.toml.bak crates/kerminal-tauri/tauri.conf.json.bak
+rm -f package.json.bak src/core/Cargo.toml.bak src/tauri/Cargo.toml.bak src/tauri/tauri.conf.json.bak
 
 # Update lock files
 npm install --package-lock-only
