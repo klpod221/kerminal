@@ -1,6 +1,6 @@
 [package]
 name = "kerminal-tauri"
-version = "2.7.1"
+version = "2.7.2"
 description = "Modern Terminal with SSH, Tunneling & Cross-Device Sync (Tauri v2 Desktop App)"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/klpod221/kerminal"

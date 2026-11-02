@@ -1,6 +1,6 @@
 [package]
 name = "kerminal-core"
-version = "2.7.1"
+version = "2.7.2"
 description = "Core logic, services, database and terminal operations for Kerminal"
 license = "GPL-3.0-or-later"
 authors = ["klpod221 <klpod221@gmail.com>"]
