@@ -20,6 +20,10 @@ let titleUnlisten: (() => void) | null = null;
 let exitUnlisten: (() => void) | null = null;
 let latencyUnlisten: (() => void) | null = null;
 
+const outputListeners = new Set<(data: TerminalData) => void>();
+let outputSubscriptionPromise: Promise<void> | null = null;
+let eventFallbackUnlisten: (() => void) | null = null;
+
 /**
  * Create a new local terminal
  */
@@ -142,6 +146,7 @@ export async function closeTerminal(terminalId: string): Promise<void> {
     });
 
     terminalCache.invalidateTerminal(terminalId);
+    textDecoders.delete(terminalId);
 
     return result;
   } catch (error) {
@@ -191,55 +196,94 @@ export async function getUserHostname(): Promise<string> {
 let channelActive = false;
 const textDecoders = new Map<string, TextDecoder>();
 
+const dispatchOutputToListeners = (payload: TerminalData): void => {
+  for (const listener of outputListeners) {
+    try {
+      listener(payload);
+    } catch (err) {
+      console.error("Terminal output listener error:", err);
+    }
+  }
+};
+
+const ensureOutputSubscription = async (): Promise<void> => {
+  if (outputSubscriptionPromise) {
+    return outputSubscriptionPromise;
+  }
+
+  outputSubscriptionPromise = (async () => {
+    const binaryChannel = new Channel<ArrayBuffer | Uint8Array>();
+    binaryChannel.onmessage = (rawMsg: ArrayBuffer | Uint8Array) => {
+      try {
+        const u8 = rawMsg instanceof Uint8Array ? rawMsg : new Uint8Array(rawMsg);
+        if (u8.length < 2) return;
+        const idLen = u8[0];
+        if (u8.length < 1 + idLen) return;
+        const idBytes = u8.subarray(1, 1 + idLen);
+        const terminalId = new TextDecoder().decode(idBytes);
+        const dataBytes = u8.subarray(1 + idLen);
+
+        let decoder = textDecoders.get(terminalId);
+        if (!decoder) {
+          decoder = new TextDecoder("utf-8", { fatal: false });
+          textDecoders.set(terminalId, decoder);
+        }
+        const dataStr = decoder.decode(dataBytes, { stream: true });
+        dispatchOutputToListeners({ terminalId, data: dataStr });
+      } catch (e) {
+        console.error("Binary terminal output decode failed:", e);
+      }
+    };
+
+    try {
+      await invoke("subscribe_terminal_output", { channel: binaryChannel });
+      channelActive = true;
+    } catch (err) {
+      console.warn(
+        "Could not subscribe to binary terminal channel, falling back to events:",
+        err,
+      );
+      channelActive = false;
+    }
+
+    if (!eventFallbackUnlisten) {
+      eventFallbackUnlisten = await api.listen<TerminalData>(
+        "terminal-output",
+        (payload) => {
+          if (!channelActive) {
+            dispatchOutputToListeners(payload);
+          }
+        },
+      );
+    }
+
+    outputUnlisten = () => {
+      outputListeners.clear();
+      channelActive = false;
+      textDecoders.clear();
+      if (eventFallbackUnlisten) {
+        eventFallbackUnlisten();
+        eventFallbackUnlisten = null;
+      }
+      outputSubscriptionPromise = null;
+    };
+  })();
+
+  return outputSubscriptionPromise;
+};
+
 /**
  * Listen to terminal output events (high-performance binary channel with event fallback)
  */
 export async function listenToTerminalOutput(
   callback: (data: TerminalData) => void,
 ): Promise<() => void> {
-  const binaryChannel = new Channel<ArrayBuffer | Uint8Array>();
-  binaryChannel.onmessage = (rawMsg: ArrayBuffer | Uint8Array) => {
-    try {
-      const u8 = rawMsg instanceof Uint8Array ? rawMsg : new Uint8Array(rawMsg);
-      if (u8.length < 2) return;
-      const idLen = u8[0];
-      if (u8.length < 1 + idLen) return;
-      const idBytes = u8.subarray(1, 1 + idLen);
-      const terminalId = new TextDecoder().decode(idBytes);
-      const dataBytes = u8.subarray(1 + idLen);
+  outputListeners.add(callback);
+  await ensureOutputSubscription();
 
-      let decoder = textDecoders.get(terminalId);
-      if (!decoder) {
-        decoder = new TextDecoder("utf-8", { fatal: false });
-        textDecoders.set(terminalId, decoder);
-      }
-      const dataStr = decoder.decode(dataBytes, { stream: true });
-      callback({ terminalId, data: dataStr });
-    } catch (e) {
-      console.error("Binary terminal output decode failed:", e);
-    }
+  return () => {
+    outputListeners.delete(callback);
   };
-
-  try {
-    await invoke("subscribe_terminal_output", { channel: binaryChannel });
-    channelActive = true;
-  } catch (err) {
-    console.warn("Could not subscribe to binary terminal channel, falling back to events:", err);
-  }
-
-  const eventUnlisten = await api.listen<TerminalData>("terminal-output", (payload) => {
-    if (!channelActive) {
-      callback(payload);
-    }
-  });
-
-  outputUnlisten = () => {
-    channelActive = false;
-    textDecoders.clear();
-    eventUnlisten();
-  };
-
-  return outputUnlisten;
 }
 
 /**

@@ -149,9 +149,13 @@ class TerminalRegistryClass {
   /**
    * Unmount terminal from panel back to hidden host
    */
-  public unmountFromPanel(terminalId: string): void {
+  public unmountFromPanel(
+    terminalId: string,
+    expectedContainer?: HTMLElement,
+  ): void {
     const managed = this.terminals.get(terminalId);
     if (!managed?.mountedTo) return;
+    if (expectedContainer && managed.mountedTo !== expectedContainer) return;
 
     // Move back to hidden host
     if (this.hostElement) {

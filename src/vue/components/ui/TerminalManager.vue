@@ -412,49 +412,67 @@ const createTerminalInstance = async (
   return { term, fitAddon, outputWriter };
 };
 
+const pendingTerminalCreations = new Map<string, Promise<void>>();
+
 /**
  * Ensure terminal exists in registry and create if needed
  */
 const ensureTerminalExists = async (terminalId: string): Promise<void> => {
-  if (TerminalRegistry.hasTerminal(terminalId)) {
+  const existingManaged = TerminalRegistry.getTerminal(terminalId);
+  if (existingManaged?.term) {
     return;
   }
 
-  // Create container for terminal
-  const container = document.createElement("div");
-  container.className = "terminal-container w-full h-full bg-bg-secondary";
-  container.dataset.terminalId = terminalId;
+  const pendingCreation = pendingTerminalCreations.get(terminalId);
+  if (pendingCreation) {
+    await pendingCreation;
+    return;
+  }
 
-  // Register before creating xterm (container first)
-  TerminalRegistry.registerTerminal(terminalId, container);
+  const creationPromise = (async () => {
+    // Create container for terminal
+    const container = document.createElement("div");
+    container.className = "terminal-container w-full h-full bg-bg-secondary";
+    container.dataset.terminalId = terminalId;
 
-  // Create xterm instance
-  const { term, fitAddon, outputWriter } = await createTerminalInstance(
-    terminalId,
-    container,
-  );
+    // Register before creating xterm (container first)
+    TerminalRegistry.registerTerminal(terminalId, container);
 
-  // Update registry with term and fitAddon
-  TerminalRegistry.updateTerminalInstance(
-    terminalId,
-    term,
-    fitAddon,
-    outputWriter,
-  );
+    // Create xterm instance
+    const { term, fitAddon, outputWriter } = await createTerminalInstance(
+      terminalId,
+      container,
+    );
 
-  // Attach input handler
-  TerminalRegistry.setInputHandler(terminalId, (data) => {
-    handleTerminalInput(terminalId, data, {
-      activeTerminalId: props.activeTerminalId || terminalId,
-      panels: workspaceStore.getAllPanels(),
-      allTerminals: workspaceStore.terminals,
+    // Update registry with term and fitAddon
+    TerminalRegistry.updateTerminalInstance(
+      terminalId,
+      term,
+      fitAddon,
+      outputWriter,
+    );
+
+    // Attach input handler
+    TerminalRegistry.setInputHandler(terminalId, (data) => {
+      handleTerminalInput(terminalId, data, {
+        activeTerminalId: props.activeTerminalId || terminalId,
+        panels: workspaceStore.getAllPanels(),
+        allTerminals: workspaceStore.terminals,
+      });
     });
-  });
 
-  // Note: Fit will be done after mounting to panel (hidden host has no dimensions)
+    // Note: Fit will be done after mounting to panel (hidden host has no dimensions)
 
-  // Emit ready event
-  emit("terminal-ready", terminalId);
+    // Emit ready event
+    emit("terminal-ready", terminalId);
+  })();
+
+  pendingTerminalCreations.set(terminalId, creationPromise);
+  try {
+    await creationPromise;
+  } finally {
+    pendingTerminalCreations.delete(terminalId);
+  }
 };
 
 /**
@@ -466,11 +484,16 @@ const mountActiveTerminal = async (): Promise<void> => {
 
   // Unmount previous if different
   if (currentMountedId.value && currentMountedId.value !== activeId) {
-    TerminalRegistry.unmountFromPanel(currentMountedId.value);
+    TerminalRegistry.unmountFromPanel(
+      currentMountedId.value,
+      mountPointRef.value,
+    );
   }
 
   // Ensure terminal exists
   await ensureTerminalExists(activeId);
+
+  if (!mountPointRef.value) return;
 
   // Mount to this panel
   TerminalRegistry.mountToPanel(activeId, mountPointRef.value);
@@ -564,9 +587,7 @@ watch(
   async (newTerminals) => {
     // Ensure all terminals exist in registry
     for (const terminal of newTerminals) {
-      if (!TerminalRegistry.hasTerminal(terminal.id)) {
-        await ensureTerminalExists(terminal.id);
-      }
+      await ensureTerminalExists(terminal.id);
 
       // Update input handler (uses safe replacement)
       TerminalRegistry.setInputHandler(terminal.id, (data) => {
@@ -668,9 +689,12 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-  // Unmount current terminal (move back to host)
+  // Unmount current terminal (move back to host only if still mounted to this panel)
   if (currentMountedId.value) {
-    TerminalRegistry.unmountFromPanel(currentMountedId.value);
+    TerminalRegistry.unmountFromPanel(
+      currentMountedId.value,
+      mountPointRef.value ?? undefined,
+    );
   }
 
   if (outputUnlisten) {
