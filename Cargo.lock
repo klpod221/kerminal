@@ -3347,7 +3347,7 @@ dependencies = [
 
 [[package]]
 name = "kerminal-core"
-version = "2.7.2"
+version = "2.7.3"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -3390,7 +3390,7 @@ dependencies = [
 
 [[package]]
 name = "kerminal-tauri"
-version = "2.7.2"
+version = "2.7.3"
 dependencies = [
  "base64 0.22.1",
  "chrono",
